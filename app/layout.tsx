@@ -14,9 +14,16 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Pacific Dialer | Power Dialing Command Center",
-  description: "Upload lead lists, run single or triple-line calling sessions, and keep every conversation organized.",
-  other: {
-    "codex-preview": "development",
+  description: "A focused CRM and browser-based power dialer for importing leads, making Twilio calls, recording outcomes, and managing follow-ups.",
+  openGraph: {
+    title: "Pacific Dialer | Power Dialing Command Center",
+    description: "Import leads, call through Twilio, and manage every follow-up from one focused CRM workspace.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Pacific Dialer | Power Dialing Command Center",
+    description: "Import leads, call through Twilio, and manage every follow-up from one focused CRM workspace.",
   },
   icons: {
     icon: "/favicon.svg",
