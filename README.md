@@ -73,6 +73,7 @@ If the GitHub repository already has different history, clone it first and copy 
 
 1. Import `aypacharrito/Dialer` into Vercel.
 2. Keep the framework preset on Next.js and use the default build settings.
+   The included build script automatically selects a native Next.js build on Vercel and a Cloudflare-compatible build on ChatGPT Sites.
 3. Add all five Twilio environment variables under **Project Settings → Environment Variables**.
 4. Deploy.
 5. Copy the deployed `/api/twilio/voice` URL into the TwiML App Voice Request URL.

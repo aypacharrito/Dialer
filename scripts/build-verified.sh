@@ -2,6 +2,19 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+project_dir="$(cd "${script_dir}/.." && pwd)"
+
+# Vercel needs a native Next.js build. The same repository is also deployed
+# through ChatGPT Sites, which uses the Vinext/Cloudflare artifact below.
+if [[ "${VERCEL:-}" == "1" ]]; then
+  next_bin="${project_dir}/node_modules/.bin/next"
+  if [[ ! -x "${next_bin}" ]]; then
+    echo "Next.js is unavailable. Install dependencies before building." >&2
+    exit 69
+  fi
+  echo "Running Vercel-compatible Next.js build..."
+  exec "${next_bin}" build
+fi
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
   exec "${script_dir}/sites-env.sh" -- "$0" "$@"
