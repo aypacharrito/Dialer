@@ -22,6 +22,8 @@ PacificaTools is an insurance sales command center with a CRM, Twilio auto diale
 - Manual carrier-result entry so agents can compare offers before API activation
 - Responsive desktop and mobile interface
 - Local browser persistence for the current prototype
+- Stripe Checkout subscriptions for Solo, Team, and Agency plans
+- Customer Compliance Agreement and sequential-dialing guardrails
 
 ## Run locally
 
@@ -87,6 +89,29 @@ If the GitHub repository already has different history, clone it first and copy 
 5. Copy the deployed `/api/twilio/voice` URL into the TwiML App Voice Request URL.
 6. Redeploy after changing environment variables.
 
+## Activate Stripe subscriptions
+
+Create three Stripe Products with monthly recurring Prices, then add these Production environment variables in Vercel:
+
+```text
+STRIPE_RESTRICTED_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PRICE_SOLO
+STRIPE_PRICE_TEAM
+STRIPE_PRICE_AGENCY
+NEXT_PUBLIC_APP_URL
+```
+
+Use a restricted live key with only the permissions required for Checkout, Customers, and Subscriptions. Set `NEXT_PUBLIC_APP_URL` to the production origin without a trailing slash. Create a Stripe webhook endpoint at:
+
+```text
+https://YOUR-DOMAIN.com/api/stripe/webhook
+```
+
+Subscribe it to `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, and `customer.subscription.deleted`. Add the public `/terms` URL to the Stripe business/legal settings, then redeploy. The current webhook verifies and logs lifecycle events; account provisioning and Twilio-number assignment remain manual until a shared user database is connected.
+
+Stripe Tax is not enabled automatically. Configure registrations and tax behavior with a qualified tax adviser before enabling automatic tax collection.
+
 ### If the dialer stays on “Calling through Twilio”
 
 1. Open **Phone setup** in PacificaTools and click **Run device & connection test**.
@@ -114,7 +139,7 @@ The Quote Center saves complete Life, Home, and Auto intakes now. It intentional
 
 ## Important prototype note
 
-Contact records currently stay in each browser through local storage. The next production milestone is shared accounts and a real database so multiple agents can see the same contacts, call history, and follow-ups. After that, add multi-line first-answer dialing, recordings, SMS follow-up, and team performance reporting.
+Contact records currently stay in each browser through local storage. The next production milestone is authentication plus a shared database so paid customers and multiple agents can see only their own contacts, call history, and follow-ups. Keep outbound dialing sequential—one agent assigned to one call—unless counsel approves and the system implements every predictive-dialing and abandonment safeguard. Recording, transcription, and AI analysis require jurisdiction-appropriate disclosure and consent.
 
 ## Main source files
 

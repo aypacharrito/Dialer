@@ -9,7 +9,7 @@ import { readAudioPreferences } from "./audio-preferences";
 
 type LeadLine = "life" | "home-auto";
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine };
-type View = "dialer" | "leads" | "quotes" | "campaigns" | "activity" | "settings";
+type View = "dialer" | "leads" | "quotes" | "campaigns" | "activity" | "billing" | "settings";
 
 const starterLeads: Lead[] = [];
 const emptyLead: Lead = {id:0,name:"No contact selected",phone:"Import contacts to begin",city:"CRM queue is empty",status:"Empty",email:"",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never",line:"life"};
@@ -56,6 +56,7 @@ export default function Page(){
   const [callLogs,setCallLogs]=useState<CallLog[]>([]);
   const [activeLine,setActiveLine]=useState<LeadLine>("life");
   const [autoDialing,setAutoDialing]=useState(false);
+  const [checkoutPlan,setCheckoutPlan]=useState("");
   const inputRef=useRef<HTMLInputElement>(null);
   const deviceRef=useRef<Device|null>(null);
   const callRef=useRef<Call|null>(null);
@@ -138,7 +139,7 @@ export default function Page(){
       if(audioPreferences.ring!=="default")await device.audio?.ringtoneDevices?.set(audioPreferences.ring);
       const connectPromise=device.connect({params:{To:number}});
       const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Twilio signaling timed out after 15 seconds")),15000))]);callRef.current=call;
-      watchdogRef.current=window.setTimeout(()=>{call.disconnect();finishCall(wasManual,currentLeadId,"No answer after 45 seconds","Timed out")},45000);
+      watchdogRef.current=window.setTimeout(()=>{call.disconnect();finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out")},30000);
       call.on("accept",()=>{if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();setConnected(true);setSeconds(0);setPhoneStatus("Live call over Wi-Fi")});
       call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed"));
       call.on("cancel",()=>finishCall(wasManual,currentLeadId,"Call canceled","Canceled"));
@@ -163,13 +164,22 @@ export default function Page(){
     reader.readAsText(file);
   }
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
-  const nav:[View,string,string][]=[["dialer","Dialer","dial"],["leads","CRM contacts","users"],["quotes","Quote center","shield"],["campaigns","Pipeline","list"],["activity","Reports","chart"],["settings","Phone setup","gear"]];
+  const nav:[View,string,string][]=[["dialer","Dialer","dial"],["leads","CRM contacts","users"],["quotes","Quote center","shield"],["campaigns","Pipeline","list"],["activity","Reports","chart"],["billing","Plans & billing","list"],["settings","Phone setup","gear"]];
   const activeLead=leads.find(l=>l.id===selectedLead);
   const filteredLeads=lineLeads.filter(l=>(stageFilter==="All stages"||l.stage===stageFilter)&&`${l.name} ${l.phone} ${l.email} ${l.city}`.toLowerCase().includes(search.toLowerCase()));
   function updateLead(id:number, patch:Partial<Lead>){setLeads(list=>list.map(l=>l.id===id?{...l,...patch}:l))}
   function switchLine(line:LeadLine){
     if(dialing)return;
     autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=line;setActiveLine(line);setIndex(0);setSearch("");setStageFilter("All stages");
+  }
+  async function subscribe(plan:"solo"|"team"|"agency"){
+    setCheckoutPlan(plan);
+    try{
+      const response=await fetch("/api/stripe/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.url)throw new Error(data.error||"Checkout could not start");
+      window.location.assign(String(data.url));
+    }catch(error){setToast(error instanceof Error?error.message:"Checkout could not start");setCheckoutPlan("")}
   }
 
   return <main className="app-shell">
@@ -213,6 +223,12 @@ export default function Page(){
       {view==="activity"&&<div className="page-view report-view"><div className="page-title"><div><span className="eyebrow">CALL REPORTS & NUMBER HEALTH</span><h1>Every call, result, and risk signal.</h1><p>Filter real browser-call history and monitor behaviors that can affect your caller reputation.</p></div></div><CallLogReport logs={callLogs}/></div>}
 
       {view==="quotes"&&<QuoteCenter leads={lineLeads.map(({id,name,phone,email,city})=>({id,name,phone,email,city}))} onOpenContact={id=>setSelectedLead(id)}/>} 
+
+      {view==="billing"&&<div className="page-view billing-view"><div className="page-title"><div><span className="eyebrow">PACIFICATOOLS SUBSCRIPTIONS</span><h1>Choose the workspace that fits your agency.</h1><p>Every plan uses secure Stripe-hosted checkout. Assigned calling numbers are provisioned by the PacificaTools team after verification.</p></div></div><div className="pricing-grid">
+        <article><span>SOLO</span><h2>$149<small>/month</small></h2><p>For one licensed producer building a focused book.</p><ul><li>1 user seat</li><li>1 assigned Twilio number</li><li>Life and Home & Auto CRMs</li><li>Sequential auto dialer</li><li>Quote workspace and reports</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("solo")}>{checkoutPlan==="solo"?"Opening secure checkout…":"Start Solo"}</button></article>
+        <article className="featured"><em>MOST POPULAR</em><span>TEAM</span><h2>$399<small>/month</small></h2><p>For a growing agency with shared calling operations.</p><ul><li>Up to 5 user seats</li><li>Up to 5 assigned Twilio numbers</li><li>Separate Life and Home & Auto queues</li><li>Compliance controls and call reporting</li><li>Priority onboarding</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("team")}>{checkoutPlan==="team"?"Opening secure checkout…":"Start Team"}</button></article>
+        <article><span>AGENCY</span><h2>$799<small>/month</small></h2><p>For multi-agent production teams needing more capacity.</p><ul><li>Up to 15 user seats</li><li>Up to 15 assigned Twilio numbers</li><li>Agency-level campaigns and reporting</li><li>Number reputation monitoring</li><li>White-glove setup</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("agency")}>{checkoutPlan==="agency"?"Opening secure checkout…":"Start Agency"}</button></article>
+      </div><section className="billing-compliance"><div><span>COMPLIANCE IS PART OF THE PRODUCT</span><h2>Every subscriber accepts the customer compliance agreement.</h2><p>Customers remain responsible for consent, lead sources, Do Not Call suppression, calling hours, licensing, and recording disclosures. PacificaTools may suspend unsafe campaigns.</p></div><a href="/terms" target="_blank">Read customer agreement ↗</a></section><p className="billing-note">Subscription prices exclude Twilio usage, applicable taxes, and optional carrier-data integrations. Checkout remains disabled until the corresponding live Stripe Price IDs are configured.</p></div>}
 
       {view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">PHONE SETUP</span><h1>Browser calling over Wi-Fi.</h1><p>Choose your microphone, speaker, and ring device, then run the connection test before dialing.</p></div></div><div className="phone-setup-layout"><PhoneSettings ensureDevice={ensureDevice}/><div className="phone-setup-side"><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The token endpoint, TwiML voice webhook, microphone preflight, and runtime error reporting are installed.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"SERVER CONFIGURED":"CONFIGURATION NEEDED"}</div></div><article className="setup-help"><span>REQUIRED TWIML APP URL</span><code>https://dialer-one-theta.vercel.app/api/twilio/voice</code><p>Method: HTTP POST. After any Vercel environment-variable change, redeploy the Production deployment.</p><a href="/api/twilio/diagnostics" target="_blank">Open safe diagnostics ↗</a></article></div></div></div>}
     </section>
