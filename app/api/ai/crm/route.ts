@@ -5,7 +5,11 @@ export const runtime = "nodejs";
 const allowedStages = ["New lead","Follow-up","Appointment","Closed"];
 const allowedOutcomes = ["Not contacted","No answer","Voicemail","Interested","Appointment set","Not interested","Wrong number"];
 
-function localAnalysis(leads:Array<Record<string,unknown>>) {
+type CrmPriority = {leadId:number;leadName:string;score:number;reason:string;nextStep:string};
+type CrmAction = {leadId:number;leadName:string;title:string;reason:string;patch:{stage:string|null;outcome:string|null;followUp:string|null;notesToAppend:string|null}};
+type CrmAnalysis = {summary:string;priorities:CrmPriority[];actions:CrmAction[];draft:string};
+
+function localAnalysis(leads:Array<Record<string,unknown>>):CrmAnalysis {
   const ranked=leads.slice(0,5).map((lead,index)=>({leadId:Number(lead.id),leadName:String(lead.name||"Unknown lead"),score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"Already showed interest and should receive prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"Open opportunity with no completed next step.",nextStep:lead.followUp?`Follow up on ${String(lead.followUp)}`:"Call and confirm needs, timing, and preferred coverage."}));
   return {summary:`${leads.length} eligible contacts were reviewed locally. Add an OpenAI API key to unlock natural-language analysis, personalized drafts, and smarter cross-record prioritization.`,priorities:ranked,actions:[],draft:""};
 }
@@ -27,7 +31,7 @@ export async function POST(request:Request) {
       text:{format:{type:"json_schema",name:"pacifica_crm_analysis",strict:true,schema:{type:"object",additionalProperties:false,properties:{summary:{type:"string"},priorities:{type:"array",items:{type:"object",additionalProperties:false,properties:{leadId:{type:"number"},leadName:{type:"string"},score:{type:"number"},reason:{type:"string"},nextStep:{type:"string"}},required:["leadId","leadName","score","reason","nextStep"]}},actions:{type:"array",items:{type:"object",additionalProperties:false,properties:{leadId:{type:"number"},leadName:{type:"string"},title:{type:"string"},reason:{type:"string"},patch:{type:"object",additionalProperties:false,properties:{stage:{type:["string","null"]},outcome:{type:["string","null"]},followUp:{type:["string","null"]},notesToAppend:{type:["string","null"]}},required:["stage","outcome","followUp","notesToAppend"]}},required:["leadId","leadName","title","reason","patch"]}},draft:{type:"string"}},required:["summary","priorities","actions","draft"]}}},
       max_output_tokens:2200,
     });
-    const result=JSON.parse(response.output_text) as ReturnType<typeof localAnalysis> & {actions:Array<{leadId:number;leadName:string;title:string;reason:string;patch:{stage:string|null;outcome:string|null;followUp:string|null;notesToAppend:string|null}}>};
+    const result=JSON.parse(response.output_text) as CrmAnalysis;
     const validIds=new Set(leads.map(lead=>lead.id));
     result.priorities=result.priorities.filter(item=>validIds.has(item.leadId)).slice(0,10).map(item=>({...item,score:Math.max(0,Math.min(100,Math.round(item.score)))}));
     result.actions=result.actions.filter(action=>validIds.has(action.leadId)).slice(0,10).map(action=>({...action,patch:{stage:action.patch.stage&&allowedStages.includes(action.patch.stage)?action.patch.stage:null,outcome:action.patch.outcome&&allowedOutcomes.includes(action.patch.outcome)?action.patch.outcome:null,followUp:action.patch.followUp&&/^\d{4}-\d{2}-\d{2}$/.test(action.patch.followUp)?action.patch.followUp:null,notesToAppend:action.patch.notesToAppend?.slice(0,500)||null}}));
