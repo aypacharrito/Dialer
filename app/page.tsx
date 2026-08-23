@@ -5,6 +5,7 @@ import type { Call, Device } from "@twilio/voice-sdk";
 import QuoteCenter from "./components/QuoteCenter";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
+import { readAudioPreferences } from "./audio-preferences";
 
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string };
 type View = "dialer" | "leads" | "quotes" | "campaigns" | "activity" | "settings";
@@ -101,8 +102,13 @@ export default function Page(){
     const currentLeadId=wasManual?undefined:lead.id;
     currentLogRef.current={id:crypto.randomUUID(),name:wasManual?"Manual call":lead.name,phone:number,startedAt:new Date().toISOString(),duration:0,outcome:"Dialing",status:"Connecting",campaign:"Pacific Outreach",source:wasManual?"Manual keypad":"CRM queue"};
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(track=>track.stop());
+      const audioPreferences=readAudioPreferences();
+      const audioConstraints:MediaTrackConstraints=audioPreferences.input==="default"?{}:{deviceId:{exact:audioPreferences.input}};
+      const stream=await navigator.mediaDevices.getUserMedia({audio:audioConstraints});stream.getTracks().forEach(track=>track.stop());
       const device=await ensureDevice();
+      await device.audio?.setInputDevice(audioPreferences.input);
+      if(audioPreferences.speaker!=="default")await device.audio?.speakerDevices?.set(audioPreferences.speaker);
+      if(audioPreferences.ring!=="default")await device.audio?.ringtoneDevices?.set(audioPreferences.ring);
       const connectPromise=device.connect({params:{To:number}});
       const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Twilio signaling timed out after 15 seconds")),15000))]);callRef.current=call;
       watchdogRef.current=window.setTimeout(()=>{call.disconnect();finishCall(wasManual,currentLeadId,"No answer after 45 seconds","Timed out")},45000);
