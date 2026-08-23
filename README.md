@@ -24,6 +24,7 @@ PacificaTools is an insurance sales command center with a CRM, Twilio auto diale
 - Local browser persistence for the current prototype
 - Stripe Checkout subscriptions for Solo, Team, and Agency plans
 - Customer Compliance Agreement and sequential-dialing guardrails
+- Pacifica AI command center for prioritization, call preparation, follow-up drafting, and human-approved CRM updates
 
 ## Run locally
 
@@ -111,6 +112,17 @@ https://YOUR-DOMAIN.com/api/stripe/webhook
 Subscribe it to `checkout.session.completed`, `invoice.payment_succeeded`, `invoice.payment_failed`, and `customer.subscription.deleted`. Add the public `/terms` URL to the Stripe business/legal settings, then redeploy. The current webhook verifies and logs lifecycle events; account provisioning and Twilio-number assignment remain manual until a shared user database is connected.
 
 Stripe Tax is not enabled automatically. Configure registrations and tax behavior with a qualified tax adviser before enabling automatic tax collection.
+
+## Activate Pacifica AI
+
+Add these Production environment variables in Vercel and redeploy:
+
+```text
+OPENAI_API_KEY
+OPENAI_MODEL=gpt-5.6-luna
+```
+
+The key is used only in the server-side `/api/ai/crm` route and must never be prefixed with `NEXT_PUBLIC_`. Phone numbers and emails are excluded from model requests. CRM notes are excluded unless the agent turns on **Include CRM notes** for that request. AI-proposed record changes always require a human to click **Apply update**. Without an API key, the page provides a limited local priority analysis so the interface remains testable.
 
 ### If the dialer stays on “Calling through Twilio”
 

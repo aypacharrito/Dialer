@@ -5,11 +5,12 @@ import type { Call, Device } from "@twilio/voice-sdk";
 import QuoteCenter from "./components/QuoteCenter";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
+import AiCommandCenter, { type AiAction } from "./components/AiCommandCenter";
 import { readAudioPreferences } from "./audio-preferences";
 
 type LeadLine = "life" | "home-auto";
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine };
-type View = "dialer" | "leads" | "quotes" | "campaigns" | "activity" | "billing" | "settings";
+type View = "dialer" | "leads" | "ai" | "quotes" | "campaigns" | "activity" | "billing" | "settings";
 
 const starterLeads: Lead[] = [];
 const emptyLead: Lead = {id:0,name:"No contact selected",phone:"Import contacts to begin",city:"CRM queue is empty",status:"Empty",email:"",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never",line:"life"};
@@ -31,6 +32,7 @@ function Icon({name}:{name:string}) {
     wifi:<><path d="M2 8a15 15 0 0 1 20 0M5 12a10.5 10.5 0 0 1 14 0M8.5 15.5a5.3 5.3 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></>,
     bell:<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
     shield:<><path d="M12 3 4.5 6v5.2c0 4.7 3.1 8 7.5 9.8 4.4-1.8 7.5-5.1 7.5-9.8V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></>,
+    spark:<><path d="m12 3 1.4 4.2L18 9l-4.6 1.8L12 15l-1.4-4.2L6 9l4.6-1.8Z"/><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
@@ -164,10 +166,19 @@ export default function Page(){
     reader.readAsText(file);
   }
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
-  const nav:[View,string,string][]=[["dialer","Dialer","dial"],["leads","CRM contacts","users"],["quotes","Quote center","shield"],["campaigns","Pipeline","list"],["activity","Reports","chart"],["billing","Plans & billing","list"],["settings","Phone setup","gear"]];
+  const nav:[View,string,string][]=[["dialer","Dialer","dial"],["leads","CRM contacts","users"],["ai","Pacifica AI","spark"],["quotes","Quote center","shield"],["campaigns","Pipeline","list"],["activity","Reports","chart"],["billing","Plans & billing","list"],["settings","Phone setup","gear"]];
   const activeLead=leads.find(l=>l.id===selectedLead);
   const filteredLeads=lineLeads.filter(l=>(stageFilter==="All stages"||l.stage===stageFilter)&&`${l.name} ${l.phone} ${l.email} ${l.city}`.toLowerCase().includes(search.toLowerCase()));
   function updateLead(id:number, patch:Partial<Lead>){setLeads(list=>list.map(l=>l.id===id?{...l,...patch}:l))}
+  function applyAiAction(action:AiAction){
+    const current=leads.find(item=>item.id===action.leadId);if(!current)return;
+    const patch:Partial<Lead>={};
+    if(action.patch.stage)patch.stage=action.patch.stage;
+    if(action.patch.outcome)patch.outcome=action.patch.outcome;
+    if(action.patch.followUp)patch.followUp=action.patch.followUp;
+    if(action.patch.notesToAppend)patch.notes=[current.notes,`AI suggestion: ${action.patch.notesToAppend}`].filter(Boolean).join("\n");
+    updateLead(action.leadId,patch);setToast(`Updated ${current.name}`);
+  }
   function switchLine(line:LeadLine){
     if(dialing)return;
     autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=line;setActiveLine(line);setIndex(0);setSearch("");setStageFilter("All stages");
@@ -217,6 +228,8 @@ export default function Page(){
       </div>}
 
       {view==="leads"&&<div className="page-view crm-view"><div className="page-title"><div><span className="eyebrow">{activeLine==="life"?"LIFE":"HOME & AUTO"} CRM</span><h1>{activeLine==="life"?"Life insurance relationships.":"Home and auto opportunities."}</h1><p>This CRM stays separate from your other lead list. Imports are added to the category selected above.</p></div><button className="primary" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import {activeLine==="life"?"Life":"Home & Auto"} contacts</button></div><div className="crm-summary"><article><span>THIS CRM</span><b>{lineLeads.length}</b></article><article><span>FOLLOW-UPS DUE</span><b>{lineLeads.filter(l=>l.followUp).length}</b></article><article><span>APPOINTMENTS</span><b>{lineLeads.filter(l=>l.stage==="Appointment").length}</b></article><article><span>DO NOT CALL</span><b>{lineLeads.filter(l=>l.doNotCall).length}</b></article></div><div className="crm-tools"><label><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, email, or city"/></label><select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option>All stages</option><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></div><div className="table-card crm-table"><div className="table-head"><span>CONTACT</span><span>STAGE</span><span>LAST OUTCOME</span><span>FOLLOW-UP</span></div>{filteredLeads.map(l=><button className="table-row" key={l.id} onClick={()=>setSelectedLead(l.id)}><span><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><b>{l.name}</b><small>{l.phone} · {l.email||"No email"}</small></span></span><span><em className={`stage ${l.stage.toLowerCase().replace(" ","-")}`}>{l.stage}</em></span><span>{l.outcome}</span><span>{l.followUp||"—"}{l.doNotCall&&<strong className="dnc">DNC</strong>}</span></button>)}{!filteredLeads.length&&<div className="empty-state">No {activeLine==="life"?"Life":"Home & Auto"} contacts match those filters.</div>}</div></div>}
+
+      {view==="ai"&&<AiCommandCenter leads={lineLeads} onApply={applyAiAction}/>} 
 
       {view==="campaigns"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">{activeLine==="life"?"LIFE":"HOME & AUTO"} SALES PIPELINE</span><h1>See what needs attention.</h1><p>Move contacts from first touch through appointment and completion.</p></div><button className="primary" onClick={()=>{setView("leads");setStageFilter("New lead")}}>+ Add contact</button></div><div className="pipeline">{["New lead","Follow-up","Appointment","Closed"].map(stage=><section key={stage}><header><b>{stage}</b><span>{lineLeads.filter(l=>l.stage===stage).length}</span></header>{lineLeads.filter(l=>l.stage===stage).map(l=><button key={l.id} onClick={()=>setSelectedLead(l.id)}><div><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><b>{l.name}</b><small>{l.city}</small></span></div><p>{l.notes||"No notes yet"}</p><footer><span>{l.outcome}</span><em>{l.followUp||"No follow-up"}</em></footer></button>)}</section>)}</div></div>}
 

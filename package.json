@@ -19,6 +19,7 @@
     "@twilio/voice-sdk": "^2.17.0",
     "drizzle-orm": "0.45.2",
     "next": "16.2.6",
+    "openai": "^7.5.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "stripe": "^22.4.0"
