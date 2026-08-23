@@ -1,6 +1,6 @@
-# Pacific Dialer
+# PacificaTools
 
-Pacific Dialer is a dark command-center CRM inspired by modern power dialers such as Ricochet360 and Enhanced Dialer. It combines browser-based Twilio calling with contact import, lead outcomes, follow-ups, pipeline stages, and live CRM reporting.
+PacificaTools is an insurance sales command center with a CRM, Twilio auto dialer, quote workspace, lead outcomes, follow-ups, pipeline stages, and live reporting.
 
 ## What is already built
 
@@ -61,7 +61,7 @@ Use HTTP `POST`. The Twilio phone number must use E.164 format, for example `+14
 
 1. Clone `aypacharrito/Dialer` in GitHub Desktop.
 2. Replace the files in that local folder with this project, but do not copy `node_modules`, `.sites-runtime`, `.next`, `dist`, or any `.env.local` file.
-3. In GitHub Desktop, write the summary `Update Pacific Dialer CRM`.
+3. In GitHub Desktop, write the summary `Update PacificaTools CRM`.
 4. Click **Commit to main**, then **Push origin**.
 
 ### Command line
@@ -71,7 +71,7 @@ From the folder that contains this project:
 ```bash
 git remote set-url origin https://github.com/aypacharrito/Dialer.git
 git add .
-git commit -m "Update Pacific Dialer CRM"
+git commit -m "Update PacificaTools CRM"
 git push -u origin main
 ```
 
@@ -89,7 +89,7 @@ If the GitHub repository already has different history, clone it first and copy 
 
 ### If the dialer stays on “Calling through Twilio”
 
-1. Open **Phone setup** in Pacific Dialer and click **Run device & connection test**.
+1. Open **Phone setup** in PacificaTools and click **Run device & connection test**.
 2. Allow microphone access in the browser address bar.
 3. Open `/api/twilio/diagnostics` on your deployed domain. All five checks should be `true`.
 4. Confirm the TwiML App Voice Request URL is `https://YOUR-DOMAIN.com/api/twilio/voice` with HTTP `POST`.

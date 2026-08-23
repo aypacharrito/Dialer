@@ -174,7 +174,7 @@ export default function Page(){
 
   return <main className="app-shell">
     <aside className="sidebar">
-      <div className="logo"><span>PD</span><div><b>PACIFIC</b><small>DIALER</small></div></div>
+      <div className="logo"><span>PT</span><div><b>PACIFICA</b><small>TOOLS</small></div></div>
       <nav>{nav.map(([id,label,icon])=><button key={id} className={view===id?"active":""} onClick={()=>setView(id)}><Icon name={icon}/><span>{label}</span>{id==="leads"&&<em>{leads.length}</em>}</button>)}</nav>
       <div className="sidebar-foot"><div className="agent"><span>AC</span><div><b>Alex Carranza</b><small><i/> Available</small></div></div><button aria-label="Settings" onClick={()=>setView("settings")}><Icon name="gear"/></button></div>
     </aside>
@@ -184,7 +184,7 @@ export default function Page(){
 
       {view==="dialer"&&<div className="dialer-view"><div className="dialer-main-grid">
         <section className={`hero-call ${connected?"connected":""}`}>
-          <div className="hero-head"><div><span className="eyebrow">{activeLine==="life"?"LIFE":"HOME & AUTO"} AUTO DIALER</span><h1>{connected?"You’re connected.":dialing?"Calling through Twilio…":autoDialing?"Advancing to the next lead…":"Auto dialer ready."}</h1><p>{connected?"Speak normally. When either side hangs up, the next eligible lead starts automatically.":dialing?"Twilio is dialing one contact and bridges the conversation when they answer.":`Start the ${activeLine==="life"?"Life":"Home & Auto"} queue and let Pacific Dialer advance through it.`}</p></div><div className="line-toggle"><button className="active">One line</button><button className={autoDialing?"active":""}>{autoDialing?"Auto running":"Auto queue"}</button></div></div>
+          <div className="hero-head"><div><span className="eyebrow">PACIFICATOOLS · {activeLine==="life"?"LIFE":"HOME & AUTO"} AUTO DIALER</span><h1>{connected?"You’re connected.":dialing?"Calling through Twilio…":autoDialing?"Advancing to the next lead…":"Auto dialer ready."}</h1><p>{connected?"Speak normally. When either side hangs up, the next eligible lead starts automatically.":dialing?"Twilio is dialing one contact and bridges the conversation when they answer.":`Start the ${activeLine==="life"?"Life":"Home & Auto"} queue and let PacificaTools advance through it.`}</p></div><div className="line-toggle"><button className="active">One line</button><button className={autoDialing?"active":""}>{autoDialing?"Auto running":"Auto queue"}</button></div></div>
           <div className="call-grid">
             <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><span>{connected?"CONNECTED":"NEXT CONTACT"}</span><h2>{manualCall?"Manual call":lead.name}</h2><a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"Phone keypad":lead.city}</p></div><b className="timer">{connected?fmt:"—:—"}</b></article>
             <div className={`signal ${dialing?"moving":""}`}>{Array.from({length:35}).map((_,i)=><i key={i} style={{height:`${12+((i*17)%39)}px`}}/> )}</div>
