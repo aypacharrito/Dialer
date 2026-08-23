@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Call, Device } from "@twilio/voice-sdk";
+import QuoteCenter from "./components/QuoteCenter";
 
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string };
-type View = "dialer" | "leads" | "campaigns" | "activity" | "settings";
+type View = "dialer" | "leads" | "quotes" | "campaigns" | "activity" | "settings";
 
 const starterLeads: Lead[] = [];
 const emptyLead: Lead = {id:0,name:"No contact selected",phone:"Import contacts to begin",city:"CRM queue is empty",status:"Empty",email:"",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never"};
@@ -25,6 +26,7 @@ function Icon({name}:{name:string}) {
     end:<><path d="M5 15a11 11 0 0 1 14 0l-2 4-4-2v-3h-2v3l-4 2Z"/></>,
     wifi:<><path d="M2 8a15 15 0 0 1 20 0M5 12a10.5 10.5 0 0 1 14 0M8.5 15.5a5.3 5.3 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></>,
     bell:<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
+    shield:<><path d="M12 3 4.5 6v5.2c0 4.7 3.1 8 7.5 9.8 4.4-1.8 7.5-5.1 7.5-9.8V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
@@ -91,7 +93,7 @@ export default function Page(){
     reader.readAsText(file);
   }
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
-  const nav:[View,string,string][]=[["dialer","Dialer","dial"],["leads","CRM contacts","users"],["campaigns","Pipeline","list"],["activity","Reports","chart"],["settings","Phone setup","gear"]];
+  const nav:[View,string,string][]=[["dialer","Dialer","dial"],["leads","CRM contacts","users"],["quotes","Quote center","shield"],["campaigns","Pipeline","list"],["activity","Reports","chart"],["settings","Phone setup","gear"]];
   const activeLead=leads.find(l=>l.id===selectedLead);
   const filteredLeads=leads.filter(l=>(stageFilter==="All stages"||l.stage===stageFilter)&&`${l.name} ${l.phone} ${l.email} ${l.city}`.toLowerCase().includes(search.toLowerCase()));
   function updateLead(id:number, patch:Partial<Lead>){setLeads(list=>list.map(l=>l.id===id?{...l,...patch}:l))}
@@ -134,6 +136,8 @@ export default function Page(){
       {view==="campaigns"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">SALES PIPELINE</span><h1>See what needs attention.</h1><p>Move contacts from first touch through appointment and completion.</p></div><button className="primary" onClick={()=>{setView("leads");setStageFilter("New lead")}}>+ Add contact</button></div><div className="pipeline">{["New lead","Follow-up","Appointment","Closed"].map(stage=><section key={stage}><header><b>{stage}</b><span>{leads.filter(l=>l.stage===stage).length}</span></header>{leads.filter(l=>l.stage===stage).map(l=><button key={l.id} onClick={()=>setSelectedLead(l.id)}><div><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><b>{l.name}</b><small>{l.city}</small></span></div><p>{l.notes||"No notes yet"}</p><footer><span>{l.outcome}</span><em>{l.followUp||"No follow-up"}</em></footer></button>)}</section>)}</div></div>}
 
       {view==="activity"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">REPORTS & FOLLOW-UPS</span><h1>Know what happened—and what’s next.</h1><p>CRM results update as you save outcomes and move contacts through the pipeline.</p></div><button className="primary" onClick={()=>setToast("Report exported")}>Export report</button></div><div className="activity-grid"><article><span>TOTAL CONTACTS</span><b>{leads.length}</b><small>CRM database</small></article><article><span>INTERESTED</span><b>{leads.filter(l=>["Interested","Appointment set"].includes(l.outcome)).length}</b><small>Qualified conversations</small></article><article><span>APPOINTMENTS</span><b>{leads.filter(l=>l.stage==="Appointment").length}</b><small>Current pipeline</small></article></div><div className="report-split"><div className="chart-card"><header><b>Pipeline distribution</b><span>Live CRM data</span></header><div className="pipeline-bars">{["New lead","Follow-up","Appointment","Closed"].map((s,i)=><div key={s}><span>{s}</span><i><b style={{width:`${Math.max(8,(leads.filter(l=>l.stage===s).length/Math.max(leads.length,1))*100)}%`}}/></i><em>{leads.filter(l=>l.stage===s).length}</em></div>)}</div></div><div className="follow-card"><header><b>Upcoming follow-ups</b><button onClick={()=>{setView("leads");setStageFilter("Follow-up")}}>View all</button></header>{leads.filter(l=>l.followUp).sort((a,b)=>a.followUp.localeCompare(b.followUp)).slice(0,5).map(l=><button key={l.id} onClick={()=>setSelectedLead(l.id)}><span><b>{l.name}</b><small>{l.outcome}</small></span><em>{l.followUp}</em></button>)}</div></div></div>}
+
+      {view==="quotes"&&<QuoteCenter leads={leads.map(({id,name,phone,email,city})=>({id,name,phone,email,city}))} onOpenContact={id=>setSelectedLead(id)}/>} 
 
       {view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">PHONE SETUP</span><h1>Browser calling over Wi-Fi.</h1><p>Your computer microphone and speakers handle audio while Twilio connects the regular phone call.</p></div></div><div className="setup-grid"><button className="selected"><span><Icon name="wifi"/></span><b>Browser over Wi-Fi</b><p>Selected for calling from your computer with the Twilio number below.</p><em>SELECTED</em></button><button disabled><span><Icon name="dial"/></span><b>Connect my phone</b><p>Cellphone bridging can be added later without changing the CRM.</p><em>NOT ACTIVE</em></button><button disabled><span><Icon name="gear"/></span><b>SIP / desk phone</b><p>Optional advanced connection for a VoIP desk phone or PBX.</p><em>NOT ACTIVE</em></button></div><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The dialer and secure server endpoints are installed. The TwiML App must use this site’s voice webhook, and a newly rotated API key secret must be stored in the site’s secure settings before calls can begin.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"READY OVER WI-FI":"WAITING FOR SECURE KEY"}</div></div></div>}
     </section>

@@ -12,6 +12,8 @@ Pacific Dialer is a dark command-center CRM inspired by modern power dialers suc
 - New Lead, Follow-up, Appointment, and Closed pipeline
 - CRM search and stage filters
 - Live reports based on saved contact data
+- Life, Home, and Auto quote intake linked to CRM contacts
+- Provider-status checks for life and personal-lines quoting APIs
 - Responsive desktop and mobile interface
 - Local browser persistence for the current prototype
 
@@ -78,6 +80,15 @@ If the GitHub repository already has different history, clone it first and copy 
 4. Deploy.
 5. Copy the deployed `/api/twilio/voice` URL into the TwiML App Voice Request URL.
 6. Redeploy after changing environment variables.
+
+## Activate live insurance quotes
+
+The Quote Center saves complete Life, Home, and Auto intakes now. It intentionally does not invent premiums. Live carrier results require contracts, credentials, and approved data mapping.
+
+1. Obtain Life API access from InsuranceToolkits or a carrier-approved life quoting provider.
+2. Obtain Home/Auto access from a licensed personal-lines comparative rater or participating carriers. Farmers Alta access, if available to your agency, must be authorized by Farmers; it is not treated as a public rate feed.
+3. Add `INSURANCE_TOOLKITS_API_URL`, `INSURANCE_TOOLKITS_API_KEY`, `PERSONAL_LINES_RATER_API_URL`, and `PERSONAL_LINES_RATER_API_KEY` in Vercel Project Settings → Environment Variables.
+4. Complete the provider-specific request/result mapping, then redeploy and test in each licensed state.
 
 ## Important prototype note
 
