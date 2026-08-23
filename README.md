@@ -5,6 +5,10 @@ Pacific Dialer is a dark command-center CRM inspired by modern power dialers suc
 ## What is already built
 
 - Browser calling over Wi-Fi with the Twilio Voice SDK
+- Microphone permission preflight, Twilio error codes, and signaling timeouts
+- Microphone, speaker, and ring-device selectors with live tests
+- Persistent call logs with outcome/duration filters and CSV export
+- Local number-health risk signals and Twilio Trust Hub guidance
 - Permanent manual keypad with in-call touch tones
 - CSV, TSV, and TXT contact import
 - Power-dialing queue that skips closed and do-not-call records
@@ -14,6 +18,8 @@ Pacific Dialer is a dark command-center CRM inspired by modern power dialers suc
 - Live reports based on saved contact data
 - Life, Home, and Auto quote intake linked to CRM contacts
 - Provider-status checks for life and personal-lines quoting APIs
+- Side-by-side carrier-offer comparison with lowest-premium highlighting
+- Manual carrier-result entry so agents can compare offers before API activation
 - Responsive desktop and mobile interface
 - Local browser persistence for the current prototype
 
@@ -80,6 +86,22 @@ If the GitHub repository already has different history, clone it first and copy 
 4. Deploy.
 5. Copy the deployed `/api/twilio/voice` URL into the TwiML App Voice Request URL.
 6. Redeploy after changing environment variables.
+
+### If the dialer stays on “Calling through Twilio”
+
+1. Open **Phone setup** in Pacific Dialer and click **Run device & connection test**.
+2. Allow microphone access in the browser address bar.
+3. Open `/api/twilio/diagnostics` on your deployed domain. All five checks should be `true`.
+4. Confirm the TwiML App Voice Request URL is `https://YOUR-DOMAIN.com/api/twilio/voice` with HTTP `POST`.
+5. Confirm the API key, TwiML App, phone number, and Account SID all belong to the same Twilio account or subaccount.
+6. On a Twilio trial account, verify the destination number before calling it.
+7. Redeploy Production after any environment-variable change. The dialer now shows the actual Twilio code/message instead of hiding it.
+
+## Caller reputation and spam-label remediation
+
+The Reports screen calculates a local behavioral risk signal from short, failed, and timed-out calls. This is not a carrier reputation lookup and cannot guarantee that a number stays unlabelled.
+
+For legitimate consent-based calling, complete Twilio Trust Hub registrations for SHAKEN/STIR, CNAM, Voice Integrity, and optionally Branded Calling. Use Twilio Voice Insights for carrier-confirmed deliverability and blocking data. Keep opt-in records, honor DNC requests, avoid rapid repeat attempts, and never rotate caller IDs to evade spam controls.
 
 ## Activate live insurance quotes
 
