@@ -65,7 +65,7 @@ export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(a
 
   return <div className="ai-workspace">
     <section className="ai-hero">
-      <div><span className="eyebrow">PACIFICA AI · CRM COPILOT</span><h1>Ask your CRM. Act on the answer.</h1><p>Prioritize leads, prepare calls, identify stalled opportunities, and draft follow-ups from the records already in PacificaTools.</p></div>
+      <div><span className="eyebrow">PACIFICA AI · CRM COPILOT</span><h1>Ask your CRM. Act on the answer.</h1><p>Prioritize leads, prepare calls, identify stalled opportunities, and draft follow-ups from the records already in Pacifica.</p></div>
       <div className="ai-privacy"><b>Privacy controls</b><span>Phone numbers and emails are never sent. Notes are off by default.</span></div>
     </section>
     <section className="ai-composer">

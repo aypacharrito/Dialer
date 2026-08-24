@@ -1,6 +1,6 @@
-# PacificaTools
+# Pacifica
 
-PacificaTools is an insurance sales command center with a CRM, Twilio auto dialer, quote workspace, lead outcomes, follow-ups, pipeline stages, and live reporting.
+Pacifica is an insurance sales command center with a CRM, Twilio auto dialer, quote workspace, lead outcomes, follow-ups, pipeline stages, and live reporting.
 
 ## What is already built
 
@@ -65,7 +65,7 @@ Use HTTP `POST`. The Twilio phone number must use E.164 format, for example `+14
 
 1. Clone `aypacharrito/Dialer` in GitHub Desktop.
 2. Replace the files in that local folder with this project, but do not copy `node_modules`, `.sites-runtime`, `.next`, `dist`, or any `.env.local` file.
-3. In GitHub Desktop, write the summary `Update PacificaTools CRM`.
+3. In GitHub Desktop, write the summary `Update Pacifica CRM`.
 4. Click **Commit to main**, then **Push origin**.
 
 ### Command line
@@ -75,7 +75,7 @@ From the folder that contains this project:
 ```bash
 git remote set-url origin https://github.com/aypacharrito/Dialer.git
 git add .
-git commit -m "Update PacificaTools CRM"
+git commit -m "Update Pacifica CRM"
 git push -u origin main
 ```
 
@@ -127,7 +127,7 @@ The key is used only in the server-side `/api/ai/crm` route and must never be pr
 
 ### If the dialer stays on “Calling through Twilio”
 
-1. Open **Phone setup** in PacificaTools and click **Run device & connection test**.
+1. Open **Phone setup** in Pacifica and click **Run device & connection test**.
 2. Allow microphone access in the browser address bar.
 3. Open `/api/twilio/diagnostics` on your deployed domain. All five checks should be `true`.
 4. Confirm the TwiML App Voice Request URL is `https://YOUR-DOMAIN.com/api/twilio/voice` with HTTP `POST`.
@@ -141,6 +141,22 @@ The Reports screen calculates a local behavioral risk signal from short, failed,
 
 For legitimate consent-based calling, complete Twilio Trust Hub registrations for SHAKEN/STIR, CNAM, Voice Integrity, and optionally Branded Calling. Use Twilio Voice Insights for carrier-confirmed deliverability and blocking data. Keep opt-in records, honor DNC requests, avoid rapid repeat attempts, and never rotate caller IDs to evade spam controls.
 
+## Connect SmartFinancial automatically
+
+Pacifica accepts real-time SmartFinancial lead delivery at:
+
+```text
+POST https://YOUR-DOMAIN.com/api/integrations/smartfinancial?key=YOUR_SECRET
+```
+
+1. In Vercel Marketplace, install **Upstash Redis** on the `dialer` project. Vercel injects `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+2. Create a long random value for `SMARTFINANCIAL_WEBHOOK_SECRET` in Vercel Production environment variables and redeploy.
+3. Open **Phone setup** → **SmartFinancial live delivery** in Pacifica, paste that same secret, and click **Save & test connection**.
+4. Ask the SmartFinancial account manager to enable alternate CRM delivery and POST new leads to the endpoint above. Send JSON or form data; the receiver recognizes common variants for name, phone, email, product/type, disposition, cost, city, and notes.
+5. Send one test lead. Pacifica checks the inbox every 20 seconds, skips duplicate phone numbers, and routes Life versus Home/Auto automatically.
+
+Keep the endpoint secret. CSV Download Report import remains available as a backup and now recognizes SmartFinancial headers.
+
 ## Activate live insurance quotes
 
 The Quote Center saves complete Life, Home, and Auto intakes now. It intentionally does not invent premiums. Live carrier results require contracts, credentials, and approved data mapping.
@@ -152,7 +168,7 @@ The Quote Center saves complete Life, Home, and Auto intakes now. It intentional
 
 ## Important prototype note
 
-Contact records currently stay in each browser through local storage. The next production milestone is authentication plus a shared database so paid customers and multiple agents can see only their own contacts, call history, and follow-ups. Keep outbound dialing sequential—one agent assigned to one call—unless counsel approves and the system implements every predictive-dialing and abandonment safeguard. Recording, transcription, and AI analysis require jurisdiction-appropriate disclosure and consent.
+SmartFinancial inbound leads are stored server-side; working contact edits and call history still stay in each browser through local storage. The next production milestone is authentication plus a fully shared database so paid customers and multiple agents can see only their own contacts, call history, and follow-ups. Keep outbound dialing sequential—one agent assigned to one call—unless counsel approves and the system implements every predictive-dialing and abandonment safeguard. Recording, transcription, and AI analysis require jurisdiction-appropriate disclosure and consent.
 
 ## Main source files
 
@@ -161,3 +177,4 @@ Contact records currently stay in each browser through local storage. The next p
 - `app/api/twilio/token/route.ts` — secure browser Voice token
 - `app/api/twilio/voice/route.ts` — outbound TwiML call instructions
 - `app/api/twilio/status/route.ts` — configuration health check
+- `app/api/integrations/smartfinancial/route.ts` — secure real-time lead receiver
