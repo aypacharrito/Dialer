@@ -25,6 +25,7 @@ PacificaTools is an insurance sales command center with a CRM, Twilio auto diale
 - Stripe Checkout subscriptions for Solo, Team, and Agency plans
 - Customer Compliance Agreement and sequential-dialing guardrails
 - Pacifica AI command center for prioritization, call preparation, follow-up drafting, and human-approved CRM updates
+- Public `/landing` sales page with transparent $49, $199, and $499 monthly plans and a dated competitor price comparison
 
 ## Run locally
 
