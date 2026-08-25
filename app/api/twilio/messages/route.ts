@@ -2,7 +2,7 @@ import { hasPacificaWorkspaceApiAccess } from "../../../lib/clerk-access";
 
 export const runtime="nodejs";
 
-type TwilioMessage={sid:string;direction:string;from:string;to:string;body:string;status:string;date_sent?:string;date_created?:string};
+type TwilioMessage={sid:string;direction:string;from:string;to:string;body:string;status:string;date_sent?:string;date_created?:string;error_code?:number|null;error_message?:string|null};
 type TwilioError={message?:string;code?:number;more_info?:string};
 type Credential={label:string;authorization:string};
 
@@ -51,7 +51,8 @@ function normalized(value:string){
 }
 
 function safe(message:TwilioMessage){
-  return {id:message.sid,direction:message.direction,from:message.from,to:message.to,body:message.body,status:message.status,sentAt:message.date_sent||message.date_created||new Date().toISOString()};
+  const failed=message.status==="failed"||message.status==="undelivered";
+  return {id:message.sid,direction:message.direction,from:message.from,to:message.to,body:message.body,status:message.status,sentAt:message.date_sent||message.date_created||new Date().toISOString(),errorCode:message.error_code||null,failureReason:failed?twilioMessage({message:message.error_message||"The carrier did not deliver this message",code:message.error_code||undefined}):null};
 }
 
 export async function GET(){
