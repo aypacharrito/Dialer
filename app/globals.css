@@ -533,6 +533,19 @@ button,input,select,textarea{font-family:inherit}
 .linked-client b{font-size:11px;margin:6px 0}
 .linked-client small{font-size:8px;color:#7890a1}
 .quote-fields{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.quote-fields label.wide{grid-column:1/-1}
+.coverage-options{padding:19px 22px 4px;display:grid;grid-template-columns:1fr 1fr;gap:13px;border-bottom:1px solid #243446;background:#0f1a26}
+.coverage-options>span{grid-column:1/-1;font-size:7px;letter-spacing:.17em;color:#6e8799;font-weight:900}
+.coverage-options label{color:#8096a8;font-size:8px;font-weight:800}
+.coverage-options input,.coverage-options select{display:block;width:100%;height:41px;margin:6px 0 14px;border:1px solid #2b3d4f;border-radius:8px;background:#101d2a;color:#dce8ee;padding:0 11px;font-size:10px}
+.quote-by{grid-column:1/-1;display:flex;align-items:center;gap:8px}
+.quote-by button{height:35px;padding:0 14px;border:1px solid #2b4051;border-radius:8px;background:#101c28;color:#8095a5;font-size:9px;font-weight:900}
+.quote-by button.active{background:#17384a;color:#82d8df;border-color:#2aaec1}
+.quote-by b{font-size:8px;color:#617888}
+.dob-warning{margin:0;padding:0 22px 18px;color:#caa75c;font-size:8px;line-height:1.5}
+.quote-actions{align-items:center;justify-content:space-between!important}
+.quote-actions>div{display:flex;gap:4px}
+.quote-actions .text-action{border:0;background:transparent;color:#78b9c6;padding:9px 8px}
 .quote-form-card>footer{padding:17px 22px;border-top:1px solid #243446;display:flex;justify-content:flex-end;gap:9px}
 .quote-form-card>footer button{border-radius:8px;padding:11px 14px;font-size:9px;font-weight:900}
 .save-intake{background:#152534;border:1px solid #30475b;color:#cadbe4}
@@ -569,6 +582,19 @@ button,input,select,textarea{font-family:inherit}
 
 
 .quote-results-card{margin-top:15px;background:linear-gradient(180deg,#111d2a,#0e1925);border:1px solid #243446;border-radius:14px;box-shadow:0 16px 50px #02070d4d;overflow:hidden}
+.carrier-catalog{margin-top:15px;background:#0e1925;border:1px solid #243446;border-radius:14px;overflow:hidden}
+.carrier-catalog>header{padding:18px 21px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.carrier-catalog h2{font-size:17px;margin:5px 0}
+.carrier-catalog p{font-size:8px;color:#748b9c;margin:0;line-height:1.5}
+.carrier-catalog>header>div:last-child{display:flex;gap:8px;flex-shrink:0}
+.carrier-catalog button{height:37px;border:1px solid #2b4255;border-radius:8px;background:#142433;color:#90cbd1;padding:0 12px;font-size:8px;font-weight:900}
+.carrier-catalog button.reference-button{background:#352b18;color:#e3bd6e;border-color:#5b4927}
+.carrier-grid{border-top:1px solid #243446;padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#0b151f}
+.carrier-grid article{min-height:65px;border:1px solid #263849;border-radius:9px;background:#101e2b;padding:11px;display:flex;align-items:center;gap:10px}
+.carrier-grid article>i{width:35px;height:35px;border-radius:8px;background:#183447;color:#75ced6;display:grid;place-items:center;font-style:normal;font-size:8px;font-weight:900}
+.carrier-grid b,.carrier-grid small{display:block}
+.carrier-grid b{font-size:9px}
+.carrier-grid small{font-size:7px;line-height:1.4;color:#72899a;margin-top:4px}
 .quote-results-card>header{padding:20px 22px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #243446}
 .quote-results-card>header h2{font-size:19px;margin:6px 0}
 .quote-results-card>header p{font-size:9px;color:#788e9f;margin:0}
@@ -586,14 +612,28 @@ button,input,select,textarea{font-family:inherit}
 .offer-row b,.offer-row small{display:block}
 .offer-row small{font-size:7px;color:#718899;margin-top:3px}
 .offer-row small em{display:inline-block;margin-left:6px;color:#43d0a2;font-style:normal;font-weight:900}
+.offer-row small em.reference-tag{color:#e2b75e}
 .offer-row>strong{font-size:14px;color:#eef8fa}
 .offer-row>strong small{display:inline;font-weight:500}
 .offer-row>button{border:0;background:transparent;color:#6e8393;font-size:18px}
+.offer-actions{display:grid;grid-template-columns:auto auto;gap:6px;align-items:center}
+.offer-actions button{height:29px;border:1px solid #2d4356;border-radius:7px;background:#142331;color:#8bcbd2;padding:0 10px;font-size:8px;font-weight:900}
+.offer-actions button.selected{border-color:#2ebc91;background:#14352b;color:#64dcaf}
+.offer-actions button:disabled{opacity:.35;cursor:not-allowed}
+.offer-actions small{grid-column:1/-1}
+.compare-tray{display:flex;gap:8px;align-items:stretch;padding:12px 18px;border-bottom:1px solid #243446;background:#0d1c27;overflow:auto}
+.compare-tray>span{align-self:center;min-width:75px;color:#66cbd4;font-size:7px;font-weight:900;letter-spacing:.1em}
+.compare-tray article{min-width:175px;border:1px solid #294255;border-radius:8px;background:#112331;padding:9px 11px;display:grid;grid-template-columns:1fr auto;gap:3px 8px}
+.compare-tray article b{font-size:8px}
+.compare-tray article strong{font-size:12px;color:#f1f8fa}
+.compare-tray article strong small{font-size:7px;font-weight:500}
+.compare-tray article>small{grid-column:1/-1;color:#718a9b;font-size:7px}
 .offers-empty{padding:30px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .offers-empty b{font-size:10px}
 .offers-empty span{font-size:8px;color:#718697}
 @media(max-width:1150px){.offer-entry{grid-template-columns:1fr 1fr 1fr}
 .offer-notes{grid-column:span 2}
+.carrier-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:700px){.offer-entry{grid-template-columns:1fr}
 .offer-notes{grid-column:auto}
@@ -601,6 +641,10 @@ button,input,select,textarea{font-family:inherit}
 .offer-row{grid-template-columns:1fr .7fr 26px}
 .offer-row>span:nth-child(3),.offer-row>span:nth-child(4){grid-column:1/3;padding-left:39px;color:#8095a5}
 .quote-results-card>header{flex-direction:column;gap:10px}
+.coverage-options,.carrier-grid{grid-template-columns:1fr}
+.quote-by,.coverage-options>span{grid-column:auto}
+.carrier-catalog>header{align-items:flex-start;flex-direction:column}
+.carrier-catalog>header>div:last-child{width:100%;flex-wrap:wrap}
 }
 
 
