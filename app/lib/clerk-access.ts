@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { isClerkConfigured } from "./clerk-config";
 
 export const PACIFICA_ADMIN_EMAIL="pacificalegalinsurance@gmail.com";
 
@@ -17,6 +18,6 @@ export async function requirePacificaAdminPage(){
 }
 
 export async function isPacificaAdminApi(){
-  if(!process.env.VERCEL)return true;
+  if(!isClerkConfigured())return !process.env.VERCEL;
   return isAllowedClerkUser();
 }

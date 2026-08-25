@@ -1,5 +1,6 @@
 import { getStripe, stripePlanPrices, type StripePlan } from "../../../lib/stripe";
 import { currentUser } from "@clerk/nextjs/server";
+import { isClerkConfigured } from "../../../lib/clerk-config";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     const stripe = getStripe();
     const configuredOrigin = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
     const origin = configuredOrigin || new URL(request.url).origin;
-    const user=process.env.VERCEL?await currentUser():null;
+    const user=isClerkConfigured()?await currentUser():null;
     const email=user?.primaryEmailAddress?.emailAddress||user?.emailAddresses[0]?.emailAddress;
     const metadata={pacifica_plan:plan,...(user?.id?{clerk_user_id:user.id}:{})};
     const session = await stripe.checkout.sessions.create({

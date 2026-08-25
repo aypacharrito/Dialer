@@ -1,12 +1,23 @@
 import Link from "next/link";
 import { chatGPTSignInPath, getChatGPTUser } from "../chatgpt-auth";
+import { isClerkConfigured } from "../lib/clerk-config";
 import ClerkLogin from "./ClerkLogin";
 import styles from "./login.module.css";
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage(){
-  if(process.env.VERCEL)return <ClerkLogin/>;
+  if(isClerkConfigured())return <ClerkLogin/>;
+  if(process.env.VERCEL)return <main className={styles.page}>
+    <Link href="/" className={styles.brand}><span><img src="/pacifica-mark.png" alt=""/></span><b>Pacifica</b></Link>
+    <section className={styles.card}>
+      <p className={styles.kicker}>SECURE WORKSPACE ACCESS</p>
+      <h1>Sign-in is temporarily unavailable.</h1>
+      <p className={styles.copy}>Pacifica is online, but its secure login connection still needs to be completed by the administrator.</p>
+      <Link className={styles.primary} href="/">Return to Pacifica</Link>
+    </section>
+    <footer>Protected access · Pacifica</footer>
+  </main>;
   const user=await getChatGPTUser();
   return <main className={styles.page}>
     <Link href="/" className={styles.brand}><span><img src="/pacifica-mark.png" alt=""/></span><b>Pacifica</b></Link>

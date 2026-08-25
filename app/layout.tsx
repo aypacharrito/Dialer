@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { isClerkConfigured } from "./lib/clerk-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,9 +28,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const clerkEnabled = isClerkConfigured();
   return (
     <html lang="en">
-      <body>{process.env.VERCEL?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</body>
+      <body>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</body>
     </html>
   );
 }
