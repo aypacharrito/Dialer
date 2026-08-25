@@ -38,9 +38,6 @@ export async function POST(request: Request) {
       line_items: [{ price, quantity: 1 }],
       allow_promotion_codes: true,
       billing_address_collection: "required",
-      custom_text: {
-        submit: { message: `By subscribing, you agree to Pacifica's Terms of Service at ${origin}/terms.` },
-      },
       ...(email?{customer_email:email}:{}),
       ...(user?.id?{client_reference_id:user.id}:{}),
       metadata,
