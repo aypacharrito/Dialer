@@ -6,7 +6,7 @@ import { defaultAudioPreferences, readAudioPreferences, saveAudioPreferences } f
 import { clearVoiceModeLabels, PacificaClearVoiceProcessor, supportsClearVoice, type ClearVoiceMetrics, type ClearVoiceMode } from "../clearvoice";
 
 type AudioChoice = { deviceId: string; label: string };
-type MonitorMode = "raw" | "clearvoice" | null;
+type MonitorMode = "test" | "raw" | "clearvoice" | null;
 
 const emptyMetrics: ClearVoiceMetrics = { inputLevel: 0, outputLevel: 0, reduction: 0, voiceDetected: false };
 
@@ -100,10 +100,11 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   async function requestMicrophone(mode: MonitorMode = null) {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("This browser does not expose microphone controls. Use current Chrome or Edge over HTTPS.");
     const selectedInput = inputRef.current;
+    const useCallProcessing = mode === null || mode === "test";
     const preferred: MediaTrackConstraints = {
-      echoCancellation: mode === null,
-      noiseSuppression: mode === null,
-      autoGainControl: mode === null,
+      echoCancellation: useCallProcessing,
+      noiseSuppression: useCallProcessing,
+      autoGainControl: useCallProcessing,
       ...(selectedInput === "default" ? {} : { deviceId: { exact: selectedInput } }),
     };
     try {
@@ -170,22 +171,30 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
 
     if (mode && monitorAudioRef.current) {
       monitorAudioRef.current.srcObject = audibleStream;
-      monitorAudioRef.current.volume = speakerVolume / 100;
+      monitorAudioRef.current.volume = mode === "test" ? Math.min(speakerVolume, 65) / 100 : speakerVolume / 100;
       const sinkAudio = monitorAudioRef.current as HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void> };
       if (speakerRef.current !== "default" && sinkAudio.setSinkId) await sinkAudio.setSinkId(speakerRef.current);
-      await monitorAudioRef.current.play();
+      try {
+        await monitorAudioRef.current.play();
+      } catch {
+        throw new Error("Edge blocked speaker playback. Make sure this tab is not muted, then click the test again.");
+      }
       setListening(mode);
-      setMessage(mode === "clearvoice" ? "ClearVoice monitor is live. Speak, type, or make background noise to compare it." : "Original microphone monitor is live with suppression bypassed.");
-    } else if (autoStop) {
-      monitorTimerRef.current = window.setTimeout(() => stopMonitor("Microphone detected. The level meter responded successfully."), 4500);
+      setMessage(mode === "test" ? "Live microphone playback is on. Speak now — headphones prevent feedback." : mode === "clearvoice" ? "ClearVoice monitor is live. Speak, type, or make background noise to compare it." : "Original microphone monitor is live with suppression bypassed.");
+      if (autoStop) monitorTimerRef.current = window.setTimeout(() => stopMonitor("Microphone and speaker playback passed. Your selected devices are ready."), 6500);
     }
   }
 
   async function runTest() {
+    if (listening === "test") {
+      stopMonitor("Microphone playback stopped. Your selected devices are ready.");
+      return;
+    }
     setTesting(true);
-    setMessage("Checking microphone, Twilio token, ClearVoice, and connection latency…");
+    setMessage("Starting live microphone playback, then checking Twilio and connection latency…");
     try {
       const started = performance.now();
+      await startMonitor("test", true);
       const [device, response] = await Promise.all([ensureDevice(), fetch("/api/twilio/token", { cache: "no-store" })]);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -194,8 +203,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       // Keep Twilio from opening a second capture stream while the Edge meter
       // owns the microphone. The selected device is applied when a call starts.
       void device;
-      await startMonitor(null, true);
-      setMessage(`Phone ready · API ${Math.round(performance.now() - started)} ms · ${clearVoiceEnabled && clearVoiceSupported ? "ClearVoice armed" : "native audio fallback"} · speak now`);
+      setMessage(`Phone ready · API ${Math.round(performance.now() - started)} ms · ${clearVoiceEnabled && clearVoiceSupported ? "ClearVoice armed" : "native audio fallback"} · live playback on for 6 seconds`);
     } catch (error) {
       stopMonitor();
       setMessage(`Test failed: ${microphoneError(error)}`);
@@ -259,7 +267,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
 
   return <section className={`phone-config ${compact ? "compact" : ""}`}>
     <header><div><span>PHONE SETTINGS</span><b>Communication devices</b></div>{onClose && <button aria-label="Close phone settings" onClick={onClose}>×</button>}</header>
-    <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing ? "Testing…" : "Run device, ClearVoice & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
+    <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing ? "Testing…" : listening === "test" ? "Stop microphone playback" : "Run device, playback & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
 
     <section className={`clearvoice-card ${clearVoiceEnabled ? "enabled" : ""}`}>
       <div className="clearvoice-head"><div><span>PACIFICA AUDIO LABS</span><h3>ClearVoice</h3><p>Adaptive on-device speech enhancement for every browser call.</p></div><label className="clearvoice-switch"><input type="checkbox" checked={clearVoiceEnabled} onChange={event => void updateClearVoice(event.target.checked)}/><i/><b>{clearVoiceEnabled ? "ON" : "OFF"}</b></label></div>
