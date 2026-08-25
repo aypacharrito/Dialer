@@ -3,17 +3,41 @@ import { hasPacificaWorkspaceApiAccess } from "../../../lib/clerk-access";
 export const runtime="nodejs";
 
 type TwilioMessage={sid:string;direction:string;from:string;to:string;body:string;status:string;date_sent?:string;date_created?:string};
+type TwilioError={message?:string;code?:number;more_info?:string};
+type Credential={label:string;authorization:string};
 
 function config(){
   const accountSid=(process.env.TWILIO_ACCOUNT_SID||"").trim();
   const phone=(process.env.TWILIO_PHONE_NUMBER||"").trim();
+  const messagingServiceSid=(process.env.TWILIO_MESSAGING_SERVICE_SID||"").trim();
   const keySid=(process.env.TWILIO_API_KEY_SID||"").trim();
   const keySecret=(process.env.TWILIO_API_KEY_SECRET||"").trim();
   const authToken=(process.env.TWILIO_AUTH_TOKEN||"").trim();
-  const username=keySid||accountSid;
-  const password=keySecret||authToken;
-  if(!accountSid||!phone||!username||!password)throw new Error("Twilio Messaging needs the Account SID, phone number, and API key credentials.");
-  return {accountSid,phone,authorization:`Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`};
+  const credentials:Credential[]=[];
+  if(keySid&&keySecret)credentials.push({label:"API key",authorization:`Basic ${Buffer.from(`${keySid}:${keySecret}`).toString("base64")}`});
+  if(accountSid&&authToken)credentials.push({label:"Auth Token",authorization:`Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`});
+  if(!accountSid||!phone||!credentials.length)throw new Error("Twilio Messaging is missing its Account SID, SMS-capable phone number, or server credential.");
+  return {accountSid,phone,messagingServiceSid,credentials};
+}
+
+async function twilioRequest(url:string,init:RequestInit,credentials:Credential[]){
+  let lastResponse:Response|null=null;
+  let lastData:unknown=null;
+  for(const credential of credentials){
+    const response=await fetch(url,{...init,headers:{...(init.headers||{}),Authorization:credential.authorization}});
+    const data=await response.json().catch(()=>({message:"Twilio returned an unreadable response"}));
+    if(response.ok)return {response,data,credential:credential.label};
+    lastResponse=response;lastData=data;
+    const status=response.status;
+    console.error("[twilio/messages] credential rejected",{credential:credential.label,status,code:(data as TwilioError).code||null});
+    if(status!==401&&status!==403)break;
+  }
+  return {response:lastResponse!,data:lastData as TwilioError,credential:""};
+}
+
+function twilioMessage(data:TwilioError){
+  const base=data.message||"Twilio rejected the messaging request";
+  return data.code?`${base} (Twilio ${data.code})`:base;
 }
 
 function normalized(value:string){
@@ -31,13 +55,12 @@ function safe(message:TwilioMessage){
 export async function GET(){
   if(!await hasPacificaWorkspaceApiAccess())return Response.json({error:"An active Pacifica subscription is required."},{status:403});
   try{
-    const {accountSid,phone,authorization}=config();
-    const response=await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?PageSize=100`,{headers:{Authorization:authorization},cache:"no-store"});
-    const data=await response.json() as {messages?:TwilioMessage[];message?:string};
-    if(!response.ok)throw new Error(data.message||"Twilio could not load messages");
+    const {accountSid,phone,credentials}=config();
+    const {response,data,credential}=await twilioRequest(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?PageSize=100`,{cache:"no-store"},credentials) as {response:Response;data:{messages?:TwilioMessage[]}&TwilioError;credential:string};
+    if(!response.ok)throw new Error(twilioMessage(data));
     const messages=(data.messages||[]).filter(message=>message.from===phone||message.to===phone).map(safe);
-    return Response.json({phone,messages},{headers:{"Cache-Control":"no-store"}});
-  }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load messages"},{status:500})}
+    return Response.json({configured:true,phone,messages,credential},{headers:{"Cache-Control":"no-store"}});
+  }catch(error){console.error("[twilio/messages] load failed",error instanceof Error?error.message:"unknown");return Response.json({configured:false,error:error instanceof Error?error.message:"Unable to load messages"},{status:500})}
 }
 
 export async function POST(request:Request){
@@ -48,11 +71,12 @@ export async function POST(request:Request){
     const text=String(body.body||"").trim().slice(0,1400);
     if(!to)return Response.json({error:"Enter a valid US mobile number"},{status:400});
     if(!text)return Response.json({error:"Write a message first"},{status:400});
-    const {accountSid,phone,authorization}=config();
-    const form=new URLSearchParams({To:to,From:phone,Body:text});
-    const response=await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{Authorization:authorization,"Content-Type":"application/x-www-form-urlencoded"},body:form});
-    const data=await response.json() as TwilioMessage&{message?:string};
-    if(!response.ok)throw new Error(data.message||"Twilio could not send the message");
+    const {accountSid,phone,messagingServiceSid,credentials}=config();
+    const form=new URLSearchParams({To:to,Body:text});
+    if(messagingServiceSid)form.set("MessagingServiceSid",messagingServiceSid);else form.set("From",phone);
+    const {response,data,credential}=await twilioRequest(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials) as {response:Response;data:TwilioMessage&TwilioError;credential:string};
+    if(!response.ok)return Response.json({error:twilioMessage(data),code:data.code||null},{status:response.status>=400&&response.status<500?400:502});
+    console.log("[twilio/messages] sent",{sid:data.sid,toLast4:to.slice(-4),credential});
     return Response.json({ok:true,message:safe(data)});
-  }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to send message"},{status:500})}
+  }catch(error){console.error("[twilio/messages] send failed",error instanceof Error?error.message:"unknown");return Response.json({error:error instanceof Error?error.message:"Unable to send message"},{status:500})}
 }

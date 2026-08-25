@@ -33,17 +33,19 @@ type AiResult = {
   priorities: Array<{ leadId: number; leadName: string; score: number; reason: string; nextStep: string }>;
   actions: AiAction[];
   draft: string;
+  mode?: "ai" | "smart-fallback";
+  notice?: string;
 };
 
 const quickPrompts = [
-  "Which leads should I call first today?",
-  "Find stalled opportunities and tell me the next step.",
-  "Prepare a call brief for my strongest leads.",
-  "Draft a professional follow-up for interested prospects.",
+  {title:"Plan my calls",detail:"Who should I contact first today?",prompt:"Which leads should I call first today, and why?"},
+  {title:"Find missed chances",detail:"Surface stalled opportunities",prompt:"Find stalled opportunities and give me the best next step for each one."},
+  {title:"Prepare me",detail:"Create useful call briefs",prompt:"Prepare concise call briefs for my strongest leads."},
+  {title:"Write a follow-up",detail:"Friendly, natural, and specific",prompt:"Draft a friendly business-casual follow-up for my interested prospects."},
 ];
 
 export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(action:AiAction)=>void}) {
-  const [prompt,setPrompt]=useState(quickPrompts[0]);
+  const [prompt,setPrompt]=useState("");
   const [includeNotes,setIncludeNotes]=useState(false);
   const [loading,setLoading]=useState(false);
   const [result,setResult]=useState<AiResult|null>(null);
@@ -51,33 +53,50 @@ export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(a
   const [applied,setApplied]=useState<number[]>([]);
   const eligible=useMemo(()=>leads.filter(lead=>!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
 
-  async function run(){
-    if(!prompt.trim())return;
-    setLoading(true);setError("");setApplied([]);
+  async function run(nextPrompt=prompt){
+    const question=nextPrompt.trim();
+    if(!question)return;
+    setPrompt(question);setLoading(true);setError("");setApplied([]);
     try{
-      const response=await fetch("/api/ai/crm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,includeNotes,leads:eligible.slice(0,100)})});
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error||"Pacifica AI could not complete that request");
-      setResult(data as AiResult);
-    }catch(err){setError(err instanceof Error?err.message:"Pacifica AI could not complete that request")}
+      const response=await fetch("/api/ai/crm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,leads:eligible.slice(0,100)})});
+      const data=await response.json().catch(()=>({})) as AiResult&{error?:string};
+      if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");
+      setResult(data);
+    }catch(err){setError(err instanceof Error?err.message:"Pacifica could not complete that request")}
     finally{setLoading(false)}
   }
 
   return <div className="ai-workspace">
-    <section className="ai-hero">
-      <div><span className="eyebrow">PACIFICA AI · CRM COPILOT</span><h1>Ask your CRM. Act on the answer.</h1><p>Prioritize leads, prepare calls, identify stalled opportunities, and draft follow-ups from the records already in Pacifica.</p></div>
-      <div className="ai-privacy"><b>Privacy controls</b><span>Phone numbers and emails are never sent. Notes are off by default.</span></div>
-    </section>
-    <section className="ai-composer">
-      <div className="ai-prompt-row"><textarea aria-label="Ask Pacifica AI" value={prompt} onChange={event=>setPrompt(event.target.value)} placeholder="Ask about your pipeline…"/><button onClick={run} disabled={loading||!eligible.length}>{loading?"Analyzing…":"Run AI analysis"}</button></div>
-      <div className="ai-options"><label><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/> Include CRM notes in this request</label><span>{eligible.length} eligible contacts · maximum 100 per analysis</span></div>
-      <div className="ai-quick-prompts">{quickPrompts.map(item=><button key={item} onClick={()=>setPrompt(item)}>{item}</button>)}</div>
-      {!eligible.length&&<p className="ai-error">Import contacts before running an analysis.</p>}{error&&<p className="ai-error">{error}</p>}
-    </section>
+    <header className="ai-shell-header">
+      <div className="ai-shell-brand"><i>P</i><span><b>Pacifica AI</b><small>{eligible.length} active CRM record{eligible.length===1?"":"s"} ready</small></span></div>
+      <label className="ai-notes-control"><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/><span><b>Use CRM notes</b><small>Off by default</small></span></label>
+    </header>
+
+    <main className={result?"ai-chat answered":"ai-chat"}>
+      {!result?<section className="ai-welcome">
+        <div className="ai-mark">P</div>
+        <h1>What can I help you close today?</h1>
+        <p>Ask Pacifica to study your active pipeline, prepare calls, find follow-ups, or write the next message.</p>
+      </section>:<section className="ai-conversation" aria-live="polite">
+        <div className="ai-user-message"><span>You</span><p>{prompt}</p></div>
+        <div className="ai-assistant-message"><i>P</i><div><header><b>Pacifica</b><em className={result.mode==="smart-fallback"?"fallback":""}>{result.mode==="smart-fallback"?"SMART FALLBACK":"AI ANALYSIS"}</em></header><p>{result.summary}</p>{result.notice&&<small>{result.notice}</small>}</div></div>
+      </section>}
+
+      {!result&&<section className="ai-starters">{quickPrompts.map(item=><button key={item.title} onClick={()=>void run(item.prompt)} disabled={!eligible.length||loading}><b>{item.title}</b><span>{item.detail}</span><em>→</em></button>)}</section>}
+
+      <section className="ai-chat-composer">
+        <textarea aria-label="Message Pacifica AI" value={prompt} onChange={event=>setPrompt(event.target.value)} onKeyDown={event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();void run()}}} placeholder="Ask Pacifica anything about your CRM…" rows={2}/>
+        <button onClick={()=>void run()} disabled={loading||!eligible.length||!prompt.trim()} aria-label="Send to Pacifica AI">{loading?<span className="ai-thinking"/>:"↑"}</button>
+        <footer><span>Enter to send · Shift + Enter for a new line</span><span>Contact details stay private · {includeNotes?"notes included":"notes excluded"}</span></footer>
+      </section>
+      {!eligible.length&&<p className="ai-error">Import contacts before asking Pacifica to analyze your CRM.</p>}{error&&<p className="ai-error">{error}</p>}
+    </main>
+
     {result&&<div className="ai-results">
-      <section className="ai-summary"><span>EXECUTIVE SUMMARY</span><p>{result.summary}</p>{result.draft&&<div><b>Suggested message</b><textarea readOnly value={result.draft}/><button onClick={()=>navigator.clipboard.writeText(result.draft)}>Copy draft</button></div>}</section>
-      <section className="ai-priority-panel"><header><div><span>AI PRIORITY QUEUE</span><h2>Best next conversations</h2></div><em>{result.priorities.length} recommendations</em></header>{result.priorities.map(item=><article key={`${item.leadId}-${item.score}`}><strong>{item.score}</strong><div><b>{item.leadName}</b><p>{item.reason}</p><small>{item.nextStep}</small></div></article>)}{!result.priorities.length&&<p className="ai-empty">No priority contacts matched this request.</p>}</section>
-      <section className="ai-actions-panel"><header><div><span>REVIEW BEFORE APPLYING</span><h2>Proposed CRM updates</h2></div></header>{result.actions.map((action,index)=><article key={`${action.leadId}-${index}`}><div><b>{action.title}</b><span>{action.leadName}</span><p>{action.reason}</p></div><button disabled={applied.includes(index)} onClick={()=>{onApply(action);setApplied(items=>[...items,index])}}>{applied.includes(index)?"Applied":"Apply update"}</button></article>)}{!result.actions.length&&<p className="ai-empty">No record changes were proposed.</p>}</section>
+      <section className="ai-priority-panel"><header><div><span>BEST NEXT CONVERSATIONS</span><h2>Your priority queue</h2></div><em>{result.priorities.length} leads</em></header>{result.priorities.map(item=><article key={`${item.leadId}-${item.score}`}><strong>{item.score}</strong><div><b>{item.leadName}</b><p>{item.reason}</p><small>{item.nextStep}</small></div></article>)}{!result.priorities.length&&<p className="ai-empty">No priority contacts matched this request.</p>}</section>
+      <section className="ai-actions-panel"><header><div><span>YOU STAY IN CONTROL</span><h2>Suggested CRM updates</h2></div></header>{result.actions.map((action,index)=><article key={`${action.leadId}-${index}`}><div><b>{action.title}</b><span>{action.leadName}</span><p>{action.reason}</p></div><button disabled={applied.includes(index)} onClick={()=>{onApply(action);setApplied(items=>[...items,index])}}>{applied.includes(index)?"Applied":"Apply"}</button></article>)}{!result.actions.length&&<p className="ai-empty">No record changes were suggested.</p>}</section>
+      {result.draft&&<section className="ai-draft-card"><header><span>MESSAGE DRAFT</span><button onClick={()=>void navigator.clipboard.writeText(result.draft)}>Copy</button></header><p>{result.draft}</p></section>}
+      <button className="ai-new-chat" onClick={()=>{setResult(null);setPrompt("");setError("")}}>＋ Start a new request</button>
     </div>}
   </div>;
 }

@@ -916,60 +916,62 @@ button,input,select,textarea{font-family:inherit}
 }
 
 
-/* Pacifica AI CRM copilot */
-.ai-workspace{padding:22px 28px 70px;overflow:auto}
-.ai-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:25px;padding:24px;background:radial-gradient(circle at 80% 0,#163d4e 0,transparent 42%),linear-gradient(135deg,#111e2b,#0b1722);border:1px solid #294256;border-radius:15px}
-.ai-hero h1{font-size:31px;margin:9px 0;color:#eef9fc}
-.ai-hero p{max-width:680px;margin:0;color:#7892a4;font-size:10px;line-height:1.65}
-.ai-privacy{width:240px;flex:none;padding:14px;border:1px solid #28604f;background:#10271f;border-radius:11px}
-.ai-privacy b,.ai-privacy span{display:block}
-.ai-privacy b{color:#63ddb4;font-size:9px}
-.ai-privacy span{margin-top:6px;color:#75a18e;font-size:8px;line-height:1.5}
-.ai-composer{margin-top:15px;padding:18px;background:#101c28;border:1px solid #26394a;border-radius:13px}
-.ai-prompt-row{display:grid;grid-template-columns:1fr 150px;gap:10px}
-.ai-prompt-row textarea{min-height:78px;resize:vertical;border:1px solid #30475b;border-radius:9px;background:#0a1520;color:#e0edf2;padding:13px;font:inherit;font-size:11px;line-height:1.5}
-.ai-prompt-row button{border:1px solid #39cad46b;border-radius:9px;background:linear-gradient(135deg,#1bb1c5,#157ea6);color:white;font-size:9px;font-weight:900}
-.ai-prompt-row button:disabled{opacity:.5}
-.ai-options{display:flex;justify-content:space-between;gap:18px;margin-top:11px;color:#748c9d;font-size:8px}
-.ai-options label{display:flex;gap:7px;align-items:center}
-.ai-options input{accent-color:#22bfd0}
-.ai-quick-prompts{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
-.ai-quick-prompts button{border:1px solid #2a4154;border-radius:16px;background:#132332;color:#87a2b4;padding:7px 10px;font-size:8px}
-.ai-error{color:#ee9297;font-size:9px;margin:12px 0 0}
-.ai-results{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:15px}
-.ai-summary,.ai-priority-panel,.ai-actions-panel{background:linear-gradient(180deg,#111d2a,#0d1823);border:1px solid #26394b;border-radius:13px;overflow:hidden}
-.ai-summary{grid-column:1/-1;padding:20px}
-.ai-summary>span,.ai-priority-panel header span,.ai-actions-panel header span{font-size:7px;letter-spacing:.15em;color:#59ccd7;font-weight:900}
-.ai-summary>p{color:#b5c7d1;font-size:10px;line-height:1.7;margin:9px 0 0}
-.ai-summary>div{position:relative;margin-top:15px;padding-top:14px;border-top:1px solid #263849}
-.ai-summary>div b{display:block;font-size:9px;margin-bottom:8px}
-.ai-summary textarea{width:100%;min-height:90px;border:1px solid #2b4153;border-radius:8px;background:#0a151f;color:#cbdbe3;padding:12px;font-size:9px;line-height:1.6}
-.ai-summary>div button{position:absolute;right:7px;bottom:7px;border:1px solid #31566a;border-radius:6px;background:#143044;color:#79d1da;padding:7px 9px;font-size:7px}
-.ai-priority-panel header,.ai-actions-panel header{padding:16px 18px;border-bottom:1px solid #263849;display:flex;justify-content:space-between;align-items:center}
-.ai-priority-panel h2,.ai-actions-panel h2{font-size:15px;margin:5px 0 0}
-.ai-priority-panel header em{font-size:7px;font-style:normal;color:#7891a2}
-.ai-priority-panel article{display:grid;grid-template-columns:42px 1fr;gap:12px;padding:14px 17px;border-top:1px solid #213142}
-.ai-priority-panel article>strong{width:38px;height:38px;border-radius:10px;background:#123a3f;color:#62dae2;display:grid;place-items:center;font-size:12px}
-.ai-priority-panel article b,.ai-actions-panel article b{font-size:10px}
-.ai-priority-panel article p,.ai-actions-panel article p{margin:4px 0;color:#748c9e;font-size:8px;line-height:1.5}
-.ai-priority-panel article small{color:#50d5aa;font-size:8px}
-.ai-actions-panel article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 17px;border-top:1px solid #213142}
-.ai-actions-panel article span{display:block;color:#5fcbd4;font-size:8px;margin-top:4px}
-.ai-actions-panel article button{flex:none;border:1px solid #2d6570;border-radius:7px;background:#153541;color:#76dbe2;padding:9px 11px;font-size:8px;font-weight:900}
-.ai-actions-panel article button:disabled{border-color:#265044;background:#10281f;color:#55d4aa}
-.ai-empty{padding:22px;color:#6f8799;font-size:9px}
-@media(max-width:900px){.ai-hero{display:block}
-.ai-privacy{width:auto;margin-top:15px}
-.ai-results{grid-template-columns:1fr}
-.ai-summary{grid-column:auto}
-}
-@media(max-width:650px){.ai-workspace{padding:82px 12px 50px}
-.ai-prompt-row{grid-template-columns:1fr}
-.ai-prompt-row button{height:42px}
-.ai-options{display:block}
-.ai-options span{display:block;margin-top:8px}
-.ai-hero h1{font-size:25px}
-}
+/* Pacifica AI — a calm, focused workspace rather than a dashboard full of widgets. */
+.ai-workspace{max-width:1180px;margin:0 auto;padding:0 30px 72px;overflow:auto;color:#edf3f5}
+.ai-shell-header{height:70px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2a3034}
+.ai-shell-brand{display:flex;align-items:center;gap:11px}
+.ai-shell-brand>i,.ai-assistant-message>i,.ai-mark{display:grid;place-items:center;background:#176c70;color:#fff;font-style:normal;font-weight:800}
+.ai-shell-brand>i{width:30px;height:30px;border-radius:9px;font-size:13px}
+.ai-shell-brand span,.ai-notes-control span{display:grid;gap:2px}
+.ai-shell-brand b{font-size:13px}.ai-shell-brand small,.ai-notes-control small{font-size:9px;color:#7f8b91}
+.ai-notes-control{display:flex;align-items:center;gap:9px;cursor:pointer;padding:8px 10px;border-radius:9px}
+.ai-notes-control:hover{background:#202427}.ai-notes-control input{width:15px;height:15px;accent-color:#2ca9aa}
+.ai-notes-control b{font-size:10px;color:#d5dcdf}
+.ai-chat{width:min(760px,100%);margin:0 auto;padding-top:82px}
+.ai-chat.answered{padding-top:45px}
+.ai-welcome{text-align:center;max-width:620px;margin:0 auto 34px}
+.ai-mark{width:48px;height:48px;border-radius:15px;margin:0 auto 20px;font-size:20px}
+.ai-welcome h1{font-size:34px;line-height:1.15;letter-spacing:-.035em;margin:0;color:#f4f7f8;font-weight:650}
+.ai-welcome p{font-size:13px;line-height:1.65;color:#89959b;margin:14px auto 0;max-width:540px}
+.ai-starters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.ai-starters button{position:relative;text-align:left;min-height:86px;padding:17px 44px 15px 17px;border:1px solid #30363a;border-radius:13px;background:#1b1f22;color:#eef3f5;cursor:pointer;transition:border-color .15s,background .15s}
+.ai-starters button:hover{border-color:#4b5559;background:#202529}
+.ai-starters button:disabled{opacity:.45;cursor:not-allowed}
+.ai-starters b,.ai-starters span{display:block}.ai-starters b{font-size:12px;margin-bottom:7px}.ai-starters span{font-size:10px;color:#8b989e}.ai-starters em{position:absolute;right:17px;bottom:16px;font-style:normal;color:#69767c;font-size:16px}
+.ai-chat-composer{position:relative;padding:14px 56px 31px 16px;border:1px solid #42494d;background:#22272a;border-radius:17px;box-shadow:0 14px 40px rgba(0,0,0,.18)}
+.ai-chat-composer:focus-within{border-color:#677277}
+.ai-chat-composer textarea{display:block;width:100%;min-height:46px;resize:none;border:0;outline:0;background:transparent;color:#eef3f5;font:inherit;font-size:13px;line-height:1.55}
+.ai-chat-composer textarea::placeholder{color:#778389}
+.ai-chat-composer>button{position:absolute;right:13px;top:13px;width:35px;height:35px;border:0;border-radius:11px;background:#eaf1f2;color:#101517;font-size:20px;font-weight:800;cursor:pointer}
+.ai-chat-composer>button:disabled{background:#3a4145;color:#727d82;cursor:not-allowed}
+.ai-chat-composer footer{position:absolute;left:16px;right:16px;bottom:9px;display:flex;justify-content:space-between;gap:12px;color:#6d797e;font-size:8px}
+.ai-thinking{display:block;width:12px;height:12px;margin:auto;border:2px solid #657176;border-top-color:#e8eff1;border-radius:50%;animation:ai-spin .7s linear infinite}
+@keyframes ai-spin{to{transform:rotate(360deg)}}
+.ai-error{color:#f0a3a8;font-size:10px;margin:12px 3px 0}
+.ai-conversation{display:grid;gap:24px;margin-bottom:24px}
+.ai-user-message{justify-self:end;max-width:78%;padding:12px 15px;border-radius:15px 15px 4px;background:#2c3236}
+.ai-user-message>span{display:block;margin-bottom:4px;color:#9ba6ab;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.1em}.ai-user-message p{margin:0;font-size:12px;line-height:1.55}
+.ai-assistant-message{display:grid;grid-template-columns:34px 1fr;gap:13px;align-items:start}
+.ai-assistant-message>i{width:34px;height:34px;border-radius:10px;font-size:13px}
+.ai-assistant-message header{display:flex;align-items:center;gap:9px;margin-bottom:8px}.ai-assistant-message header b{font-size:12px}.ai-assistant-message header em{font-style:normal;font-size:7px;letter-spacing:.12em;color:#59cbc4;border:1px solid #255f5c;border-radius:20px;padding:4px 7px}.ai-assistant-message header em.fallback{color:#e7bd69;border-color:#765e2a}
+.ai-assistant-message p{margin:0;color:#c4ced2;font-size:12px;line-height:1.72}.ai-assistant-message small{display:block;margin-top:8px;color:#7e8b90;font-size:9px;line-height:1.55}
+.ai-results{width:min(940px,100%);margin:36px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ai-priority-panel,.ai-actions-panel,.ai-draft-card{background:#1a1e21;border:1px solid #30363a;border-radius:14px;overflow:hidden}
+.ai-priority-panel header,.ai-actions-panel header,.ai-draft-card header{padding:16px 18px;border-bottom:1px solid #2c3236;display:flex;justify-content:space-between;align-items:center}
+.ai-priority-panel header span,.ai-actions-panel header span,.ai-draft-card header span{font-size:7px;letter-spacing:.16em;color:#58c7c2;font-weight:900}
+.ai-priority-panel h2,.ai-actions-panel h2{font-size:15px;margin:5px 0 0}.ai-priority-panel header em{font-size:8px;font-style:normal;color:#849096}
+.ai-priority-panel article{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:14px 17px;border-top:1px solid #292f32}.ai-priority-panel article:first-of-type{border-top:0}
+.ai-priority-panel article>strong{width:38px;height:38px;border-radius:10px;background:#173d3e;color:#6fd4cf;display:grid;place-items:center;font-size:12px}
+.ai-priority-panel article b,.ai-actions-panel article b{font-size:10px}.ai-priority-panel article p,.ai-actions-panel article p{margin:4px 0;color:#849096;font-size:9px;line-height:1.5}.ai-priority-panel article small{color:#6cc8a7;font-size:8px}
+.ai-actions-panel article{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 17px;border-top:1px solid #292f32}.ai-actions-panel article:first-of-type{border-top:0}.ai-actions-panel article span{display:block;color:#60c6c2;font-size:8px;margin-top:4px}
+.ai-actions-panel article button,.ai-draft-card header button{flex:none;border:1px solid #3f6869;border-radius:8px;background:#203839;color:#8fd8d4;padding:8px 11px;font-size:8px;font-weight:900;cursor:pointer}.ai-actions-panel article button:disabled{border-color:#345046;background:#20352d;color:#6fcaa9}
+.ai-draft-card{grid-column:1/-1}.ai-draft-card p{margin:0;padding:18px;color:#c4ced2;font-size:11px;line-height:1.7;white-space:pre-wrap}
+.ai-new-chat{grid-column:1/-1;justify-self:center;border:1px solid #384044;border-radius:10px;background:#202528;color:#bcc7cb;padding:10px 15px;font-size:9px;font-weight:800;cursor:pointer}
+.ai-empty{padding:22px;color:#7f8b91;font-size:9px}
+.message-ai-mode{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:9px;padding:9px 11px;border:1px solid #2b5a58;border-radius:9px;background:#152b2b}.message-ai-mode b{font-size:9px;color:#72d5cf}.message-ai-mode span{font-size:8px;color:#819296;text-align:right}.message-ai-mode.smart-fallback{border-color:#69552e;background:#2a2418}.message-ai-mode.smart-fallback b{color:#e7bd69}
+.message-consent-warning{margin:8px 0 0;color:#e7bd69;font-size:8px;line-height:1.5}
+@media(max-width:900px){.ai-results{grid-template-columns:1fr}.ai-draft-card,.ai-new-chat{grid-column:auto}}
+@media(max-width:650px){.ai-workspace{padding:72px 14px 50px}.ai-shell-header{height:auto;padding:12px 0}.ai-notes-control small{display:none}.ai-chat,.ai-chat.answered{padding-top:48px}.ai-welcome h1{font-size:28px}.ai-starters{grid-template-columns:1fr}.ai-chat-composer footer{display:none}.ai-chat-composer{padding-bottom:14px}.ai-user-message{max-width:90%}}
 
 /* Pacifica flat UI pass: quieter depth, solid surfaces, and restrained accents. */
 .sidebar{background:#0a1420;box-shadow:none}
