@@ -10,11 +10,16 @@ import ClerkTopAuth from "./components/ClerkTopAuth";
 import { readAudioPreferences } from "./audio-preferences";
 
 type LeadLine = "life" | "home-auto";
-type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string };
+type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string };
 type View = "dialer" | "leads" | "ai" | "quotes" | "campaigns" | "activity" | "billing" | "settings";
 
 const starterLeads: Lead[] = [];
 const emptyLead: Lead = {id:0,name:"No contact selected",phone:"Import contacts to begin",city:"CRM queue is empty",status:"Empty",email:"",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never",line:"life",source:"Manual",leadCost:0,product:"Life",sourceDisposition:"",importedAt:""};
+
+function normalizeSavedLeads(value:unknown):Lead[]{
+  if(!Array.isArray(value))return [];
+  return (value as Partial<Lead>[]).map((lead,index)=>({id:lead.id||Date.now()+index,name:lead.name||`Lead ${index+1}`,phone:lead.phone||"",city:lead.city||"Imported",status:lead.status||"Ready",email:lead.email||"",stage:lead.stage||"New lead",outcome:lead.outcome||"Not contacted",notes:lead.notes||"",followUp:lead.followUp||"",doNotCall:Boolean(lead.doNotCall),lastContact:lead.lastContact||"Never",line:lead.line==="home-auto"?"home-auto":"life",source:lead.source||"Existing CRM",leadCost:Number(lead.leadCost)||0,product:lead.product||(lead.line==="home-auto"?"Home & Auto":"Life"),sourceDisposition:lead.sourceDisposition||"",importedAt:lead.importedAt||"",address:lead.address||"",state:lead.state||"",zip:lead.zip||"",territory:lead.territory||"",brand:lead.brand||"",profileName:lead.profileName||"",received:lead.received||"",returnStatus:lead.returnStatus||"",employeeCount:lead.employeeCount||"",searchPro:lead.searchPro||""}));
+}
 
 function Icon({name}:{name:string}) {
   const paths:Record<string,React.ReactNode> = {
@@ -61,8 +66,10 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
   const [activeLine,setActiveLine]=useState<LeadLine>("life");
   const [autoDialing,setAutoDialing]=useState(false);
   const [checkoutPlan,setCheckoutPlan]=useState("");
-  const [smartKey,setSmartKey]=useState("");
-  const [smartStatus,setSmartStatus]=useState("Enter the integration key to begin live delivery");
+  const [leadFeedKey,setLeadFeedKey]=useState("");
+  const [leadFeedStatus,setLeadFeedStatus]=useState("Enter the integration key to begin live delivery");
+  const [importReport,setImportReport]=useState("Upload CSV files from any lead provider. Pacifica detects common contact, product, status, cost, and source columns.");
+  const [workspaceHydrated,setWorkspaceHydrated]=useState(false);
   const inputRef=useRef<HTMLInputElement>(null);
   const deviceRef=useRef<Device|null>(null);
   const callRef=useRef<Call|null>(null);
@@ -74,21 +81,20 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
   const autoDialRef=useRef(false);
   const advancingRef=useRef(false);
   const nextCallTimerRef=useRef<number|undefined>(undefined);
+  const workspaceSaveTimerRef=useRef<number|undefined>(undefined);
   const lineLeads=leads.filter(l=>l.line===activeLine);
   const callableLeads=lineLeads.filter(l=>l.stage!=="Closed"&&!l.doNotCall);
   const lead=callableLeads[index%Math.max(callableLeads.length,1)] || emptyLead;
 
   useEffect(()=>{ if(!connected)return; const t=setInterval(()=>setSeconds(s=>{elapsedRef.current=s+1;return s+1}),1000); return()=>clearInterval(t)},[connected]);
   useEffect(()=>{ if(!toast)return; const t=setTimeout(()=>setToast(""),2600); return()=>clearTimeout(t)},[toast]);
-  useEffect(()=>{ queueMicrotask(()=>{try{const saved=localStorage.getItem("pacific-crm-leads-clean");if(saved)setLeads((JSON.parse(saved) as Partial<Lead>[]).map((l,index)=>({id:l.id||Date.now()+index,name:l.name||`Lead ${index+1}`,phone:l.phone||"",city:l.city||"Imported",status:l.status||"Ready",email:l.email||"",stage:l.stage||"New lead",outcome:l.outcome||"Not contacted",notes:l.notes||"",followUp:l.followUp||"",doNotCall:Boolean(l.doNotCall),lastContact:l.lastContact||"Never",line:l.line==="home-auto"?"home-auto":"life",source:l.source||"Existing CRM",leadCost:Number(l.leadCost)||0,product:l.product||(l.line==="home-auto"?"Home & Auto":"Life"),sourceDisposition:l.sourceDisposition||"",importedAt:l.importedAt||""})))}catch{}}) },[]);
-  useEffect(()=>{ try{localStorage.setItem("pacific-crm-leads-clean",JSON.stringify(leads))}catch{} },[leads]);
+  useEffect(()=>{let canceled=false;async function hydrate(){let localLeads:Lead[]=[];let localLogs:CallLog[]=[];try{localLeads=normalizeSavedLeads(JSON.parse(localStorage.getItem("pacific-crm-leads-clean")||"[]"));const parsedLogs=JSON.parse(localStorage.getItem("pacific-call-logs")||"[]");localLogs=Array.isArray(parsedLogs)?parsedLogs:[]}catch{}if(clerkEnabled){try{const response=await fetch("/api/crm/workspace",{cache:"no-store"});const data=await response.json() as {found?:boolean;leads?:unknown[];callLogs?:CallLog[]};if(response.ok&&data.found){localLeads=normalizeSavedLeads(data.leads);localLogs=Array.isArray(data.callLogs)?data.callLogs:[]}}catch{}}if(canceled)return;setLeads(localLeads);setCallLogs(localLogs);setWorkspaceHydrated(true)}void hydrate();return()=>{canceled=true}},[clerkEnabled]);
+  useEffect(()=>{if(!workspaceHydrated)return;try{localStorage.setItem("pacific-crm-leads-clean",JSON.stringify(leads));localStorage.setItem("pacific-call-logs",JSON.stringify(callLogs.slice(0,500)))}catch{}if(!clerkEnabled)return;if(workspaceSaveTimerRef.current)window.clearTimeout(workspaceSaveTimerRef.current);workspaceSaveTimerRef.current=window.setTimeout(()=>{void fetch("/api/crm/workspace",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({leads,callLogs:callLogs.slice(0,500)})}).catch(()=>{})},600);return()=>{if(workspaceSaveTimerRef.current)window.clearTimeout(workspaceSaveTimerRef.current)}},[leads,callLogs,workspaceHydrated,clerkEnabled]);
   useEffect(()=>{leadsRef.current=leads},[leads]);
-  useEffect(()=>{ queueMicrotask(()=>{try{const saved=localStorage.getItem("pacific-call-logs");if(saved)setCallLogs(JSON.parse(saved) as CallLog[])}catch{}}) },[]);
-  useEffect(()=>{ try{localStorage.setItem("pacific-call-logs",JSON.stringify(callLogs.slice(0,500)))}catch{} },[callLogs]);
-  useEffect(()=>{queueMicrotask(()=>{const key=localStorage.getItem("pacifica-smartfinancial-key")||"";if(key)setSmartKey(key)})},[]);
-  // syncSmartFinancial intentionally runs on the saved key cadence only.
+  useEffect(()=>{queueMicrotask(()=>{const key=localStorage.getItem("pacifica-lead-feed-key")||localStorage.getItem("pacifica-smartfinancial-key")||"";if(key)setLeadFeedKey(key)})},[]);
+  // syncLeadFeed intentionally runs on the saved key cadence only.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(()=>{if(!smartKey)return;void syncSmartFinancial(smartKey,false);const timer=window.setInterval(()=>void syncSmartFinancial(smartKey,false),20000);return()=>window.clearInterval(timer)},[smartKey]);
+  useEffect(()=>{if(!leadFeedKey)return;void syncLeadFeed(leadFeedKey,false);const timer=window.setInterval(()=>void syncLeadFeed(leadFeedKey,false),20000);return()=>window.clearInterval(timer)},[leadFeedKey]);
   useEffect(()=>{ fetch("/api/twilio/status").then(r=>r.json()).then(data=>{setPhoneReady(Boolean(data.configured));setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:"Secure API key still needed")}).catch(()=>setPhoneStatus("Unable to check Twilio setup")); return()=>{if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy()} },[]);
 
   async function fetchToken(){const response=await fetch("/api/twilio/token",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Twilio is not configured");return String(data.token)}
@@ -182,30 +188,156 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
     if(value.includes("not interested"))return {stage:"Closed",outcome:"Not interested"};
     return {stage:"New lead",outcome:"Not contacted"};
   }
-  async function syncSmartFinancial(key=smartKey,notify=true){
-    if(!key){setSmartStatus("Enter the integration key to begin live delivery");return}
+  async function syncLeadFeed(key=leadFeedKey,notify=true){
+    if(!key){setLeadFeedStatus("Enter the integration key to begin live delivery");return}
     try{
-      const response=await fetch("/api/integrations/smartfinancial",{cache:"no-store",headers:{"x-pacifica-webhook-secret":key}});
-      const data=await response.json() as {error?:string;leads?:Array<{id:string;name:string;phone:string;email:string;city:string;product:string;line:LeadLine;disposition:string;notes:string;cost:number;createdAt:string}>};
+      const response=await fetch("/api/integrations/leads",{cache:"no-store",headers:{"x-pacifica-webhook-secret":key}});
+      const data=await response.json() as {error?:string;leads?:Array<{id:string;source?:string;name:string;phone:string;email:string;city:string;product:string;line:LeadLine;disposition:string;notes:string;cost:number;createdAt:string}>};
       if(!response.ok)throw new Error(data.error||"Connection failed");
       let added=0;
       setLeads(old=>{
         const phones=new Set(old.map(item=>item.phone.replace(/\D/g,"")));
         const inbound=(data.leads||[]).filter(item=>{const digits=item.phone.replace(/\D/g,"");if(!digits||phones.has(digits))return false;phones.add(digits);return true}).map<Lead>((item,index)=>{
           const mapped=dispositionFields(item.disposition);added++;
-          return {id:Date.now()+index,name:item.name,phone:item.phone,email:item.email||"",city:item.city||"Imported",status:mapped.stage==="Closed"?"Closed":"Ready",stage:mapped.stage,outcome:mapped.outcome,notes:item.notes||"",followUp:"",doNotCall:false,lastContact:"Never",line:item.line==="life"?"life":"home-auto",source:"SmartFinancial",leadCost:Number(item.cost)||0,product:item.product||"Home & Auto",sourceDisposition:item.disposition||"",importedAt:item.createdAt||new Date().toISOString()};
+          return {id:Date.now()+index,name:item.name,phone:item.phone,email:item.email||"",city:item.city||"Imported",status:mapped.stage==="Closed"?"Closed":"Ready",stage:mapped.stage,outcome:mapped.outcome,notes:item.notes||"",followUp:"",doNotCall:false,lastContact:"Never",line:item.line==="life"?"life":"home-auto",source:item.source||"Lead provider",leadCost:Number(item.cost)||0,product:item.product||"Home & Auto",sourceDisposition:item.disposition||"",importedAt:item.createdAt||new Date().toISOString()};
         });
         return inbound.length?[...inbound,...old]:old;
       });
-      setSmartStatus(`Connected · checking every 20 seconds${added?` · ${added} new lead${added===1?"":"s"}`:""}`);
-      if(notify)setToast(added?`${added} new SmartFinancial lead${added===1?"":"s"} added`:"SmartFinancial is connected — no new leads");
+      setLeadFeedStatus(`Connected · checking every 20 seconds${added?` · ${added} new lead${added===1?"":"s"}`:""}`);
+      if(notify)setToast(added?`${added} new provider lead${added===1?"":"s"} added`:"Lead feed connected — no new leads");
     }
-    catch(error){setSmartStatus(error instanceof Error?error.message:"Connection failed");if(notify)setToast("SmartFinancial connection failed")}
+    catch(error){setLeadFeedStatus(error instanceof Error?error.message:"Connection failed");if(notify)setToast("Lead feed connection failed")}
   }
-  function saveSmartConnection(){const key=smartKey.trim();setSmartKey(key);localStorage.setItem("pacifica-smartfinancial-key",key);void syncSmartFinancial(key,true)}
-  function importFile(file?:File){
-    if(!file)return; const reader=new FileReader();
-    reader.onload=()=>{const text=String(reader.result||"").replace(/^\uFEFF/,"");const rows=text.split(/\r?\n/).filter(row=>row.trim());if(!rows.length){setToast("That file is empty");return}const delimiter=rows[0].includes("\t")?"\t":",";const header=parseRow(rows[0],delimiter).map(value=>value.toLowerCase().replace(/[^a-z0-9]/g,""));const hasHeader=header.some(value=>["phone","prospect","name","email","type","disposition","cost"].includes(value));const find=(...names:string[])=>header.findIndex(value=>names.includes(value));const get=(cells:string[],index:number)=>index>=0?cells[index]?.trim()||"":"";const nameIndex=find("prospect","name","fullname","customername","leadname");const phoneIndex=find("phone","phonenumber","primaryphone","telephone");const emailIndex=find("email","emailaddress");const typeIndex=find("type","product","leadtype","category");const dispositionIndex=find("disposition","status","leadstatus");const costIndex=find("cost","leadcost","price");const cityIndex=find("city","location");const notesIndex=find("notes","note");const smartFinancial=header.includes("prospect")&&header.includes("disposition")&&header.includes("cost");const existingPhones=new Set(leadsRef.current.map(item=>item.phone.replace(/\D/g,"")).filter(Boolean));let duplicates=0;const parsed:Lead[]=[];rows.slice(hasHeader?1:0).forEach((row,i)=>{const cells=parseRow(row,delimiter);const phone=(hasHeader?get(cells,phoneIndex):cells[1]||cells[0]||"").trim();const digits=phone.replace(/\D/g,"");if(digits.length<7)return;if(existingPhones.has(digits)){duplicates++;return}existingPhones.add(digits);const product=hasHeader?get(cells,typeIndex):(activeLine==="life"?"Life":"Home & Auto");const line:LeadLine=/\blife\b/i.test(product)?"life":/home|auto/i.test(product)?"home-auto":activeLine;const disposition=hasHeader?get(cells,dispositionIndex):"";const mapped=dispositionFields(disposition);parsed.push({id:Date.now()+i,name:(hasHeader?get(cells,nameIndex):cells[0])||`Lead ${i+1}`,phone,city:(hasHeader?get(cells,cityIndex):cells[2])||"Imported",email:(hasHeader?get(cells,emailIndex):cells[3])||"",status:mapped.stage==="Closed"?"Closed":"Ready",stage:mapped.stage,outcome:mapped.outcome,notes:(hasHeader?get(cells,notesIndex):"")||"",followUp:"",doNotCall:false,lastContact:"Never",line,source:smartFinancial?"SmartFinancial":"CSV import",leadCost:Number((hasHeader?get(cells,costIndex):"0").replace(/[^0-9.-]/g,""))||0,product:product||(line==="life"?"Life":"Home & Auto"),sourceDisposition:disposition,importedAt:new Date().toISOString()})});if(parsed.length){setLeads(old=>[...parsed,...old]);setIndex(0);const lifeCount=parsed.filter(item=>item.line==="life").length;const homeAutoCount=parsed.length-lifeCount;setToast(`${parsed.length.toLocaleString()} imported · ${lifeCount} Life · ${homeAutoCount} Home/Auto${duplicates?` · ${duplicates} duplicates skipped`:""}`)}else setToast(duplicates?`${duplicates} duplicate contacts skipped`:"No valid phone numbers found")};
+  function saveLeadFeedConnection(){const key=leadFeedKey.trim();setLeadFeedKey(key);localStorage.setItem("pacifica-lead-feed-key",key);void syncLeadFeed(key,true)}
+  function csvRecords(text:string){
+    const records:string[]=[];let record="";let quoted=false;
+    for(let index=0;index<text.length;index++){const char=text[index];if(char==='"'){record+=char;if(quoted&&text[index+1]==='"'){record+=text[++index];continue}quoted=!quoted;continue}if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&text[index+1]==='\n')index++;if(record.trim())records.push(record);record="";continue}record+=char}
+    if(record.trim())records.push(record);return records;
+  }
+  function importFile(file?: File) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || "").replace(/^\uFEFF/, "");
+      const rows = csvRecords(text);
+      if (!rows.length) {
+        setToast("That file is empty");
+        setImportReport("The selected file was empty.");
+        return;
+      }
+
+      const first = rows[0];
+      const delimiter = first.includes("\t") ? "\t" : first.includes(";") && !first.includes(",") ? ";" : first.includes("|") && !first.includes(",") ? "|" : ",";
+      const header = parseRow(first, delimiter).map((value) => value.toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const hasHeader = header.some((value) => ["phone", "phonenumber", "prospect", "name", "fullname", "email", "type", "product", "disposition", "cost"].includes(value));
+      const find = (...names: string[]) => header.findIndex((value) => names.includes(value));
+      const get = (cells: string[], position: number) => (position >= 0 ? cells[position]?.trim() || "" : "");
+
+      const firstNameIndex = find("firstname", "first");
+      const lastNameIndex = find("lastname", "last", "surname");
+      const nameIndex = find("prospect", "name", "fullname", "customername", "leadname", "contactname");
+      const phoneIndex = find("phone", "phonenumber", "primaryphone", "telephone", "mobile", "cellphone");
+      const emailIndex = find("email", "emailaddress");
+      const typeIndex = find("type", "product", "leadtype", "category", "vertical", "insurancetype");
+      const dispositionIndex = find("disposition", "status", "leadstatus", "outcome");
+      const costIndex = find("cost", "leadcost", "price", "leadprice");
+      const cityIndex = find("city", "location");
+      const notesIndex = find("notes", "note", "comments");
+      const sourceIndex = find("source", "leadsource", "provider", "vendor", "publisher");
+      const addressIndex = find("address", "streetaddress", "address1");
+      const stateIndex = find("state", "province");
+      const zipIndex = find("zipcode", "zip", "postalcode");
+      const territoryIndex = find("territory", "market");
+      const brandIndex = find("brand", "agency", "company");
+      const profileIndex = find("profilename", "profile", "campaign");
+      const receivedIndex = find("received", "receivedat", "date", "createdat");
+      const returnIndex = find("return", "returnstatus");
+      const employeesIndex = find("numberofemployees", "employees", "employeecount");
+      const searchProIndex = find("searchpro");
+      const fileSource = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "CSV import";
+
+      const existingPhones = new Set(leadsRef.current.map((item) => item.phone.replace(/\D/g, "")).filter(Boolean));
+      let duplicates = 0;
+      let invalid = 0;
+      let detectedLife = 0;
+      let detectedHomeAuto = 0;
+      const parsed: Lead[] = [];
+
+      rows.slice(hasHeader ? 1 : 0).forEach((row, rowIndex) => {
+        const cells = parseRow(row, delimiter);
+        const phone = (hasHeader ? get(cells, phoneIndex) : cells[1] || cells[0] || "").trim();
+        const digits = phone.replace(/\D/g, "");
+        if (digits.length < 7) {
+          invalid++;
+          return;
+        }
+        const product = hasHeader ? get(cells, typeIndex) : activeLine === "life" ? "Life" : "Home & Auto";
+        const line: LeadLine = /\blife\b/i.test(product) ? "life" : /home|auto|vehicle|property/i.test(product) ? "home-auto" : activeLine;
+        if (line === "life") detectedLife++;
+        else detectedHomeAuto++;
+        if (existingPhones.has(digits)) {
+          duplicates++;
+          return;
+        }
+        existingPhones.add(digits);
+        const disposition = hasHeader ? get(cells, dispositionIndex) : "";
+        const mapped = dispositionFields(disposition);
+        const combinedName = hasHeader ? [get(cells, firstNameIndex), get(cells, lastNameIndex)].filter(Boolean).join(" ") : "";
+
+        parsed.push({
+          id: Date.now() + rowIndex,
+          name: (hasHeader ? get(cells, nameIndex) : cells[0]) || combinedName || "Lead " + (rowIndex + 1),
+          phone,
+          city: (hasHeader ? get(cells, cityIndex) : cells[2]) || "Imported",
+          email: (hasHeader ? get(cells, emailIndex) : cells[3]) || "",
+          status: mapped.stage === "Closed" ? "Closed" : "Ready",
+          stage: mapped.stage,
+          outcome: mapped.outcome,
+          notes: (hasHeader ? get(cells, notesIndex) : "") || "",
+          followUp: "",
+          doNotCall: false,
+          lastContact: "Never",
+          line,
+          source: (hasHeader ? get(cells, sourceIndex) : "") || fileSource,
+          leadCost: Number((hasHeader ? get(cells, costIndex) : "0").replace(/[^0-9.-]/g, "")) || 0,
+          product: product || (line === "life" ? "Life" : "Home & Auto"),
+          sourceDisposition: disposition,
+          importedAt: new Date().toISOString(),
+          address: get(cells, addressIndex),
+          state: get(cells, stateIndex),
+          zip: get(cells, zipIndex),
+          territory: get(cells, territoryIndex),
+          brand: get(cells, brandIndex),
+          profileName: get(cells, profileIndex),
+          received: get(cells, receivedIndex),
+          returnStatus: get(cells, returnIndex),
+          employeeCount: get(cells, employeesIndex),
+          searchPro: get(cells, searchProIndex),
+        });
+      });
+
+      const dominantLine: LeadLine = detectedHomeAuto > detectedLife ? "home-auto" : "life";
+      if (detectedLife + detectedHomeAuto && ((activeLine === "life" && detectedLife === 0) || (activeLine === "home-auto" && detectedHomeAuto === 0))) {
+        activeLineRef.current = dominantLine;
+        setActiveLine(dominantLine);
+        setIndex(0);
+      }
+      setView("leads");
+
+      if (parsed.length) {
+        setLeads((old) => [...parsed, ...old]);
+        setIndex(0);
+        const lifeCount = parsed.filter((item) => item.line === "life").length;
+        const homeAutoCount = parsed.length - lifeCount;
+        const summary = parsed.length.toLocaleString() + " imported · " + lifeCount + " Life · " + homeAutoCount + " Home/Auto" + (duplicates ? " · " + duplicates + " duplicates skipped" : "") + (invalid ? " · " + invalid + " invalid rows" : "");
+        setImportReport(summary);
+        setToast(summary);
+      } else {
+        const summary = duplicates ? duplicates + " contacts were already in the CRM. Showing the matching lead tab." : "No valid phone numbers found" + (invalid ? " · " + invalid + " rows rejected" : "");
+        setImportReport(summary);
+        setToast(summary);
+      }
+    };
     reader.readAsText(file);
   }
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
@@ -253,7 +385,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>+1 (417) 441-2831</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" aria-label="Lead type"><button className={activeLine==="life"?"active":""} disabled={dialing} onClick={()=>switchLine("life")}>Life leads</button><button className={activeLine==="home-auto"?"active":""} disabled={dialing} onClick={()=>switchLine("home-auto")}>Home & Auto</button></div><div className="top-actions"><span className="connection"><Icon name="wifi"/>{provider}</span><button className="notification" aria-label="Notifications"><Icon name="bell"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import to {activeLine==="life"?"Life":"Home & Auto"}</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={e=>importFile(e.target.files?.[0])}/></div></header>
+      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>+1 (417) 441-2831</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" aria-label="Lead type"><button className={activeLine==="life"?"active":""} disabled={dialing} onClick={()=>switchLine("life")}>Life leads</button><button className={activeLine==="home-auto"?"active":""} disabled={dialing} onClick={()=>switchLine("home-auto")}>Home & Auto</button></div><div className="top-actions"><span className="connection"><Icon name="wifi"/>{provider}</span><button className="notification" aria-label="Notifications"><Icon name="bell"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import lead CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/></div></header>
 
       {view==="dialer"&&<div className="dialer-view"><div className="dialer-main-grid">
         <section className={`hero-call ${connected?"connected":""}`}>
@@ -271,6 +403,36 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
             {connected&&<div className="connected-note"><i/> Live conversation. Hang up when finished; the next eligible contact will begin automatically.</div>}
           </div>
         </section>
+        <aside className="lead-file" aria-label="Current lead file">
+          <header>
+            <div><span>LIVE LEAD FILE</span><b>{manualCall?"Manual call":lead.name}</b></div>
+            <em className={connected?"live":""}>{connected?"ON CALL":callableLeads.length?`${Math.min(index+1,callableLeads.length)} OF ${callableLeads.length}`:"NO QUEUE"}</em>
+          </header>
+          {lead.id&&!manualCall?<>
+            <div className="lead-file-identity"><span className="file-avatar">{lead.name.split(" ").map(part=>part[0]).slice(0,2).join("")}</span><div><a href={`tel:${lead.phone}`}>{lead.phone}</a><a href={`mailto:${lead.email}`}>{lead.email||"No email provided"}</a><small>{[lead.address,lead.city,lead.state,lead.zip].filter(Boolean).join(", ")||lead.city||"No address provided"}</small></div></div>
+            <div className="lead-file-grid">
+              <label><span>Lead source</span><b>{lead.source||"Unknown"}</b></label>
+              <label><span>Product</span><b>{lead.product||"—"}</b></label>
+              <label><span>Lead cost</span><b>{lead.leadCost?`$${lead.leadCost.toFixed(2)}`:"—"}</b></label>
+              <label><span>Received</span><b>{lead.received||lead.importedAt||"—"}</b></label>
+              <label><span>Original status</span><b>{lead.sourceDisposition||"New lead"}</b></label>
+              <label><span>Last contact</span><b>{lead.lastContact||"Never"}</b></label>
+              {lead.brand&&<label><span>Brand / agency</span><b>{lead.brand}</b></label>}
+              {lead.profileName&&<label><span>Lead profile</span><b>{lead.profileName}</b></label>}
+              {lead.territory&&<label><span>Territory</span><b>{lead.territory}</b></label>}
+              {lead.returnStatus&&<label><span>Return status</span><b>{lead.returnStatus}</b></label>}
+              {lead.employeeCount&&<label><span>Employees</span><b>{lead.employeeCount}</b></label>}
+              {lead.searchPro&&<label><span>Search Pro</span><b>{lead.searchPro}</b></label>}
+            </div>
+            <div className="lead-file-edit">
+              <label><span>CRM stage</span><select value={lead.stage} onChange={event=>updateLead(lead.id,{stage:event.target.value})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
+              <label><span>Outcome</span><select value={lead.outcome} onChange={event=>updateLead(lead.id,{outcome:event.target.value})}><option>Not contacted</option><option>No answer</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Completed</option></select></label>
+              <label><span>Follow-up</span><input value={lead.followUp} onChange={event=>updateLead(lead.id,{followUp:event.target.value})} placeholder="Date, time, or reminder"/></label>
+              <label className="file-notes"><span>Agent notes</span><textarea value={lead.notes} onChange={event=>updateLead(lead.id,{notes:event.target.value})} placeholder="Add notes while you speak…"/></label>
+            </div>
+            <footer><button onClick={()=>{setSelectedLead(lead.id);setView("leads")}}>Open complete CRM record</button><button className={lead.doNotCall?"dnc-active":""} onClick={()=>updateLead(lead.id,{doNotCall:!lead.doNotCall})}>{lead.doNotCall?"Remove DNC":"Mark DNC"}</button></footer>
+          </>:<div className="lead-file-empty"><Icon name="users"/><b>No queued lead selected</b><span>Import contacts or switch from manual dialing to see the full lead file here.</span></div>}
+        </aside>
         <aside className="phone-pad side-pad" aria-label="Phone keypad"><header><span><i/> MANUAL KEYPAD</span><span className="pad-tools"><small>{phoneReady?"TWILIO":"SETUP"}</small></span></header><div className="number-display"><input value={dialNumber} onChange={e=>setDialNumber(e.target.value.replace(/[^0-9+*#() -]/g,""))} placeholder="Enter a number"/><small>{phoneStatus.toUpperCase()}</small></div><div className="key-grid">{[["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""] ,["0","+"],["#",""]].map(([n,l])=><button key={n} onClick={()=>pressKey(n)}><b>{n}</b><small>{l}</small></button>)}</div><div className="phone-actions"><button className="erase" onClick={()=>setDialNumber(v=>v.slice(0,-1))}>⌫</button><button className="phone-call" onClick={callTypedNumber} disabled={dialing}><Icon name="dial"/></button><span/></div><p>{connected?"Key presses send touch tones during the call.":"Calls use your browser microphone and speakers over Wi-Fi."}</p></aside></div>
 
         <section className="bottom-grid">
@@ -279,7 +441,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
         </section>
       </div>}
 
-      {view==="leads"&&<div className="page-view crm-view"><div className="page-title"><div><span className="eyebrow">{activeLine==="life"?"LIFE":"HOME & AUTO"} CRM</span><h1>{activeLine==="life"?"Life insurance relationships.":"Home and auto opportunities."}</h1><p>Upload a SmartFinancial Download Report or a standard CSV. Product type routes each lead to the correct CRM automatically.</p></div><button className="primary" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import SmartFinancial CSV</button></div><div className="import-hint"><span>SMARTFINANCIAL READY</span><p>Recognizes Prospect, Type, Phone, Disposition, Notes, Cost, and Email. Duplicate phone numbers are skipped before dialing.</p></div><div className="crm-summary five"><article><span>THIS CRM</span><b>{lineLeads.length}</b></article><article><span>LEAD SPEND</span><b>${lineLeads.reduce((total,leadItem)=>total+leadItem.leadCost,0).toFixed(0)}</b></article><article><span>FOLLOW-UPS DUE</span><b>{lineLeads.filter(l=>l.followUp).length}</b></article><article><span>APPOINTMENTS</span><b>{lineLeads.filter(l=>l.stage==="Appointment").length}</b></article><article><span>DO NOT CALL</span><b>{lineLeads.filter(l=>l.doNotCall).length}</b></article></div><div className="crm-tools"><label><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, source, product, email, or city"/></label><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}>{sourceOptions.map(source=><option key={source}>{source}</option>)}</select><select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option>All stages</option><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></div><div className="table-card crm-table smart-table"><div className="table-head"><span>CONTACT</span><span>SOURCE / COST</span><span>STAGE</span><span>LAST OUTCOME</span><span>FOLLOW-UP</span></div>{filteredLeads.map(l=><button className="table-row" key={l.id} onClick={()=>setSelectedLead(l.id)}><span><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><b>{l.name}</b><small>{l.phone} · {l.email||"No email"}</small></span></span><span className="lead-source"><b>{l.source}</b><small>{l.product}{l.leadCost?` · $${l.leadCost.toFixed(2)}`:""}</small></span><span><em className={`stage ${l.stage.toLowerCase().replace(" ","-")}`}>{l.stage}</em></span><span>{l.outcome}</span><span>{l.followUp||"—"}{l.doNotCall&&<strong className="dnc">DNC</strong>}</span></button>)}{!filteredLeads.length&&<div className="empty-state">No {activeLine==="life"?"Life":"Home & Auto"} contacts match those filters.</div>}</div></div>}
+      {view==="leads"&&<div className="page-view crm-view"><div className="page-title"><div><span className="eyebrow">{activeLine==="life"?"LIFE":"HOME & AUTO"} CRM</span><h1>{activeLine==="life"?"Life insurance relationships.":"Home and auto opportunities."}</h1><p>Upload a CSV from any lead company. Pacifica reads the product type and opens the correct CRM automatically.</p></div><button className="primary" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import lead CSV</button></div><div className="import-hint"><span>UNIVERSAL CSV IMPORT</span><p>{importReport}</p></div><div className="crm-summary five"><article><span>THIS CRM</span><b>{lineLeads.length}</b></article><article><span>LEAD SPEND</span><b>${lineLeads.reduce((total,leadItem)=>total+leadItem.leadCost,0).toFixed(0)}</b></article><article><span>FOLLOW-UPS DUE</span><b>{lineLeads.filter(l=>l.followUp).length}</b></article><article><span>APPOINTMENTS</span><b>{lineLeads.filter(l=>l.stage==="Appointment").length}</b></article><article><span>DO NOT CALL</span><b>{lineLeads.filter(l=>l.doNotCall).length}</b></article></div><div className="crm-tools"><label><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name, phone, source, product, email, or city"/></label><select value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}>{sourceOptions.map(source=><option key={source}>{source}</option>)}</select><select value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option>All stages</option><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></div><div className="table-card crm-table smart-table"><div className="table-head"><span>CONTACT</span><span>SOURCE / COST</span><span>STAGE</span><span>LAST OUTCOME</span><span>FOLLOW-UP</span></div>{filteredLeads.map(l=><button className="table-row" key={l.id} onClick={()=>setSelectedLead(l.id)}><span><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><b>{l.name}</b><small>{l.phone} · {l.email||"No email"}</small></span></span><span className="lead-source"><b>{l.source}</b><small>{l.product}{l.leadCost?` · $${l.leadCost.toFixed(2)}`:""}</small></span><span><em className={`stage ${l.stage.toLowerCase().replace(" ","-")}`}>{l.stage}</em></span><span>{l.outcome}</span><span>{l.followUp||"—"}{l.doNotCall&&<strong className="dnc">DNC</strong>}</span></button>)}{!filteredLeads.length&&<div className="empty-state">No {activeLine==="life"?"Life":"Home & Auto"} contacts match those filters.</div>}</div></div>}
 
       {view==="ai"&&<AiCommandCenter leads={lineLeads} onApply={applyAiAction}/>} 
 
@@ -295,7 +457,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
         <article><span>AGENCY</span><h2>$499<small>/month</small></h2><p>For multi-agent production teams needing more capacity.</p><ul><li>Up to 15 user seats</li><li>Up to 15 assigned Twilio numbers</li><li>Agency-level campaigns and reporting</li><li>Number reputation monitoring</li><li>White-glove setup</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("agency")}>{checkoutPlan==="agency"?"Opening secure checkout…":"Start Agency"}</button></article>
       </div><div className="membership-actions"><button onClick={()=>void manageMembership()}>Manage membership</button><span>Update payment details, view invoices, or cancel securely through Stripe.</span></div><section className="billing-compliance"><div><span>COMPLIANCE IS PART OF THE PRODUCT</span><h2>Every subscriber accepts the customer compliance agreement.</h2><p>Customers remain responsible for consent, lead sources, Do Not Call suppression, calling hours, licensing, and recording disclosures. Pacifica may suspend unsafe campaigns.</p></div><a href="/terms" target="_blank">Read customer agreement ↗</a></section><p className="billing-note">Subscription prices exclude Twilio usage, applicable taxes, and optional carrier-data integrations. Recurring billing and membership management are securely handled by Stripe.</p></div>}
 
-      {isOwner&&view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">OWNER CONFIGURATION</span><h1>Connect the systems that feed Pacifica.</h1><p>Choose your audio devices and connect SmartFinancial for automatic lead delivery.</p></div></div><div className="phone-setup-layout"><PhoneSettings ensureDevice={ensureDevice}/><div className="phone-setup-side"><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The token endpoint, TwiML voice webhook, microphone preflight, and runtime error reporting are installed.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"SERVER CONFIGURED":"CONFIGURATION NEEDED"}</div></div><article className="setup-help"><span>REQUIRED TWIML APP URL</span><code>https://dialer-one-theta.vercel.app/api/twilio/voice</code><p>Method: HTTP POST. After any Vercel environment-variable change, redeploy the Production deployment.</p><a href="/api/twilio/diagnostics" target="_blank">Open safe diagnostics ↗</a></article><article className="smart-connect"><header><div><span>SMARTFINANCIAL LIVE DELIVERY</span><h2>New leads → Pacifica automatically</h2></div><strong className={smartKey?"connected":""}><i/> {smartKey?"KEY SAVED":"SETUP"}</strong></header><p>Ask your SmartFinancial account manager to enable CRM delivery and POST every new lead to this endpoint:</p><code>https://dialer-one-theta.vercel.app/api/integrations/smartfinancial?key=YOUR_SECRET</code><label>Integration key<input type="password" value={smartKey} onChange={e=>setSmartKey(e.target.value)} placeholder="Same value as SMARTFINANCIAL_WEBHOOK_SECRET"/></label><div><button onClick={saveSmartConnection}>Save & test connection</button><small>{smartStatus}</small></div></article></div></div></div>}
+      {isOwner&&view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">OWNER CONFIGURATION</span><h1>Connect the systems that feed Pacifica.</h1><p>Choose your audio devices and connect any lead provider for automatic delivery.</p></div></div><div className="phone-setup-layout"><PhoneSettings ensureDevice={ensureDevice}/><div className="phone-setup-side"><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The token endpoint, TwiML voice webhook, microphone preflight, and runtime error reporting are installed.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"SERVER CONFIGURED":"CONFIGURATION NEEDED"}</div></div><article className="setup-help"><span>REQUIRED TWIML APP URL</span><code>https://pacificacrm.com/api/twilio/voice</code><p>Method: HTTP POST. After any Vercel environment-variable change, redeploy the Production deployment.</p><a href="/api/twilio/diagnostics" target="_blank">Open safe diagnostics ↗</a></article><article className="smart-connect"><header><div><span>UNIVERSAL LEAD DELIVERY</span><h2>Any lead provider → Pacifica automatically</h2></div><strong className={leadFeedKey?"connected":""}><i/> {leadFeedKey?"KEY SAVED":"SETUP"}</strong></header><p>Give any lead company this POST endpoint. Replace PROVIDER_NAME with its name so every contact keeps its source:</p><code>https://pacificacrm.com/api/integrations/leads?source=PROVIDER_NAME&amp;key=YOUR_SECRET</code><label>Integration key<input type="password" value={leadFeedKey} onChange={e=>setLeadFeedKey(e.target.value)} placeholder="Same value as LEAD_WEBHOOK_SECRET"/></label><div><button onClick={saveLeadFeedConnection}>Save & test connection</button><small>{leadFeedStatus}</small></div></article></div></div></div>}
     </section>
     {showPhoneSettings&&<div className="phone-config-overlay"><PhoneSettings compact ensureDevice={ensureDevice} onClose={()=>setShowPhoneSettings(false)}/></div>}
     {activeLead&&<div className="drawer-backdrop" onClick={()=>setSelectedLead(null)}><aside className="contact-drawer" onClick={e=>e.stopPropagation()}><header><div className="drawer-person"><i>{activeLead.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><small>{activeLead.line==="life"?"LIFE":"HOME & AUTO"} CONTACT</small><h2>{activeLead.name}</h2><p>{activeLead.phone} · {activeLead.city}</p></span></div><button aria-label="Close contact" onClick={()=>setSelectedLead(null)}>×</button></header><div className="record-actions"><button disabled={activeLead.stage==="Closed"||activeLead.doNotCall} onClick={()=>{switchLine(activeLead.line);setSelectedLead(null);setView("dialer");setToast("Contact category loaded in dialer")}}><Icon name="dial"/> Load in dialer</button><button onClick={()=>updateLead(activeLead.id,{doNotCall:!activeLead.doNotCall})} className={activeLead.doNotCall?"danger-active":""}>{activeLead.doNotCall?"Remove DNC":"Do not call"}</button><button className={activeLead.stage==="Closed"?"reopen-lead":"close-lead"} onClick={()=>{const reopening=activeLead.stage==="Closed";updateLead(activeLead.id,{stage:reopening?"New lead":"Closed",status:reopening?"Ready":"Closed",followUp:reopening?activeLead.followUp:""});setToast(reopening?"Lead reopened and returned to the active queue":"Lead closed and removed from follow-ups")}}>{activeLead.stage==="Closed"?"Reopen lead":"Close lead"}</button></div><section className="record-section"><span className="section-label">CONTACT DETAILS</span><div className="field-grid"><label>Name<input value={activeLead.name} onChange={e=>updateLead(activeLead.id,{name:e.target.value})}/></label><label>Phone<input value={activeLead.phone} onChange={e=>updateLead(activeLead.id,{phone:e.target.value})}/></label><label>Email<input value={activeLead.email} onChange={e=>updateLead(activeLead.id,{email:e.target.value})}/></label><label>City<input value={activeLead.city} onChange={e=>updateLead(activeLead.id,{city:e.target.value})}/></label><label>Lead category<select value={activeLead.line} onChange={e=>updateLead(activeLead.id,{line:e.target.value as LeadLine})}><option value="life">Life</option><option value="home-auto">Home & Auto</option></select></label></div></section><section className="record-section"><span className="section-label">PIPELINE & OUTCOME</span><div className="field-grid"><label>Stage<select value={activeLead.stage} onChange={e=>updateLead(activeLead.id,{stage:e.target.value,status:e.target.value==="Closed"?"Closed":"Ready"})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label><label>Call outcome<select value={activeLead.outcome} onChange={e=>updateLead(activeLead.id,{outcome:e.target.value,lastContact:"Just now"})}><option>Not contacted</option><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option></select></label><label>Follow-up date<input type="date" value={activeLead.followUp} onChange={e=>updateLead(activeLead.id,{followUp:e.target.value,stage:e.target.value?"Follow-up":activeLead.stage})}/></label><label>Last contact<input disabled value={activeLead.lastContact}/></label></div></section><section className="record-section"><span className="section-label">NOTES</span><textarea value={activeLead.notes} onChange={e=>updateLead(activeLead.id,{notes:e.target.value})} placeholder="Add conversation notes, needs, objections, or next steps…"/></section><section className="timeline"><span className="section-label">ACTIVITY</span><div><i/><span><b>{activeLead.outcome}</b><small>{activeLead.lastContact}</small></span></div>{activeLead.stage==="Closed"&&<div><i className="navy"/><span><b>Lead closed</b><small>Excluded from dialing and follow-ups</small></span></div>}{activeLead.followUp&&<div><i className="amber"/><span><b>Follow-up scheduled</b><small>{activeLead.followUp}</small></span></div>}<div><i className="navy"/><span><b>Contact added to Pacific CRM</b><small>July 2026</small></span></div></section><footer><button onClick={()=>{setToast("Contact changes saved");setSelectedLead(null)}}>Save contact</button></footer></aside></div>}

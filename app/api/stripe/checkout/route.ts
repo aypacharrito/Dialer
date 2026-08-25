@@ -12,7 +12,11 @@ function checkoutErrorMessage(error:{message?:string;code?:string;type?:string;p
   if(error.type==="StripeAuthenticationError"||error.code==="api_key_expired")return "Stripe rejected the server key. Replace it with an active sk_live_ or properly permitted rk_live_ key from this Stripe account.";
   if(error.type==="StripePermissionError")return "The restricted Stripe key does not have permission to create Checkout sessions. Add Checkout write access or use the account's server secret key.";
   if(error.code==="resource_missing"||error.param?.includes("price"))return "Stripe could not find this Price ID in the same account and mode as the server key. Confirm it begins with price_ and comes from Live mode.";
-  return "Stripe could not create this subscription. Open Vercel runtime logs for the Stripe error code, then verify the server key and Live Price ID belong to the same account.";
+  const reference=[error.code||error.type,error.param].filter(Boolean).join(" · ")||"unknown_error";
+  const safeMessage=(error.message||"Stripe rejected the Checkout request")
+    .replace(/(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]+/g,"[redacted Stripe key]")
+    .replace(/whsec_[A-Za-z0-9]+/g,"[redacted webhook secret]");
+  return `Stripe error (${reference}): ${safeMessage}`;
 }
 
 export async function POST(request: Request) {

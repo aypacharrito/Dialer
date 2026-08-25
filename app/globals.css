@@ -892,3 +892,55 @@ button,input,select,textarea{font-family:inherit}
 .membership-actions button{border:1px solid #2f6a58;background:#15392f;color:#70e2bf;border-radius:8px;padding:10px 14px;font-size:9px;font-weight:900;cursor:pointer}
 .membership-actions span{color:#6e8291;font-size:8px}
 @media(max-width:780px){.top-auth>button{display:none}.membership-actions{align-items:flex-start;flex-direction:column}.membership-actions span{line-height:1.5}}
+
+/* Dialer-side lead file: follows the active queue record and stays editable during calls. */
+.dialer-main-grid{grid-template-columns:minmax(0,1fr) 370px;align-items:start}
+.dialer-main-grid>.hero-call{grid-column:1;grid-row:1 / span 2}
+.dialer-main-grid>.lead-file{grid-column:2;grid-row:1}
+.dialer-main-grid>.side-pad{grid-column:2;grid-row:2}
+.lead-file{background:#0e1925;border:1px solid #243446;border-radius:15px;color:#dce9ef;overflow:hidden;min-width:0}
+.lead-file>header{min-height:58px;padding:13px 15px;border-bottom:1px solid #243446;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#101d2a}
+.lead-file>header div{min-width:0}
+.lead-file>header span{display:block;color:#5fc5d1;font-size:7px;font-weight:900;letter-spacing:.15em;margin-bottom:5px}
+.lead-file>header b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lead-file>header em{flex:none;border:1px solid #2b4659;background:#152837;color:#7f9aaa;border-radius:999px;padding:6px 8px;font-size:7px;font-style:normal;font-weight:900;letter-spacing:.08em}
+.lead-file>header em.live{color:#64ddb8;border-color:#28634f;background:#103328}
+.lead-file-identity{display:grid;grid-template-columns:48px minmax(0,1fr);gap:11px;padding:14px 15px;border-bottom:1px solid #203142}
+.file-avatar{width:48px;height:48px;border:1px solid #38647a;border-radius:12px;background:#173348;color:#9de5eb;display:grid;place-items:center;font-size:13px;font-weight:900}
+.lead-file-identity a,.lead-file-identity small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lead-file-identity a{color:#8ad3dd;text-decoration:none;font-size:10px;line-height:1.65}
+.lead-file-identity small{color:#70889a;font-size:8px;line-height:1.5}
+.lead-file-grid{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #203142}
+.lead-file-grid label{min-width:0;padding:10px 12px;border-right:1px solid #203142;border-bottom:1px solid #203142}
+.lead-file-grid label:nth-child(even){border-right:0}
+.lead-file-grid span,.lead-file-edit span{display:block;color:#60798c;font-size:7px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;margin-bottom:5px}
+.lead-file-grid b{display:block;color:#c8d8e3;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lead-file-edit{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 14px}
+.lead-file-edit label{min-width:0}
+.lead-file-edit select,.lead-file-edit input,.lead-file-edit textarea{width:100%;border:1px solid #2a4053;background:#0a1520;color:#c9d9e2;border-radius:7px;font:inherit;font-size:9px;padding:8px;outline:none}
+.lead-file-edit select:focus,.lead-file-edit input:focus,.lead-file-edit textarea:focus{border-color:#39aeba}
+.lead-file-edit .file-notes{grid-column:1/-1}
+.lead-file-edit textarea{min-height:70px;resize:vertical;line-height:1.45}
+.lead-file>footer{display:flex;gap:8px;padding:0 14px 14px}
+.lead-file>footer button{border:1px solid #2d5b69;background:#123241;color:#73d4dc;border-radius:7px;padding:9px 10px;font-size:8px;font-weight:900;cursor:pointer}
+.lead-file>footer button:first-child{flex:1}
+.lead-file>footer button:last-child{border-color:#5a3f40;background:#291b21;color:#ef8c91}
+.lead-file>footer button.dnc-active{border-color:#7a5354;background:#49252b;color:#ff9da0}
+.lead-file-empty{min-height:260px;padding:34px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#647b8d}
+.lead-file-empty svg{width:30px;height:30px;margin-bottom:12px;color:#4d778d}
+.lead-file-empty b{color:#bfd0db;font-size:11px}
+.lead-file-empty span{font-size:8px;line-height:1.55;margin-top:7px}
+
+@media(min-width:1450px){
+  .dialer-main-grid{grid-template-columns:minmax(500px,1fr) 390px 300px}
+  .dialer-main-grid>.hero-call{grid-column:1;grid-row:1}
+  .dialer-main-grid>.lead-file{grid-column:2;grid-row:1}
+  .dialer-main-grid>.side-pad{grid-column:3;grid-row:1}
+}
+@media(max-width:1180px){
+  .dialer-main-grid{grid-template-columns:1fr}
+  .dialer-main-grid>.hero-call,.dialer-main-grid>.lead-file,.dialer-main-grid>.side-pad{grid-column:1;grid-row:auto;width:100%;max-width:none}
+  .lead-file{max-width:760px;margin:auto}
+  .dialer-main-grid>.side-pad{max-width:430px}
+}
+@media(max-width:560px){.lead-file-grid,.lead-file-edit{grid-template-columns:1fr}.lead-file-grid label{border-right:0}.lead-file-edit .file-notes{grid-column:auto}.lead-file>footer{flex-direction:column}}

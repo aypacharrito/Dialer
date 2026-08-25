@@ -3,7 +3,7 @@ import { index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core
 export const inboundLeads = sqliteTable("inbound_leads", {
   id: text("id").primaryKey(),
   vendorId: text("vendor_id"),
-  source: text("source").notNull().default("SmartFinancial"),
+  source: text("source").notNull().default("Lead provider"),
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   phoneDigits: text("phone_digits").notNull().unique(),

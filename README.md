@@ -141,21 +141,21 @@ The Reports screen calculates a local behavioral risk signal from short, failed,
 
 For legitimate consent-based calling, complete Twilio Trust Hub registrations for SHAKEN/STIR, CNAM, Voice Integrity, and optionally Branded Calling. Use Twilio Voice Insights for carrier-confirmed deliverability and blocking data. Keep opt-in records, honor DNC requests, avoid rapid repeat attempts, and never rotate caller IDs to evade spam controls.
 
-## Connect SmartFinancial automatically
+## Connect any lead provider automatically
 
-Pacifica accepts real-time SmartFinancial lead delivery at:
+Pacifica accepts real-time lead delivery from agencies, marketplaces, forms, and lead vendors at:
 
 ```text
-POST https://YOUR-DOMAIN.com/api/integrations/smartfinancial?key=YOUR_SECRET
+POST https://YOUR-DOMAIN.com/api/integrations/leads?source=PROVIDER_NAME&key=YOUR_SECRET
 ```
 
 1. In Vercel Marketplace, install **Upstash Redis** on the `dialer` project. Vercel injects `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
-2. Create a long random value for `SMARTFINANCIAL_WEBHOOK_SECRET` in Vercel Production environment variables and redeploy.
-3. Open **Phone setup** → **SmartFinancial live delivery** in Pacifica, paste that same secret, and click **Save & test connection**.
-4. Ask the SmartFinancial account manager to enable alternate CRM delivery and POST new leads to the endpoint above. Send JSON or form data; the receiver recognizes common variants for name, phone, email, product/type, disposition, cost, city, and notes.
+2. Create a long random value for `LEAD_WEBHOOK_SECRET` in Vercel Production environment variables and redeploy. The legacy `SMARTFINANCIAL_WEBHOOK_SECRET` remains accepted for existing connections.
+3. Open **Owner settings** → **Universal lead delivery** in Pacifica, paste that same secret, and click **Save & test connection**.
+4. Ask each lead provider to POST new leads to the endpoint above and give it a distinct `source` name. Send JSON or form data; the receiver recognizes common variants for name, phone, email, product/type, disposition, cost, city, source, and notes.
 5. Send one test lead. Pacifica checks the inbox every 20 seconds, skips duplicate phone numbers, and routes Life versus Home/Auto automatically.
 
-Keep the endpoint secret. CSV Download Report import remains available as a backup and now recognizes SmartFinancial headers.
+Keep the endpoint secret. Universal CSV import remains available as a backup and recognizes common lead-export headers.
 
 ## Activate live insurance quotes
 
@@ -168,7 +168,7 @@ The Quote Center saves complete Life, Home, and Auto intakes now. It intentional
 
 ## Important prototype note
 
-SmartFinancial inbound leads are stored server-side; working contact edits and call history still stay in each browser through local storage. The next production milestone is authentication plus a fully shared database so paid customers and multiple agents can see only their own contacts, call history, and follow-ups. Keep outbound dialing sequential—one agent assigned to one call—unless counsel approves and the system implements every predictive-dialing and abandonment safeguard. Recording, transcription, and AI analysis require jurisdiction-appropriate disclosure and consent.
+Inbound leads, CRM edits, and call history are stored in each authenticated user's cloud workspace with browser storage as a local fallback. Keep outbound dialing sequential—one agent assigned to one call—unless counsel approves and the system implements every predictive-dialing and abandonment safeguard. Recording, transcription, and AI analysis require jurisdiction-appropriate disclosure and consent.
 
 ## Main source files
 
