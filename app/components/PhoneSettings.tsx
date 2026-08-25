@@ -46,8 +46,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     if (monitorFrameRef.current) window.cancelAnimationFrame(monitorFrameRef.current);
     monitorTimerRef.current = null;
     monitorFrameRef.current = null;
-    const processed = monitorProcessedStreamRef.current;
-    if (monitorProcessorRef.current && processed) void monitorProcessorRef.current.destroyProcessedStream(processed);
+    if (monitorProcessorRef.current) void monitorProcessorRef.current.destroyProcessedStream();
     monitorProcessorRef.current = null;
     monitorProcessedStreamRef.current = null;
     monitorStreamRef.current?.getTracks().forEach(track => track.stop());

@@ -4,7 +4,14 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd "${script_dir}/.." && pwd)"
 
-if rg -n -i "d[e]mo|insurance[[:space:]]+crm" "${project_dir}/app"; then
+if command -v rg >/dev/null 2>&1; then
+  retired_wording_found="$(rg -n -i "d[e]mo|insurance[[:space:]]+crm" "${project_dir}/app" || true)"
+else
+  retired_wording_found="$(grep -RInE "d[e]mo|insurance[[:space:]]+crm" "${project_dir}/app" || true)"
+fi
+
+if [[ -n "${retired_wording_found}" ]]; then
+  printf '%s\n' "${retired_wording_found}"
   echo "Blocked release: retired product wording remains in app source." >&2
   exit 65
 fi
