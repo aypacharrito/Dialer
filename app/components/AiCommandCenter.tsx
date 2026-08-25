@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Lead = {
   id: number;
@@ -44,6 +44,11 @@ const quickPrompts = [
   {title:"Write a follow-up",detail:"Friendly, natural, and specific",prompt:"Draft a friendly business-casual follow-up for my interested prospects."},
 ];
 
+function browserAnalysis(leads:Lead[],notice:string):AiResult{
+  const priorities=leads.slice(0,5).map((lead,index)=>({leadId:lead.id,leadName:lead.name,score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"This contact already showed interest and deserves a prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"This is an open opportunity without a completed next step.",nextStep:lead.followUp?`Follow up on ${lead.followUp}`:"Call and confirm needs, timing, and preferred coverage."}));
+  return {summary:`I reviewed ${leads.length} active contact${leads.length===1?"":"s"}. Start with the first contacts below, then work scheduled follow-ups before untouched leads.`,priorities,actions:[],draft:"",mode:"smart-fallback",notice};
+}
+
 export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(action:AiAction)=>void}) {
   const [prompt,setPrompt]=useState("");
   const [includeNotes,setIncludeNotes]=useState(false);
@@ -51,24 +56,27 @@ export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(a
   const [result,setResult]=useState<AiResult|null>(null);
   const [error,setError]=useState("");
   const [applied,setApplied]=useState<number[]>([]);
+  const [service,setService]=useState("Checking AI connection…");
   const eligible=useMemo(()=>leads.filter(lead=>!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
+
+  useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"OpenAI connected":"Smart fallback ready")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
 
   async function run(nextPrompt=prompt){
     const question=nextPrompt.trim();
     if(!question)return;
     setPrompt(question);setLoading(true);setError("");setApplied([]);
     try{
-      const response=await fetch("/api/ai/crm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,leads:eligible.slice(0,100)})});
+      const response=await fetch("/api/ai/crm",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,leads:eligible.slice(0,100)})});
       const data=await response.json().catch(()=>({})) as AiResult&{error?:string};
       if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");
       setResult(data);
-    }catch(err){setError(err instanceof Error?err.message:"Pacifica could not complete that request")}
+    }catch(err){const message=err instanceof Error?err.message:"Pacifica could not complete that request";setError(`Server connection: ${message}. I completed a local CRM review below.`);setResult(browserAnalysis(eligible.slice(0,100),"Pacifica used the secure browser fallback because the server AI route did not answer."))}
     finally{setLoading(false)}
   }
 
   return <div className="ai-workspace">
     <header className="ai-shell-header">
-      <div className="ai-shell-brand"><i>P</i><span><b>Pacifica AI</b><small>{eligible.length} active CRM record{eligible.length===1?"":"s"} ready</small></span></div>
+      <div className="ai-shell-brand"><i>P</i><span><b>Pacifica AI</b><small>{eligible.length} active CRM record{eligible.length===1?"":"s"} ready · {service}</small></span></div>
       <label className="ai-notes-control"><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/><span><b>Use CRM notes</b><small>Off by default</small></span></label>
     </header>
 

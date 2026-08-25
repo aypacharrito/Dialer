@@ -19,6 +19,11 @@ function modelCandidates(){
   return Array.from(new Set([process.env.OPENAI_MODEL?.trim(),"gpt-5-mini","gpt-4.1-mini"].filter(Boolean) as string[]));
 }
 
+export async function GET(){
+  if(!await hasPacificaWorkspaceApiAccess())return Response.json({ok:false,error:"Your signed-in account does not have Pacifica access."},{status:403});
+  return Response.json({ok:true,providerConfigured:Boolean(process.env.OPENAI_API_KEY),fallbackReady:true,model:process.env.OPENAI_MODEL?.trim()||"gpt-5-mini"},{headers:{"Cache-Control":"no-store"}});
+}
+
 export async function POST(request:Request) {
   if(!await hasPacificaWorkspaceApiAccess())return Response.json({error:"An active Pacifica subscription is required."},{status:403});
   try {

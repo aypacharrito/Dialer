@@ -37,7 +37,9 @@ async function twilioRequest(url:string,init:RequestInit,credentials:Credential[
 
 function twilioMessage(data:TwilioError){
   const base=data.message||"Twilio rejected the messaging request";
-  return data.code?`${base} (Twilio ${data.code})`:base;
+  const help:Record<number,string>={20003:"Check TWILIO_AUTH_TOKEN or give the API key Messaging permissions.",21606:"The selected Twilio number cannot send SMS. Choose an SMS-capable number in TWILIO_PHONE_NUMBER.",21608:"This Twilio trial account can only text verified recipients.",21610:"This recipient previously opted out and cannot be messaged.",30007:"The carrier filtered this message. Check A2P registration and message content.",30034:"Complete US A2P 10DLC registration for this Twilio number."};
+  const suffix=data.code&&help[data.code]?` ${help[data.code]}`:"";
+  return data.code?`${base} (Twilio ${data.code}).${suffix}`:base;
 }
 
 function normalized(value:string){

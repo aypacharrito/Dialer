@@ -7,12 +7,17 @@ export const PACIFICA_ADMIN_EMAIL="pacificalegalinsurance@gmail.com";
 const paidStatuses=new Set(["active","trialing"]);
 
 async function getClerkIdentity(){
-  const {userId}=await auth();
-  if(!userId)return null;
-  const user=await currentUser();
-  if(!user)return null;
-  const email=(user.primaryEmailAddress?.emailAddress||user.emailAddresses[0]?.emailAddress||"").toLowerCase();
-  return email?{userId,email}:null;
+  try{
+    const {userId}=await auth();
+    if(!userId)return null;
+    const user=await currentUser();
+    if(!user)return null;
+    const email=(user.primaryEmailAddress?.emailAddress||user.emailAddresses[0]?.emailAddress||"").toLowerCase();
+    return email?{userId,email}:null;
+  }catch(error){
+    console.error("[access] Clerk identity lookup failed",error instanceof Error?error.message:"unknown error");
+    return null;
+  }
 }
 
 async function hasPaidSubscription(email:string){
