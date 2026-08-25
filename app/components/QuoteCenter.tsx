@@ -92,7 +92,7 @@ function CarrierLogo({carrier,large=false}:{carrier:string;large?:boolean}){
   </span>
 }
 
-export default function QuoteCenter({leads,onOpenContact}:{leads:QuoteLead[];onOpenContact:(id:number)=>void}){
+export default function QuoteCenter({leads,onOpenContact,locked=false}:{leads:QuoteLead[];onOpenContact:(id:number)=>void;locked?:boolean}){
   const [line,setLine]=useState<QuoteLine>("life");
   const [leadId,setLeadId]=useState<number|null>(null);
   const [answers,setAnswers]=useState<Record<string,string>>({coverageType:"Level",payment:"Bank Draft / EFT"});
@@ -141,7 +141,8 @@ export default function QuoteCenter({leads,onOpenContact}:{leads:QuoteLead[];onO
   function toggleCompare(id:number){setSelectedOffers(current=>current.includes(id)?current.filter(item=>item!==id):current.length<3?[...current,id]:current)}
   function renderField(field:QuoteField){return <label className={field.wide?"wide":""} key={field.name}>{field.label}{field.options?<select value={answers[field.name]||""} onChange={e=>update(field.name,e.target.value)}><option value="">Select…</option>{field.options.map(option=><option key={option}>{option}</option>)}</select>:<input type={field.type||"text"} value={answers[field.name]||""} onChange={e=>update(field.name,e.target.value)} placeholder={field.placeholder}/>}</label>}
 
-  return <div className="page-view quote-view">
+  return <div className={`page-view quote-view ${locked?"quote-view-locked":""}`}>
+    {locked&&<section className="quote-coming-soon" role="status"><span>QUOTE CENTER · COMING SOON</span><h1>Live carrier connections are in progress.</h1><p>The Life, Home, and Auto workspace is built and preserved. It will unlock after approved carrier and comparative-rater connections are ready.</p><div><b>LIFE</b><b>HOME</b><b>AUTO</b></div></section>}
     <div className="page-title quote-title"><div><span className="eyebrow">PACIFICA QUOTE CENTER</span><h1>Quotes without the clutter.</h1><p>Choose the client, enter the essentials, and compare authorized carrier results in one place.</p></div><span className="quote-disclaimer">Agent-use intake · Not a binding quote</span></div>
     <div className="quote-tabs">{(["life","home","auto"] as QuoteLine[]).map(item=><button key={item} className={line===item?"active":""} onClick={()=>{setLine(item);setAnswers({coverageType:"Level",payment:"Bank Draft / EFT"});setMessage("");setSelectedOffers([])}}><span>{item==="life"?"♡":item==="home"?"⌂":"◇"}</span><b>{lineCopy[item].name}</b><small>{lineCopy[item].detail}</small></button>)}</div>
     <div className="quote-layout">

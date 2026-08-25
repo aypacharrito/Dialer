@@ -14,6 +14,11 @@
 .hero h1{font-size:64px;line-height:.98;letter-spacing:-.055em;margin:23px 0}
 .hero h1 em{font-family:Georgia,serif;font-weight:400;color:var(--teal)}
 .sub{max-width:540px;color:var(--muted);font-size:17px;line-height:1.65}
+.pricePunch{display:flex;align-items:center;gap:16px;margin-top:24px;padding:16px 0;border-block:1px solid var(--line)}
+.pricePunch>b{font-size:38px;line-height:1;letter-spacing:-.05em;color:var(--teal)}
+.pricePunch span{display:flex;flex-direction:column;gap:4px}
+.pricePunch strong{font-size:12px;line-height:1.4}
+.pricePunch small{font-size:9px;color:var(--muted);letter-spacing:.04em}
 .heroActions{display:flex;align-items:center;gap:14px;margin-top:30px}
 .heroActions>a{height:48px;padding:0 19px;display:flex;align-items:center;border-radius:8px;background:var(--ink);color:white;text-decoration:none;font-size:12px;font-weight:800}
 .heroActions>a+ a{background:transparent;color:var(--ink);border:1px solid var(--line)}
@@ -86,6 +91,7 @@
 .planGrid ul{list-style:none;padding:18px 0 0;margin:18px 0 0;border-top:1px solid #34413e}
 .planGrid li{display:flex;gap:9px;padding:8px 0;color:#76d8b8;font-size:9px}
 .planGrid li span{color:#b5c0bc}
+.netflixNote{display:block;margin-top:15px;padding-top:14px;border-top:1px solid #34413e;color:#8c9b95;font-size:8px;line-height:1.5}
 .priceNote{color:#75827e;font-size:9px;text-align:center;margin-top:20px}
 .checkoutError{color:#ff9b9b;text-align:center;font-size:10px}
 .compareTable{margin-top:40px;border:1px solid var(--line);border-radius:13px;overflow:hidden}
@@ -148,3 +154,13 @@
 .askBox,.queue,.frameStats article,.planGrid article{box-shadow:none}
 .nav .navCta,.heroActions>a,.planGrid button,.finalCta a{border-radius:6px}
 .kicker i{box-shadow:none}
+
+/* Human, operations-first finish: flat panels, compact corners, no glossy effects. */
+.productFrame{border-radius:7px;box-shadow:none}
+.queue,.featureGrid>article,.planGrid article,.compareTable{border-radius:6px}
+.queue strong,.frameStats article,.askBox,.pills i{border-radius:4px}
+.featureGrid>article{background:#eeece6}
+.planGrid article,.planGrid article.popular{background:#171c1b}
+.planGrid article.popular{border-color:#6e8f79}
+.planGrid article>em{border-radius:3px}
+.nav .navCta,.heroActions>a,.planGrid button,.finalCta a{border-radius:4px}

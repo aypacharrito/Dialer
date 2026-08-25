@@ -1046,3 +1046,32 @@ button,input,select,textarea{font-family:inherit}
   .dialer-main-grid>.side-pad{max-width:430px}
 }
 @media(max-width:560px){.lead-file-grid,.lead-file-edit{grid-template-columns:1fr}.lead-file-grid label{border-right:0}.lead-file-edit .file-notes{grid-column:auto}.lead-file>footer{flex-direction:column}}
+
+/* Pacifica operator UI — flat, familiar, and built for long work sessions. */
+body{background:#111315}
+.sidebar{background:#17191b;border-right-color:#32363a}
+.topbar{background:#1c1f21;border-bottom-color:#34383c}
+.workspace{background:#111315}
+.sidebar nav button{border-radius:4px;color:#a9b0b5}
+.sidebar nav button:hover{background:#222629;color:#eef2f3}
+.sidebar nav button.active{background:#176f73;color:#fff;box-shadow:none}
+.sidebar nav button em{background:#2b3033;color:#dce3e5}
+.nav-soon{margin-left:auto;padding:3px 5px;border:1px solid #52585c;border-radius:3px;color:#979fa3;font-size:6px;font-weight:900;letter-spacing:.1em}
+.hero-call,.side-pad,.lead-file,.stats-row article,.queue-card,.table-card,.campaign-card,.chart-card,.provider-card,.phone-pad,.phone-config,.smart-connect,.setup-help,.pricing-grid article,.billing-compliance,.import-hint,.crm-summary article,.ai-summary,.ai-priority-list,.ai-actions-panel,.connection-card,.recent-quotes,.quote-form-card,.carrier-catalog,.quote-results-card{background:#1b1e20;border-color:#353a3e;border-radius:6px;box-shadow:none}
+.hero-call:before{display:none}
+.page-title h1,.hero-head h1{letter-spacing:-.025em}
+.primary,.import,.start-call,.pricing-grid button,.record-actions button:first-child,.contact-drawer>footer button{background:#177e83;border-color:#228e93;border-radius:4px;box-shadow:none}
+.primary:hover,.import:hover,.pricing-grid button:hover{background:#1a8e93}
+input,select,textarea,.crm-tools label,.lead-file-edit select,.lead-file-edit input,.lead-file-edit textarea{background:#141719!important;border-color:#41464a!important;border-radius:4px!important}
+.pricing-grid article.featured{transform:none;background:#202623;border-color:#678270;box-shadow:none}
+.pricing-grid article>em{border-radius:3px;background:#29513f;color:#c5ead7}
+.pricing-grid button{background:#177e83}
+
+.quote-view-locked{position:relative;min-height:calc(100vh - 74px);overflow:hidden}
+.quote-view-locked>*:not(.quote-coming-soon){filter:grayscale(1) brightness(.3);opacity:.22;pointer-events:none;user-select:none}
+.quote-coming-soon{position:absolute;z-index:5;top:120px;left:50%;width:min(560px,calc(100% - 32px));transform:translateX(-50%);padding:28px;background:#151719;border:1px solid #50565a;border-radius:6px;color:#eef2f3;box-shadow:0 20px 50px rgba(0,0,0,.38)}
+.quote-coming-soon>span{display:block;color:#70c2c5;font-size:8px;font-weight:900;letter-spacing:.15em}
+.quote-coming-soon h1{margin:10px 0 8px;font-size:28px;letter-spacing:-.03em}
+.quote-coming-soon p{max-width:490px;color:#a4adb1;font-size:11px;line-height:1.65}
+.quote-coming-soon div{display:flex;gap:8px;margin-top:18px}
+.quote-coming-soon b{padding:7px 10px;border:1px solid #454b4f;border-radius:3px;color:#c7ced1;font-size:8px;letter-spacing:.1em}
