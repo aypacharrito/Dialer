@@ -1,3 +1,5 @@
+import { isPacificaAdminApi } from "../../../lib/clerk-access";
+
 export const runtime = "edge";
 
 const encoder = new TextEncoder();
@@ -29,6 +31,7 @@ async function createToken(secret: string, accountSid: string, apiKeySid: string
 }
 
 export async function GET() {
+  if(!await isPacificaAdminApi())return Response.json({error:"Unauthorized"},{status:401});
   const accountSid = (process.env.TWILIO_ACCOUNT_SID || "").trim();
   const apiKeySid = (process.env.TWILIO_API_KEY_SID || "").trim();
   const apiKeySecret = (process.env.TWILIO_API_KEY_SECRET || "").trim();

@@ -6,4 +6,4 @@ export const metadata:Metadata={
   description:"Organize Life, Home, and Auto leads, call through Twilio, compare quotes, and let AI surface the next best action—starting at $49 per month.",
 };
 
-export default function LandingPage(){return <LandingClient/>}
+export default function LandingPage(){return <LandingClient clerkEnabled={Boolean(process.env.VERCEL)}/>}

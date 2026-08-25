@@ -4,6 +4,11 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_dir="$(cd "${script_dir}/.." && pwd)"
 
+if rg -n -i "d[e]mo|insurance[[:space:]]+crm" "${project_dir}/app"; then
+  echo "Blocked release: retired product wording remains in app source." >&2
+  exit 65
+fi
+
 # Vercel needs a native Next.js build. The same repository is also deployed
 # through ChatGPT Sites, which uses the Vinext/Cloudflare artifact below.
 if [[ "${VERCEL:-}" == "1" ]]; then

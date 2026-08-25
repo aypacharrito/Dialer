@@ -883,3 +883,12 @@ button,input,select,textarea{font-family:inherit}
 .bars i{background:#2eb99a}
 .toast{box-shadow:0 8px 20px rgba(0,0,0,.24)}
 @media(max-width:760px){.sidebar-foot>button{display:grid}}
+.clerk-user-menu{min-width:0;flex:1;display:flex;align-items:center}
+.clerk-user-menu .cl-userButtonBox{color:#dce9ef}
+.clerk-user-menu .cl-userButtonOuterIdentifier{color:#dce9ef;font-size:10px}
+.top-auth{display:flex;align-items:center;gap:8px;padding-left:2px}
+.top-auth>button{height:38px;border:1px solid #33485d;background:#111d2a;color:#c8d8e3;border-radius:8px;padding:0 11px;font-size:9px;font-weight:800;cursor:pointer}
+.membership-actions{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
+.membership-actions button{border:1px solid #2f6a58;background:#15392f;color:#70e2bf;border-radius:8px;padding:10px 14px;font-size:9px;font-weight:900;cursor:pointer}
+.membership-actions span{color:#6e8291;font-size:8px}
+@media(max-width:780px){.top-auth>button{display:none}.membership-actions{align-items:flex-start;flex-direction:column}.membership-actions span{line-height:1.5}}

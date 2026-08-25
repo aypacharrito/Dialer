@@ -7,6 +7,7 @@
 .nav>div{display:flex;align-items:center;gap:25px}
 .nav>div>a{font-size:12px;color:#39423f;text-decoration:none}
 .nav .navCta{padding:11px 17px;border-radius:7px;background:var(--ink);color:white}
+.nav :global(.nav-logout){border:0;background:transparent;color:#39423f;font-size:12px;padding:0;cursor:pointer}
 .hero{max-width:1240px;margin:auto;padding:92px 28px 70px;display:grid;grid-template-columns:.88fr 1.12fr;gap:58px;align-items:center}
 .kicker{font-size:10px!important;letter-spacing:.16em;font-weight:900;color:var(--teal)!important}
 .kicker i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px #baff8433;margin-right:8px}

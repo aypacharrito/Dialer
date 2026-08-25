@@ -6,6 +6,7 @@ import QuoteCenter from "./components/QuoteCenter";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
 import AiCommandCenter, { type AiAction } from "./components/AiCommandCenter";
+import ClerkTopAuth from "./components/ClerkTopAuth";
 import { readAudioPreferences } from "./audio-preferences";
 
 type LeadLine = "life" | "home-auto";
@@ -37,7 +38,7 @@ function Icon({name}:{name:string}) {
   return <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-export default function Page(){
+export default function Page({clerkEnabled=false}:{clerkEnabled?:boolean}){
   const [view,setView]=useState<View>("dialer");
   const [leads,setLeads]=useState<Lead[]>(starterLeads);
   const [dialing,setDialing]=useState(false);
@@ -235,16 +236,24 @@ export default function Page(){
       window.location.assign(String(data.url));
     }catch(error){setToast(error instanceof Error?error.message:"Checkout could not start");setCheckoutPlan("")}
   }
+  async function manageMembership(){
+    try{
+      const response=await fetch("/api/stripe/portal",{method:"POST"});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.url)throw new Error(data.error||"Billing portal could not open");
+      window.location.assign(String(data.url));
+    }catch(error){setToast(error instanceof Error?error.message:"Billing portal could not open")}
+  }
 
   return <main className="app-shell">
     <aside className="sidebar">
-      <div className="logo"><span className="brand-mark"><img src="/pacifica-mark.png" alt=""/></span><div><b>PACIFICA</b><small>INSURANCE CRM</small></div></div>
+      <div className="logo"><span className="brand-mark"><img src="/pacifica-mark.png" alt=""/></span><div><b>PACIFICA</b></div></div>
       <nav>{nav.map(([id,label,icon])=><button key={id} className={view===id?"active":""} onClick={()=>setView(id)}><Icon name={icon}/><span>{label}</span>{id==="leads"&&<em>{leads.length}</em>}</button>)}</nav>
-      <div className="sidebar-foot"><div className="agent"><span>AC</span><div><b>Alex Carranza</b><small><i/> Available</small></div></div><button aria-label="Settings" onClick={()=>setView("settings")}><Icon name="gear"/></button></div>
+      <div className="sidebar-foot"><div className="agent"><span>AC</span><div><b>Pacifica workspace</b><small><i/> Available</small></div></div><button aria-label="Settings" onClick={()=>setView("settings")}><Icon name="gear"/></button></div>
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>+1 (417) 441-2831</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" aria-label="Lead type"><button className={activeLine==="life"?"active":""} disabled={dialing} onClick={()=>switchLine("life")}>Life leads</button><button className={activeLine==="home-auto"?"active":""} disabled={dialing} onClick={()=>switchLine("home-auto")}>Home & Auto</button></div><div className="top-actions"><span className="connection"><Icon name="wifi"/>{provider}</span><button className="notification" aria-label="Notifications"><Icon name="bell"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import to {activeLine==="life"?"Life":"Home & Auto"}</button><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={e=>importFile(e.target.files?.[0])}/></div></header>
+      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>+1 (417) 441-2831</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" aria-label="Lead type"><button className={activeLine==="life"?"active":""} disabled={dialing} onClick={()=>switchLine("life")}>Life leads</button><button className={activeLine==="home-auto"?"active":""} disabled={dialing} onClick={()=>switchLine("home-auto")}>Home & Auto</button></div><div className="top-actions"><span className="connection"><Icon name="wifi"/>{provider}</span><button className="notification" aria-label="Notifications"><Icon name="bell"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import to {activeLine==="life"?"Life":"Home & Auto"}</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={e=>importFile(e.target.files?.[0])}/></div></header>
 
       {view==="dialer"&&<div className="dialer-view"><div className="dialer-main-grid">
         <section className={`hero-call ${connected?"connected":""}`}>
@@ -284,7 +293,7 @@ export default function Page(){
         <article><span>SOLO</span><h2>$49<small>/month</small></h2><p>For one licensed producer building a focused book.</p><ul><li>1 user seat</li><li>1 assigned Twilio number</li><li>Life and Home & Auto CRMs</li><li>Sequential auto dialer</li><li>Pacifica AI, quotes, and reports</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("solo")}>{checkoutPlan==="solo"?"Opening secure checkout…":"Start Solo"}</button></article>
         <article className="featured"><em>MOST POPULAR</em><span>TEAM</span><h2>$199<small>/month</small></h2><p>For a growing agency with shared calling operations.</p><ul><li>Up to 5 user seats</li><li>Up to 5 assigned Twilio numbers</li><li>Separate Life and Home & Auto queues</li><li>Compliance controls and call reporting</li><li>Priority onboarding</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("team")}>{checkoutPlan==="team"?"Opening secure checkout…":"Start Team"}</button></article>
         <article><span>AGENCY</span><h2>$499<small>/month</small></h2><p>For multi-agent production teams needing more capacity.</p><ul><li>Up to 15 user seats</li><li>Up to 15 assigned Twilio numbers</li><li>Agency-level campaigns and reporting</li><li>Number reputation monitoring</li><li>White-glove setup</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("agency")}>{checkoutPlan==="agency"?"Opening secure checkout…":"Start Agency"}</button></article>
-      </div><section className="billing-compliance"><div><span>COMPLIANCE IS PART OF THE PRODUCT</span><h2>Every subscriber accepts the customer compliance agreement.</h2><p>Customers remain responsible for consent, lead sources, Do Not Call suppression, calling hours, licensing, and recording disclosures. Pacifica may suspend unsafe campaigns.</p></div><a href="/terms" target="_blank">Read customer agreement ↗</a></section><p className="billing-note">Subscription prices exclude Twilio usage, applicable taxes, and optional carrier-data integrations. Checkout remains disabled until the corresponding live Stripe Price IDs are configured.</p></div>}
+      </div><div className="membership-actions"><button onClick={()=>void manageMembership()}>Manage membership</button><span>Update payment details, view invoices, or cancel securely through Stripe.</span></div><section className="billing-compliance"><div><span>COMPLIANCE IS PART OF THE PRODUCT</span><h2>Every subscriber accepts the customer compliance agreement.</h2><p>Customers remain responsible for consent, lead sources, Do Not Call suppression, calling hours, licensing, and recording disclosures. Pacifica may suspend unsafe campaigns.</p></div><a href="/terms" target="_blank">Read customer agreement ↗</a></section><p className="billing-note">Subscription prices exclude Twilio usage, applicable taxes, and optional carrier-data integrations. Recurring billing and membership management are securely handled by Stripe.</p></div>}
 
       {view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">PHONE & LEAD CONNECTIONS</span><h1>Connect the systems that feed Pacifica.</h1><p>Choose your audio devices and connect SmartFinancial for automatic lead delivery.</p></div></div><div className="phone-setup-layout"><PhoneSettings ensureDevice={ensureDevice}/><div className="phone-setup-side"><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The token endpoint, TwiML voice webhook, microphone preflight, and runtime error reporting are installed.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"SERVER CONFIGURED":"CONFIGURATION NEEDED"}</div></div><article className="setup-help"><span>REQUIRED TWIML APP URL</span><code>https://dialer-one-theta.vercel.app/api/twilio/voice</code><p>Method: HTTP POST. After any Vercel environment-variable change, redeploy the Production deployment.</p><a href="/api/twilio/diagnostics" target="_blank">Open safe diagnostics ↗</a></article><article className="smart-connect"><header><div><span>SMARTFINANCIAL LIVE DELIVERY</span><h2>New leads → Pacifica automatically</h2></div><strong className={smartKey?"connected":""}><i/> {smartKey?"KEY SAVED":"SETUP"}</strong></header><p>Ask your SmartFinancial account manager to enable CRM delivery and POST every new lead to this endpoint:</p><code>https://dialer-one-theta.vercel.app/api/integrations/smartfinancial?key=YOUR_SECRET</code><label>Integration key<input type="password" value={smartKey} onChange={e=>setSmartKey(e.target.value)} placeholder="Same value as SMARTFINANCIAL_WEBHOOK_SECRET"/></label><div><button onClick={saveSmartConnection}>Save & test connection</button><small>{smartStatus}</small></div></article></div></div></div>}
     </section>
