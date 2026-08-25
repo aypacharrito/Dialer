@@ -10,6 +10,23 @@ type MonitorMode = "raw" | "clearvoice" | null;
 
 const emptyMetrics: ClearVoiceMetrics = { inputLevel: 0, outputLevel: 0, reduction: 0, voiceDetected: false };
 
+function microphoneError(error: unknown) {
+  const name = error instanceof DOMException ? error.name : "";
+  const detail = error instanceof Error ? error.message.trim() : "";
+  const guidance: Record<string, string> = {
+    NotAllowedError: "Microphone access is blocked. Click the lock icon in Edge's address bar, allow Microphone for pacificacrm.com, then reload.",
+    PermissionDeniedError: "Microphone access is blocked. Click the lock icon in Edge's address bar, allow Microphone for pacificacrm.com, then reload.",
+    NotFoundError: "No microphone was found. Connect or enable one in Windows Sound settings, then retry.",
+    DevicesNotFoundError: "No microphone was found. Connect or enable one in Windows Sound settings, then retry.",
+    NotReadableError: "The microphone is busy in another app or browser tab. Close the other call or recording app, then retry.",
+    TrackStartError: "The microphone is busy in another app or browser tab. Close the other call or recording app, then retry.",
+    OverconstrainedError: "The saved microphone is no longer available. Choose Browser default microphone and retry.",
+    AbortError: "Windows stopped the microphone before the test began. Unplug and reconnect it, then retry.",
+    SecurityError: "Edge blocked microphone capture for this page. Check site permissions and Windows microphone privacy settings.",
+  };
+  return guidance[name] || detail || (name ? `Microphone error: ${name}` : "The browser could not start the microphone.");
+}
+
 export default function PhoneSettings({ ensureDevice, compact = false, onClose }: {
   ensureDevice: () => Promise<Device>;
   compact?: boolean;
@@ -42,8 +59,8 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   const speakerRef = useRef(defaultAudioPreferences.speaker);
 
   function stopMonitor(nextMessage?: string) {
-    if (monitorTimerRef.current) window.clearTimeout(monitorTimerRef.current);
-    if (monitorFrameRef.current) window.cancelAnimationFrame(monitorFrameRef.current);
+    if (monitorTimerRef.current !== null) window.clearTimeout(monitorTimerRef.current);
+    if (monitorFrameRef.current !== null) window.cancelAnimationFrame(monitorFrameRef.current);
     monitorTimerRef.current = null;
     monitorFrameRef.current = null;
     if (monitorProcessorRef.current) void monitorProcessorRef.current.destroyProcessedStream();
@@ -80,30 +97,52 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   }, []);
   useEffect(() => { if (monitorAudioRef.current) monitorAudioRef.current.volume = speakerVolume / 100; }, [speakerVolume]);
 
-  async function loadDevices() {
+  async function requestMicrophone(mode: MonitorMode = null) {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("This browser does not expose microphone controls. Use current Chrome or Edge over HTTPS.");
     const selectedInput = inputRef.current;
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: selectedInput === "default" ? true : { deviceId: { exact: selectedInput } } });
+    const preferred: MediaTrackConstraints = {
+      echoCancellation: mode === null,
+      noiseSuppression: mode === null,
+      autoGainControl: mode === null,
+      ...(selectedInput === "default" ? {} : { deviceId: { exact: selectedInput } }),
+    };
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: preferred });
+    } catch (error) {
+      const retryDefault = selectedInput !== "default" && error instanceof DOMException && ["NotFoundError", "DevicesNotFoundError", "OverconstrainedError"].includes(error.name);
+      if (!retryDefault) throw error;
+      inputRef.current = "default";
+      setInput("default");
+      saveAudioPreferences({ input: "default" });
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+  }
+
+  async function loadDevices(activeStream?: MediaStream) {
+    let stream = activeStream;
+    let ownsStream = false;
+    if (!stream) {
+      stream = await requestMicrophone();
+      ownsStream = true;
+    }
     const mediaDevices = await navigator.mediaDevices.enumerateDevices();
-    stream.getTracks().forEach(track => track.stop());
+    if (ownsStream) stream.getTracks().forEach(track => track.stop());
     const nextInputs = mediaDevices.filter(item => item.kind === "audioinput").map((item, index) => ({ deviceId: item.deviceId, label: item.label || `Microphone ${index + 1}` }));
     const nextOutputs = mediaDevices.filter(item => item.kind === "audiooutput").map((item, index) => ({ deviceId: item.deviceId, label: item.label || `Audio output ${index + 1}` }));
     setInputs(nextInputs.length ? nextInputs : [{ deviceId: "default", label: "Browser default microphone" }]);
     setOutputs(nextOutputs.length ? nextOutputs : [{ deviceId: "default", label: "Browser default output" }]);
+    const selectedInput = inputRef.current;
     if (selectedInput !== "default" && !nextInputs.some(item => item.deviceId === selectedInput)) throw new Error("Your saved microphone is not connected. Reconnect it or choose another microphone.");
   }
 
   async function startMonitor(mode: MonitorMode, autoStop = false) {
     stopMonitor();
-    const selectedInput = inputRef.current;
-    const constraints: MediaTrackConstraints = {
-      echoCancellation: mode === null,
-      noiseSuppression: false,
-      autoGainControl: mode === null,
-      ...(selectedInput === "default" ? {} : { deviceId: { exact: selectedInput } }),
-    };
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+    const stream = await requestMicrophone(mode);
     monitorStreamRef.current = stream;
+    await loadDevices(stream);
+    const track = stream.getAudioTracks()[0];
+    if (!track) throw new Error("The browser opened a stream without a microphone track.");
+    track.addEventListener("ended", () => stopMonitor("The microphone disconnected. Reconnect it and run the test again."), { once: true });
     let audibleStream = stream;
     if (mode === "clearvoice") {
       if (!supportsClearVoice()) throw new Error("ClearVoice processing is unavailable in this browser. Use current Chrome or Edge.");
@@ -115,6 +154,8 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
 
     const context = new AudioContext();
     monitorContextRef.current = context;
+    if (context.state === "suspended") await context.resume();
+    if (context.state !== "running") throw new Error("Edge paused the audio meter. Click the test button again after allowing microphone access.");
     const analyser = context.createAnalyser();
     analyser.fftSize = 256;
     context.createMediaStreamSource(audibleStream).connect(analyser);
@@ -145,17 +186,19 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     setMessage("Checking microphone, Twilio token, ClearVoice, and connection latency…");
     try {
       const started = performance.now();
-      await loadDevices();
       const [device, response] = await Promise.all([ensureDevice(), fetch("/api/twilio/token", { cache: "no-store" })]);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || `Token check failed (${response.status})`);
       }
-      await device.audio?.setInputDevice(inputRef.current);
+      // Keep Twilio from opening a second capture stream while the Edge meter
+      // owns the microphone. The selected device is applied when a call starts.
+      void device;
       await startMonitor(null, true);
       setMessage(`Phone ready · API ${Math.round(performance.now() - started)} ms · ${clearVoiceEnabled && clearVoiceSupported ? "ClearVoice armed" : "native audio fallback"} · speak now`);
     } catch (error) {
-      setMessage(`Test failed: ${error instanceof Error ? error.message : "Device test failed"}`);
+      stopMonitor();
+      setMessage(`Test failed: ${microphoneError(error)}`);
     } finally {
       setTesting(false);
     }
@@ -166,8 +209,12 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     inputRef.current = value;
     setInput(value);
     saveAudioPreferences({ input: value });
-    try { const device = await ensureDevice(); await device.audio?.setInputDevice(value); setMessage("Microphone recognized and selected for Twilio."); }
-    catch (error) { setMessage(`Microphone error: ${error instanceof Error ? error.message : "selection failed"}`); }
+    try {
+      const stream = await requestMicrophone();
+      await loadDevices(stream);
+      stream.getTracks().forEach(track => track.stop());
+      setMessage("Microphone recognized and saved. Pacifica will use it when the next call starts.");
+    } catch (error) { setMessage(`Microphone error: ${microphoneError(error)}`); }
   }
 
   async function selectOutput(kind: "speaker" | "ring", value: string) {
@@ -192,8 +239,8 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
 
   async function toggleMonitor(mode: Exclude<MonitorMode, null>) {
     if (listening === mode) { stopMonitor("Microphone monitor stopped."); return; }
-    try { await loadDevices(); await startMonitor(mode); }
-    catch (error) { stopMonitor(); setMessage(`Microphone monitor failed: ${error instanceof Error ? error.message : "permission or device error"}`); }
+    try { await startMonitor(mode); }
+    catch (error) { stopMonitor(); setMessage(`Microphone monitor failed: ${microphoneError(error)}`); }
   }
 
   async function updateClearVoice(enabled: boolean, mode = clearVoiceMode) {
