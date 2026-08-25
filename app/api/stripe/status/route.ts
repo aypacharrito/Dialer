@@ -1,10 +1,11 @@
-import { stripePlanPrices } from "../../../lib/stripe";
+import { getStripeConfigurationStatus } from "../../../lib/stripe";
 
 export const runtime = "edge";
 
 export async function GET() {
+  const status=getStripeConfigurationStatus();
   return Response.json({
-    configured: Boolean((process.env.STRIPE_RESTRICTED_KEY || process.env.STRIPE_SECRET_KEY) && Object.values(stripePlanPrices).every(Boolean)),
-    plans: Object.fromEntries(Object.entries(stripePlanPrices).map(([key, value]) => [key, Boolean(value)])),
+    configured: status.keyConfigured && Object.values(status.plans).every(plan=>plan.configured&&plan.validFormat),
+    ...status,
   }, { headers: { "Cache-Control": "no-store" } });
 }

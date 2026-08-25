@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { isPacificaAdminApi } from "../../../lib/clerk-access";
+import { hasPacificaWorkspaceApiAccess } from "../../../lib/clerk-access";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,7 @@ function localAnalysis(leads:Array<Record<string,unknown>>):CrmAnalysis {
 }
 
 export async function POST(request:Request) {
-  if(!await isPacificaAdminApi())return Response.json({error:"Unauthorized"},{status:401});
+  if(!await hasPacificaWorkspaceApiAccess())return Response.json({error:"An active Pacifica subscription is required."},{status:403});
   try {
     const body=await request.json() as {prompt?:string;includeNotes?:boolean;leads?:Array<Record<string,unknown>>};
     const prompt=String(body.prompt||"").trim().slice(0,1000);

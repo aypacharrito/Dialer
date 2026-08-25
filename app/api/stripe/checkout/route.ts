@@ -6,6 +6,15 @@ export const runtime = "nodejs";
 
 const planNames: Record<StripePlan, string> = { solo: "Solo", team: "Team", agency: "Agency" };
 
+function checkoutErrorMessage(error:{message?:string;code?:string;type?:string;param?:string}){
+  if(error.message==="STRIPE_SERVER_KEY_MISSING")return "Stripe needs a server key in Vercel before checkout can open.";
+  if(error.message==="STRIPE_SERVER_KEY_INVALID")return "The Stripe server key must begin with sk_live_ or rk_live_. A pk_live_ key cannot create Checkout sessions.";
+  if(error.type==="StripeAuthenticationError"||error.code==="api_key_expired")return "Stripe rejected the server key. Replace it with an active sk_live_ or properly permitted rk_live_ key from this Stripe account.";
+  if(error.type==="StripePermissionError")return "The restricted Stripe key does not have permission to create Checkout sessions. Add Checkout write access or use the account's server secret key.";
+  if(error.code==="resource_missing"||error.param?.includes("price"))return "Stripe could not find this Price ID in the same account and mode as the server key. Confirm it begins with price_ and comes from Live mode.";
+  return "Stripe could not create this subscription. Open Vercel runtime logs for the Stripe error code, then verify the server key and Live Price ID belong to the same account.";
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({})) as { plan?: string };
@@ -13,6 +22,7 @@ export async function POST(request: Request) {
     const plan = body.plan as StripePlan;
     const price = stripePlanPrices[plan];
     if (!price) return Response.json({ error: `${planNames[plan]} checkout is waiting for its Stripe Price ID.` }, { status: 503 });
+    if(!price.startsWith("price_"))return Response.json({error:`${planNames[plan]} is using a Product ID instead of a Price ID. Replace it with the value beginning price_.`},{status:503});
     const stripe = getStripe();
     const configuredOrigin = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
     const origin = configuredOrigin || new URL(request.url).origin;
@@ -31,6 +41,7 @@ export async function POST(request: Request) {
       ...(user?.id?{client_reference_id:user.id}:{}),
       metadata,
       subscription_data: { metadata },
+      integration_identifier: "pacifica_web_qmxnrvta",
       success_url: `${origin}${user?.id?"/dashboard":"/login"}?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?checkout=canceled`,
     });
@@ -44,6 +55,6 @@ export async function POST(request: Request) {
       type:stripeError.type||null,
       param:stripeError.param||null,
     });
-    return Response.json({ error: "Unable to start secure checkout. Verify the Stripe configuration and try again." }, { status: 500 });
+    return Response.json({ error: checkoutErrorMessage(stripeError) }, { status: 500 });
   }
 }
