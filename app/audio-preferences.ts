@@ -1,3 +1,5 @@
+import type { ClearVoiceMode } from "./clearvoice";
+
 export const AUDIO_PREFERENCES_KEY = "pacific-audio-preferences";
 
 export type AudioPreferences = {
@@ -7,6 +9,8 @@ export type AudioPreferences = {
   speakerVolume: number;
   ringVolume: number;
   beep: boolean;
+  clearVoiceEnabled: boolean;
+  clearVoiceMode: ClearVoiceMode;
 };
 
 export const defaultAudioPreferences: AudioPreferences = {
@@ -16,6 +20,8 @@ export const defaultAudioPreferences: AudioPreferences = {
   speakerVolume: 80,
   ringVolume: 55,
   beep: true,
+  clearVoiceEnabled: true,
+  clearVoiceMode: "balanced",
 };
 
 export function readAudioPreferences(): AudioPreferences {

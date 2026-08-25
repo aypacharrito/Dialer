@@ -6,7 +6,7 @@ import ClerkNavAuth from "../components/ClerkNavAuth";
 import styles from "./landing.module.css";
 
 const plans=[
-  {id:"solo",name:"Solo",price:"49",desc:"For one producer building a focused book.",features:["1 user and assigned calling number","Life + Home & Auto CRM","Sequential browser dialer","Pacifica AI command center","Quote workspace and reports"],popular:false},
+  {id:"solo",name:"Solo",price:"49",desc:"For one producer building a focused book.",features:["1 user and assigned calling number","Life + Home & Auto CRM","Sequential browser dialer","Pacifica ClearVoice noise suppression","Pacifica AI, quotes, and reports"],popular:false},
   {id:"team",name:"Team",price:"199",desc:"For agencies turning leads into appointments together.",features:["Up to 5 users and numbers","Everything in Solo","Shared operations foundation","Priority onboarding","Team reporting roadmap"],popular:true},
   {id:"agency",name:"Agency",price:"499",desc:"For multi-agent production teams that need room to grow.",features:["Up to 15 users and numbers","Everything in Team","Agency campaign capacity","Number-health monitoring","White-glove setup"],popular:false},
 ] as const;
@@ -31,7 +31,7 @@ export default function LandingClient({clerkEnabled=false}:{clerkEnabled?:boolea
 
     <section className={styles.product} id="product"><div className={styles.sectionIntro}><p className={styles.kicker}>THE PRODUCT</p><h2>Your CRM should do the busywork—not create more of it.</h2><p>Pacifica connects the daily jobs an insurance producer already has: organize, call, quote, follow up, and close.</p></div><div className={styles.featureGrid}>
       <article className={styles.featureWide}><span>01 · PACIFICA AI</span><h3>Ask your pipeline what matters now.</h3><p>Find stalled opportunities, prioritize today’s calls, prepare a brief, draft a follow-up, and review every proposed record change before it is applied.</p><div className={styles.askBox}><b>Ask Pacifica AI</b><p>Which Life leads should I call first today?</p><button>Run analysis →</button></div></article>
-      <article><span>02 · BROWSER DIALER</span><h3>Call the next lead without losing your place.</h3><p>Sequential Twilio calling, four-ring windows, device testing, automatic queue advancement, outcomes, and DNC controls.</p><div className={styles.wave}>{Array.from({length:22}).map((_,i)=><i key={i} style={{height:`${12+(i*13)%38}px`}}/>)}</div></article>
+      <article><span>02 · DIALER + CLEARVOICE</span><h3>Call the next lead with cleaner audio.</h3><p>Sequential Twilio calling, on-device Pacifica ClearVoice noise suppression, four-ring windows, automatic queue advancement, outcomes, and DNC controls.</p><div className={styles.wave}>{Array.from({length:22}).map((_,i)=><i key={i} style={{height:`${12+(i*13)%38}px`}}/>)}</div></article>
       <article><span>03 · CRM WORKSPACE</span><h3>Keep Life separate from Home & Auto.</h3><p>Purpose-built queues, pipelines, contact records, follow-up dates, notes, and quote workspaces—without bending a generic CRM.</p><div className={styles.pills}><i>LIFE</i><i>HOME</i><i>AUTO</i></div></article>
     </div></section>
 

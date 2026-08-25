@@ -635,6 +635,44 @@ button,input,select,textarea{font-family:inherit}
 .config-section .check-row{grid-template-columns:auto 1fr;justify-content:start}
 .check-row input{accent-color:#22bfd0}
 .phone-config>footer{padding:11px 17px;border-top:1px solid #223446;color:#677f91;font-size:7px}
+.clearvoice-card{margin:14px;border:1px solid #2a4052;border-radius:11px;background:#0a141f;overflow:hidden;opacity:.76;transition:border-color .18s ease,opacity .18s ease}
+.clearvoice-card.enabled{border-color:#28645e;opacity:1}
+.clearvoice-head{padding:14px 15px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.clearvoice-head span{display:block;color:#51c9bd;font-size:7px;letter-spacing:.16em;font-weight:900}
+.clearvoice-head h3{margin:4px 0 3px;color:#effbfa;font-size:19px;letter-spacing:-.03em}
+.clearvoice-head p{margin:0;color:#78909f;font-size:8px;line-height:1.5}
+.clearvoice-switch{display:grid!important;grid-template-columns:34px auto!important;gap:7px!important;margin:2px 0 0!important;color:#75909c!important;cursor:pointer}
+.clearvoice-switch input{position:absolute;opacity:0;pointer-events:none}
+.clearvoice-switch i{position:relative;width:34px;height:19px;border:1px solid #3a4d5c;border-radius:999px;background:#172430;transition:.18s ease}
+.clearvoice-switch i:after{content:"";position:absolute;top:3px;left:3px;width:11px;height:11px;border-radius:50%;background:#6d8290;transition:.18s ease}
+.clearvoice-switch input:checked+i{border-color:#2c897d;background:#16463f}
+.clearvoice-switch input:checked+i:after{left:18px;background:#67e1d3}
+.clearvoice-switch b{font-size:7px;color:#7d929f}
+.clearvoice-status{padding:9px 15px;border-block:1px solid #203342;background:#0d1a26;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.clearvoice-status strong,.clearvoice-status span{font-size:7px}
+.clearvoice-status strong{display:flex;align-items:center;gap:6px;color:#55d5be;letter-spacing:.08em}
+.clearvoice-status strong i{width:6px;height:6px;border-radius:50%;background:#49d7ae;box-shadow:0 0 0 3px rgba(73,215,174,.1)}
+.clearvoice-status span{color:#6f8796}
+.clearvoice-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:12px 15px}
+.clearvoice-modes button{min-width:0;border:1px solid #293c4b;border-radius:8px;background:#101d28;color:#79909e;padding:9px 6px;text-align:left;cursor:pointer}
+.clearvoice-modes button.active{border-color:#328d83;background:#13352f;color:#b9fff2}
+.clearvoice-modes button:disabled{cursor:not-allowed;opacity:.42}
+.clearvoice-modes b,.clearvoice-modes small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clearvoice-modes b{font-size:8px}
+.clearvoice-modes small{margin-top:3px;color:#677f8d;font-size:6px}
+.clearvoice-meter{margin:0 15px 12px;padding:9px 10px;border:1px solid #243746;border-radius:8px;background:#0d1924;display:flex;justify-content:space-between;align-items:center}
+.clearvoice-meter>div{display:flex;align-items:center;gap:7px}
+.clearvoice-meter span{font-size:6px;color:#6d8493;letter-spacing:.1em;font-weight:900}
+.clearvoice-meter i{width:7px;height:7px;border-radius:50%;background:#415463}
+.clearvoice-meter i.speaking{background:#51d6b2;box-shadow:0 0 0 4px rgba(81,214,178,.1)}
+.clearvoice-meter b{font-size:7px;color:#5fd8c2}
+.clearvoice-compare{padding:0 15px 14px;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.clearvoice-compare button{border:1px solid #315b61;border-radius:8px;background:#143139;color:#75d9d0;padding:9px;font-size:7px;font-weight:900;cursor:pointer}
+.clearvoice-compare button:first-child{border-color:#3b4d5a;background:#17232e;color:#9cadb7}
+.clearvoice-compare button.active{border-color:#54d8c4;background:#185247;color:#d6fff8}
+.clearvoice-compare button.active.raw{border-color:#a06350;background:#47291f;color:#ffbda5}
+.clearvoice-compare button:disabled{cursor:not-allowed;opacity:.4}
+.clearvoice-compare small{grid-column:1/-1;color:#657b89;font-size:6px;line-height:1.45;text-align:center}
 .phone-setup-layout{display:grid;grid-template-columns:minmax(420px,1.15fr) 1fr;gap:15px}
 .phone-setup-side{display:flex;flex-direction:column;gap:15px}
 .phone-setup-side .provider-card{margin:0}

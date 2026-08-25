@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Call, Device } from "@twilio/voice-sdk";
+import type { AudioProcessor, Call, Device } from "@twilio/voice-sdk";
 import QuoteCenter from "./components/QuoteCenter";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
 import AiCommandCenter, { type AiAction } from "./components/AiCommandCenter";
 import ClerkTopAuth from "./components/ClerkTopAuth";
 import { readAudioPreferences } from "./audio-preferences";
+import { PacificaClearVoiceProcessor, supportsClearVoice } from "./clearvoice";
 
 type LeadLine = "life" | "home-auto";
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string };
@@ -72,6 +73,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
   const [workspaceHydrated,setWorkspaceHydrated]=useState(false);
   const inputRef=useRef<HTMLInputElement>(null);
   const deviceRef=useRef<Device|null>(null);
+  const clearVoiceProcessorRef=useRef<(AudioProcessor & {mode?:string})|null>(null);
   const callRef=useRef<Call|null>(null);
   const watchdogRef=useRef<number|undefined>(undefined);
   const elapsedRef=useRef(0);
@@ -95,9 +97,33 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
   // syncLeadFeed intentionally runs on the saved key cadence only.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{if(!leadFeedKey)return;void syncLeadFeed(leadFeedKey,false);const timer=window.setInterval(()=>void syncLeadFeed(leadFeedKey,false),20000);return()=>window.clearInterval(timer)},[leadFeedKey]);
-  useEffect(()=>{ fetch("/api/twilio/status").then(r=>r.json()).then(data=>{setPhoneReady(Boolean(data.configured));setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:"Secure API key still needed")}).catch(()=>setPhoneStatus("Unable to check Twilio setup")); return()=>{if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy()} },[]);
+  useEffect(()=>{ fetch("/api/twilio/status").then(r=>r.json()).then(data=>{setPhoneReady(Boolean(data.configured));setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:"Secure API key still needed")}).catch(()=>setPhoneStatus("Unable to check Twilio setup")); return()=>{if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy();clearVoiceProcessorRef.current=null} },[]);
 
   async function fetchToken(){const response=await fetch("/api/twilio/token",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Twilio is not configured");return String(data.token)}
+  async function configureClearVoice(device:Device){
+    const preferences=readAudioPreferences();
+    const audio=device.audio;
+    if(!audio)return false;
+    const current=clearVoiceProcessorRef.current;
+    const needsReplacement=Boolean(current&&current.mode!==preferences.clearVoiceMode);
+    if(current&&(!preferences.clearVoiceEnabled||needsReplacement)){
+      await audio.removeProcessor(current,false).catch(()=>undefined);
+      clearVoiceProcessorRef.current=null;
+    }
+    const baseConstraints:MediaTrackConstraints={echoCancellation:true,autoGainControl:true,noiseSuppression:!preferences.clearVoiceEnabled};
+    await audio.setAudioConstraints(baseConstraints).catch(()=>undefined);
+    if(!preferences.clearVoiceEnabled)return false;
+    if(!supportsClearVoice()){
+      await audio.setAudioConstraints({echoCancellation:true,autoGainControl:true,noiseSuppression:true}).catch(()=>undefined);
+      return false;
+    }
+    if(!clearVoiceProcessorRef.current){
+      const processor=new PacificaClearVoiceProcessor(preferences.clearVoiceMode);
+      try{await audio.addProcessor(processor,false);clearVoiceProcessorRef.current=processor}
+      catch{await audio.setAudioConstraints({echoCancellation:true,autoGainControl:true,noiseSuppression:true}).catch(()=>undefined);return false}
+    }
+    return true;
+  }
   async function ensureDevice(){
     const token=await fetchToken();
     let device=deviceRef.current;
@@ -108,6 +134,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
       device.on("error",error=>{const code="code" in error?` ${String(error.code)}`:"";setPhoneStatus(`Twilio${code}: ${error.message}`);setToast(`Twilio${code}: ${error.message}`)});
       device.audio?.on("deviceChange",()=>setPhoneStatus("Audio device changed — run the phone test"));
     }else device.updateToken(token);
+    await configureClearVoice(device);
     return device;
   }
   function finalizeLog(outcome:string,status:string,errorCode?:string){
@@ -147,16 +174,17 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
     currentLogRef.current={id:crypto.randomUUID(),name:wasManual?"Manual call":queuedLead.name,phone:number,startedAt:new Date().toISOString(),duration:0,outcome:"Dialing",status:"Connecting",campaign:queuedLead.line==="life"?"Life":"Home & Auto",source:wasManual?"Manual keypad":"CRM auto dial"};
     try{
       const audioPreferences=readAudioPreferences();
-      const audioConstraints:MediaTrackConstraints=audioPreferences.input==="default"?{}:{deviceId:{exact:audioPreferences.input}};
+      const audioConstraints:MediaTrackConstraints={echoCancellation:true,autoGainControl:true,noiseSuppression:!audioPreferences.clearVoiceEnabled,...(audioPreferences.input==="default"?{}:{deviceId:{exact:audioPreferences.input}})};
       const stream=await navigator.mediaDevices.getUserMedia({audio:audioConstraints});stream.getTracks().forEach(track=>track.stop());
       const device=await ensureDevice();
       await device.audio?.setInputDevice(audioPreferences.input);
+      const clearVoiceActive=await configureClearVoice(device);
       if(audioPreferences.speaker!=="default")await device.audio?.speakerDevices?.set(audioPreferences.speaker);
       if(audioPreferences.ring!=="default")await device.audio?.ringtoneDevices?.set(audioPreferences.ring);
       const connectPromise=device.connect({params:{To:number}});
       const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Twilio signaling timed out after 15 seconds")),15000))]);callRef.current=call;
       watchdogRef.current=window.setTimeout(()=>{call.disconnect();finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out")},30000);
-      call.on("accept",()=>{if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();setConnected(true);setSeconds(0);setPhoneStatus("Live call over Wi-Fi")});
+      call.on("accept",()=>{if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?"Live call · ClearVoice active":"Live call over Wi-Fi")});
       call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed"));
       call.on("cancel",()=>finishCall(wasManual,currentLeadId,"Call canceled","Canceled"));
       call.on("reject",()=>finishCall(wasManual,currentLeadId,"Call was rejected","Rejected"));
@@ -452,7 +480,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
       {view==="quotes"&&<QuoteCenter leads={lineLeads.map(({id,name,phone,email,city})=>({id,name,phone,email,city}))} onOpenContact={id=>setSelectedLead(id)}/>} 
 
       {view==="billing"&&<div className="page-view billing-view"><div className="page-title"><div><span className="eyebrow">PACIFICA SUBSCRIPTIONS</span><h1>Choose the workspace that fits your agency.</h1><p>Every plan uses secure Stripe-hosted checkout. Assigned calling numbers are provisioned by the Pacifica team after verification.</p></div></div><div className="pricing-grid">
-        <article><span>SOLO</span><h2>$49<small>/month</small></h2><p>For one licensed producer building a focused book.</p><ul><li>1 user seat</li><li>1 assigned Twilio number</li><li>Life and Home & Auto CRMs</li><li>Sequential auto dialer</li><li>Pacifica AI, quotes, and reports</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("solo")}>{checkoutPlan==="solo"?"Opening secure checkout…":"Start Solo"}</button></article>
+        <article><span>SOLO</span><h2>$49<small>/month</small></h2><p>For one licensed producer building a focused book.</p><ul><li>1 user seat</li><li>1 assigned Twilio number</li><li>Life and Home & Auto CRMs</li><li>Sequential auto dialer</li><li>Pacifica ClearVoice noise suppression</li><li>Pacifica AI, quotes, and reports</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("solo")}>{checkoutPlan==="solo"?"Opening secure checkout…":"Start Solo"}</button></article>
         <article className="featured"><em>MOST POPULAR</em><span>TEAM</span><h2>$199<small>/month</small></h2><p>For a growing agency with shared calling operations.</p><ul><li>Up to 5 user seats</li><li>Up to 5 assigned Twilio numbers</li><li>Separate Life and Home & Auto queues</li><li>Compliance controls and call reporting</li><li>Priority onboarding</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("team")}>{checkoutPlan==="team"?"Opening secure checkout…":"Start Team"}</button></article>
         <article><span>AGENCY</span><h2>$499<small>/month</small></h2><p>For multi-agent production teams needing more capacity.</p><ul><li>Up to 15 user seats</li><li>Up to 15 assigned Twilio numbers</li><li>Agency-level campaigns and reporting</li><li>Number reputation monitoring</li><li>White-glove setup</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("agency")}>{checkoutPlan==="agency"?"Opening secure checkout…":"Start Agency"}</button></article>
       </div><div className="membership-actions"><button onClick={()=>void manageMembership()}>Manage membership</button><span>Update payment details, view invoices, or cancel securely through Stripe.</span></div><section className="billing-compliance"><div><span>COMPLIANCE IS PART OF THE PRODUCT</span><h2>Every subscriber accepts the customer compliance agreement.</h2><p>Customers remain responsible for consent, lead sources, Do Not Call suppression, calling hours, licensing, and recording disclosures. Pacifica may suspend unsafe campaigns.</p></div><a href="/terms" target="_blank">Read customer agreement ↗</a></section><p className="billing-note">Subscription prices exclude Twilio usage, applicable taxes, and optional carrier-data integrations. Recurring billing and membership management are securely handled by Stripe.</p></div>}
