@@ -12,15 +12,24 @@ import { readAudioPreferences } from "./audio-preferences";
 import { PacificaClearVoiceProcessor, supportsClearVoice } from "./clearvoice";
 
 type LeadLine = "life" | "home-auto";
-type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string };
+type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; vendorId?:string; sourceSyncStatus?:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string };
 type View = "dialer" | "leads" | "ai" | "quotes" | "campaigns" | "activity" | "billing" | "settings";
+type PostCallDraft = {crmStage:string;crmOutcome:string;sourceDisposition:string;appointmentAt:string;notes:string};
+
+const smartFinancialDispositions=["Received - not worked yet","Attempted Contact","Contacted","Quoted with Contact","Quoted without Contact","Sold - 1 Policy","Sold - Multi Policy","Lost - Not Interested","Interested - Working","Interested - Future Prospect"];
+const standardSourceDispositions=["New","Attempted Contact","Contacted","Quoted","Appointment Set","Sold","Lost - Not Interested","Follow-up"];
+
+function sourceDispositionOptions(source:string,current:string){
+  const options=/smart\s*financial/i.test(source)?smartFinancialDispositions:standardSourceDispositions;
+  return current&&!options.includes(current)?[current,...options]:options;
+}
 
 const starterLeads: Lead[] = [];
 const emptyLead: Lead = {id:0,name:"No contact selected",phone:"Import contacts to begin",city:"CRM queue is empty",status:"Empty",email:"",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never",line:"life",source:"Manual",leadCost:0,product:"Life",sourceDisposition:"",importedAt:""};
 
 function normalizeSavedLeads(value:unknown):Lead[]{
   if(!Array.isArray(value))return [];
-  return (value as Partial<Lead>[]).map((lead,index)=>({id:lead.id||Date.now()+index,name:lead.name||`Lead ${index+1}`,phone:lead.phone||"",city:lead.city||"Imported",status:lead.status||"Ready",email:lead.email||"",stage:lead.stage||"New lead",outcome:lead.outcome||"Not contacted",notes:lead.notes||"",followUp:lead.followUp||"",doNotCall:Boolean(lead.doNotCall),lastContact:lead.lastContact||"Never",line:lead.line==="home-auto"?"home-auto":"life",source:lead.source||"Existing CRM",leadCost:Number(lead.leadCost)||0,product:lead.product||(lead.line==="home-auto"?"Home & Auto":"Life"),sourceDisposition:lead.sourceDisposition||"",importedAt:lead.importedAt||"",address:lead.address||"",state:lead.state||"",zip:lead.zip||"",territory:lead.territory||"",brand:lead.brand||"",profileName:lead.profileName||"",received:lead.received||"",returnStatus:lead.returnStatus||"",employeeCount:lead.employeeCount||"",searchPro:lead.searchPro||""}));
+  return (value as Partial<Lead>[]).map((lead,index)=>({id:lead.id||Date.now()+index,name:lead.name||`Lead ${index+1}`,phone:lead.phone||"",city:lead.city||"Imported",status:lead.status||"Ready",email:lead.email||"",stage:lead.stage||"New lead",outcome:lead.outcome||"Not contacted",notes:lead.notes||"",followUp:lead.followUp||"",doNotCall:Boolean(lead.doNotCall),lastContact:lead.lastContact||"Never",line:lead.line==="home-auto"?"home-auto":"life",source:lead.source||"Existing CRM",leadCost:Number(lead.leadCost)||0,product:lead.product||(lead.line==="home-auto"?"Home & Auto":"Life"),sourceDisposition:lead.sourceDisposition||"",importedAt:lead.importedAt||"",vendorId:lead.vendorId||"",sourceSyncStatus:lead.sourceSyncStatus||"",address:lead.address||"",state:lead.state||"",zip:lead.zip||"",territory:lead.territory||"",brand:lead.brand||"",profileName:lead.profileName||"",received:lead.received||"",returnStatus:lead.returnStatus||"",employeeCount:lead.employeeCount||"",searchPro:lead.searchPro||""}));
 }
 
 function Icon({name}:{name:string}) {
@@ -72,6 +81,9 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
   const [leadFeedStatus,setLeadFeedStatus]=useState("Enter the integration key to begin live delivery");
   const [importReport,setImportReport]=useState("Upload CSV files from any lead provider. Pacifica detects common contact, product, status, cost, and source columns.");
   const [workspaceHydrated,setWorkspaceHydrated]=useState(false);
+  const [postCallLeadId,setPostCallLeadId]=useState<number|null>(null);
+  const [postCallDraft,setPostCallDraft]=useState<PostCallDraft>({crmStage:"Follow-up",crmOutcome:"Interested",sourceDisposition:"Contacted",appointmentAt:"",notes:""});
+  const [sourceSyncing,setSourceSyncing]=useState(false);
   const inputRef=useRef<HTMLInputElement>(null);
   const deviceRef=useRef<Device|null>(null);
   const clearVoiceProcessorRef=useRef<(AudioProcessor & {mode?:string})|null>(null);
@@ -85,6 +97,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
   const advancingRef=useRef(false);
   const nextCallTimerRef=useRef<number|undefined>(undefined);
   const workspaceSaveTimerRef=useRef<number|undefined>(undefined);
+  const resumeAfterWrapRef=useRef(false);
   const lineLeads=leads.filter(l=>l.line===activeLine);
   const callableLeads=lineLeads.filter(l=>l.stage!=="Closed"&&!l.doNotCall);
   const lead=callableLeads[index%Math.max(callableLeads.length,1)] || emptyLead;
@@ -159,10 +172,36 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
     const nextLead=queue[nextPosition];setIndex(nextPosition);setPhoneStatus(`Next call: ${nextLead.name}`);
     nextCallTimerRef.current=window.setTimeout(()=>{if(autoDialRef.current)void placeCall(nextLead.phone,false,nextLead)},1400);
   }
+  function openPostCall(leadId:number,resumeQueue:boolean){
+    const completedLead=leadsRef.current.find(item=>item.id===leadId);if(!completedLead)return;
+    resumeAfterWrapRef.current=resumeQueue;autoDialRef.current=false;setAutoDialing(false);
+    setPostCallDraft({crmStage:completedLead.stage==="New lead"?"Follow-up":completedLead.stage,crmOutcome:completedLead.outcome==="Not contacted"?"Interested":completedLead.outcome,sourceDisposition:completedLead.sourceDisposition||"Contacted",appointmentAt:completedLead.followUp||"",notes:completedLead.notes||""});
+    setPostCallLeadId(leadId);setPhoneStatus(`Wrap up ${completedLead.name}, then continue`);
+    updateLead(leadId,{lastContact:new Date().toLocaleString()});
+  }
+  async function savePostCall(){
+    if(!postCallLeadId||sourceSyncing)return;
+    const completedLead=leadsRef.current.find(item=>item.id===postCallLeadId);if(!completedLead)return;
+    setSourceSyncing(true);
+    const patch:Partial<Lead>={stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,sourceDisposition:postCallDraft.sourceDisposition,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes,status:postCallDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:new Date().toLocaleString()};
+    updateLead(completedLead.id,patch);
+    let syncMessage="Saved in Pacifica";
+    try{
+      const response=await fetch("/api/integrations/dispositions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({source:completedLead.source,vendorId:completedLead.vendorId,leadName:completedLead.name,phone:completedLead.phone,disposition:postCallDraft.sourceDisposition,crmStage:postCallDraft.crmStage,crmOutcome:postCallDraft.crmOutcome,appointmentAt:postCallDraft.appointmentAt,notes:postCallDraft.notes})});
+      const data=await response.json() as {synced?:boolean;message?:string;error?:string};
+      if(!response.ok)throw new Error(data.error||"Lead-source update failed");
+      syncMessage=data.message||(data.synced?`${completedLead.source} updated`:"Saved in Pacifica · source sync not connected");
+      updateLead(completedLead.id,{sourceSyncStatus:syncMessage});
+    }catch(error){syncMessage=`Saved in Pacifica · ${error instanceof Error?error.message:"source update failed"}`;updateLead(completedLead.id,{sourceSyncStatus:syncMessage})}
+    const resume=resumeAfterWrapRef.current;resumeAfterWrapRef.current=false;setPostCallLeadId(null);setSourceSyncing(false);setToast(syncMessage);
+    if(resume){autoDialRef.current=true;setAutoDialing(true);scheduleNextAuto(completedLead.id)}
+  }
   function finishCall(wasManual:boolean,leadId?:number,message="Call ended — save an outcome, then resume",outcome="Completed",errorCode?:string){
     if(advancingRef.current)return;advancingRef.current=true;
+    const wasConnected=Boolean(currentLogRef.current?.connectedAt);const shouldResume=autoDialRef.current;
     if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;finalizeLog(outcome,message,errorCode);
     callRef.current=null;setDialing(false);setConnected(false);setSeconds(0);elapsedRef.current=0;setMuted(false);setManualCall(false);
+    if(!wasManual&&leadId&&wasConnected){openPostCall(leadId,shouldResume);setToast("Connected call complete · choose a result before the next call");return}
     if(!wasManual&&leadId&&!autoDialRef.current)setSelectedLead(leadId);
     setToast(autoDialRef.current&&!wasManual?`${message} · advancing to next contact`:message);
     if(!wasManual)scheduleNextAuto(leadId);
@@ -198,7 +237,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
       setPhoneStatus(permission?"Microphone permission blocked":detail);
     }
   }
-  function start(){ if(!callableLeads.length){setView("leads");setToast(lineLeads.length?"No open contacts are eligible to dial":`Import ${activeLine==="life"?"Life":"Home & Auto"} leads first`);return} autoDialRef.current=true;setAutoDialing(true);void placeCall(lead.phone,false,lead) }
+  function start(){ if(postCallLeadId){setToast("Save the connected call result before continuing");return} if(!callableLeads.length){setView("leads");setToast(lineLeads.length?"No open contacts are eligible to dial":`Import ${activeLine==="life"?"Life":"Home & Auto"} leads first`);return} autoDialRef.current=true;setAutoDialing(true);void placeCall(lead.phone,false,lead) }
   function hangup(){ callRef.current?.disconnect();if(!callRef.current)finishCall(manualCall,manualCall?undefined:lead.id) }
   function toggleMute(){const call=callRef.current;if(!call)return;const next=!muted;call.mute(next);setMuted(next)}
   function callTypedNumber(){ if(dialNumber.replace(/\D/g,"").length<7){setToast("Enter a complete phone number");return} stopAutoDial("Manual call mode");void placeCall(dialNumber,true) }
@@ -221,14 +260,14 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
     if(!key){setLeadFeedStatus("Enter the integration key to begin live delivery");return}
     try{
       const response=await fetch("/api/integrations/leads",{cache:"no-store",headers:{"x-pacifica-webhook-secret":key}});
-      const data=await response.json() as {error?:string;leads?:Array<{id:string;source?:string;name:string;phone:string;email:string;city:string;product:string;line:LeadLine;disposition:string;notes:string;cost:number;createdAt:string}>};
+      const data=await response.json() as {error?:string;leads?:Array<{id:string;vendorId?:string;source?:string;name:string;phone:string;email:string;city:string;product:string;line:LeadLine;disposition:string;notes:string;cost:number;createdAt:string}>};
       if(!response.ok)throw new Error(data.error||"Connection failed");
       let added=0;
       setLeads(old=>{
         const phones=new Set(old.map(item=>item.phone.replace(/\D/g,"")));
         const inbound=(data.leads||[]).filter(item=>{const digits=item.phone.replace(/\D/g,"");if(!digits||phones.has(digits))return false;phones.add(digits);return true}).map<Lead>((item,index)=>{
           const mapped=dispositionFields(item.disposition);added++;
-          return {id:Date.now()+index,name:item.name,phone:item.phone,email:item.email||"",city:item.city||"Imported",status:mapped.stage==="Closed"?"Closed":"Ready",stage:mapped.stage,outcome:mapped.outcome,notes:item.notes||"",followUp:"",doNotCall:false,lastContact:"Never",line:item.line==="life"?"life":"home-auto",source:item.source||"Lead provider",leadCost:Number(item.cost)||0,product:item.product||"Home & Auto",sourceDisposition:item.disposition||"",importedAt:item.createdAt||new Date().toISOString()};
+          return {id:Date.now()+index,vendorId:item.vendorId||item.id,name:item.name,phone:item.phone,email:item.email||"",city:item.city||"Imported",status:mapped.stage==="Closed"?"Closed":"Ready",stage:mapped.stage,outcome:mapped.outcome,notes:item.notes||"",followUp:"",doNotCall:false,lastContact:"Never",line:item.line==="life"?"life":"home-auto",source:item.source||"Lead provider",leadCost:Number(item.cost)||0,product:item.product||"Home & Auto",sourceDisposition:item.disposition||"",importedAt:item.createdAt||new Date().toISOString()};
         });
         return inbound.length?[...inbound,...old]:old;
       });
@@ -283,6 +322,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
       const returnIndex = find("return", "returnstatus");
       const employeesIndex = find("numberofemployees", "employees", "employeecount");
       const searchProIndex = find("searchpro");
+      const vendorIdIndex = find("vendorid", "leadid", "deliveryid", "externalid", "referenceid");
       const fileSource = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "CSV import";
 
       const existingPhones = new Set(leadsRef.current.map((item) => item.phone.replace(/\D/g, "")).filter(Boolean));
@@ -315,6 +355,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
 
         parsed.push({
           id: Date.now() + rowIndex,
+          vendorId: get(cells, vendorIdIndex),
           name: (hasHeader ? get(cells, nameIndex) : cells[0]) || combinedName || "Lead " + (rowIndex + 1),
           phone,
           city: (hasHeader ? get(cells, cityIndex) : cells[2]) || "Imported",
@@ -385,7 +426,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
     updateLead(action.leadId,patch);setToast(`Updated ${current.name}`);
   }
   function switchLine(line:LeadLine){
-    if(dialing)return;
+    if(dialing||postCallLeadId){if(postCallLeadId)setToast("Save the connected call result before switching queues");return}
     autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=line;setActiveLine(line);setIndex(0);setSearch("");setStageFilter("All stages");setSourceFilter("All sources");
   }
   async function subscribe(plan:"solo"|"team"|"agency"){
@@ -418,7 +459,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
 
       {view==="dialer"&&<div className="dialer-view"><div className="dialer-main-grid">
         <section className={`hero-call ${connected?"connected":""}`}>
-          <div className="hero-head"><div><span className="eyebrow">PACIFICA · {activeLine==="life"?"LIFE":"HOME & AUTO"} AUTO DIALER</span><h1>{connected?"You’re connected.":dialing?"Calling through Twilio…":autoDialing?"Advancing to the next lead…":"Auto dialer ready."}</h1><p>{connected?"Speak normally. When either side hangs up, the next eligible lead starts automatically.":dialing?"Twilio is dialing one contact and bridges the conversation when they answer.":`Start the ${activeLine==="life"?"Life":"Home & Auto"} queue and let Pacifica advance through it.`}</p></div><div className="line-toggle"><button className="active">One line</button><button className={autoDialing?"active":""}>{autoDialing?"Auto running":"Auto queue"}</button></div></div>
+          <div className="hero-head"><div><span className="eyebrow">PACIFICA · {activeLine==="life"?"LIFE":"HOME & AUTO"} AUTO DIALER</span><h1>{postCallLeadId?"Finish the call result.":connected?"You’re connected.":dialing?"Calling through Twilio…":autoDialing?"Advancing to the next lead…":"Auto dialer ready."}</h1><p>{postCallLeadId?"Save the CRM update, source disposition, notes, and appointment before Pacifica calls the next lead.":connected?"Speak normally. When the call ends, choose its result and Pacifica will continue the queue.":dialing?"Twilio is dialing one contact and bridges the conversation when they answer.":`Start the ${activeLine==="life"?"Life":"Home & Auto"} queue and let Pacifica advance through it.`}</p></div><div className="line-toggle"><button className="active">One line</button><button className={autoDialing?"active":""}>{autoDialing?"Auto running":postCallLeadId?"Wrap-up required":"Auto queue"}</button></div></div>
           <div className="call-grid">
             <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><span>{connected?"CONNECTED":"NEXT CONTACT"}</span><h2>{manualCall?"Manual call":lead.name}</h2><a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"Phone keypad":lead.city}</p></div><b className="timer">{connected?fmt:"—:—"}</b></article>
             <div className={`signal ${dialing?"moving":""}`}>{Array.from({length:35}).map((_,i)=><i key={i} style={{height:`${12+((i*17)%39)}px`}}/> )}</div>
@@ -429,7 +470,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
             </div>
             {dialing&&!connected&&<div className="line-status"><span><i/> Calling {manualCall?dialNumber:lead.name} from +1 (417) 441-2831</span></div>}
             {autoDialing&&<div className="auto-session-note"><span><i/> AUTO DIAL ACTIVE · {callableLeads.length} ELIGIBLE {activeLine==="life"?"LIFE":"HOME & AUTO"} LEADS</span><button onClick={()=>stopAutoDial("Auto dial stopped after the current attempt")}>Pause auto dial</button></div>}
-            {connected&&<div className="connected-note"><i/> Live conversation. Hang up when finished; the next eligible contact will begin automatically.</div>}
+            {connected&&<div className="connected-note"><i/> Live conversation. Hang up when finished, record the result, then Pacifica continues the queue.</div>}
           </div>
         </section>
         <aside className="lead-file" aria-label="Current lead file">
@@ -453,12 +494,22 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
               {lead.employeeCount&&<label><span>Employees</span><b>{lead.employeeCount}</b></label>}
               {lead.searchPro&&<label><span>Search Pro</span><b>{lead.searchPro}</b></label>}
             </div>
-            <div className="lead-file-edit">
+            {postCallLeadId===lead.id?<section className="post-call-wrap" aria-label="Post-call wrap-up">
+              <header><div><span>CONNECTED CALL COMPLETE</span><h3>Record the result before the next call.</h3></div><em>{lead.source||"Lead provider"}</em></header>
+              <div className="post-call-fields">
+                <label><span>Pacifica CRM stage</span><select value={postCallDraft.crmStage} onChange={event=>setPostCallDraft(draft=>({...draft,crmStage:event.target.value}))}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
+                <label><span>Pacifica outcome</span><select value={postCallDraft.crmOutcome} onChange={event=>setPostCallDraft(draft=>({...draft,crmOutcome:event.target.value}))}><option>Not contacted</option><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Completed</option></select></label>
+                <label className="source-result"><span>{lead.source||"Lead source"} disposition</span><select value={postCallDraft.sourceDisposition} onChange={event=>setPostCallDraft(draft=>({...draft,sourceDisposition:event.target.value}))}>{sourceDispositionOptions(lead.source,postCallDraft.sourceDisposition).map(option=><option key={option}>{option}</option>)}</select><small>This updates the provider separately from your Pacifica workflow when its outbound API is connected.</small></label>
+                <label><span>Appointment / follow-up</span><input type="datetime-local" value={postCallDraft.appointmentAt} onChange={event=>setPostCallDraft(draft=>({...draft,appointmentAt:event.target.value}))}/></label>
+                <label className="wrap-notes"><span>Call notes</span><textarea value={postCallDraft.notes} onChange={event=>setPostCallDraft(draft=>({...draft,notes:event.target.value}))} placeholder="Conversation, needs, objections, and next steps…"/></label>
+              </div>
+              <footer><small>{lead.sourceSyncStatus||`Pacifica will save this result. ${lead.source||"Lead-source"} sync runs after its status API is connected.`}</small><button disabled={sourceSyncing} onClick={()=>void savePostCall()}>{sourceSyncing?"Saving…":resumeAfterWrapRef.current?"Save & call next":"Save result"}</button></footer>
+            </section>:<div className="lead-file-edit">
               <label><span>CRM stage</span><select value={lead.stage} onChange={event=>updateLead(lead.id,{stage:event.target.value})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
               <label><span>Outcome</span><select value={lead.outcome} onChange={event=>updateLead(lead.id,{outcome:event.target.value})}><option>Not contacted</option><option>No answer</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Completed</option></select></label>
               <label><span>Follow-up</span><input value={lead.followUp} onChange={event=>updateLead(lead.id,{followUp:event.target.value})} placeholder="Date, time, or reminder"/></label>
               <label className="file-notes"><span>Agent notes</span><textarea value={lead.notes} onChange={event=>updateLead(lead.id,{notes:event.target.value})} placeholder="Add notes while you speak…"/></label>
-            </div>
+            </div>}
             <footer><button onClick={()=>{setSelectedLead(lead.id);setView("leads")}}>Open complete CRM record</button><button className={lead.doNotCall?"dnc-active":""} onClick={()=>updateLead(lead.id,{doNotCall:!lead.doNotCall})}>{lead.doNotCall?"Remove DNC":"Mark DNC"}</button></footer>
           </>:<div className="lead-file-empty"><Icon name="users"/><b>No queued lead selected</b><span>Import contacts or switch from manual dialing to see the full lead file here.</span></div>}
         </aside>
@@ -486,7 +537,7 @@ export default function Page({clerkEnabled=false,isOwner=false}:{clerkEnabled?:b
         <article><span>AGENCY</span><h2>${pacificaPlans.agency.monthlyPrice}<small>/month</small></h2><p>{pacificaPlans.agency.description}</p><ul><li>{pacificaPlans.agency.seats}</li><li>{pacificaPlans.agency.numbers}</li><li>Agency-level campaigns and reporting</li><li>Number reputation monitoring</li><li>White-glove setup</li><li>Quote Center coming soon</li></ul><button disabled={Boolean(checkoutPlan)} onClick={()=>void subscribe("agency")}>{checkoutPlan==="agency"?"Opening secure checkout…":"Start Agency"}</button></article>
       </div><div className="membership-actions"><button onClick={()=>void manageMembership()}>Manage membership</button><span>Update payment details, view invoices, or cancel securely through Stripe.</span></div><section className="billing-compliance"><div><span>COMPLIANCE IS PART OF THE PRODUCT</span><h2>Every subscriber accepts the customer compliance agreement.</h2><p>Customers remain responsible for consent, lead sources, Do Not Call suppression, calling hours, licensing, and recording disclosures. Pacifica may suspend unsafe campaigns.</p></div><a href="/terms" target="_blank">Read customer agreement ↗</a></section><p className="billing-note">Subscription prices exclude Twilio usage, applicable taxes, and optional carrier-data integrations. Recurring billing and membership management are securely handled by Stripe.</p></div>}
 
-      {isOwner&&view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">OWNER CONFIGURATION</span><h1>Connect the systems that feed Pacifica.</h1><p>Choose your audio devices and connect any lead provider for automatic delivery.</p></div></div><div className="phone-setup-layout"><PhoneSettings ensureDevice={ensureDevice}/><div className="phone-setup-side"><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The token endpoint, TwiML voice webhook, microphone preflight, and runtime error reporting are installed.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"SERVER CONFIGURED":"CONFIGURATION NEEDED"}</div></div><article className="setup-help"><span>REQUIRED TWIML APP URL</span><code>https://pacificacrm.com/api/twilio/voice</code><p>Method: HTTP POST. After any Vercel environment-variable change, redeploy the Production deployment.</p><a href="/api/twilio/diagnostics" target="_blank">Open safe diagnostics ↗</a></article><article className="smart-connect"><header><div><span>UNIVERSAL LEAD DELIVERY</span><h2>Any lead provider → Pacifica automatically</h2></div><strong className={leadFeedKey?"connected":""}><i/> {leadFeedKey?"KEY SAVED":"SETUP"}</strong></header><p>Give any lead company this POST endpoint. Replace PROVIDER_NAME with its name so every contact keeps its source:</p><code>https://pacificacrm.com/api/integrations/leads?source=PROVIDER_NAME&amp;key=YOUR_SECRET</code><label>Integration key<input type="password" value={leadFeedKey} onChange={e=>setLeadFeedKey(e.target.value)} placeholder="Same value as LEAD_WEBHOOK_SECRET"/></label><div><button onClick={saveLeadFeedConnection}>Save & test connection</button><small>{leadFeedStatus}</small></div></article></div></div></div>}
+      {isOwner&&view==="settings"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">OWNER CONFIGURATION</span><h1>Connect the systems that feed Pacifica.</h1><p>Choose your audio devices and connect any lead provider for automatic delivery.</p></div></div><div className="phone-setup-layout"><PhoneSettings ensureDevice={ensureDevice}/><div className="phone-setup-side"><div className="provider-card"><div><span className="eyebrow">TWILIO VOICE</span><h2>+1 (417) 441-2831</h2><p>The token endpoint, TwiML voice webhook, microphone preflight, and runtime error reporting are installed.</p></div><div className={`twilio-selected ${phoneReady?"":"waiting"}`}><i/> {phoneReady?"SERVER CONFIGURED":"CONFIGURATION NEEDED"}</div></div><article className="setup-help"><span>REQUIRED TWIML APP URL</span><code>https://pacificacrm.com/api/twilio/voice</code><p>Method: HTTP POST. After any Vercel environment-variable change, redeploy the Production deployment.</p><a href="/api/twilio/diagnostics" target="_blank">Open safe diagnostics ↗</a></article><article className="smart-connect"><header><div><span>UNIVERSAL LEAD DELIVERY</span><h2>Any lead provider → Pacifica automatically</h2></div><strong className={leadFeedKey?"connected":""}><i/> {leadFeedKey?"KEY SAVED":"SETUP"}</strong></header><p>Give a lead company these connection details. Replace PROVIDER_NAME so every contact keeps its source:</p><dl className="lead-api-details"><div><dt>Posting URL</dt><dd>https://pacificacrm.com/api/integrations/leads?source=PROVIDER_NAME</dd></div><div><dt>Method</dt><dd>POST · application/json</dd></div><div><dt>API key / header name</dt><dd>x-pacifica-webhook-secret</dd></div><div><dt>API key value</dt><dd>The value saved in Vercel as LEAD_WEBHOOK_SECRET</dd></div></dl><label>Integration key<input type="password" value={leadFeedKey} onChange={e=>setLeadFeedKey(e.target.value)} placeholder="Same value as LEAD_WEBHOOK_SECRET"/></label><div><button onClick={saveLeadFeedConnection}>Save & test connection</button><small>{leadFeedStatus}</small></div></article></div></div></div>}
     </section>
     {showPhoneSettings&&<div className="phone-config-overlay"><PhoneSettings compact ensureDevice={ensureDevice} onClose={()=>setShowPhoneSettings(false)}/></div>}
     {activeLead&&<div className="drawer-backdrop" onClick={()=>setSelectedLead(null)}><aside className="contact-drawer" onClick={e=>e.stopPropagation()}><header><div className="drawer-person"><i>{activeLead.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><small>{activeLead.line==="life"?"LIFE":"HOME & AUTO"} CONTACT</small><h2>{activeLead.name}</h2><p>{activeLead.phone} · {activeLead.city}</p></span></div><button aria-label="Close contact" onClick={()=>setSelectedLead(null)}>×</button></header><div className="record-actions"><button disabled={activeLead.stage==="Closed"||activeLead.doNotCall} onClick={()=>{switchLine(activeLead.line);setSelectedLead(null);setView("dialer");setToast("Contact category loaded in dialer")}}><Icon name="dial"/> Load in dialer</button><button onClick={()=>updateLead(activeLead.id,{doNotCall:!activeLead.doNotCall})} className={activeLead.doNotCall?"danger-active":""}>{activeLead.doNotCall?"Remove DNC":"Do not call"}</button><button className={activeLead.stage==="Closed"?"reopen-lead":"close-lead"} onClick={()=>{const reopening=activeLead.stage==="Closed";updateLead(activeLead.id,{stage:reopening?"New lead":"Closed",status:reopening?"Ready":"Closed",followUp:reopening?activeLead.followUp:""});setToast(reopening?"Lead reopened and returned to the active queue":"Lead closed and removed from follow-ups")}}>{activeLead.stage==="Closed"?"Reopen lead":"Close lead"}</button></div><section className="record-section"><span className="section-label">CONTACT DETAILS</span><div className="field-grid"><label>Name<input value={activeLead.name} onChange={e=>updateLead(activeLead.id,{name:e.target.value})}/></label><label>Phone<input value={activeLead.phone} onChange={e=>updateLead(activeLead.id,{phone:e.target.value})}/></label><label>Email<input value={activeLead.email} onChange={e=>updateLead(activeLead.id,{email:e.target.value})}/></label><label>City<input value={activeLead.city} onChange={e=>updateLead(activeLead.id,{city:e.target.value})}/></label><label>Lead category<select value={activeLead.line} onChange={e=>updateLead(activeLead.id,{line:e.target.value as LeadLine})}><option value="life">Life</option><option value="home-auto">Home & Auto</option></select></label></div></section><section className="record-section"><span className="section-label">PIPELINE & OUTCOME</span><div className="field-grid"><label>Stage<select value={activeLead.stage} onChange={e=>updateLead(activeLead.id,{stage:e.target.value,status:e.target.value==="Closed"?"Closed":"Ready"})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label><label>Call outcome<select value={activeLead.outcome} onChange={e=>updateLead(activeLead.id,{outcome:e.target.value,lastContact:"Just now"})}><option>Not contacted</option><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option></select></label><label>Follow-up date<input type="date" value={activeLead.followUp} onChange={e=>updateLead(activeLead.id,{followUp:e.target.value,stage:e.target.value?"Follow-up":activeLead.stage})}/></label><label>Last contact<input disabled value={activeLead.lastContact}/></label></div></section><section className="record-section"><span className="section-label">NOTES</span><textarea value={activeLead.notes} onChange={e=>updateLead(activeLead.id,{notes:e.target.value})} placeholder="Add conversation notes, needs, objections, or next steps…"/></section><section className="timeline"><span className="section-label">ACTIVITY</span><div><i/><span><b>{activeLead.outcome}</b><small>{activeLead.lastContact}</small></span></div>{activeLead.stage==="Closed"&&<div><i className="navy"/><span><b>Lead closed</b><small>Excluded from dialing and follow-ups</small></span></div>}{activeLead.followUp&&<div><i className="amber"/><span><b>Follow-up scheduled</b><small>{activeLead.followUp}</small></span></div>}<div><i className="navy"/><span><b>Contact added to Pacific CRM</b><small>July 2026</small></span></div></section><footer><button onClick={()=>{setToast("Contact changes saved");setSelectedLead(null)}}>Save contact</button></footer></aside></div>}

@@ -1023,6 +1023,23 @@ button,input,select,textarea{font-family:inherit}
 .lead-file-edit select:focus,.lead-file-edit input:focus,.lead-file-edit textarea:focus{border-color:#39aeba}
 .lead-file-edit .file-notes{grid-column:1/-1}
 .lead-file-edit textarea{min-height:70px;resize:vertical;line-height:1.45}
+.post-call-wrap{margin:12px;border:1px solid #746037;background:#191812;color:#dfe7e8;border-radius:5px;overflow:hidden}
+.post-call-wrap>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 13px;border-bottom:1px solid #4b432c;background:#201e16}
+.post-call-wrap>header span{display:block;color:#e3bd68;font-size:7px;font-weight:900;letter-spacing:.13em;margin-bottom:5px}
+.post-call-wrap>header h3{margin:0;color:#f1f3f3;font-size:12px;line-height:1.35}
+.post-call-wrap>header em{max-width:130px;border:1px solid #605535;background:#2b281c;color:#e6cf96;border-radius:3px;padding:5px 7px;font-size:7px;font-style:normal;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-call-fields{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px}
+.post-call-fields label{min-width:0}
+.post-call-fields label>span{display:block;color:#9e9784;font-size:7px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.post-call-fields select,.post-call-fields input,.post-call-fields textarea{width:100%;border:1px solid #4a4a43;background:#121413;color:#edf0f0;border-radius:4px;font:inherit;font-size:9px;padding:8px;outline:none}
+.post-call-fields select:focus,.post-call-fields input:focus,.post-call-fields textarea:focus{border-color:#c39d50}
+.post-call-fields .source-result,.post-call-fields .wrap-notes{grid-column:1/-1}
+.post-call-fields .source-result small{display:block;margin-top:6px;color:#87877f;font-size:7px;line-height:1.45}
+.post-call-fields textarea{min-height:70px;resize:vertical;line-height:1.45}
+.post-call-wrap>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 12px 12px}
+.post-call-wrap>footer small{color:#8f918c;font-size:7px;line-height:1.45}
+.post-call-wrap>footer button{flex:none;border:1px solid #258a7d;background:#16776e;color:#fff;border-radius:4px;padding:9px 12px;font-size:8px;font-weight:900;cursor:pointer}
+.post-call-wrap>footer button:disabled{opacity:.55;cursor:wait}
 .lead-file>footer{display:flex;gap:8px;padding:0 14px 14px}
 .lead-file>footer button{border:1px solid #2d5b69;background:#123241;color:#73d4dc;border-radius:7px;padding:9px 10px;font-size:8px;font-weight:900;cursor:pointer}
 .lead-file>footer button:first-child{flex:1}
@@ -1045,7 +1062,7 @@ button,input,select,textarea{font-family:inherit}
   .lead-file{max-width:760px;margin:auto}
   .dialer-main-grid>.side-pad{max-width:430px}
 }
-@media(max-width:560px){.lead-file-grid,.lead-file-edit{grid-template-columns:1fr}.lead-file-grid label{border-right:0}.lead-file-edit .file-notes{grid-column:auto}.lead-file>footer{flex-direction:column}}
+@media(max-width:560px){.lead-file-grid,.lead-file-edit,.post-call-fields{grid-template-columns:1fr}.lead-file-grid label{border-right:0}.lead-file-edit .file-notes,.post-call-fields .source-result,.post-call-fields .wrap-notes{grid-column:auto}.lead-file>footer,.post-call-wrap>footer{align-items:stretch;flex-direction:column}}
 
 /* Pacifica operator UI — flat, familiar, and built for long work sessions. */
 body{background:#111315}
@@ -1062,7 +1079,7 @@ body{background:#111315}
 .page-title h1,.hero-head h1{letter-spacing:-.025em}
 .primary,.import,.start-call,.pricing-grid button,.record-actions button:first-child,.contact-drawer>footer button{background:#177e83;border-color:#228e93;border-radius:4px;box-shadow:none}
 .primary:hover,.import:hover,.pricing-grid button:hover{background:#1a8e93}
-input,select,textarea,.crm-tools label,.lead-file-edit select,.lead-file-edit input,.lead-file-edit textarea{background:#141719!important;border-color:#41464a!important;border-radius:4px!important}
+input,select,textarea,.crm-tools label,.lead-file-edit select,.lead-file-edit input,.lead-file-edit textarea,.post-call-fields select,.post-call-fields input,.post-call-fields textarea{background:#141719!important;border-color:#41464a!important;border-radius:4px!important}
 .pricing-grid article.featured{transform:none;background:#202623;border-color:#678270;box-shadow:none}
 .pricing-grid article>em{border-radius:3px;background:#29513f;color:#c5ead7}
 .pricing-grid button{background:#177e83}
