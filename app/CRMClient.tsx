@@ -111,6 +111,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const deviceRef=useRef<Device|null>(null);
   const clearVoiceProcessorRef=useRef<(AudioProcessor & {mode?:string})|null>(null);
   const callRef=useRef<Call|null>(null);
+  const voiceRouteTokenRef=useRef("");
   const watchdogRef=useRef<number|undefined>(undefined);
   const elapsedRef=useRef(0);
   const currentLogRef=useRef<(CallLog & { connectedAt?:number; finalized?:boolean })|null>(null);
@@ -136,7 +137,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   useEffect(()=>{const timer=window.setTimeout(()=>void refreshPhoneStatus(),0);return()=>{window.clearTimeout(timer);if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy();clearVoiceProcessorRef.current=null}},[]);
 
-  async function fetchToken(){const response=await fetch("/api/twilio/token",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Twilio is not configured");return String(data.token)}
+  async function fetchToken(){const response=await fetch("/api/twilio/token",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Twilio is not configured");voiceRouteTokenRef.current=String(data.routeToken||"");return String(data.token)}
   async function configureClearVoice(device:Device){
     const preferences=readAudioPreferences();
     const audio=device.audio;
@@ -247,7 +248,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       const clearVoiceActive=await configureClearVoice(device);
       if(audioPreferences.speaker!=="default")await device.audio?.speakerDevices?.set(audioPreferences.speaker);
       if(audioPreferences.ring!=="default")await device.audio?.ringtoneDevices?.set(audioPreferences.ring);
-      const connectPromise=device.connect({params:{To:number}});
+      const connectPromise=device.connect({params:{To:number,RouteToken:voiceRouteTokenRef.current}});
       const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Twilio signaling timed out after 15 seconds")),15000))]);callRef.current=call;
       watchdogRef.current=window.setTimeout(()=>{call.disconnect();finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out")},30000);
       call.on("accept",()=>{if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?"Live call · ClearVoice active":"Live call over Wi-Fi")});

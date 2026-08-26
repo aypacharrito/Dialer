@@ -3,6 +3,7 @@ export const runtime = "edge";
 import { phoneAssignmentForClient, phoneAssignmentForNumber } from "../../../lib/phone-assignments";
 import { twilioClientIdentity } from "../../../lib/twilio-workspaces";
 import { rejectedTwilioWebhook, validateTwilioWebhook } from "../../../lib/twilio-webhook";
+import { verifyVoiceRouteToken } from "../../../lib/voice-route-token";
 
 function xmlEscape(value: string) {
   return value.replace(/[<>&'\"]/g, character => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", "\"": "&quot;" })[character] || character);
@@ -31,9 +32,19 @@ export async function POST(request: Request) {
     return new Response(inbound,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
   }
   const normalized = to.startsWith("+") ? `+${to.slice(1).replace(/\D/g, "")}` : `+1${to.replace(/\D/g, "")}`;
-  const callerId = (await phoneAssignmentForClient(from,"twilio"))?.phoneNumber||"";
-  if (!callerId || !/^\+[1-9]\d{7,14}$/.test(normalized)) {
+  if(!/^\+[1-9]\d{7,14}$/.test(normalized)){
     return new Response("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Reject/></Response>", { status: 400, headers: { "Content-Type": "text/xml; charset=utf-8" } });
+  }
+  const routeToken=String(form.get("RouteToken")||"");
+  const secret=(process.env.TWILIO_API_KEY_SECRET||"").trim();
+  const claim=routeToken&&secret?await verifyVoiceRouteToken(routeToken,secret):null;
+  const clientIdentity=from.replace(/^client:/i,"");
+  const claimedCallerId=claim&&claim.identity===clientIdentity&&twilioClientIdentity(claim.workspaceId)===clientIdentity?claim.phoneNumber:"";
+  const callerId=claimedCallerId||(await phoneAssignmentForClient(from,"twilio"))?.phoneNumber||"";
+  if(!callerId){
+    console.warn("[twilio/voice] caller identity has no workspace route",{clientIdentityLast8:clientIdentity.slice(-8),routeClaim:Boolean(routeToken),validRouteClaim:Boolean(claim)});
+    const explanation=`<?xml version="1.0" encoding="UTF-8"?><Response><Say>This Twilio test client is not assigned to a Pacifica workspace. Place the test call from inside Pacifica CRM.</Say><Hangup/></Response>`;
+    return new Response(explanation,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
   }
   console.info("[twilio/voice] outbound request", { destinationLast4: normalized.slice(-4), callerIdLast4: callerId.slice(-4) });
   const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number statusCallback="${statusCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;

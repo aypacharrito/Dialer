@@ -2,6 +2,7 @@ import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
 import { twilioClientIdentity } from "../../../lib/twilio-workspaces";
+import { createVoiceRouteToken } from "../../../lib/voice-route-token";
 
 export const runtime = "nodejs";
 
@@ -52,7 +53,11 @@ export async function GET() {
     if(!assignment)return Response.json({error:"This workspace does not have a phone number yet. Ask the Pacifica platform owner to assign one in Phone Number Center."},{status:409});
     if(assignment&&assignment.provider!=="twilio")return Response.json({error:`This workspace uses ${assignment.provider}. Its browser calling adapter is not connected yet.`},{status:409});
     const phoneNumber=assignment.phoneNumber;
-    return Response.json({ token: await createToken(apiKeySecret, accountSid, apiKeySid, appSid, identity), identity, provider:"twilio",phoneNumber, incomingEnabled:Boolean(phoneNumber), expiresIn: 3600 }, { headers: { "Cache-Control": "no-store" } });
+    const [token,routeToken]=await Promise.all([
+      createToken(apiKeySecret,accountSid,apiKeySid,appSid,identity),
+      createVoiceRouteToken({workspaceId:access.userId,identity,phoneNumber},apiKeySecret),
+    ]);
+    return Response.json({ token,routeToken, identity, provider:"twilio",phoneNumber, incomingEnabled:Boolean(phoneNumber), expiresIn: 3600 }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[twilio/token] token generation failed", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Twilio token generation failed. Check the API key secret and redeploy." }, { status: 500 });
