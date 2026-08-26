@@ -5,7 +5,7 @@ type IncomingRecord = Record<string, unknown>;
 
 type NormalizedLead = {
   id:string;vendorId:string;source:string;name:string;phone:string;phoneDigits:string;email:string;city:string;product:string;line:"life"|"home-auto";disposition:string;notes:string;cost:number;createdAt:string;
-  address:string;state:string;zip:string;territory:string;brand:string;profileName:string;received:string;returnStatus:string;employeeCount:string;searchPro:string;extraFields:Record<string,string>;
+  address:string;state:string;zip:string;territory:string;brand:string;profileName:string;received:string;receivedProvided:boolean;returnStatus:string;employeeCount:string;searchPro:string;extraFields:Record<string,string>;
 };
 
 const canonical=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]/g,"");
@@ -67,14 +67,17 @@ function normalize(payload:unknown,requestedSource:string):NormalizedLead {
   const line=leadLineForProduct(product,"life");
   const rawCost=textValue(record,"cost","lead_cost","leadCost","price").replace(/[^0-9.-]/g,"");
   const source=textValue(record,"source","provider","vendor","lead_source","leadSource","publisher")||requestedSource||"Lead provider";
+  const explicitReceived=textValue(record,"received","received_at","receivedAt");
+  const explicitCreated=textValue(record,"created_at","createdAt","timestamp");
+  const arrival=explicitReceived||explicitCreated||new Date().toISOString();
   return {
     id:crypto.randomUUID(),vendorId:textValue(record,"id","lead_id","leadId","delivery_id","deliveryId"),source,name,phone,phoneDigits,
     email:textValue(record,"email","email_address","emailAddress"),city:textValue(record,"city","location")||"Imported",
     product,line,disposition:textValue(record,"disposition","status","lead_status","leadStatus")||"Received - not worked yet",
-    notes:textValue(record,"notes","note","comments"),cost:Number(rawCost)||0,createdAt:textValue(record,"created_at","createdAt","timestamp","received")||new Date().toISOString(),
+    notes:textValue(record,"notes","note","comments"),cost:Number(rawCost)||0,createdAt:explicitCreated||explicitReceived||arrival,
     address:textValue(record,"address","street_address","streetAddress","address1","street"),state:textValue(record,"state","province"),zip:textValue(record,"zip","zipcode","postal_code","postalCode"),
     territory:textValue(record,"territory","market"),brand:textValue(record,"brand","agency","company"),profileName:textValue(record,"profile_name","profileName","profile","campaign"),
-    received:textValue(record,"received","received_at","receivedAt")||textValue(record,"created_at","createdAt","timestamp")||new Date().toISOString(),returnStatus:textValue(record,"return","return_status","returnStatus"),employeeCount:textValue(record,"number_of_employees","numberOfEmployees","employees","employee_count","employeeCount"),searchPro:textValue(record,"search_pro","searchPro"),extraFields:extraFields(record),
+    received:arrival,receivedProvided:Boolean(explicitReceived||explicitCreated),returnStatus:textValue(record,"return","return_status","returnStatus"),employeeCount:textValue(record,"number_of_employees","numberOfEmployees","employees","employee_count","employeeCount"),searchPro:textValue(record,"search_pro","searchPro"),extraFields:extraFields(record),
   };
 }
 
@@ -115,14 +118,17 @@ async function saveLead(workspaceId:string,lead:NormalizedLead) {
   const prefix=`pacifica:v2:inbound:${workspaceId}`;
   const added=await redisCommand(["SADD",`${prefix}:phones`,lead.phoneDigits]);
   if (added!==null) {
-    if (Number(added)===0) return false;
-    await redisCommand(["LPUSH",`${prefix}:leads`,JSON.stringify(lead)]);
+    let savedLead=lead;
+    if(Number(added)===0&&!lead.receivedProvided){const recent=await redisCommand(["LRANGE",`${prefix}:leads`,0,499]);const prior=Array.isArray(recent)?recent.map(value=>JSON.parse(String(value)) as NormalizedLead).find(item=>item.phoneDigits===lead.phoneDigits):undefined;if(prior)savedLead={...lead,createdAt:prior.createdAt,received:prior.received}}
+    await redisCommand(["LPUSH",`${prefix}:leads`,JSON.stringify(savedLead)]);
     await redisCommand(["LTRIM",`${prefix}:leads`,0,1999]);
-    return true;
+    return Number(added)>0?"created" as const:"updated" as const;
   }
   const db=await ensureInboundTable();
-  const result=await db.prepare("INSERT OR IGNORE INTO inbound_leads_v2 (id,workspace_id,vendor_id,source,name,phone,phone_digits,email,city,product,line,disposition,notes,cost,created_at,extra_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)").bind(lead.id,workspaceId,lead.vendorId,lead.source,lead.name,lead.phone,lead.phoneDigits,lead.email,lead.city,lead.product,lead.line,lead.disposition,lead.notes,lead.cost,lead.createdAt,JSON.stringify({address:lead.address,state:lead.state,zip:lead.zip,territory:lead.territory,brand:lead.brand,profileName:lead.profileName,received:lead.received,returnStatus:lead.returnStatus,employeeCount:lead.employeeCount,searchPro:lead.searchPro,extraFields:lead.extraFields})).run();
-  return Number(result.meta.changes)>0;
+  const existing=await db.prepare("SELECT id,created_at AS createdAt,extra_json AS extraJson FROM inbound_leads_v2 WHERE workspace_id=? AND phone_digits=? LIMIT 1").bind(workspaceId,lead.phoneDigits).first() as {id?:string;createdAt?:string;extraJson?:string}|null;
+  let savedLead=lead;if(existing&&!lead.receivedProvided){let priorReceived="";try{priorReceived=String((JSON.parse(existing.extraJson||"{}") as {received?:string}).received||"")}catch{}savedLead={...lead,createdAt:existing.createdAt||lead.createdAt,received:priorReceived||existing.createdAt||lead.received}}
+  await db.prepare("INSERT INTO inbound_leads_v2 (id,workspace_id,vendor_id,source,name,phone,phone_digits,email,city,product,line,disposition,notes,cost,created_at,extra_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0) ON CONFLICT(workspace_id,phone_digits) DO UPDATE SET vendor_id=excluded.vendor_id, source=excluded.source, name=excluded.name, phone=excluded.phone, email=excluded.email, city=excluded.city, product=excluded.product, line=excluded.line, disposition=excluded.disposition, notes=excluded.notes, cost=excluded.cost, created_at=excluded.created_at, extra_json=excluded.extra_json, synced_at=0").bind(savedLead.id,workspaceId,savedLead.vendorId,savedLead.source,savedLead.name,savedLead.phone,savedLead.phoneDigits,savedLead.email,savedLead.city,savedLead.product,savedLead.line,savedLead.disposition,savedLead.notes,savedLead.cost,savedLead.createdAt,JSON.stringify({address:savedLead.address,state:savedLead.state,zip:savedLead.zip,territory:savedLead.territory,brand:savedLead.brand,profileName:savedLead.profileName,received:savedLead.received,returnStatus:savedLead.returnStatus,employeeCount:savedLead.employeeCount,searchPro:savedLead.searchPro,extraFields:savedLead.extraFields})).run();
+  return existing?"updated" as const:"created" as const;
 }
 
 async function listLeads(workspaceId:string) {
@@ -152,8 +158,8 @@ export async function POST(request:Request) {
     const workspaceId=safeWorkspace(url.searchParams.get("workspace")||"");
     if(!workspaceId)return Response.json({error:"A workspace ID is required"},{status:400});
     const lead=normalize(await bodyFrom(request),source);
-    const created=await saveLead(workspaceId,lead);
-    return Response.json({ok:true,created,duplicate:!created,id:lead.id},{status:created?201:200});
+    const result=await saveLead(workspaceId,lead);
+    return Response.json({ok:true,created:result==="created",updated:result==="updated",id:lead.id},{status:result==="created"?201:200});
   } catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to receive lead"},{status:400})}
 }
 

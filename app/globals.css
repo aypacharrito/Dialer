@@ -377,6 +377,7 @@ button,input,select,textarea{font-family:inherit}
 .top-actions{gap:9px}
 .connection{color:#71889b}
 .connection svg{color:#38d8ad}
+.workspace-sync{max-width:145px;color:#7f969f;font-size:7px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workspace-sync i{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:#43c99e;box-shadow:0 0 0 3px #43c99e16}
 .notification{position:relative;height:38px;width:38px;border:1px solid #26384a;background:#111d2a;color:#8da3b5;border-radius:8px;display:grid;place-items:center}
 .notification svg{width:17px}
 .notification em{position:absolute;right:-5px;top:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:#d45b59;color:white;display:grid;place-items:center;font-size:7px;font-style:normal;font-weight:900;box-shadow:0 0 0 2px #0b1521}
