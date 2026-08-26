@@ -4,22 +4,22 @@ import { isClerkConfigured } from "./lib/clerk-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pacifica | Insurance Sales Command Center",
-  description: "A focused CRM and browser-based power dialer for importing leads, making Twilio calls, recording outcomes, and managing follow-ups.",
+  title: "Pacifica CRM | Every Lead Worked",
+  description: "A focused lead CRM with browser calling, messaging, AI-assisted follow-up, pipelines, and live reporting.",
   icons: {
     icon: [{ url: "/pacifica-mark.png", type: "image/png" }],
     shortcut: "/pacifica-mark.png",
     apple: "/pacifica-mark.png",
   },
   openGraph: {
-    title: "Pacifica | Insurance Sales Command Center",
-    description: "Import leads, call through Twilio, and manage every follow-up from one focused CRM workspace.",
+    title: "Pacifica CRM | Every Lead Worked",
+    description: "Import leads, call and text through Twilio, and manage every follow-up from one focused workspace.",
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "Pacifica | Insurance Sales Command Center",
-    description: "Import leads, call through Twilio, and manage every follow-up from one focused CRM workspace.",
+    title: "Pacifica CRM | Every Lead Worked",
+    description: "Import leads, call and text through Twilio, and manage every follow-up from one focused workspace.",
   },
 };
 

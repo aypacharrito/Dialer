@@ -12,9 +12,9 @@ function stableIndex(value:string,length:number){let hash=0;for(const char of va
 function localDraft(name:string,product:string,city:string,personal:string,seed:string){
   const place=city?` in ${city}`:"";
   const templates=[
-    `Hey ${firstName(name)}, it’s Alejandro with Pacifica. Just checking in about the ${product} coverage you were looking for${place}. If you still want help comparing options, text me here or call ${personal}. Reply STOP to opt out.`,
-    `Hi ${firstName(name)}, Alejandro from Pacifica here. I wanted to follow up on your request for ${product} coverage${place}. I’m happy to help whenever the timing is right—text me back or call ${personal}. Reply STOP to opt out.`,
-    `Hey ${firstName(name)}—it’s Alejandro with Pacifica. I have your ${product} request and wanted to see what questions I can clear up for you${place}. You can reply here or reach me at ${personal}. Reply STOP to opt out.`,
+    `Hey ${firstName(name)}, it’s Alejandro with Pacifica. Just checking in about your ${product} request${place}. If you still want help, text me here or call ${personal}. Reply STOP to opt out.`,
+    `Hi ${firstName(name)}, Alejandro from Pacifica here. I wanted to follow up on your interest in ${product}${place}. I’m happy to help whenever the timing is right—text me back or call ${personal}. Reply STOP to opt out.`,
+    `Hey ${firstName(name)}—it’s Alejandro with Pacifica. I have your ${product} inquiry and wanted to see what questions I can clear up for you${place}. You can reply here or reach me at ${personal}. Reply STOP to opt out.`,
     `Hi ${firstName(name)}, this is Alejandro at Pacifica. I’m following up on the ${product} information you requested${place}. No pressure—when you’re ready, text me here or call ${personal}. Reply STOP to opt out.`,
   ];
   return templates[stableIndex(seed,lengthOrOne(templates.length))].slice(0,500);
@@ -28,7 +28,7 @@ export async function POST(request:Request){
     const body=await request.json() as {lead?:Record<string,unknown>};
     const lead=body.lead||{};
     const name=String(lead.name||"there").slice(0,100);
-    const product=String(lead.product||lead.line||"insurance").slice(0,100);
+    const product=String(lead.product||"service").slice(0,100);
     const city=String(lead.city||"").slice(0,80);
     const outcome=String(lead.outcome||"Not contacted").slice(0,80);
     const notes=String(lead.notes||"").slice(0,600);
@@ -40,7 +40,7 @@ export async function POST(request:Request){
       try{
         const response=await client.responses.create({
           model,store:false,max_output_tokens:220,
-          input:[{role:"system",content:`Write one friendly business-casual insurance follow-up SMS as Alejandro from Pacifica. It must sound human, not corporate or pushy. Use only supplied facts, never state a price or approval, never mention medical details, and never imply consent. Mention the requested coverage naturally. Include this exact callback number: ${personal}. End with: Reply STOP to opt out. Return only the message, under 480 characters.`},{role:"user",content:JSON.stringify({name,product,city,outcome,notes})}],
+          input:[{role:"system",content:`Write one friendly business-casual sales follow-up SMS as Alejandro from Pacifica. It must sound human, not corporate or pushy. Use only supplied facts, never invent a price, promise, approval, or appointment, and never imply consent. Mention the requested product or service naturally. Include this exact callback number: ${personal}. End with: Reply STOP to opt out. Return only the message, under 480 characters.`},{role:"user",content:JSON.stringify({name,product,city,outcome,notes})}],
         });
         const draft=response.output_text.trim().replace(/^['"]|['"]$/g,"");
         if(draft)return Response.json({draft:draft.slice(0,500),mode:"ai"});

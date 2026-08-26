@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { isClerkConfigured } from "./clerk-config";
 import { getStripe } from "./stripe";
 
-export const PACIFICA_ADMIN_EMAIL="pacificalegalinsurance@gmail.com";
+export const PACIFICA_ADMIN_EMAILS=new Set([
+  "pacificalegalinsurance@gmail.com",
+  "davidscarinsurance@gmail.com",
+  ...(process.env.PACIFICA_ADMIN_EMAILS||"").split(",").map(email=>email.trim().toLowerCase()).filter(Boolean),
+]);
 const paidStatuses=new Set(["active","trialing"]);
 
 async function getClerkIdentity(){
@@ -37,7 +41,7 @@ async function hasPaidSubscription(email:string){
 export async function getPacificaAccess(){
   const identity=await getClerkIdentity();
   if(!identity)return {allowed:false,role:"signed-out" as const,email:""};
-  if(identity.email===PACIFICA_ADMIN_EMAIL)return {allowed:true,role:"owner" as const,email:identity.email};
+  if(PACIFICA_ADMIN_EMAILS.has(identity.email))return {allowed:true,role:"owner" as const,email:identity.email};
   if(await hasPaidSubscription(identity.email))return {allowed:true,role:"subscriber" as const,email:identity.email};
   return {allowed:false,role:"subscription-required" as const,email:identity.email};
 }

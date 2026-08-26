@@ -1,6 +1,6 @@
 # Pacifica
 
-Pacifica is an insurance sales command center with a CRM, Twilio auto dialer, quote workspace, lead outcomes, follow-ups, pipeline stages, and live reporting.
+Pacifica is a lead-sales command center with a CRM, Twilio auto dialer, quote workspace, lead outcomes, follow-ups, pipeline stages, and live reporting.
 
 ## What is already built
 
@@ -16,7 +16,7 @@ Pacifica is an insurance sales command center with a CRM, Twilio auto dialer, qu
 - New Lead, Follow-up, Appointment, and Closed pipeline
 - CRM search and stage filters
 - Live reports based on saved contact data
-- Life, Home, and Auto quote intake linked to CRM contacts
+- Optional insurance quote intake linked to CRM contacts
 - Provider-status checks for life and personal-lines quoting APIs
 - Side-by-side carrier-offer comparison with lowest-premium highlighting
 - Manual carrier-result entry so agents can compare offers before API activation
@@ -153,11 +153,11 @@ POST https://YOUR-DOMAIN.com/api/integrations/leads?source=PROVIDER_NAME&key=YOU
 2. Create a long random value for `LEAD_WEBHOOK_SECRET` in Vercel Production environment variables and redeploy. The legacy `SMARTFINANCIAL_WEBHOOK_SECRET` remains accepted for existing connections.
 3. Open **Owner settings** → **Universal lead delivery** in Pacifica, paste that same secret, and click **Save & test connection**.
 4. Ask each lead provider to POST new leads to the endpoint above and give it a distinct `source` name. Send JSON or form data; the receiver recognizes common variants for name, phone, email, product/type, disposition, cost, city, source, and notes.
-5. Send one test lead. Pacifica checks the inbox every 20 seconds, skips duplicate phone numbers, and routes Life versus Home/Auto automatically.
+5. Send one test lead. Pacifica checks the inbox every 20 seconds, skips duplicate phone numbers, and routes incoming leads into the active CRM queue.
 
 Keep the endpoint secret. Universal CSV import remains available as a backup and recognizes common lead-export headers.
 
-## Activate live insurance quotes
+## Activate the optional insurance quote workspace
 
 The Quote Center saves complete Life, Home, and Auto intakes now. It intentionally does not invent premiums. Live carrier results require contracts, credentials, and approved data mapping.
 

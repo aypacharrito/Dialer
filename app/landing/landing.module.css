@@ -53,7 +53,7 @@
 .trust{border-block:1px solid var(--line);min-height:85px;padding:20px max(28px,calc((100vw - 1184px)/2));display:flex;align-items:center;justify-content:space-between;gap:25px;overflow:auto}
 .trust span{color:#8a908c;font-size:8px;letter-spacing:.15em}
 .trust b{font-size:10px;white-space:nowrap;color:#4d5753}
-.product,.pricing,.compare{max-width:1240px;margin:auto;padding:105px 28px}
+.product,.industries,.pricing,.compare{max-width:1240px;margin:auto;padding:105px 28px}
 .sectionIntro{max-width:720px}
 .sectionIntro h2{font-size:44px;letter-spacing:-.04em;line-height:1.07;margin:14px 0}
 .sectionIntro>p:last-child{font-size:14px;color:var(--muted);line-height:1.65}
@@ -73,6 +73,12 @@
 .wave i{width:7px;border-radius:8px;background:var(--teal)}
 .pills{display:flex;gap:10px;margin-top:75px}
 .pills i{font-style:normal;padding:14px 19px;border:1px solid #cdd0c8;border-radius:30px;color:#26655f;font-size:10px;font-weight:900}
+.industries{border-top:1px solid var(--line)}
+.industryGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:42px}
+.industryGrid article{display:flex;gap:13px;min-height:132px;padding:23px;border:1px solid var(--line);border-radius:10px;background:#eceae3}
+.industryGrid article>span{width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;border-radius:50%;background:#dff8c9;color:#17685f;font-size:10px;font-weight:900}
+.industryGrid h3{margin:2px 0 10px;font-size:16px}
+.industryGrid p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
 .pricing{max-width:none;background:#101716;color:white}
 .pricing>.sectionIntro,.planGrid,.priceNote,.checkoutError{max-width:1184px;margin-left:auto;margin-right:auto}
 .pricing .sectionIntro>p:last-child{color:#8d9a95}
@@ -119,6 +125,7 @@
 .planGrid{grid-template-columns:1fr}
 .featureGrid{grid-template-columns:1fr}
 .featureGrid .featureWide{grid-column:auto}
+.industryGrid{grid-template-columns:repeat(2,1fr)}
 .footer{grid-template-columns:1fr;gap:20px;text-align:center}
 .footer p{text-align:center}
 .footer>div{justify-content:center!important}
@@ -135,7 +142,7 @@
 .queue article{grid-template-columns:36px 1fr}
 .queue button{display:none}
 .trust{padding-inline:16px}
-.product,.pricing,.compare{padding:75px 16px}
+.product,.industries,.pricing,.compare{padding:75px 16px}
 .sectionIntro h2{font-size:34px}
 .featureGrid h3{font-size:25px}
 .planGrid article{padding:23px}
@@ -143,6 +150,7 @@
 .compareTable>div:first-child{display:none}
 .finalCta h2{font-size:38px}
 .footer{padding-inline:16px}
+.industryGrid{grid-template-columns:1fr}
 }
 
 /* Flat, restrained Pacifica brand treatment. */

@@ -328,7 +328,7 @@ button{cursor:pointer}
 .twilio-selected.waiting i{background:#e9aa36}
 
 
-/* Pacifica — dark insurance sales command center */
+/* Pacifica — dark lead-sales command center */
 :root{--navy:#08111f;--navy2:#101d2d;--ivory:#09111d;--paper:#111c29;--coral:#ff6b4a;--mint:#24d6a0;--ink:#eef5fa;--muted:#8ea0b2;--line:#243244;--cyan:#22bfd0;--panel:#0d1724;--panel2:#131f2d}
 
 html{background:#09111d;color-scheme:dark}

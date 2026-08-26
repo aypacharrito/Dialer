@@ -62,8 +62,8 @@ function normalize(payload:unknown,requestedSource:string):NormalizedLead {
   const phone=textValue(record,"phone","phone_number","phoneNumber","primary_phone","primaryPhone","telephone","mobile");
   const phoneDigits=phone.replace(/\D/g,"");
   if (phoneDigits.length<7) throw new Error("A valid phone number is required");
-  const product=textValue(record,"type","product","lead_type","leadType","vertical","insurance_type","insuranceType")||"Home & Auto";
-  const line=/\blife\b/i.test(product)?"life":"home-auto";
+  const product=textValue(record,"type","product","lead_type","leadType","vertical","insurance_type","insuranceType")||"Service inquiry";
+  const line="life";
   const rawCost=textValue(record,"cost","lead_cost","leadCost","price").replace(/[^0-9.-]/g,"");
   const source=textValue(record,"source","provider","vendor","lead_source","leadSource","publisher")||requestedSource||"Lead provider";
   return {
@@ -103,7 +103,7 @@ async function redisCommand(command:Array<string|number>) {
 async function ensureInboundTable() {
   const {getD1}=await import("../../../../db/index");
   const db=getD1();
-  await db.prepare(`CREATE TABLE IF NOT EXISTS inbound_leads (id TEXT PRIMARY KEY, vendor_id TEXT, source TEXT NOT NULL DEFAULT 'Lead provider', name TEXT NOT NULL, phone TEXT NOT NULL, phone_digits TEXT NOT NULL UNIQUE, email TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT 'Imported', product TEXT NOT NULL DEFAULT 'Home & Auto', line TEXT NOT NULL DEFAULT 'home-auto', disposition TEXT NOT NULL DEFAULT 'Received - not worked yet', notes TEXT NOT NULL DEFAULT '', cost REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL, extra_json TEXT NOT NULL DEFAULT '{}', synced_at INTEGER NOT NULL DEFAULT 0)`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS inbound_leads (id TEXT PRIMARY KEY, vendor_id TEXT, source TEXT NOT NULL DEFAULT 'Lead provider', name TEXT NOT NULL, phone TEXT NOT NULL, phone_digits TEXT NOT NULL UNIQUE, email TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT 'Imported', product TEXT NOT NULL DEFAULT 'Service inquiry', line TEXT NOT NULL DEFAULT 'life', disposition TEXT NOT NULL DEFAULT 'Received - not worked yet', notes TEXT NOT NULL DEFAULT '', cost REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL, extra_json TEXT NOT NULL DEFAULT '{}', synced_at INTEGER NOT NULL DEFAULT 0)`).run();
   try{await db.prepare("ALTER TABLE inbound_leads ADD COLUMN extra_json TEXT NOT NULL DEFAULT '{}'").run()}catch{}
   return db;
 }

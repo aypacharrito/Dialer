@@ -10,7 +10,7 @@ const firstName=(value:string)=>value.trim().split(/\s+/)[0]||"there";
 
 function browserDraft(lead:MessageLead){
   const place=lead.city?` in ${lead.city}`:"";
-  return `Hey ${firstName(lead.name)}, it’s Alejandro with Pacifica. I’m following up about the ${lead.product||"insurance"} coverage you requested${place}. If you still want help comparing options, text me here or call +1 (818) 441-1987. Reply STOP to opt out.`;
+  return `Hey ${firstName(lead.name)}, it’s Alejandro with Pacifica. I’m following up about your ${lead.product||"service"} request${place}. If you still want help, text me here or call +1 (818) 441-1987. Reply STOP to opt out.`;
 }
 
 export default function MessagesCenter({leads,onPatch}:{leads:MessageLead[];onPatch:(id:number,patch:Partial<MessageLead>)=>void}){
@@ -58,7 +58,7 @@ export default function MessagesCenter({leads,onPatch}:{leads:MessageLead[];onPa
     if(!lead)throw new Error("Choose a contact first");
     if(lead.smsOptOut)throw new Error("This contact replied STOP. Twilio messaging is blocked.");
     if(lead.doNotCall)throw new Error("This contact is marked DNC. Messaging is blocked.");
-    if(!lead.smsConsent)throw new Error("Check ‘SMS consent on file’ above before sending. The lead provider’s consent record should cover texts from your agency.");
+    if(!lead.smsConsent)throw new Error("Check ‘SMS consent on file’ above before sending. The lead provider’s consent record should cover texts from your business.");
     const response=await fetch("/api/twilio/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:lead.phone,body:text})});
     const data=await response.json() as {message?:Message;error?:string};
     if(!response.ok||!data.message)throw new Error(data.error||"Message could not be sent");
