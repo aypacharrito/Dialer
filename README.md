@@ -146,16 +146,16 @@ For legitimate consent-based calling, complete Twilio Trust Hub registrations fo
 Pacifica accepts real-time lead delivery from agencies, marketplaces, forms, and lead vendors at:
 
 ```text
-POST https://YOUR-DOMAIN.com/api/integrations/leads?source=PROVIDER_NAME&key=YOUR_SECRET
+POST https://YOUR-DOMAIN.com/api/integrations/leads?workspace=CLERK_USER_ID&source=PROVIDER_NAME&key=YOUR_SECRET
 ```
 
 1. In Vercel Marketplace, install **Upstash Redis** on the `dialer` project. Vercel injects `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 2. Create a long random value for `LEAD_WEBHOOK_SECRET` in Vercel Production environment variables and redeploy. The legacy `SMARTFINANCIAL_WEBHOOK_SECRET` remains accepted for existing connections.
 3. Open **Owner settings** → **Universal lead delivery** in Pacifica, paste that same secret, and click **Save & test connection**.
-4. Ask each lead provider to POST new leads to the endpoint above and give it a distinct `source` name. Send JSON or form data; the receiver recognizes common variants for name, phone, email, product/type, disposition, cost, city, source, and notes.
+4. Copy the account-specific posting URL from **Owner settings → Universal lead delivery**. Ask each lead provider to POST new leads to that URL and give it a distinct `source` name. Send JSON or form data; the receiver recognizes common variants for name, phone, email, product/type, disposition, cost, city, source, and notes.
 5. Send one test lead. Pacifica checks the inbox every 20 seconds, skips duplicate phone numbers, and routes incoming leads into the active CRM queue.
 
-Keep the endpoint secret. Universal CSV import remains available as a backup and recognizes common lead-export headers.
+Keep the endpoint secret. Each Clerk account has its own workspace, browser cache, inbound-lead queue, and duplicate index. Universal CSV import remains available as a backup and recognizes common lead-export headers.
 
 ## Activate the optional insurance quote workspace
 
