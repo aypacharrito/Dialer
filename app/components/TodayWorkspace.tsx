@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 type TodayLead={id:number;name:string;phone:string;city:string;stage:string;outcome:string;followUp:string;lastContact:string;source:string;leadCost:number;product:string;doNotCall:boolean;importedAt:string};
 
 function dayValue(value:string){
@@ -8,9 +10,8 @@ function dayValue(value:string){
   return Number.isFinite(timestamp)?timestamp:Number.POSITIVE_INFINITY;
 }
 
-function priorityScore(lead:TodayLead){
+function priorityScore(lead:TodayLead,now:number){
   let score=0;
-  const now=Date.now();
   const imported=dayValue(lead.importedAt);
   const followUp=dayValue(lead.followUp);
   if(lead.outcome==="Interested")score+=45;
@@ -23,9 +24,9 @@ function priorityScore(lead:TodayLead){
   return score;
 }
 
-function relativeDate(value:string){
+function relativeDate(value:string,now:number){
   const timestamp=dayValue(value);if(timestamp===Number.POSITIVE_INFINITY)return "No date";
-  const days=Math.round((timestamp-Date.now())/(24*60*60*1000));
+  const days=Math.round((timestamp-now)/(24*60*60*1000));
   if(days<0)return `${Math.abs(days)}d overdue`;
   if(days===0)return "Today";
   if(days===1)return "Tomorrow";
@@ -33,9 +34,9 @@ function relativeDate(value:string){
 }
 
 export default function TodayWorkspace({leads,onOpen,onCall,onImport,onAdd}:{leads:TodayLead[];onOpen:(id:number)=>void;onCall:(id:number)=>void;onImport:()=>void;onAdd:()=>void}){
+  const [now]=useState(()=>Date.now());
   const open=leads.filter(lead=>lead.stage!=="Closed"&&!lead.doNotCall);
-  const ranked=open.toSorted((a,b)=>priorityScore(b)-priorityScore(a)).slice(0,6);
-  const now=Date.now();
+  const ranked=open.toSorted((a,b)=>priorityScore(b,now)-priorityScore(a,now)).slice(0,6);
   const overdue=open.filter(lead=>{const value=dayValue(lead.followUp);return value!==Number.POSITIVE_INFINITY&&value<now}).length;
   const appointments=open.filter(lead=>lead.stage==="Appointment"||lead.outcome==="Appointment set").length;
   const untouched=open.filter(lead=>lead.outcome==="Not contacted").length;
@@ -51,7 +52,7 @@ export default function TodayWorkspace({leads,onOpen,onCall,onImport,onAdd}:{lea
       <article><span>APPOINTMENTS</span><b>{appointments}</b><small>Active booked opportunities</small></article>
     </section>
     <div className="today-grid">
-      <section className="focus-list"><header><div><span>FOCUS QUEUE</span><h2>Your best next conversations</h2></div><em>{open.length} open</em></header>{ranked.map((lead,index)=><article key={lead.id}><strong>{String(index+1).padStart(2,"0")}</strong><button className="focus-person" onClick={()=>onOpen(lead.id)}><i>{lead.name.split(" ").map(part=>part[0]).slice(0,2).join("")}</i><span><b>{lead.name}</b><small>{lead.product} · {lead.source}</small></span></button><div className="focus-reason"><b>{lead.followUp?relativeDate(lead.followUp):lead.outcome}</b><small>{lead.city||"No location"}</small></div><button className="focus-call" onClick={()=>onCall(lead.id)}>Call</button></article>)}{!ranked.length&&<div className="today-empty"><b>Your queue is clear.</b><span>Import leads or add a contact to start working opportunities.</span><button onClick={onAdd}>Add your first lead</button></div>}</section>
+      <section className="focus-list"><header><div><span>FOCUS QUEUE</span><h2>Your best next conversations</h2></div><em>{open.length} open</em></header>{ranked.map((lead,index)=><article key={lead.id}><strong>{String(index+1).padStart(2,"0")}</strong><button className="focus-person" onClick={()=>onOpen(lead.id)}><i>{lead.name.split(" ").map(part=>part[0]).slice(0,2).join("")}</i><span><b>{lead.name}</b><small>{lead.product} · {lead.source}</small></span></button><div className="focus-reason"><b>{lead.followUp?relativeDate(lead.followUp,now):lead.outcome}</b><small>{lead.city||"No location"}</small></div><button className="focus-call" onClick={()=>onCall(lead.id)}>Call</button></article>)}{!ranked.length&&<div className="today-empty"><b>Your queue is clear.</b><span>Import leads or add a contact to start working opportunities.</span><button onClick={onAdd}>Add your first lead</button></div>}</section>
       <aside className="source-pulse"><header><span>LEAD SOURCE PULSE</span><h2>Where opportunity is coming from</h2></header>{sourceRows.map(row=><article key={row.name}><div><b>{row.name}</b><small>{row.count} open lead{row.count===1?"":"s"}</small></div><span><b>{row.appointments}</b><small>appts</small></span><span><b>${row.cost.toFixed(0)}</b><small>spend</small></span></article>)}{!sourceRows.length&&<p>Source performance appears after leads are added.</p>}<footer><span>QUICK RULE</span><p>Call fresh leads first, then clear overdue follow-ups before starting another list.</p></footer></aside>
     </div>
   </div>;

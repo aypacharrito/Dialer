@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { SignIn } from "@clerk/nextjs";
 import styles from "./login.module.css";
 
 export default function ClerkLogin(){
   return <main className={styles.page}>
-    <Link href="/" className={styles.brand}><span><img src="/pacifica-mark.png" alt=""/></span><b>Pacifica</b></Link>
+    <Link href="/" className={styles.brand}><span><Image src="/pacifica-mark.png" width={32} height={32} alt="" priority/></span><b>Pacifica</b></Link>
     <section className={`${styles.card} ${styles.clerkCard}`}>
       <p className={styles.kicker}>SECURE WORKSPACE ACCESS</p>
       <h1>Sign in to Pacifica.</h1>

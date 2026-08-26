@@ -1,6 +1,8 @@
-import { hasPacificaWorkspaceApiAccess } from "../../../lib/clerk-access";
+import { getPacificaAccess } from "../../../lib/clerk-access";
+import { isClerkConfigured } from "../../../lib/clerk-config";
+import { twilioClientIdentity, twilioPhoneForWorkspace } from "../../../lib/twilio-workspaces";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const encoder = new TextEncoder();
 
@@ -11,14 +13,14 @@ function base64Url(value: string | ArrayBuffer) {
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-async function createToken(secret: string, accountSid: string, apiKeySid: string, appSid: string) {
+async function createToken(secret: string, accountSid: string, apiKeySid: string, appSid: string, identity:string) {
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ typ: "JWT", alg: "HS256", cty: "twilio-fpa;v=1" }));
   const payload = base64Url(JSON.stringify({
     jti: `${apiKeySid}-${now}-${crypto.randomUUID()}`,
     grants: {
-      identity: "pacific-browser",
-      voice: { incoming: { allow: false }, outgoing: { application_sid: appSid } },
+      identity,
+      voice: { incoming: { allow: true }, outgoing: { application_sid: appSid } },
     },
     iat: now,
     exp: now + 3600,
@@ -31,7 +33,8 @@ async function createToken(secret: string, accountSid: string, apiKeySid: string
 }
 
 export async function GET() {
-  if(!await hasPacificaWorkspaceApiAccess())return Response.json({error:"An active Pacifica subscription is required."},{status:403});
+  const access=isClerkConfigured()?await getPacificaAccess():{allowed:!process.env.VERCEL,userId:"local",email:"local"};
+  if(!access.allowed||!access.userId)return Response.json({error:"An active Pacifica subscription is required."},{status:403});
   const accountSid = (process.env.TWILIO_ACCOUNT_SID || "").trim();
   const apiKeySid = (process.env.TWILIO_API_KEY_SID || "").trim();
   const apiKeySecret = (process.env.TWILIO_API_KEY_SECRET || "").trim();
@@ -43,7 +46,8 @@ export async function GET() {
     return Response.json({ error: "One or more Twilio SIDs has the wrong format. Open Phone setup for details." }, { status: 503 });
   }
   try {
-    return Response.json({ token: await createToken(apiKeySecret, accountSid, apiKeySid, appSid), expiresIn: 3600 }, { headers: { "Cache-Control": "no-store" } });
+    const identity=twilioClientIdentity(access.userId);const phoneNumber=twilioPhoneForWorkspace(access.userId,access.email);
+    return Response.json({ token: await createToken(apiKeySecret, accountSid, apiKeySid, appSid, identity), identity, phoneNumber, incomingEnabled:Boolean(phoneNumber), expiresIn: 3600 }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[twilio/token] token generation failed", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Twilio token generation failed. Check the API key secret and redeploy." }, { status: 500 });

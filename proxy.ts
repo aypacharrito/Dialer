@@ -19,6 +19,9 @@ const clerkHandler=clerkMiddleware(async(auth,request)=>{
 
 function missingClerkHandler(request:NextRequest){
   if(!isProtectedRoute(request))return NextResponse.next();
+  // ChatGPT Sites supplies its own authenticated-user headers. Let the page
+  // validate those when Clerk is intentionally unavailable in that runtime.
+  if(request.nextUrl.pathname.startsWith("/dashboard")&&!process.env.VERCEL)return NextResponse.next();
   if(request.nextUrl.pathname.startsWith("/api/")){
     return NextResponse.json({error:"Secure login is not configured."},{status:503});
   }

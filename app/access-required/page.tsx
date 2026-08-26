@@ -1,11 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "../login/login.module.css";
 
 export const dynamic="force-dynamic";
 
 export default function AccessRequiredPage(){
   return <main className={styles.page}>
-    <Link href="/" className={styles.brand}><span><img src="/pacifica-mark.png" alt=""/></span><b>Pacifica</b></Link>
+    <Link href="/" className={styles.brand}><span><Image src="/pacifica-mark.png" width={32} height={32} alt="" priority/></span><b>Pacifica</b></Link>
     <section className={styles.card}>
       <p className={styles.kicker}>SUBSCRIPTION REQUIRED</p>
       <h1>Activate Pacifica to open the CRM.</h1>

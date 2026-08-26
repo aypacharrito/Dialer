@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { WorkspaceProfile } from "../lib/workspace-profile";
 
 export type MessageLead={id:number;name:string;phone:string;product:string;city:string;line:"life"|"home-auto";notes:string;outcome:string;doNotCall:boolean;smsConsent?:boolean;smsOptOut?:boolean;lastSmsAt?:string};
 type Message={id:string;direction:string;from:string;to:string;body:string;status:string;sentAt:string;errorCode?:number|null;failureReason?:string|null};
@@ -8,12 +9,14 @@ type Message={id:string;direction:string;from:string;to:string;body:string;statu
 const digits=(value:string)=>value.replace(/\D/g,"").slice(-10);
 const firstName=(value:string)=>value.trim().split(/\s+/)[0]||"there";
 
-function browserDraft(lead:MessageLead){
+function browserDraft(lead:MessageLead,profile:WorkspaceProfile){
   const place=lead.city?` in ${lead.city}`:"";
-  return `Hey ${firstName(lead.name)}, it’s Alejandro with Pacifica. I’m following up about your ${lead.product||"service"} request${place}. If you still want help, text me here or call +1 (818) 441-1987. Reply STOP to opt out.`;
+  const sender=[profile.agentName,profile.businessName&&`with ${profile.businessName}`].filter(Boolean).join(" ")||"from our team";
+  const callback=profile.callbackNumber?` or call ${profile.callbackNumber}`:"";
+  return `Hey ${firstName(lead.name)}, it’s ${sender}. I’m following up about your ${lead.product||"service"} request${place}. If you still want help, text me here${callback}. Reply STOP to opt out.`;
 }
 
-export default function MessagesCenter({leads,onPatch}:{leads:MessageLead[];onPatch:(id:number,patch:Partial<MessageLead>)=>void}){
+export default function MessagesCenter({workspaceId,profile,leads,onPatch}:{workspaceId:string;profile:WorkspaceProfile;leads:MessageLead[];onPatch:(id:number,patch:Partial<MessageLead>)=>void}){
   const [messages,setMessages]=useState<Message[]>([]);
   const [twilioNumber,setTwilioNumber]=useState("");
   const [selectedId,setSelectedId]=useState<number|null>(null);
@@ -24,9 +27,15 @@ export default function MessagesCenter({leads,onPatch}:{leads:MessageLead[];onPa
   const [aiMode,setAiMode]=useState<"ai"|"smart-fallback"|"">("");
   const [connection,setConnection]=useState<"checking"|"ready"|"error">("checking");
   const dailyRunning=useRef(false);
+  const leadSnapshot=useRef(leads);
+  const patchLead=useRef(onPatch);
+  const dailyKey=`pacifica:${workspaceId}:daily-ai-sms`;
+  const lastRunKey=`pacifica:${workspaceId}:daily-ai-sms-last-run`;
   const selected=leads.find(lead=>lead.id===selectedId)||leads[0];
 
-  async function load(){
+  useEffect(()=>{leadSnapshot.current=leads;patchLead.current=onPatch},[leads,onPatch]);
+
+  const load=useCallback(async()=>{
     try{
       const response=await fetch("/api/twilio/messages",{cache:"no-store",credentials:"same-origin"});
       const data=await response.json() as {error?:string;phone?:string;messages?:Message[]};
@@ -34,19 +43,19 @@ export default function MessagesCenter({leads,onPatch}:{leads:MessageLead[];onPa
       const incoming=data.messages||[];setMessages(incoming);setTwilioNumber(data.phone||"");setConnection("ready");setStatus(incoming.length?"Synced with Twilio":"Twilio connected · no messages yet");
       for(const message of incoming){
         if(!/inbound/i.test(message.direction)||!/^\s*(stop|stopall|unsubscribe|cancel|end|quit)\s*[.!]?\s*$/i.test(message.body))continue;
-        const match=leads.find(lead=>digits(lead.phone)===digits(message.from));
-        if(match&&!match.smsOptOut)onPatch(match.id,{smsOptOut:true,smsConsent:false});
+        const match=leadSnapshot.current.find(lead=>digits(lead.phone)===digits(message.from));
+        if(match&&!match.smsOptOut)patchLead.current(match.id,{smsOptOut:true,smsConsent:false});
       }
     }catch(error){setConnection("error");setStatus(error instanceof Error?error.message:"Unable to load messages")}
-  }
+  },[]);
 
-  useEffect(()=>{queueMicrotask(()=>setDailyEnabled(localStorage.getItem("pacifica-daily-ai-sms")==="on"));void load();const timer=window.setInterval(()=>void load(),30000);return()=>window.clearInterval(timer)},[]);
+  useEffect(()=>{queueMicrotask(()=>setDailyEnabled(localStorage.getItem(dailyKey)==="on"));const initial=window.setTimeout(()=>void load(),0);const timer=window.setInterval(()=>void load(),30000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[dailyKey,load]);
 
   const thread=useMemo(()=>selected?messages.filter(message=>digits(message.from)===digits(selected.phone)||digits(message.to)===digits(selected.phone)).sort((a,b)=>new Date(a.sentAt).getTime()-new Date(b.sentAt).getTime()):[],[messages,selected]);
 
   async function generate(lead=selected){
     if(!lead)throw new Error("Choose a contact first");
-    const response=await fetch("/api/ai/message",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({lead})});
+    const response=await fetch("/api/ai/message",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({lead,profile})});
     const data=await response.json() as {draft?:string;error?:string;mode?:"ai"|"smart-fallback";notice?:string};
     if(!response.ok||!data.draft)throw new Error(data.error||"AI could not draft a message");
     setAiMode(data.mode||"ai");
@@ -65,27 +74,30 @@ export default function MessagesCenter({leads,onPatch}:{leads:MessageLead[];onPa
     setMessages(old=>[...old,data.message!]);onPatch(lead.id,{lastSmsAt:new Date().toISOString()});setDraft("");
   }
 
-  async function generateSelected(){setLoading(true);try{setDraft(await generate());setStatus("AI draft ready for your review")}catch(error){if(selected){setDraft(browserDraft(selected));setAiMode("smart-fallback");setStatus(`AI server unavailable, so Pacifica created a safe local draft. ${error instanceof Error?error.message:""}`)}else setStatus("Choose a contact first")}finally{setLoading(false)}}
+  async function generateSelected(){setLoading(true);try{setDraft(await generate());setStatus("AI draft ready for your review")}catch(error){if(selected){setDraft(browserDraft(selected,profile));setAiMode("smart-fallback");setStatus(`AI server unavailable, so Pacifica created a safe local draft. ${error instanceof Error?error.message:""}`)}else setStatus("Choose a contact first")}finally{setLoading(false)}}
   async function sendSelected(){setLoading(true);try{await send();setStatus(`Message sent to ${selected?.name}`)}catch(error){setStatus(error instanceof Error?error.message:"Send failed")}finally{setLoading(false)}}
 
   async function runDaily(){
     if(dailyRunning.current||!dailyEnabled)return;
     const today=new Date().toISOString().slice(0,10);
-    if(localStorage.getItem("pacifica-daily-ai-sms-last-run")===today)return;
+    if(localStorage.getItem(lastRunKey)===today)return;
     const eligible=leads.filter(lead=>lead.smsConsent&&!lead.smsOptOut&&!lead.doNotCall&&(!lead.lastSmsAt||Date.now()-new Date(lead.lastSmsAt).getTime()>22*60*60*1000)).slice(0,25);
-    if(!eligible.length){localStorage.setItem("pacifica-daily-ai-sms-last-run",today);return}
+    if(!eligible.length){localStorage.setItem(lastRunKey,today);return}
     dailyRunning.current=true;setStatus(`Preparing ${eligible.length} consented daily follow-up${eligible.length===1?"":"s"}…`);
     let sent=0;let failed=0;let firstError="";
     for(const lead of eligible){try{await send(lead,await generate(lead));sent++}catch(error){failed++;if(!firstError)firstError=error instanceof Error?error.message:"send failed"}await new Promise(resolve=>window.setTimeout(resolve,500))}
-    localStorage.setItem("pacifica-daily-ai-sms-last-run",today);dailyRunning.current=false;setStatus(`${sent} daily AI follow-up${sent===1?"":"s"} sent`);
+    localStorage.setItem(lastRunKey,today);dailyRunning.current=false;setStatus(`${sent} daily AI follow-up${sent===1?"":"s"} sent`);
     if(failed)setStatus(`${sent} sent · ${failed} blocked or failed${firstError?` · ${firstError}`:""}`);
   }
 
-  useEffect(()=>{if(dailyEnabled)void runDaily()},[dailyEnabled,leads.length]);
+  // Re-check when an account enables automation or its eligible lead count changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(()=>{if(!dailyEnabled)return;const initial=window.setTimeout(()=>void runDaily(),0);return()=>window.clearTimeout(initial)},[dailyEnabled,leads.length]);
 
   function toggleDaily(enabled:boolean){
+    if(enabled&&(!profile.businessName||!profile.agentName)){setStatus("Add the business and representative names in Owner Settings before enabling automated follow-ups.");return}
     if(enabled&&!window.confirm("Enable one AI follow-up per day only for contacts you mark SMS opted-in? STOP replies and DNC contacts will remain blocked."))return;
-    setDailyEnabled(enabled);localStorage.setItem("pacifica-daily-ai-sms",enabled?"on":"off");if(enabled)window.setTimeout(()=>void runDaily(),0);
+    setDailyEnabled(enabled);localStorage.setItem(dailyKey,enabled?"on":"off");if(enabled)window.setTimeout(()=>void runDaily(),0);
   }
 
   return <div className="messages-center">

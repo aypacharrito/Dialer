@@ -88,7 +88,11 @@ function CarrierLogo({carrier,large=false}:{carrier:string;large?:boolean}){
   const [attempt,setAttempt]=useState(0);
   const sources=match?[`https://logo.clearbit.com/${match.domain}?size=240`,`https://www.google.com/s2/favicons?domain_url=https://${match.domain}&sz=128`]:[];
   return <span className={large?"carrier-logo large":"carrier-logo"} aria-hidden="true">
-    {attempt<sources.length?<img src={sources[attempt]} alt="" onError={()=>setAttempt(value=>value+1)}/>:<b>{initials(carrier)}</b>}
+    {attempt<sources.length?<>
+      {/* External carrier favicons use two fallback hosts and intentionally bypass Next image optimization. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={sources[attempt]} alt="" onError={()=>setAttempt(value=>value+1)}/>
+    </>:<b>{initials(carrier)}</b>}
   </span>
 }
 

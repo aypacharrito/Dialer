@@ -1,9 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { isClerkConfigured } from "../../../lib/clerk-config";
+import { cleanWorkspaceProfile, type WorkspaceProfile } from "../../../lib/workspace-profile";
 
 export const runtime="nodejs";
 
-type WorkspacePayload={leads:unknown[];callLogs:unknown[]};
+type WorkspacePayload={leads:unknown[];callLogs:unknown[];profile:WorkspaceProfile};
 
 type Identity={userId:string;email:string};
 
@@ -44,7 +45,7 @@ async function d1(){
 
 function cleanPayload(value:unknown):WorkspacePayload{
   const body=value&&typeof value==="object"?value as Partial<WorkspacePayload>:{};
-  return {leads:Array.isArray(body.leads)?body.leads.slice(0,5000):[],callLogs:Array.isArray(body.callLogs)?body.callLogs.slice(0,1000):[]};
+  return {leads:Array.isArray(body.leads)?body.leads.slice(0,5000):[],callLogs:Array.isArray(body.callLogs)?body.callLogs.slice(0,1000):[],profile:cleanWorkspaceProfile(body.profile)};
 }
 
 export async function GET(){
@@ -58,14 +59,14 @@ export async function GET(){
         const legacy=await redis(["GET",`pacifica:workspace:${owner.userId}`]);
         if(typeof legacy==="string"){await redis(["SET",key,legacy]);return Response.json({found:true,...cleanPayload(JSON.parse(legacy))},{headers:{"Cache-Control":"no-store"}})}
       }
-      return Response.json({found:false,leads:[],callLogs:[]},{headers:{"Cache-Control":"no-store"}});
+      return Response.json({found:false,...cleanPayload({})},{headers:{"Cache-Control":"no-store"}});
     }
     const db=await d1();let result=await db.prepare("SELECT workspace_json AS workspaceJson FROM crm_workspaces WHERE user_id=? LIMIT 1").bind(databaseId(owner.userId)).first() as {workspaceJson?:string}|null;
     if(!result?.workspaceJson&&owner.email===legacyOwnerEmail){
       result=await db.prepare("SELECT workspace_json AS workspaceJson FROM crm_workspaces WHERE user_id=? LIMIT 1").bind(owner.userId).first() as {workspaceJson?:string}|null;
       if(result?.workspaceJson)await db.prepare("INSERT OR REPLACE INTO crm_workspaces (user_id,workspace_json,updated_at) VALUES (?,?,?)").bind(databaseId(owner.userId),result.workspaceJson,new Date().toISOString()).run();
     }
-    return result?.workspaceJson?Response.json({found:true,...cleanPayload(JSON.parse(result.workspaceJson))},{headers:{"Cache-Control":"no-store"}}):Response.json({found:false,leads:[],callLogs:[]},{headers:{"Cache-Control":"no-store"}});
+    return result?.workspaceJson?Response.json({found:true,...cleanPayload(JSON.parse(result.workspaceJson))},{headers:{"Cache-Control":"no-store"}}):Response.json({found:false,...cleanPayload({})},{headers:{"Cache-Control":"no-store"}});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load workspace"},{status:500})}
 }
 

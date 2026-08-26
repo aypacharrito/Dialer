@@ -1,18 +1,35 @@
 export const runtime = "edge";
 
+import { twilioClientIdentity, twilioPhoneForClient, twilioWorkspaceForNumber } from "../../../lib/twilio-workspaces";
+import { rejectedTwilioWebhook, validateTwilioWebhook } from "../../../lib/twilio-webhook";
+
 function xmlEscape(value: string) {
   return value.replace(/[<>&'\"]/g, character => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", "\"": "&quot;" })[character] || character);
 }
 
 export async function POST(request: Request) {
   const form = await request.formData();
+  if(!await validateTwilioWebhook(request,form))return rejectedTwilioWebhook();
   const to = String(form.get("To") || "").trim();
+  const from=String(form.get("From")||form.get("Caller")||"").trim();
+  const direction=String(form.get("Direction")||"").toLowerCase();
+  const statusCallback=xmlEscape(new URL("/api/twilio/status",request.url).toString());
+  if(direction==="inbound"){
+    const workspaceId=twilioWorkspaceForNumber(to);
+    if(!workspaceId){
+      const unavailable=`<?xml version="1.0" encoding="UTF-8"?><Response><Say>Thank you for calling. This Pacifica workspace is not available right now.</Say><Hangup/></Response>`;
+      return new Response(unavailable,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
+    }
+    const identity=twilioClientIdentity(workspaceId);
+    const inbound=`<?xml version="1.0" encoding="UTF-8"?><Response><Dial answerOnBridge="true" timeout="25" callerId="${xmlEscape(from)}"><Client statusCallback="${statusCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST"><Identity>${xmlEscape(identity)}</Identity><Parameter name="From" value="${xmlEscape(from)}"/><Parameter name="Called" value="${xmlEscape(to)}"/></Client></Dial><Say>We could not answer. Please try again shortly.</Say></Response>`;
+    return new Response(inbound,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
+  }
   const normalized = to.startsWith("+") ? `+${to.slice(1).replace(/\D/g, "")}` : `+1${to.replace(/\D/g, "")}`;
-  const callerId = (process.env.TWILIO_PHONE_NUMBER || "").trim();
+  const callerId = twilioPhoneForClient(from);
   if (!callerId || !/^\+[1-9]\d{7,14}$/.test(normalized)) {
     return new Response("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Reject/></Response>", { status: 400, headers: { "Content-Type": "text/xml; charset=utf-8" } });
   }
   console.info("[twilio/voice] outbound request", { destinationLast4: normalized.slice(-4), callerIdLast4: callerId.slice(-4) });
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number statusCallback="/api/twilio/status" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number statusCallback="${statusCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;
   return new Response(twiml, { headers: { "Content-Type": "text/xml; charset=utf-8" } });
 }

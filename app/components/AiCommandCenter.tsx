@@ -13,7 +13,12 @@ type Lead = {
   lastContact: string;
   line: "life" | "home-auto";
   doNotCall: boolean;
+  source:string;
+  product:string;
+  leadCost:number;
 };
+
+type RecentCall={name:string;startedAt:string;duration:number;outcome:string;status:string;source:string};
 
 type AiAction = {
   leadId: number;
@@ -45,11 +50,11 @@ const quickPrompts = [
 ];
 
 function browserAnalysis(leads:Lead[],notice:string):AiResult{
-  const priorities=leads.slice(0,5).map((lead,index)=>({leadId:lead.id,leadName:lead.name,score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"This contact already showed interest and deserves a prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"This is an open opportunity without a completed next step.",nextStep:lead.followUp?`Follow up on ${lead.followUp}`:"Call and confirm needs, timing, and preferred coverage."}));
+  const priorities=leads.slice(0,5).map((lead,index)=>({leadId:lead.id,leadName:lead.name,score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"This contact already showed interest and deserves a prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"This is an open opportunity without a completed next step.",nextStep:lead.followUp?`Follow up on ${lead.followUp}`:"Call and confirm needs, timing, and the best next step."}));
   return {summary:`I reviewed ${leads.length} active contact${leads.length===1?"":"s"}. Start with the first contacts below, then work scheduled follow-ups before untouched leads.`,priorities,actions:[],draft:"",mode:"smart-fallback",notice};
 }
 
-export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(action:AiAction)=>void}) {
+export default function AiCommandCenter({leads,recentCalls,onApply,onOpen,onCall}:{leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}) {
   const [prompt,setPrompt]=useState("");
   const [includeNotes,setIncludeNotes]=useState(false);
   const [loading,setLoading]=useState(false);
@@ -59,14 +64,14 @@ export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(a
   const [service,setService]=useState("Checking AI connection…");
   const eligible=useMemo(()=>leads.filter(lead=>!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
 
-  useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"OpenAI connected":"Smart fallback ready")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
+  useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"Pacifica intelligence online":"Smart fallback ready")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
 
   async function run(nextPrompt=prompt){
     const question=nextPrompt.trim();
     if(!question)return;
     setPrompt(question);setLoading(true);setError("");setApplied([]);
     try{
-      const response=await fetch("/api/ai/crm",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,leads:eligible.slice(0,100)})});
+      const response=await fetch("/api/ai/crm",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,leads:eligible.slice(0,100),recentCalls:recentCalls.slice(0,100)})});
       const data=await response.json().catch(()=>({})) as AiResult&{error?:string};
       if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");
       setResult(data);
@@ -95,13 +100,13 @@ export default function AiCommandCenter({leads,onApply}:{leads:Lead[];onApply:(a
       <section className="ai-chat-composer">
         <textarea aria-label="Message Pacifica AI" value={prompt} onChange={event=>setPrompt(event.target.value)} onKeyDown={event=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();void run()}}} placeholder="Ask Pacifica anything about your CRM…" rows={2}/>
         <button onClick={()=>void run()} disabled={loading||!eligible.length||!prompt.trim()} aria-label="Send to Pacifica AI">{loading?<span className="ai-thinking"/>:"↑"}</button>
-        <footer><span>Enter to send · Shift + Enter for a new line</span><span>Contact details stay private · {includeNotes?"notes included":"notes excluded"}</span></footer>
+        <footer><span>Enter to send · Shift + Enter for a new line</span><span>Analyzes this workspace only · {includeNotes?"notes included":"notes excluded"}</span></footer>
       </section>
       {!eligible.length&&<p className="ai-error">Import contacts before asking Pacifica to analyze your CRM.</p>}{error&&<p className="ai-error">{error}</p>}
     </main>
 
     {result&&<div className="ai-results">
-      <section className="ai-priority-panel"><header><div><span>BEST NEXT CONVERSATIONS</span><h2>Your priority queue</h2></div><em>{result.priorities.length} leads</em></header>{result.priorities.map(item=><article key={`${item.leadId}-${item.score}`}><strong>{item.score}</strong><div><b>{item.leadName}</b><p>{item.reason}</p><small>{item.nextStep}</small></div></article>)}{!result.priorities.length&&<p className="ai-empty">No priority contacts matched this request.</p>}</section>
+      <section className="ai-priority-panel"><header><div><span>BEST NEXT CONVERSATIONS</span><h2>Your priority queue</h2></div><em>{result.priorities.length} leads</em></header>{result.priorities.map(item=><article key={`${item.leadId}-${item.score}`}><strong>{item.score}</strong><div><b>{item.leadName}</b><p>{item.reason}</p><small>{item.nextStep}</small></div><footer><button onClick={()=>onOpen(item.leadId)}>Open</button><button onClick={()=>onCall(item.leadId)}>Call now</button></footer></article>)}{!result.priorities.length&&<p className="ai-empty">No priority contacts matched this request.</p>}</section>
       <section className="ai-actions-panel"><header><div><span>YOU STAY IN CONTROL</span><h2>Suggested CRM updates</h2></div></header>{result.actions.map((action,index)=><article key={`${action.leadId}-${index}`}><div><b>{action.title}</b><span>{action.leadName}</span><p>{action.reason}</p></div><button disabled={applied.includes(index)} onClick={()=>{onApply(action);setApplied(items=>[...items,index])}}>{applied.includes(index)?"Applied":"Apply"}</button></article>)}{!result.actions.length&&<p className="ai-empty">No record changes were suggested.</p>}</section>
       {result.draft&&<section className="ai-draft-card"><header><span>MESSAGE DRAFT</span><button onClick={()=>void navigator.clipboard.writeText(result.draft)}>Copy</button></header><p>{result.draft}</p></section>}
       <button className="ai-new-chat" onClick={()=>{setResult(null);setPrompt("");setError("")}}>＋ Start a new request</button>

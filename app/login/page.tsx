@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { chatGPTSignInPath, getChatGPTUser } from "../chatgpt-auth";
 import { isClerkConfigured } from "../lib/clerk-config";
 import ClerkLogin from "./ClerkLogin";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage(){
   if(isClerkConfigured())return <ClerkLogin/>;
   if(process.env.VERCEL)return <main className={styles.page}>
-    <Link href="/" className={styles.brand}><span><img src="/pacifica-mark.png" alt=""/></span><b>Pacifica</b></Link>
+    <Link href="/" className={styles.brand}><span><Image src="/pacifica-mark.png" width={32} height={32} alt="" priority/></span><b>Pacifica</b></Link>
     <section className={styles.card}>
       <p className={styles.kicker}>SECURE WORKSPACE ACCESS</p>
       <h1>Sign-in is temporarily unavailable.</h1>
@@ -20,7 +21,7 @@ export default async function LoginPage(){
   </main>;
   const user=await getChatGPTUser();
   return <main className={styles.page}>
-    <Link href="/" className={styles.brand}><span><img src="/pacifica-mark.png" alt=""/></span><b>Pacifica</b></Link>
+    <Link href="/" className={styles.brand}><span><Image src="/pacifica-mark.png" width={32} height={32} alt="" priority/></span><b>Pacifica</b></Link>
     <section className={styles.card}>
       <p className={styles.kicker}>SECURE WORKSPACE ACCESS</p>
       <h1>{user?`Welcome back, ${user.displayName}.`:"Sign in to your Pacifica workspace."}</h1>
