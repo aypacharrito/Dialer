@@ -40,10 +40,10 @@ async function hasPaidSubscription(email:string){
 
 export async function getPacificaAccess(){
   const identity=await getClerkIdentity();
-  if(!identity)return {allowed:false,role:"signed-out" as const,email:""};
-  if(PACIFICA_ADMIN_EMAILS.has(identity.email))return {allowed:true,role:"owner" as const,email:identity.email};
-  if(await hasPaidSubscription(identity.email))return {allowed:true,role:"subscriber" as const,email:identity.email};
-  return {allowed:false,role:"subscription-required" as const,email:identity.email};
+  if(!identity)return {allowed:false,role:"signed-out" as const,email:"",userId:""};
+  if(PACIFICA_ADMIN_EMAILS.has(identity.email))return {allowed:true,role:"owner" as const,email:identity.email,userId:identity.userId};
+  if(await hasPaidSubscription(identity.email))return {allowed:true,role:"subscriber" as const,email:identity.email,userId:identity.userId};
+  return {allowed:false,role:"subscription-required" as const,email:identity.email,userId:identity.userId};
 }
 
 export async function requirePacificaWorkspacePage(){

@@ -1,14 +1,25 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 
 export const runtime="nodejs";
 
 type WorkspacePayload={leads:unknown[];callLogs:unknown[]};
 
-async function identity(){
-  if(!isClerkConfigured())return process.env.VERCEL?null:"local";
-  return (await auth()).userId;
+type Identity={userId:string;email:string};
+
+async function identity():Promise<Identity|null>{
+  if(!isClerkConfigured())return process.env.VERCEL?null:{userId:"local",email:"local"};
+  const {userId}=await auth();
+  if(!userId)return null;
+  const user=await currentUser();
+  const email=(user?.primaryEmailAddress?.emailAddress||user?.emailAddresses[0]?.emailAddress||"").toLowerCase();
+  return {userId,email};
 }
+
+const workspaceVersion="v2";
+const legacyOwnerEmail="pacificalegalinsurance@gmail.com";
+function workspaceKey(userId:string){return `pacifica:${workspaceVersion}:workspace:${userId}`}
+function databaseId(userId:string){return `${workspaceVersion}:${userId}`}
 
 function redisConfig(){
   const url=process.env.KV_REST_API_URL||process.env.UPSTASH_REDIS_REST_URL||"";
@@ -37,24 +48,34 @@ function cleanPayload(value:unknown):WorkspacePayload{
 }
 
 export async function GET(){
-  const userId=await identity();if(!userId)return Response.json({error:"Sign in required"},{status:401});
+  const owner=await identity();if(!owner)return Response.json({error:"Sign in required"},{status:401});
   try{
-    const key=`pacifica:workspace:${userId}`;
+    const key=workspaceKey(owner.userId);
     const stored=await redis(["GET",key]);
     if(typeof stored==="string")return Response.json({found:true,...cleanPayload(JSON.parse(stored))},{headers:{"Cache-Control":"no-store"}});
-    if(redisConfig().url)return Response.json({found:false,leads:[],callLogs:[]},{headers:{"Cache-Control":"no-store"}});
-    const db=await d1();const result=await db.prepare("SELECT workspace_json AS workspaceJson FROM crm_workspaces WHERE user_id=? LIMIT 1").bind(userId).first() as {workspaceJson?:string}|null;
+    if(redisConfig().url){
+      if(owner.email===legacyOwnerEmail){
+        const legacy=await redis(["GET",`pacifica:workspace:${owner.userId}`]);
+        if(typeof legacy==="string"){await redis(["SET",key,legacy]);return Response.json({found:true,...cleanPayload(JSON.parse(legacy))},{headers:{"Cache-Control":"no-store"}})}
+      }
+      return Response.json({found:false,leads:[],callLogs:[]},{headers:{"Cache-Control":"no-store"}});
+    }
+    const db=await d1();let result=await db.prepare("SELECT workspace_json AS workspaceJson FROM crm_workspaces WHERE user_id=? LIMIT 1").bind(databaseId(owner.userId)).first() as {workspaceJson?:string}|null;
+    if(!result?.workspaceJson&&owner.email===legacyOwnerEmail){
+      result=await db.prepare("SELECT workspace_json AS workspaceJson FROM crm_workspaces WHERE user_id=? LIMIT 1").bind(owner.userId).first() as {workspaceJson?:string}|null;
+      if(result?.workspaceJson)await db.prepare("INSERT OR REPLACE INTO crm_workspaces (user_id,workspace_json,updated_at) VALUES (?,?,?)").bind(databaseId(owner.userId),result.workspaceJson,new Date().toISOString()).run();
+    }
     return result?.workspaceJson?Response.json({found:true,...cleanPayload(JSON.parse(result.workspaceJson))},{headers:{"Cache-Control":"no-store"}}):Response.json({found:false,leads:[],callLogs:[]},{headers:{"Cache-Control":"no-store"}});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load workspace"},{status:500})}
 }
 
 export async function PUT(request:Request){
-  const userId=await identity();if(!userId)return Response.json({error:"Sign in required"},{status:401});
+  const owner=await identity();if(!owner)return Response.json({error:"Sign in required"},{status:401});
   try{
-    const payload=cleanPayload(await request.json());const serialized=JSON.stringify(payload);const key=`pacifica:workspace:${userId}`;
+    const payload=cleanPayload(await request.json());const serialized=JSON.stringify(payload);const key=workspaceKey(owner.userId);
     const saved=await redis(["SET",key,serialized]);
     if(saved!==null)return Response.json({ok:true,storage:"cloud"});
-    const db=await d1();await db.prepare("INSERT INTO crm_workspaces (user_id,workspace_json,updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET workspace_json=excluded.workspace_json, updated_at=excluded.updated_at").bind(userId,serialized,new Date().toISOString()).run();
+    const db=await d1();await db.prepare("INSERT INTO crm_workspaces (user_id,workspace_json,updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET workspace_json=excluded.workspace_json, updated_at=excluded.updated_at").bind(databaseId(owner.userId),serialized,new Date().toISOString()).run();
     return Response.json({ok:true,storage:"cloud"});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to save workspace"},{status:500})}
 }

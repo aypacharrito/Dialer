@@ -100,37 +100,39 @@ async function redisCommand(command:Array<string|number>) {
   return data.result;
 }
 
+function safeWorkspace(value:string){return value.trim().replace(/[^a-zA-Z0-9_-]/g,"").slice(0,160)}
+
 async function ensureInboundTable() {
   const {getD1}=await import("../../../../db/index");
   const db=getD1();
-  await db.prepare(`CREATE TABLE IF NOT EXISTS inbound_leads (id TEXT PRIMARY KEY, vendor_id TEXT, source TEXT NOT NULL DEFAULT 'Lead provider', name TEXT NOT NULL, phone TEXT NOT NULL, phone_digits TEXT NOT NULL UNIQUE, email TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT 'Imported', product TEXT NOT NULL DEFAULT 'Service inquiry', line TEXT NOT NULL DEFAULT 'life', disposition TEXT NOT NULL DEFAULT 'Received - not worked yet', notes TEXT NOT NULL DEFAULT '', cost REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL, extra_json TEXT NOT NULL DEFAULT '{}', synced_at INTEGER NOT NULL DEFAULT 0)`).run();
-  try{await db.prepare("ALTER TABLE inbound_leads ADD COLUMN extra_json TEXT NOT NULL DEFAULT '{}'").run()}catch{}
+  await db.prepare(`CREATE TABLE IF NOT EXISTS inbound_leads_v2 (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, vendor_id TEXT, source TEXT NOT NULL DEFAULT 'Lead provider', name TEXT NOT NULL, phone TEXT NOT NULL, phone_digits TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT 'Imported', product TEXT NOT NULL DEFAULT 'Service inquiry', line TEXT NOT NULL DEFAULT 'life', disposition TEXT NOT NULL DEFAULT 'Received - not worked yet', notes TEXT NOT NULL DEFAULT '', cost REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL, extra_json TEXT NOT NULL DEFAULT '{}', synced_at INTEGER NOT NULL DEFAULT 0, UNIQUE(workspace_id,phone_digits))`).run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS inbound_leads_v2_workspace_idx ON inbound_leads_v2(workspace_id,created_at)").run();
   return db;
 }
 
-async function saveLead(lead:NormalizedLead) {
-  const added=await redisCommand(["SADD","pacifica:lead-phones",lead.phoneDigits]);
+async function saveLead(workspaceId:string,lead:NormalizedLead) {
+  const prefix=`pacifica:v2:inbound:${workspaceId}`;
+  const added=await redisCommand(["SADD",`${prefix}:phones`,lead.phoneDigits]);
   if (added!==null) {
     if (Number(added)===0) return false;
-    await redisCommand(["LPUSH","pacifica:inbound:leads",JSON.stringify(lead)]);
-    await redisCommand(["LTRIM","pacifica:inbound:leads",0,1999]);
+    await redisCommand(["LPUSH",`${prefix}:leads`,JSON.stringify(lead)]);
+    await redisCommand(["LTRIM",`${prefix}:leads`,0,1999]);
     return true;
   }
   const db=await ensureInboundTable();
-  const result=await db.prepare("INSERT OR IGNORE INTO inbound_leads (id,vendor_id,source,name,phone,phone_digits,email,city,product,line,disposition,notes,cost,created_at,extra_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)").bind(lead.id,lead.vendorId,lead.source,lead.name,lead.phone,lead.phoneDigits,lead.email,lead.city,lead.product,lead.line,lead.disposition,lead.notes,lead.cost,lead.createdAt,JSON.stringify({address:lead.address,state:lead.state,zip:lead.zip,territory:lead.territory,brand:lead.brand,profileName:lead.profileName,received:lead.received,returnStatus:lead.returnStatus,employeeCount:lead.employeeCount,searchPro:lead.searchPro,extraFields:lead.extraFields})).run();
+  const result=await db.prepare("INSERT OR IGNORE INTO inbound_leads_v2 (id,workspace_id,vendor_id,source,name,phone,phone_digits,email,city,product,line,disposition,notes,cost,created_at,extra_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)").bind(lead.id,workspaceId,lead.vendorId,lead.source,lead.name,lead.phone,lead.phoneDigits,lead.email,lead.city,lead.product,lead.line,lead.disposition,lead.notes,lead.cost,lead.createdAt,JSON.stringify({address:lead.address,state:lead.state,zip:lead.zip,territory:lead.territory,brand:lead.brand,profileName:lead.profileName,received:lead.received,returnStatus:lead.returnStatus,employeeCount:lead.employeeCount,searchPro:lead.searchPro,extraFields:lead.extraFields})).run();
   return Number(result.meta.changes)>0;
 }
 
-async function listLeads() {
-  const current=await redisCommand(["LRANGE","pacifica:inbound:leads",0,499]);
-  const legacy=await redisCommand(["LRANGE","pacifica:smartfinancial:leads",0,499]);
-  if (Array.isArray(current)||Array.isArray(legacy)) {
-    const combined=[...(Array.isArray(current)?current:[]),...(Array.isArray(legacy)?legacy:[])].map(value=>JSON.parse(String(value)) as NormalizedLead);
+async function listLeads(workspaceId:string) {
+  const current=await redisCommand(["LRANGE",`pacifica:v2:inbound:${workspaceId}:leads`,0,499]);
+  if (Array.isArray(current)) {
+    const combined=current.map(value=>JSON.parse(String(value)) as NormalizedLead);
     const seen=new Set<string>();
     return combined.filter(lead=>{if(seen.has(lead.phoneDigits))return false;seen.add(lead.phoneDigits);return true});
   }
   const db=await ensureInboundTable();
-  const result=await db.prepare("SELECT id,vendor_id AS vendorId,source,name,phone,phone_digits AS phoneDigits,email,city,product,line,disposition,notes,cost,created_at AS createdAt,extra_json AS extraJson FROM inbound_leads ORDER BY created_at DESC LIMIT 500").all();
+  const result=await db.prepare("SELECT id,vendor_id AS vendorId,source,name,phone,phone_digits AS phoneDigits,email,city,product,line,disposition,notes,cost,created_at AS createdAt,extra_json AS extraJson FROM inbound_leads_v2 WHERE workspace_id=? ORDER BY created_at DESC LIMIT 500").bind(workspaceId).all();
   return (result.results as Array<Record<string,unknown>>).map(row=>{let extra={};try{extra=JSON.parse(String(row.extraJson||"{}"))}catch{}return {...row,...extra} as NormalizedLead});
 }
 
@@ -145,15 +147,19 @@ async function bodyFrom(request:Request) {
 export async function POST(request:Request) {
   const auth=authorize(request);if(!auth.ok)return Response.json({error:auth.error},{status:auth.status});
   try {
-    const source=new URL(request.url).searchParams.get("source")?.trim()||"";
+    const url=new URL(request.url);const source=url.searchParams.get("source")?.trim()||"";
+    const workspaceId=safeWorkspace(url.searchParams.get("workspace")||"");
+    if(!workspaceId)return Response.json({error:"A workspace ID is required"},{status:400});
     const lead=normalize(await bodyFrom(request),source);
-    const created=await saveLead(lead);
+    const created=await saveLead(workspaceId,lead);
     return Response.json({ok:true,created,duplicate:!created,id:lead.id},{status:created?201:200});
   } catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to receive lead"},{status:400})}
 }
 
-export async function GET(request:Request) {
+export async function GET() {
   if(!await isPacificaOwnerApi())return Response.json({error:"Owner access required"},{status:403});
-  try{return Response.json({configured:true,leads:await listLeads()},{headers:{"Cache-Control":"no-store"}})}
+  const {auth}=await import("@clerk/nextjs/server");const userId=safeWorkspace((await auth()).userId||"");
+  if(!userId)return Response.json({error:"Sign in required"},{status:401});
+  try{return Response.json({configured:true,leads:await listLeads(userId)},{headers:{"Cache-Control":"no-store"}})}
   catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load leads"},{status:500})}
 }
