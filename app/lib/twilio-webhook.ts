@@ -33,7 +33,10 @@ export async function validateTwilioWebhook(request:Request,form:FormData){
   if(!supplied)return false;
   const fields=Array.from(form.entries())
     .map(([key,value])=>[key,typeof value==="string"?value:value.name] as const)
-    .sort(([leftKey,leftValue],[rightKey,rightValue])=>leftKey.localeCompare(rightKey)||leftValue.localeCompare(rightValue));
+    // Twilio sorts parameter names by raw Unicode/code-unit order. Locale-aware
+    // sorting changes the order of fields such as CallSid, CallStatus, Called,
+    // and Caller, which makes a legitimate Twilio signature look invalid.
+    .sort(([leftKey,leftValue],[rightKey,rightValue])=>leftKey===rightKey?(leftValue<rightValue?-1:leftValue>rightValue?1:0):(leftKey<rightKey?-1:1));
   const key=await crypto.subtle.importKey("raw",encoder.encode(authToken),{name:"HMAC",hash:"SHA-1"},false,["sign"]);
   for(const url of signedUrls(request)){
     const payload=fields.reduce((value,[fieldName,fieldValue])=>`${value}${fieldName}${fieldValue}`,url);
