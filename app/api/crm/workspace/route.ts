@@ -79,3 +79,17 @@ export async function PUT(request:Request){
     return Response.json({ok:true,storage:"cloud"});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to save workspace"},{status:500})}
 }
+
+export async function DELETE(){
+  const owner=await identity();if(!owner)return Response.json({error:"Sign in required"},{status:401});
+  try{
+    const key=workspaceKey(owner.userId);
+    const inboundPrefix=`pacifica:v2:inbound:${owner.userId}`;
+    const removed=await redis(["DEL",key,`${inboundPrefix}:leads`,`${inboundPrefix}:phones`]);
+    if(removed!==null)return Response.json({ok:true,storage:"cloud"});
+    const db=await d1();
+    await db.prepare("DELETE FROM crm_workspaces WHERE user_id=?").bind(databaseId(owner.userId)).run();
+    try{await db.prepare("DELETE FROM inbound_leads_v2 WHERE workspace_id=?").bind(owner.userId).run()}catch{}
+    return Response.json({ok:true,storage:"cloud"});
+  }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to reset workspace"},{status:500})}
+}
