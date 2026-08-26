@@ -14,7 +14,12 @@ export async function POST(request: Request) {
   const from=String(form.get("From")||form.get("Caller")||"").trim();
   const direction=String(form.get("Direction")||"").toLowerCase();
   const statusCallback=xmlEscape(new URL("/api/twilio/status",request.url).toString());
-  if(direction==="inbound"){
+  // Twilio marks a browser Voice SDK call as `Direction=inbound` because the
+  // call is entering Twilio from a Client identity. Distinguish it from an
+  // actual PSTN call by the caller address, otherwise an outbound browser call
+  // gets routed back to the browser instead of to the requested phone number.
+  const fromBrowserClient=/^client:/i.test(from);
+  if(direction==="inbound"&&!fromBrowserClient){
     const workspaceId=twilioWorkspaceForNumber(to);
     if(!workspaceId){
       const unavailable=`<?xml version="1.0" encoding="UTF-8"?><Response><Say>Thank you for calling. This Pacifica workspace is not available right now.</Say><Hangup/></Response>`;
