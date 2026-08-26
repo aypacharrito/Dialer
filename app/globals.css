@@ -317,6 +317,18 @@ button{cursor:pointer}
 .record-actions button:disabled{opacity:.4;cursor:not-allowed}
 .record-actions .close-lead{margin-left:auto;background:#fff0f0;color:#af3434;border-color:#f2caca}
 .record-actions .reopen-lead{margin-left:auto;background:#e5f8ef;color:#26785c;border-color:#bfe7d7}
+.priority-summary{display:flex!important;align-items:center;gap:6px;white-space:nowrap}
+.priority-pill{display:inline-flex!important;align-items:center;justify-content:center;width:max-content;margin:0!important;padding:3px 5px;border:1px solid #526066;background:#252c2f;color:#aeb9bd;border-radius:3px;font-size:6px!important;font-style:normal;font-weight:900;letter-spacing:.05em}
+.priority-pill.hot{border-color:#9a4d4c;background:#422426;color:#ffb0aa}
+.priority-pill.high{border-color:#96733a;background:#3b301e;color:#f0c979}
+.priority-pill.medium{border-color:#36797c;background:#18383b;color:#94dadd}
+.priority-pill.low{border-color:#4b565b;background:#242a2d;color:#8f9ca1}
+.focus-reason b{display:flex!important;align-items:center;gap:6px}
+.pipeline-card>div>.priority-pill{margin-left:auto!important}
+.quick-follow-up{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:11px;border-top:1px solid #28383f}
+.quick-follow-up span{margin-right:auto;color:#71888f;font-size:7px;font-weight:900;letter-spacing:.1em}
+.quick-follow-up button{border:1px solid #3b4b51;background:#20292d;color:#b9c6ca;border-radius:4px;padding:7px 8px;font-size:7px;font-weight:900;cursor:pointer}
+.quick-follow-up button:hover{border-color:#2b777b;color:#aee6e8}
 
 .idle-badge.online{color:#26785c;background:#e3f7ef}
 .line-toggle button:disabled,.setup-grid>button:disabled{opacity:.55;cursor:not-allowed}
@@ -365,8 +377,10 @@ button,input,select,textarea{font-family:inherit}
 .top-actions{gap:9px}
 .connection{color:#71889b}
 .connection svg{color:#38d8ad}
-.notification{height:38px;width:38px;border:1px solid #26384a;background:#111d2a;color:#8da3b5;border-radius:8px;display:grid;place-items:center}
+.notification{position:relative;height:38px;width:38px;border:1px solid #26384a;background:#111d2a;color:#8da3b5;border-radius:8px;display:grid;place-items:center}
 .notification svg{width:17px}
+.notification em{position:absolute;right:-5px;top:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:#d45b59;color:white;display:grid;place-items:center;font-size:7px;font-style:normal;font-weight:900;box-shadow:0 0 0 2px #0b1521}
+.notification.has-alerts{border-color:#8f4948;color:#f2aaa5}
 .import,.primary{background:linear-gradient(135deg,#1bacc4,#157fa7);border:1px solid #32c7d066;box-shadow:0 8px 24px #0aa5bd1f;border-radius:8px;padding:11px 14px}
 .import:hover,.primary:hover{background:linear-gradient(135deg,#29c3d8,#208eb3)}
 

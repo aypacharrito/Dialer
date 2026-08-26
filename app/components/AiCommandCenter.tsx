@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { leadPriority, rankLeads } from "../lib/lead-priority";
 
 type Lead = {
   id: number;
@@ -16,6 +17,12 @@ type Lead = {
   source:string;
   product:string;
   leadCost:number;
+  importedAt:string;
+  sourceDisposition:string;
+  received?:string;
+  attempts?:number;
+  lastAttemptAt?:string;
+  priorityOverride?:"auto"|"high"|"low";
 };
 
 type RecentCall={name:string;startedAt:string;duration:number;outcome:string;status:string;source:string};
@@ -50,7 +57,7 @@ const quickPrompts = [
 ];
 
 function browserAnalysis(leads:Lead[],notice:string):AiResult{
-  const priorities=leads.slice(0,5).map((lead,index)=>({leadId:lead.id,leadName:lead.name,score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"This contact already showed interest and deserves a prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"This is an open opportunity without a completed next step.",nextStep:lead.followUp?`Follow up on ${lead.followUp}`:"Call and confirm needs, timing, and the best next step."}));
+  const priorities=rankLeads(leads).slice(0,5).map(lead=>{const priority=leadPriority(lead);return {leadId:lead.id,leadName:lead.name,score:Math.max(0,priority.score),reason:priority.reason,nextStep:priority.detail}});
   return {summary:`I reviewed ${leads.length} active contact${leads.length===1?"":"s"}. Start with the first contacts below, then work scheduled follow-ups before untouched leads.`,priorities,actions:[],draft:"",mode:"smart-fallback",notice};
 }
 

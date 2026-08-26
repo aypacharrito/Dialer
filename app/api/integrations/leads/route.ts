@@ -1,4 +1,5 @@
 import { isPacificaOwnerApi } from "../../../lib/clerk-access";
+import { leadLineForProduct } from "../../../lib/lead-priority";
 
 type IncomingRecord = Record<string, unknown>;
 
@@ -63,7 +64,7 @@ function normalize(payload:unknown,requestedSource:string):NormalizedLead {
   const phoneDigits=phone.replace(/\D/g,"");
   if (phoneDigits.length<7) throw new Error("A valid phone number is required");
   const product=textValue(record,"type","product","lead_type","leadType","vertical","insurance_type","insuranceType")||"Service inquiry";
-  const line="life";
+  const line=leadLineForProduct(product,"life");
   const rawCost=textValue(record,"cost","lead_cost","leadCost","price").replace(/[^0-9.-]/g,"");
   const source=textValue(record,"source","provider","vendor","lead_source","leadSource","publisher")||requestedSource||"Lead provider";
   return {
@@ -73,7 +74,7 @@ function normalize(payload:unknown,requestedSource:string):NormalizedLead {
     notes:textValue(record,"notes","note","comments"),cost:Number(rawCost)||0,createdAt:textValue(record,"created_at","createdAt","timestamp","received")||new Date().toISOString(),
     address:textValue(record,"address","street_address","streetAddress","address1","street"),state:textValue(record,"state","province"),zip:textValue(record,"zip","zipcode","postal_code","postalCode"),
     territory:textValue(record,"territory","market"),brand:textValue(record,"brand","agency","company"),profileName:textValue(record,"profile_name","profileName","profile","campaign"),
-    received:textValue(record,"received","received_at","receivedAt"),returnStatus:textValue(record,"return","return_status","returnStatus"),employeeCount:textValue(record,"number_of_employees","numberOfEmployees","employees","employee_count","employeeCount"),searchPro:textValue(record,"search_pro","searchPro"),extraFields:extraFields(record),
+    received:textValue(record,"received","received_at","receivedAt")||textValue(record,"created_at","createdAt","timestamp")||new Date().toISOString(),returnStatus:textValue(record,"return","return_status","returnStatus"),employeeCount:textValue(record,"number_of_employees","numberOfEmployees","employees","employee_count","employeeCount"),searchPro:textValue(record,"search_pro","searchPro"),extraFields:extraFields(record),
   };
 }
 
