@@ -1,6 +1,6 @@
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
-import { twilioPhoneForWorkspace } from "../../../lib/twilio-workspaces";
+import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
 
 export const runtime="nodejs";
 
@@ -23,7 +23,9 @@ function config(phone:string){
 async function workspacePhone(){
   const access=isClerkConfigured()?await getPacificaAccess():{allowed:!process.env.VERCEL,userId:"local",email:"local"};
   if(!access.allowed)throw new Error("An active Pacifica subscription is required.");
-  const phone=twilioPhoneForWorkspace(access.userId,access.email);
+  const assignment=await phoneAssignmentForWorkspace(access.userId,access.email);
+  if(assignment&&assignment.provider!=="twilio")throw new Error(`This workspace uses ${assignment.provider}. Its messaging adapter is not connected yet.`);
+  const phone=assignment?.phoneNumber||"";
   if(!phone)throw new Error("This Pacifica workspace does not have a Twilio number assigned yet.");
   return phone;
 }

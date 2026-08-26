@@ -1,6 +1,7 @@
 export const runtime = "edge";
 
-import { twilioClientIdentity, twilioPhoneForClient, twilioWorkspaceForNumber } from "../../../lib/twilio-workspaces";
+import { phoneAssignmentForClient, phoneAssignmentForNumber } from "../../../lib/phone-assignments";
+import { twilioClientIdentity } from "../../../lib/twilio-workspaces";
 import { rejectedTwilioWebhook, validateTwilioWebhook } from "../../../lib/twilio-webhook";
 
 function xmlEscape(value: string) {
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   // gets routed back to the browser instead of to the requested phone number.
   const fromBrowserClient=/^client:/i.test(from);
   if(direction==="inbound"&&!fromBrowserClient){
-    const workspaceId=twilioWorkspaceForNumber(to);
+    const workspaceId=(await phoneAssignmentForNumber(to))?.workspaceId||"";
     if(!workspaceId){
       const unavailable=`<?xml version="1.0" encoding="UTF-8"?><Response><Say>Thank you for calling. This Pacifica workspace is not available right now.</Say><Hangup/></Response>`;
       return new Response(unavailable,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     return new Response(inbound,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
   }
   const normalized = to.startsWith("+") ? `+${to.slice(1).replace(/\D/g, "")}` : `+1${to.replace(/\D/g, "")}`;
-  const callerId = twilioPhoneForClient(from);
+  const callerId = (await phoneAssignmentForClient(from,"twilio"))?.phoneNumber||"";
   if (!callerId || !/^\+[1-9]\d{7,14}$/.test(normalized)) {
     return new Response("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Reject/></Response>", { status: 400, headers: { "Content-Type": "text/xml; charset=utf-8" } });
   }

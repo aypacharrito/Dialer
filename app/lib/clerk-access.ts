@@ -8,6 +8,10 @@ export const PACIFICA_ADMIN_EMAILS=new Set([
   "davidscarinsurance@gmail.com",
   ...(process.env.PACIFICA_ADMIN_EMAILS||"").split(",").map(email=>email.trim().toLowerCase()).filter(Boolean),
 ]);
+export const PACIFICA_PLATFORM_OWNER_EMAILS=new Set([
+  "pacificalegalinsurance@gmail.com",
+  ...(process.env.PACIFICA_PLATFORM_OWNER_EMAILS||"").split(",").map(email=>email.trim().toLowerCase()).filter(Boolean),
+]);
 const paidStatuses=new Set(["active","trialing"]);
 
 async function getClerkIdentity(){
@@ -61,4 +65,12 @@ export async function hasPacificaWorkspaceApiAccess(){
 export async function isPacificaOwnerApi(){
   if(!isClerkConfigured())return !process.env.VERCEL;
   return (await getPacificaAccess()).role==="owner";
+}
+
+export function isPacificaPlatformOwnerEmail(email:string){return PACIFICA_PLATFORM_OWNER_EMAILS.has(email.trim().toLowerCase())}
+
+export async function isPacificaPlatformOwnerApi(){
+  if(!isClerkConfigured())return !process.env.VERCEL;
+  const access=await getPacificaAccess();
+  return access.allowed&&isPacificaPlatformOwnerEmail(access.email);
 }

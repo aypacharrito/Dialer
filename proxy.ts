@@ -6,6 +6,7 @@ const isProtectedRoute=createRouteMatcher([
   "/api/ai/(.*)",
   "/api/twilio/token(.*)",
   "/api/twilio/messages(.*)",
+  "/api/admin/(.*)",
 ]);
 
 const clerkConfigured=Boolean(

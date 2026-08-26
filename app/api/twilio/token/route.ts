@@ -1,6 +1,7 @@
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
-import { twilioClientIdentity, twilioPhoneForWorkspace } from "../../../lib/twilio-workspaces";
+import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
+import { twilioClientIdentity } from "../../../lib/twilio-workspaces";
 
 export const runtime = "nodejs";
 
@@ -46,8 +47,12 @@ export async function GET() {
     return Response.json({ error: "One or more Twilio SIDs has the wrong format. Open Phone setup for details." }, { status: 503 });
   }
   try {
-    const identity=twilioClientIdentity(access.userId);const phoneNumber=twilioPhoneForWorkspace(access.userId,access.email);
-    return Response.json({ token: await createToken(apiKeySecret, accountSid, apiKeySid, appSid, identity), identity, phoneNumber, incomingEnabled:Boolean(phoneNumber), expiresIn: 3600 }, { headers: { "Cache-Control": "no-store" } });
+    const identity=twilioClientIdentity(access.userId);
+    const assignment=await phoneAssignmentForWorkspace(access.userId,access.email);
+    if(!assignment)return Response.json({error:"This workspace does not have a phone number yet. Ask the Pacifica platform owner to assign one in Phone Number Center."},{status:409});
+    if(assignment&&assignment.provider!=="twilio")return Response.json({error:`This workspace uses ${assignment.provider}. Its browser calling adapter is not connected yet.`},{status:409});
+    const phoneNumber=assignment.phoneNumber;
+    return Response.json({ token: await createToken(apiKeySecret, accountSid, apiKeySid, appSid, identity), identity, provider:"twilio",phoneNumber, incomingEnabled:Boolean(phoneNumber), expiresIn: 3600 }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("[twilio/token] token generation failed", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Twilio token generation failed. Check the API key secret and redeploy." }, { status: 500 });
