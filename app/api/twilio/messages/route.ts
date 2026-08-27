@@ -1,6 +1,8 @@
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
+import {sendOutboundSms} from "../../../lib/outbound-sms";
+import {readStoredWorkspace} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 
@@ -20,9 +22,14 @@ function config(phone:string){
   return {accountSid,phone,credentials};
 }
 
-async function workspacePhone(){
+async function workspaceAccess(){
   const access=isClerkConfigured()?await getPacificaAccess():{allowed:!process.env.VERCEL,userId:"local",email:"local"};
   if(!access.allowed)throw new Error("An active Pacifica subscription is required.");
+  return access;
+}
+
+async function workspacePhone(){
+  const access=await workspaceAccess();
   const assignment=await phoneAssignmentForWorkspace(access.userId,access.email);
   if(assignment&&assignment.provider!=="twilio")throw new Error(`This workspace uses ${assignment.provider}. Its messaging adapter is not connected yet.`);
   const phone=assignment?.phoneNumber||"";
@@ -89,11 +96,11 @@ export async function POST(request:Request){
     const text=String(body.body||"").trim().slice(0,1400);
     if(!to)return Response.json({error:"Enter a valid US mobile number"},{status:400});
     if(!text)return Response.json({error:"Write a message first"},{status:400});
-    const phone=await workspacePhone();const {accountSid,credentials}=config(phone);
-    const form=new URLSearchParams({To:to,Body:text,From:phone});
-    const {response,data,credential}=await twilioRequest(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials) as {response:Response;data:TwilioMessage&TwilioError;credential:string};
-    if(!response.ok)return Response.json({error:twilioMessage(data),code:data.code||null},{status:response.status>=400&&response.status<500?400:502});
-    console.log("[twilio/messages] sent",{sid:data.sid,toLast4:to.slice(-4),credential});
-    return Response.json({ok:true,message:safe(data)});
+    const access=await workspaceAccess();const workspace=await readStoredWorkspace(access.userId);const digits=to.replace(/\D/g,"").slice(-10);const lead=workspace?.leads.find(raw=>{const item=raw as Record<string,unknown>;return String(item.phone||"").replace(/\D/g,"").slice(-10)===digits}) as Record<string,unknown>|undefined;
+    if(!lead)return Response.json({error:"Save this phone number as a workspace contact before texting."},{status:400});
+    if(lead.doNotCall||lead.smsOptOut||lead.smsConsent!==true)return Response.json({error:lead.smsOptOut?"This contact opted out of SMS.":"Document this contact’s SMS consent before sending."},{status:403});
+    const result=await sendOutboundSms({workspaceId:access.userId,to,body:text});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text,status:result.status,date_created:new Date().toISOString()};
+    console.log("[twilio/messages] sent",{sid:result.id,toLast4:to.slice(-4),credential:"tenant SMS adapter"});
+    return Response.json({ok:true,message:safe(message)});
   }catch(error){console.error("[twilio/messages] send failed",error instanceof Error?error.message:"unknown");return Response.json({error:error instanceof Error?error.message:"Unable to send message"},{status:500})}
 }

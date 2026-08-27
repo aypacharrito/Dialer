@@ -1,4 +1,4 @@
-import { isPacificaOwnerApi } from "../../../lib/clerk-access";
+import { getPacificaAccess, isPacificaOwnerApi } from "../../../lib/clerk-access";
 import { leadLineForProduct } from "../../../lib/lead-priority";
 
 type IncomingRecord = Record<string, unknown>;
@@ -165,7 +165,7 @@ export async function POST(request:Request) {
 
 export async function GET() {
   if(!await isPacificaOwnerApi())return Response.json({error:"Owner access required"},{status:403});
-  const {auth}=await import("@clerk/nextjs/server");const userId=safeWorkspace((await auth()).userId||"");
+  const userId=safeWorkspace((await getPacificaAccess()).userId||"");
   if(!userId)return Response.json({error:"Sign in required"},{status:401});
   try{return Response.json({configured:true,leads:await listLeads(userId)},{headers:{"Cache-Control":"no-store"}})}
   catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load leads"},{status:500})}

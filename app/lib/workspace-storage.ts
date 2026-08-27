@@ -12,6 +12,21 @@ export function cleanWorkspacePayload(value:unknown):StoredWorkspace{
   return {leads:Array.isArray(body.leads)?body.leads.slice(0,5000):[],callLogs:Array.isArray(body.callLogs)?body.callLogs.slice(0,1000):[],profile:cleanWorkspaceProfile(body.profile)};
 }
 
+function newer(left:unknown,right:unknown){const a=new Date(String(left||"")).getTime();const b=new Date(String(right||"")).getTime();return Number.isFinite(a)&&(!Number.isFinite(b)||a>b)}
+function mergeCommunications(server:unknown,client:unknown){const items=[...(Array.isArray(client)?client:[]),...(Array.isArray(server)?server:[])];const unique=new Map<string,unknown>();for(const raw of items){if(!raw||typeof raw!=="object")continue;const item=raw as {id?:unknown;providerId?:unknown};const key=String(item.providerId||item.id||JSON.stringify(raw));unique.set(key,raw)}return Array.from(unique.values()).slice(-200)}
+
+export function mergeStoredWorkspace(server:StoredWorkspace|null,incoming:StoredWorkspace):StoredWorkspace{
+  if(!server)return cleanWorkspacePayload(incoming);
+  const serverLeads=server.leads as Array<Record<string,unknown>>;const incomingLeads=incoming.leads as Array<Record<string,unknown>>;const incomingIds=new Set(incomingLeads.map(lead=>String(lead.id)));
+  const byId=new Map(serverLeads.map(lead=>[String(lead.id),lead]));
+  const leads=incomingLeads.map(client=>{const previous=byId.get(String(client.id));if(!previous)return client;const serverReplyNewer=newer(previous.lastInboundAt,client.lastInboundAt);const serverAutomationNewer=newer(previous.automationUpdatedAt,client.automationUpdatedAt);return {...previous,...client,communications:mergeCommunications(previous.communications,client.communications),lastInboundAt:serverReplyNewer?previous.lastInboundAt:client.lastInboundAt||previous.lastInboundAt,lastSmsAt:newer(previous.lastSmsAt,client.lastSmsAt)?previous.lastSmsAt:client.lastSmsAt||previous.lastSmsAt,lastEmailAt:newer(previous.lastEmailAt,client.lastEmailAt)?previous.lastEmailAt:client.lastEmailAt||previous.lastEmailAt,...(serverReplyNewer?{smsOptOut:previous.smsOptOut,emailOptOut:previous.emailOptOut}:{}),...(serverReplyNewer||serverAutomationNewer?{automationSequenceId:previous.automationSequenceId,automationStep:previous.automationStep,automationStatus:previous.automationStatus,automationNextAt:previous.automationNextAt,automationDeliveryFailures:previous.automationDeliveryFailures,automationLastError:previous.automationLastError,automationDeadLetterAt:previous.automationDeadLetterAt,automationUpdatedAt:previous.automationUpdatedAt}:{})}});
+  for(const lead of serverLeads)if(!incomingIds.has(String(lead.id)))leads.push(lead);
+  const serverLogs=server.callLogs as Array<Record<string,unknown>>;const byLogId=new Map(serverLogs.map(log=>[String(log.id),log]));const byCallSid=new Map(serverLogs.filter(log=>log.callSid).map(log=>[String(log.callSid),log]));const matchedServerLogIds=new Set<string>();
+  const callLogs=(incoming.callLogs as Array<Record<string,unknown>>).map(client=>{const previous=byLogId.get(String(client.id))||(client.callSid?byCallSid.get(String(client.callSid)):undefined);if(!previous)return client;matchedServerLogIds.add(String(previous.id));return {...previous,...client,recordingSid:client.recordingSid||previous.recordingSid,recordingUrl:client.recordingUrl||previous.recordingUrl,recordingStatus:client.recordingStatus||previous.recordingStatus,transcript:client.transcript||previous.transcript,aiSummary:client.aiSummary||previous.aiSummary}});
+  for(const log of serverLogs)if(!matchedServerLogIds.has(String(log.id)))callLogs.push(log);
+  return cleanWorkspacePayload({leads:leads.slice(0,5000),callLogs:callLogs.slice(0,1000),profile:incoming.profile});
+}
+
 export function workspaceRedisConfig(){
   return {url:process.env.KV_REST_API_URL||process.env.UPSTASH_REDIS_REST_URL||"",token:process.env.KV_REST_API_TOKEN||process.env.UPSTASH_REDIS_REST_TOKEN||""};
 }

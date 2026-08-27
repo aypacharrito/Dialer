@@ -21,7 +21,11 @@ async function getClerkIdentity(){
     const user=await currentUser();
     if(!user)return null;
     const email=(user.primaryEmailAddress?.emailAddress||user.emailAddresses[0]?.emailAddress||"").toLowerCase();
-    return email?{userId,email}:null;
+    const metadata=user.privateMetadata as {pacificaWorkspaceId?:unknown;pacificaRole?:unknown};
+    const workspaceId=String(metadata.pacificaWorkspaceId||userId).replace(/[^a-zA-Z0-9_-]/g,"").slice(0,160)||userId;
+    const teamRole=metadata.pacificaRole==="manager"?"manager" as const:metadata.pacificaRole==="agent"?"agent" as const:null;
+    const displayName=[user.firstName,user.lastName].filter(Boolean).join(" ")||email;
+    return email?{userId:workspaceId,accountUserId:userId,email,teamRole,displayName}:null;
   }catch(error){
     console.error("[access] Clerk identity lookup failed",error instanceof Error?error.message:"unknown error");
     return null;
@@ -44,10 +48,11 @@ async function hasPaidSubscription(email:string){
 
 export async function getPacificaAccess(){
   const identity=await getClerkIdentity();
-  if(!identity)return {allowed:false,role:"signed-out" as const,email:"",userId:""};
-  if(PACIFICA_ADMIN_EMAILS.has(identity.email))return {allowed:true,role:"owner" as const,email:identity.email,userId:identity.userId};
-  if(await hasPaidSubscription(identity.email))return {allowed:true,role:"subscriber" as const,email:identity.email,userId:identity.userId};
-  return {allowed:false,role:"subscription-required" as const,email:identity.email,userId:identity.userId};
+  if(!identity)return {allowed:false,role:"signed-out" as const,email:"",userId:"",accountUserId:"",displayName:""};
+  if(PACIFICA_ADMIN_EMAILS.has(identity.email))return {allowed:true,role:"owner" as const,...identity};
+  if(identity.teamRole)return {allowed:true,role:identity.teamRole,...identity};
+  if(await hasPaidSubscription(identity.email))return {allowed:true,role:"owner" as const,...identity};
+  return {allowed:false,role:"subscription-required" as const,...identity};
 }
 
 export async function requirePacificaWorkspacePage(){
@@ -64,7 +69,8 @@ export async function hasPacificaWorkspaceApiAccess(){
 
 export async function isPacificaOwnerApi(){
   if(!isClerkConfigured())return !process.env.VERCEL;
-  return (await getPacificaAccess()).role==="owner";
+  const role=(await getPacificaAccess()).role;
+  return role==="owner"||role==="manager";
 }
 
 export function isPacificaPlatformOwnerEmail(email:string){return PACIFICA_PLATFORM_OWNER_EMAILS.has(email.trim().toLowerCase())}

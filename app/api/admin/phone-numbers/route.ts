@@ -13,6 +13,7 @@ type AvailableNumber={phone_number:string;friendly_name?:string;locality?:string
 type TwilioApplication={sid:string;friendly_name?:string;voice_url?:string;voice_method?:string};
 
 const voiceUrl=()=>`${(process.env.TWILIO_WEBHOOK_BASE_URL||"https://pacificacrm.com").trim().replace(/\/$/,"")}/api/twilio/voice`;
+const smsUrl=()=>`${(process.env.TWILIO_WEBHOOK_BASE_URL||"https://pacificacrm.com").trim().replace(/\/$/,"")}/api/twilio/inbound`;
 
 async function requirePlatformOwner(){
   if(!await isPacificaPlatformOwnerApi())return null;
@@ -23,7 +24,7 @@ async function clerkWorkspaces():Promise<ClerkWorkspace[]>{
   if(!isClerkConfigured())return [{id:"local",email:"local",name:"Local Pacifica workspace",createdAt:Date.now()}];
   const client=await clerkClient();
   const result=await client.users.getUserList({limit:100,orderBy:"-created_at"});
-  return result.data.map(user=>{
+  return result.data.filter(user=>!String(user.privateMetadata.pacificaWorkspaceId||"").trim()).map(user=>{
     const email=(user.primaryEmailAddress?.emailAddress||user.emailAddresses[0]?.emailAddress||"").toLowerCase();
     const name=[user.firstName,user.lastName].filter(Boolean).join(" ")||email||"Unnamed account";
     return {id:user.id,email,name,createdAt:user.createdAt};
@@ -56,7 +57,7 @@ async function verifiedWorkspace(workspaceId:string){
 
 async function configureIncomingVoice(number:TwilioNumber){
   const {accountSid,credentials}=twilioAccountConfig();
-  const form=new URLSearchParams({VoiceUrl:voiceUrl(),VoiceMethod:"POST",VoiceApplicationSid:"",TrunkSid:"",FriendlyName:number.friendly_name||number.phone_number});
+  const form=new URLSearchParams({VoiceUrl:voiceUrl(),VoiceMethod:"POST",SmsUrl:smsUrl(),SmsMethod:"POST",VoiceApplicationSid:"",TrunkSid:"",FriendlyName:number.friendly_name||number.phone_number});
   const endpoint=`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers/${number.sid}.json`;
   const result=await twilioApiRequest<TwilioNumber&TwilioApiError>(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
   if(!result.response.ok)throw new Error(twilioApiErrorMessage(result.data,"Twilio could not configure incoming Voice"));
@@ -91,7 +92,7 @@ export async function POST(request:Request){
   const owner=await requirePlatformOwner();
   if(!owner)return Response.json({error:"Platform-owner access required."},{status:403});
   try{
-    const body=await request.json() as {action?:string;areaCode?:string;phoneNumber?:string;phoneSid?:string;workspaceId?:string;confirmed?:boolean};
+    const body=await request.json() as {action?:string;areaCode?:string;phoneNumber?:string;phoneSid?:string;workspaceId?:string;messagingServiceSid?:string;confirmed?:boolean};
     if(body.action==="search"){
       const areaCode=String(body.areaCode||"").replace(/\D/g,"");
       if(!/^\d{3}$/.test(areaCode))return Response.json({error:"Enter a three-digit US area code."},{status:400});
@@ -120,13 +121,21 @@ export async function POST(request:Request){
       const assignment=await assign(number,workspace,owner.email);
       return Response.json({ok:true,assignment,message:`${assignment.phoneNumber} is now assigned to ${workspace.name}.`});
     }
+    if(body.action==="sms-status"){
+      if(body.confirmed!==true)return Response.json({error:"Confirm that Twilio shows this workspace’s A2P campaign as approved before enabling SMS."},{status:400});
+      const number=(await ownedNumbers()).find(item=>item.sid===body.phoneSid);if(!number)return Response.json({error:"That number is not owned by this Twilio account."},{status:400});
+      const assignment=(await listPhoneAssignments()).find(item=>item.phoneSid===number.sid);if(!assignment)return Response.json({error:"Assign this number to a workspace first."},{status:400});
+      const messagingServiceSid=String(body.messagingServiceSid||"").trim();if(messagingServiceSid&&!/^MG[a-f0-9]{32}$/i.test(messagingServiceSid))return Response.json({error:"Messaging Service SID must start with MG and contain 34 characters."},{status:400});
+      const saved=await savePhoneAssignment({...assignment,smsStatus:"registered",messagingServiceSid:messagingServiceSid||assignment.messagingServiceSid,assignedAt:new Date().toISOString(),assignedBy:owner.email});
+      return Response.json({ok:true,assignment:saved,message:`SMS marked registered for ${saved.phoneNumber}. Automated texting is still protected by the TWILIO_A2P_APPROVED gate.`});
+    }
     if(body.action==="purchase"){
       if(body.confirmed!==true)return Response.json({error:"Confirm the recurring Twilio charge before purchasing."},{status:400});
       const workspace=await verifiedWorkspace(String(body.workspaceId||""));
       const phoneNumber=normalizeTwilioPhone(String(body.phoneNumber||""));
       if(!/^\+1\d{10}$/.test(phoneNumber))return Response.json({error:"Choose a valid available US number."},{status:400});
       const {accountSid,credentials}=twilioAccountConfig();
-      const form=new URLSearchParams({PhoneNumber:phoneNumber,FriendlyName:`Pacifica · ${workspace.name}`.slice(0,64),VoiceUrl:voiceUrl(),VoiceMethod:"POST"});
+      const form=new URLSearchParams({PhoneNumber:phoneNumber,FriendlyName:`Pacifica · ${workspace.name}`.slice(0,64),VoiceUrl:voiceUrl(),VoiceMethod:"POST",SmsUrl:smsUrl(),SmsMethod:"POST"});
       const endpoint=`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json`;
       const result=await twilioApiRequest<TwilioNumber&TwilioApiError>(endpoint,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
       if(!result.response.ok)throw new Error(twilioApiErrorMessage(result.data,"Twilio could not purchase this number"));

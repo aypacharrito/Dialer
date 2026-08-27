@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import {getPacificaAccess} from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 
 export const runtime="nodejs";
@@ -27,7 +27,7 @@ type DispositionRequest={
 
 async function identity(){
   if(!isClerkConfigured())return process.env.VERCEL?null:"local";
-  return (await auth()).userId;
+  const access=await getPacificaAccess();return access.allowed?access.userId:null;
 }
 
 function sourceKey(value:string){

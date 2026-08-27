@@ -14,6 +14,12 @@ export type EmailProviderStatus={configured:boolean;provider:"resend"|"webhook"|
 function email(value:string){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())?value.trim():""}
 function escapeHtml(value:string){return value.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 
+export function inboundReplyAddress(workspaceId:string){
+  const domain=(process.env.PACIFICA_INBOUND_EMAIL_DOMAIN||"").trim().toLowerCase().replace(/^@/,"");
+  const safe=workspaceId.replace(/[^a-zA-Z0-9_-]/g,"").slice(0,120);
+  return domain&&safe?`reply+${safe}@${domain}`:"";
+}
+
 export function outboundEmailStatus():EmailProviderStatus{
   const from=email(process.env.PACIFICA_EMAIL_FROM||"");
   const webhook=(process.env.PACIFICA_EMAIL_WEBHOOK_URL||"").trim();

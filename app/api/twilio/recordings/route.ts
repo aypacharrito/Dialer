@@ -1,0 +1,52 @@
+import {getPacificaAccess} from "../../../lib/clerk-access";
+import {isClerkConfigured} from "../../../lib/clerk-config";
+import {phoneAssignmentForWorkspace} from "../../../lib/phone-assignments";
+import {twilioAccountConfig,twilioApiErrorMessage,twilioApiRequest,type TwilioApiError} from "../../../lib/twilio-rest";
+import {twilioClientIdentity} from "../../../lib/twilio-workspaces";
+import {readStoredWorkspace} from "../../../lib/workspace-storage";
+
+export const runtime="nodejs";
+
+type TwilioCall=TwilioApiError&{sid?:string;from?:string;to?:string;status?:string};
+type TwilioRecording=TwilioApiError&{sid?:string;status?:string};
+
+async function access(){const result=isClerkConfigured()?await getPacificaAccess():{allowed:!process.env.VERCEL,userId:"local",email:"local"};return result.allowed?result:null}
+function callSid(value:string){return /^CA[a-f0-9]{32}$/i.test(value)?value:""}
+function recordingSid(value:string){return /^RE[a-f0-9]{32}$/i.test(value)?value:""}
+function callbackUrl(workspaceId:string,leadId:number){const base=(process.env.TWILIO_WEBHOOK_BASE_URL||"https://pacificacrm.com").trim().replace(/\/$/,"");return `${base}/api/twilio/recordings/status?workspace=${encodeURIComponent(workspaceId)}&lead=${leadId}`}
+
+async function ownedCall(workspaceId:string,sid:string){
+  const {accountSid,credentials}=twilioAccountConfig();const result=await twilioApiRequest<TwilioCall>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${sid}.json`,{},credentials);
+  if(!result.response.ok)throw new Error(twilioApiErrorMessage(result.data,"Twilio could not find this call"));
+  const assignment=await phoneAssignmentForWorkspace(workspaceId);const identity=`client:${twilioClientIdentity(workspaceId)}`;const endpoints=[result.data.from,result.data.to];
+  if(!endpoints.includes(identity)&&!endpoints.includes(assignment?.phoneNumber))throw new Error("This call does not belong to the signed-in workspace");
+  return {accountSid,credentials,call:result.data};
+}
+
+export async function POST(request:Request){
+  const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
+  try{
+    const body=await request.json() as {action?:"start"|"stop";callSid?:string;recordingSid?:string;leadId?:number;consentConfirmed?:boolean};const sid=callSid(String(body.callSid||""));if(!sid)return Response.json({error:"A live Twilio Call SID is required"},{status:400});
+    const stored=await readStoredWorkspace(workspace.userId);if(!stored?.profile.callRecordingEnabled)return Response.json({error:"Enable consent-based call recording in Owner Settings first"},{status:403});
+    const {accountSid,credentials}=await ownedCall(workspace.userId,sid);
+    if(body.action==="stop"){
+      const recording=recordingSid(String(body.recordingSid||""));if(!recording)return Response.json({error:"Recording SID is required"},{status:400});
+      const form=new URLSearchParams({Status:"stopped"});const result=await twilioApiRequest<TwilioRecording>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${sid}/Recordings/${recording}.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
+      if(!result.response.ok)throw new Error(twilioApiErrorMessage(result.data,"Twilio could not stop recording"));return Response.json({ok:true,status:result.data.status||"stopped"});
+    }
+    if(body.consentConfirmed!==true)return Response.json({error:"Confirm that every participant received the legally required recording disclosure"},{status:400});
+    const leadId=Math.max(0,Number(body.leadId)||0);const form=new URLSearchParams({RecordingChannels:"dual",RecordingTrack:"both",RecordingStatusCallback:callbackUrl(workspace.userId,leadId),RecordingStatusCallbackMethod:"POST",RecordingStatusCallbackEvent:"completed absent"});
+    const result=await twilioApiRequest<TwilioRecording>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${sid}/Recordings.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
+    if(!result.response.ok||!result.data.sid)throw new Error(twilioApiErrorMessage(result.data,"Twilio could not start recording"));return Response.json({ok:true,recordingSid:result.data.sid,status:result.data.status||"in-progress"});
+  }catch(error){return Response.json({error:error instanceof Error?error.message:"Recording request failed"},{status:500})}
+}
+
+export async function GET(request:Request){
+  const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
+  try{
+    const sid=recordingSid(new URL(request.url).searchParams.get("sid")||"");if(!sid)return Response.json({error:"Recording SID is invalid"},{status:400});
+    const stored=await readStoredWorkspace(workspace.userId);const allowed=stored?.callLogs.some(raw=>(raw as {recordingUrl?:string}).recordingUrl?.includes(sid));if(!allowed)return Response.json({error:"Recording not found in this workspace"},{status:404});
+    const {accountSid,credentials}=twilioAccountConfig();let response:Response|null=null;for(const credential of credentials){response=await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${sid}.mp3`,{headers:{Authorization:credential.authorization},cache:"no-store"});if(response.ok)break;if(response.status!==401&&response.status!==403)break}
+    if(!response?.ok)return Response.json({error:"Twilio recording audio is unavailable"},{status:502});return new Response(response.body,{headers:{"Content-Type":"audio/mpeg","Cache-Control":"private, max-age=300","Content-Disposition":`inline; filename="${sid}.mp3"`}});
+  }catch(error){return Response.json({error:error instanceof Error?error.message:"Recording unavailable"},{status:500})}
+}

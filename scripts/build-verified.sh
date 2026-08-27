@@ -29,7 +29,7 @@ if [[ "${VERCEL:-}" == "1" ]]; then
 fi
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
-  exec "${script_dir}/sites-env.sh" -- "$0" "$@"
+  exec bash "${script_dir}/sites-env.sh" -- "$0" "$@"
 fi
 
 command -v timeout >/dev/null || {
