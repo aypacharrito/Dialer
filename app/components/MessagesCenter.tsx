@@ -16,21 +16,17 @@ function browserDraft(lead:MessageLead,profile:WorkspaceProfile){
   return `Hey ${firstName(lead.name)}, it’s ${sender}. I’m following up about your ${lead.product||"service"} request${place}. If you still want help, text me here${callback}. Reply STOP to opt out.`;
 }
 
-export default function MessagesCenter({workspaceId,profile,leads,onPatch}:{workspaceId:string;profile:WorkspaceProfile;leads:MessageLead[];onPatch:(id:number,patch:Partial<MessageLead>)=>void}){
+export default function MessagesCenter({profile,leads,onPatch}:{workspaceId:string;profile:WorkspaceProfile;leads:MessageLead[];onPatch:(id:number,patch:Partial<MessageLead>)=>void}){
   const [messages,setMessages]=useState<Message[]>([]);
   const [twilioNumber,setTwilioNumber]=useState("");
   const [selectedId,setSelectedId]=useState<number|null>(null);
   const [draft,setDraft]=useState("");
   const [loading,setLoading]=useState(false);
   const [status,setStatus]=useState("Loading Twilio conversations…");
-  const [dailyEnabled,setDailyEnabled]=useState(false);
   const [aiMode,setAiMode]=useState<"ai"|"smart-fallback"|"">("");
   const [connection,setConnection]=useState<"checking"|"ready"|"error">("checking");
-  const dailyRunning=useRef(false);
   const leadSnapshot=useRef(leads);
   const patchLead=useRef(onPatch);
-  const dailyKey=`pacifica:${workspaceId}:daily-ai-sms`;
-  const lastRunKey=`pacifica:${workspaceId}:daily-ai-sms-last-run`;
   const selected=leads.find(lead=>lead.id===selectedId)||leads[0];
 
   useEffect(()=>{leadSnapshot.current=leads;patchLead.current=onPatch},[leads,onPatch]);
@@ -49,7 +45,7 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch}:{work
     }catch(error){setConnection("error");setStatus(error instanceof Error?error.message:"Unable to load messages")}
   },[]);
 
-  useEffect(()=>{queueMicrotask(()=>setDailyEnabled(localStorage.getItem(dailyKey)==="on"));const initial=window.setTimeout(()=>void load(),0);const timer=window.setInterval(()=>void load(),30000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[dailyKey,load]);
+  useEffect(()=>{const initial=window.setTimeout(()=>void load(),0);const timer=window.setInterval(()=>void load(),30000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[load]);
 
   const thread=useMemo(()=>selected?messages.filter(message=>digits(message.from)===digits(selected.phone)||digits(message.to)===digits(selected.phone)).sort((a,b)=>new Date(a.sentAt).getTime()-new Date(b.sentAt).getTime()):[],[messages,selected]);
 
@@ -77,31 +73,8 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch}:{work
   async function generateSelected(){setLoading(true);try{setDraft(await generate());setStatus("AI draft ready for your review")}catch(error){if(selected){setDraft(browserDraft(selected,profile));setAiMode("smart-fallback");setStatus(`AI server unavailable, so Pacifica created a safe local draft. ${error instanceof Error?error.message:""}`)}else setStatus("Choose a contact first")}finally{setLoading(false)}}
   async function sendSelected(){setLoading(true);try{await send();setStatus(`Message sent to ${selected?.name}`)}catch(error){setStatus(error instanceof Error?error.message:"Send failed")}finally{setLoading(false)}}
 
-  async function runDaily(){
-    if(dailyRunning.current||!dailyEnabled)return;
-    const today=new Date().toISOString().slice(0,10);
-    if(localStorage.getItem(lastRunKey)===today)return;
-    const eligible=leads.filter(lead=>lead.smsConsent&&!lead.smsOptOut&&!lead.doNotCall&&(!lead.lastSmsAt||Date.now()-new Date(lead.lastSmsAt).getTime()>22*60*60*1000)).slice(0,25);
-    if(!eligible.length){localStorage.setItem(lastRunKey,today);return}
-    dailyRunning.current=true;setStatus(`Preparing ${eligible.length} consented daily follow-up${eligible.length===1?"":"s"}…`);
-    let sent=0;let failed=0;let firstError="";
-    for(const lead of eligible){try{await send(lead,await generate(lead));sent++}catch(error){failed++;if(!firstError)firstError=error instanceof Error?error.message:"send failed"}await new Promise(resolve=>window.setTimeout(resolve,500))}
-    localStorage.setItem(lastRunKey,today);dailyRunning.current=false;setStatus(`${sent} daily AI follow-up${sent===1?"":"s"} sent`);
-    if(failed)setStatus(`${sent} sent · ${failed} blocked or failed${firstError?` · ${firstError}`:""}`);
-  }
-
-  // Re-check when an account enables automation or its eligible lead count changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(()=>{if(!dailyEnabled)return;const initial=window.setTimeout(()=>void runDaily(),0);return()=>window.clearTimeout(initial)},[dailyEnabled,leads.length]);
-
-  function toggleDaily(enabled:boolean){
-    if(enabled&&(!profile.businessName||!profile.agentName)){setStatus("Add the business and representative names in Owner Settings before enabling automated follow-ups.");return}
-    if(enabled&&!window.confirm("Enable one AI follow-up per day only for contacts you mark SMS opted-in? STOP replies and DNC contacts will remain blocked."))return;
-    setDailyEnabled(enabled);localStorage.setItem(dailyKey,enabled?"on":"off");if(enabled)window.setTimeout(()=>void runDaily(),0);
-  }
-
   return <div className="messages-center">
-    <header className="messages-title"><div><span>TWILIO MESSAGING</span><h1>Keep every text in the same workspace.</h1><p>Read replies, write back, and let Pacifica draft friendly follow-ups from each lead file.</p><div className={`message-connection ${connection}`}><i/>{status}<button type="button" onClick={()=>void load()}>Test connection</button></div></div><label className="daily-sms-toggle"><input type="checkbox" checked={dailyEnabled} onChange={event=>toggleDaily(event.target.checked)}/><span><b>Daily AI follow-ups</b><small>Runs while Pacifica is open · opted-in contacts only</small></span></label></header>
+    <header className="messages-title"><div><span>TWILIO MESSAGING</span><h1>Keep every text in the same workspace.</h1><p>Read replies, write back, and let Pacifica draft friendly follow-ups from each lead file.</p><div className={`message-connection ${connection}`}><i/>{status}<button type="button" onClick={()=>void load()}>Test connection</button></div></div><label className="daily-sms-toggle"><input type="checkbox" checked={profile.serverAutomationEnabled} disabled/><span><b>Server follow-ups {profile.serverAutomationEnabled?"enabled":"off"}</b><small>Managed in Owner Settings · consent and A2P gates enforced</small></span></label></header>
     <div className="messages-layout">
       <aside className="message-contacts"><header><b>Contacts</b><small>{connection==="ready"?"Live Twilio inbox":"Connection needs attention"}</small></header>{leads.map(lead=><button key={lead.id} className={selected?.id===lead.id?"active":""} onClick={()=>{setSelectedId(lead.id);setDraft("")}}><i>{lead.name.split(" ").map(value=>value[0]).slice(0,2).join("")}</i><span><b>{lead.name}</b><small>{lead.product} · {lead.phone}</small></span>{lead.smsOptOut?<em className="blocked">STOP</em>:lead.smsConsent?<em>OPTED IN</em>:null}</button>)}{!leads.length&&<p>Import leads to start a conversation.</p>}</aside>
       <section className="message-thread">{selected?<><header><div><b>{selected.name}</b><small>{selected.product} · {selected.phone}</small></div><label><input type="checkbox" checked={Boolean(selected.smsConsent&&!selected.smsOptOut)} disabled={selected.smsOptOut||selected.doNotCall} onChange={event=>onPatch(selected.id,{smsConsent:event.target.checked})}/> SMS consent on file</label></header><div className="message-history">{thread.map(message=><article key={message.id} className={/inbound/i.test(message.direction)?"incoming":"outgoing"}><p>{message.body}</p><small>{new Date(message.sentAt).toLocaleString()} · {message.status}</small>{message.failureReason&&<strong className="message-failure">{message.failureReason}</strong>}</article>)}{!thread.length&&<div className="empty-thread"><b>No conversation yet</b><span>Generate a personal draft or write your own message below.</span></div>}</div><footer>{aiMode&&<div className={`message-ai-mode ${aiMode}`}><b>{aiMode==="ai"?"Pacifica AI draft":"Pacifica Smart Fallback"}</b><span>{aiMode==="ai"?"Written from this lead’s file":"A safe personalized draft was created while the provider reconnects"}</span></div>}<textarea value={draft} onChange={event=>setDraft(event.target.value)} placeholder={selected.smsOptOut?"This contact replied STOP":"Write a friendly follow-up…"} disabled={selected.smsOptOut}/>{!selected.smsConsent&&!selected.smsOptOut&&!selected.doNotCall&&<p className="message-consent-warning">Confirm documented SMS consent above before sending. You can still generate and review a draft.</p>}<div><button onClick={()=>void generateSelected()} disabled={loading||selected.smsOptOut}>{loading?"Working…":"Draft with Pacifica AI"}</button><button className="send-message" onClick={()=>void sendSelected()} disabled={loading||!draft.trim()||selected.smsOptOut||selected.doNotCall}>Send from {twilioNumber||"Twilio"}</button></div><small>Marketing texts require documented consent. Pacifica blocks DNC records and recognized STOP replies.</small></footer></>:<div className="empty-thread"><b>No contact selected</b></div>}</section>

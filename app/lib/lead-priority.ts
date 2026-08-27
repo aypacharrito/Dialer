@@ -11,6 +11,8 @@ export type LeadPriorityInput={
   source?:string;
   attempts?:number;
   lastAttemptAt?:string;
+  automationNextAt?:string;
+  automationStatus?:string;
   priorityOverride?:"auto"|"high"|"low";
 };
 
@@ -46,7 +48,7 @@ export function leadPriority(lead:LeadPriorityInput,now=Date.now()):LeadPriority
   const created=leadCreatedAt(lead);
   const age=created?Math.max(0,now-created):Number.POSITIVE_INFINITY;
   const hasTrustedArrival=Number.isFinite(dateValue(lead.received))||lead.source==="Manual";
-  const followUp=dateValue(lead.followUp);
+  const followUp=dateValue(lead.followUp||lead.automationNextAt);
   const hoursOld=Math.max(0,Math.floor(age/hour));
   const daysOld=Math.floor(hoursOld/24);
   const due=Number.isFinite(followUp)&&followUp<=now+15*60*1000;
@@ -74,7 +76,7 @@ export function leadPriority(lead:LeadPriorityInput,now=Date.now()):LeadPriority
   if(disposition.includes("quoted"))score+=25;
   if((outcome==="interested"||lead.stage==="Appointment")&&!lead.followUp)score+=20;
   if(outcome==="no answer"||outcome==="voicemail")score-=Math.min(30,attempts*6);
-  if(outcome==="wrong number"||outcome==="not interested")score-=300;
+  if(outcome==="wrong number"||outcome==="not interested"||outcome==="sold / won")score-=300;
 
   let reason="Open opportunity";
   let detail=attempts?`${attempts} call attempt${attempts===1?"":"s"}`:"No call attempts";
@@ -139,6 +141,7 @@ export function sourceDispositionForOutcome(source:string,outcome:string,current
   if(outcome==="No answer"||outcome==="Voicemail")return "Attempted Contact";
   if(outcome==="Interested")return smart?"Interested - Working":"Follow-up";
   if(outcome==="Appointment set")return smart?"Interested - Working":"Appointment Set";
+  if(outcome==="Sold / Won")return smart?"Sold - 1 Policy":"Sold";
   if(outcome==="Not interested"||outcome==="Wrong number")return "Lost - Not Interested";
   return current;
 }
