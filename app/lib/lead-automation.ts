@@ -2,8 +2,11 @@ import { dateValue, leadCreatedAt } from "./lead-priority";
 
 export type AutomationLead={
   id:number;stage:string;outcome:string;doNotCall:boolean;importedAt:string;received?:string;attempts?:number;lastAttemptAt?:string;lastSmsAt?:string;
+  email?:string;smsConsent?:boolean;smsOptOut?:boolean;emailConsent?:boolean;emailOptOut?:boolean;lastEmailAt?:string;
   automationEnabled?:boolean;automationStep?:number;automationNextAt?:string;automationStatus?:string;
 };
+
+export type AutomationChannel="sms"|"email"|"salesperson";
 
 const hour=60*60*1000;
 const day=24*hour;
@@ -19,6 +22,16 @@ export function nextAutomationAfterAttempt(attempts:number,now=Date.now()){
   if(attempts===2)return nextBusinessMorning(now);
   if(attempts===3)return new Date(now+3*day).toISOString();
   return "";
+}
+
+export function recommendedAutomationChannel(lead:AutomationLead,step=lead.automationStep||0):AutomationChannel{
+  const sms=Boolean(lead.smsConsent&&!lead.smsOptOut);
+  const email=Boolean(lead.email&&lead.emailConsent&&!lead.emailOptOut);
+  const preferEmail=step%2===1;
+  if(preferEmail&&email)return "email";
+  if(sms)return "sms";
+  if(email)return "email";
+  return "salesperson";
 }
 
 export function initializeAutomation<T extends AutomationLead>(lead:T,now=Date.now()):T{
