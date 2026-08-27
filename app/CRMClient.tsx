@@ -13,6 +13,7 @@ import LeadGrowthPanel from "./components/LeadGrowthPanel";
 import PwaInstallButton from "./components/PwaInstallButton";
 import PhoneWorkspaceSetup from "./components/PhoneWorkspaceSetup";
 import PhoneNumberCenter from "./components/PhoneNumberCenter";
+import PostCallDispositionModal from "./components/PostCallDispositionModal";
 import WorkspaceProfileSettings from "./components/WorkspaceProfileSettings";
 import ClerkTopAuth from "./components/ClerkTopAuth";
 import { pacificaPlans } from "./lib/plans";
@@ -21,14 +22,13 @@ import { crmFieldsForDisposition, dateValue, leadCreatedAt, leadLineForProduct, 
 import { mergeProviderLeads, type ProviderLeadRecord } from "./lib/provider-lead-merge";
 import { calendarIcs, googleCalendarUrl } from "./lib/calendar";
 import { nextAutomationAfterAttempt, refreshAutomation } from "./lib/lead-automation";
+import { postCallDraftForEnd, selectPostCallOutcome, type PostCallDraft } from "./lib/post-call";
 import { readAudioPreferences } from "./audio-preferences";
 import { PacificaClearVoiceProcessor, supportsClearVoice } from "./clearvoice";
 
 type LeadLine = "life" | "home-auto";
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; vendorId?:string; sourceSyncStatus?:string; providerUpdatedAt?:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string; extraFields?:Record<string,string>; smsConsent?:boolean; smsOptOut?:boolean; lastSmsAt?:string; attempts?:number; lastAttemptAt?:string; lastConnectedAt?:string; priorityOverride?:"auto"|"high"|"low"; assignedTo?:string; estimatedValue?:number; closedRevenue?:number; closedAt?:string; automationEnabled?:boolean; automationStep?:number; automationNextAt?:string; automationStatus?:string };
 type View = "today" | "dialer" | "leads" | "messages" | "ai" | "quotes" | "campaigns" | "revenue" | "activity" | "billing" | "settings";
-type PostCallDraft = {crmStage:string;crmOutcome:string;sourceDisposition:string;appointmentAt:string;notes:string};
-
 const smartFinancialDispositions=["Received - not worked yet","Attempted Contact","Contacted","Quoted with Contact","Quoted without Contact","Sold - 1 Policy","Sold - Multi Policy","Lost - Not Interested","Interested - Working","Interested - Future Prospect"];
 const standardSourceDispositions=["New","Attempted Contact","Contacted","Quoted","Appointment Set","Sold","Lost - Not Interested","Follow-up"];
 
@@ -107,7 +107,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [importReport,setImportReport]=useState("Upload CSV files from any lead provider. Pacifica detects common contact, product, status, cost, and source columns.");
   const [workspaceHydrated,setWorkspaceHydrated]=useState(false);
   const [postCallLeadId,setPostCallLeadId]=useState<number|null>(null);
-  const [postCallDraft,setPostCallDraft]=useState<PostCallDraft>({crmStage:"Follow-up",crmOutcome:"Interested",sourceDisposition:"Contacted",appointmentAt:"",notes:""});
+  const [postCallDraft,setPostCallDraft]=useState<PostCallDraft>({crmStage:"Follow-up",crmOutcome:"Completed",sourceDisposition:"Contacted",appointmentAt:"",notes:""});
+  const [postCallTechnicalOutcome,setPostCallTechnicalOutcome]=useState("Completed");
+  const [postCallConnected,setPostCallConnected]=useState(false);
   const [sourceSyncing,setSourceSyncing]=useState(false);
   const [showNewLead,setShowNewLead]=useState(false);
   const [newLead,setNewLead]=useState({name:"",phone:"",email:"",city:"",product:"",source:"Manual",leadCost:""});
@@ -135,11 +137,15 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const nextCallTimerRef=useRef<number|undefined>(undefined);
   const workspaceSaveTimerRef=useRef<number|undefined>(undefined);
   const resumeAfterWrapRef=useRef(false);
+  const callAttemptRef=useRef(0);
+  const establishedAttemptRef=useRef(0);
+  const sessionAttemptedLeadIdsRef=useRef<Set<number>>(new Set());
   const leadFeedSyncRef=useRef(false);
   const lineLeads=useMemo(()=>leads.filter(item=>item.line===activeLine),[leads,activeLine]);
   const callableLeads=useMemo(()=>rankLeads(lineLeads.filter(item=>item.stage!=="Closed"&&!item.doNotCall),priorityNow),[lineLeads,priorityNow]);
   const queuedLead=callableLeads[index%Math.max(callableLeads.length,1)]||emptyLead;
-  const lead=(currentCallLeadId?leads.find(item=>item.id===currentCallLeadId):undefined)||queuedLead;
+  const postCallLead=postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined;
+  const lead=(currentCallLeadId?leads.find(item=>item.id===currentCallLeadId):undefined)||postCallLead||queuedLead;
   const upNextLeads=callableLeads.filter(item=>item.id!==lead.id).slice(0,3);
   const leadQueuePosition=Math.max(0,callableLeads.findIndex(item=>item.id===lead.id));
 
@@ -212,17 +218,23 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   function scheduleNextAuto(completedLeadId?:number){
     if(!autoDialRef.current)return;
-    const queue=rankLeads(leadsRef.current.filter(l=>l.id!==completedLeadId&&l.line===activeLineRef.current&&l.stage!=="Closed"&&!l.doNotCall));
+    if(completedLeadId)sessionAttemptedLeadIdsRef.current.add(completedLeadId);
+    const queue=rankLeads(leadsRef.current.filter(l=>!sessionAttemptedLeadIdsRef.current.has(l.id)&&l.line===activeLineRef.current&&l.stage!=="Closed"&&!l.doNotCall));
     if(!queue.length){stopAutoDial(`${queueLabel(activeLineRef.current,workspaceProfile.mode)} queue completed`);return}
     const nextLead=queue[0];setIndex(0);setPhoneStatus(`Next best call: ${nextLead.name}`);
-    nextCallTimerRef.current=window.setTimeout(()=>{if(autoDialRef.current)void placeCall(nextLead.phone,false,nextLead)},1400);
+    nextCallTimerRef.current=window.setTimeout(()=>{if(autoDialRef.current)void placeCall(nextLead.phone,false,nextLead)},5000);
   }
-  function openPostCall(leadId:number,resumeQueue:boolean){
+  function openPostCall(leadId:number,resumeQueue:boolean,technicalOutcome:string,wasConnected:boolean){
     const completedLead=leadsRef.current.find(item=>item.id===leadId);if(!completedLead)return;
     resumeAfterWrapRef.current=resumeQueue;setResumeAfterWrap(resumeQueue);autoDialRef.current=false;setAutoDialing(false);
-    setPostCallDraft({crmStage:completedLead.stage==="New lead"?"Follow-up":completedLead.stage,crmOutcome:completedLead.outcome==="Not contacted"?"Interested":completedLead.outcome,sourceDisposition:completedLead.sourceDisposition||"Contacted",appointmentAt:completedLead.followUp||"",notes:completedLead.notes||""});
+    setPostCallTechnicalOutcome(technicalOutcome);setPostCallConnected(wasConnected);
+    setPostCallDraft(postCallDraftForEnd(completedLead,technicalOutcome,wasConnected));
     setPostCallLeadId(leadId);setPhoneStatus(`Wrap up ${completedLead.name}, then continue`);
-    updateLead(leadId,{lastContact:new Date().toLocaleString(),lastConnectedAt:new Date().toISOString()});
+    updateLead(leadId,{lastContact:new Date().toLocaleString(),...(wasConnected?{lastConnectedAt:new Date().toISOString()}:{})});
+  }
+  function choosePostCallOutcome(outcome:string){
+    if(!postCallLead)return;
+    setPostCallDraft(draft=>selectPostCallOutcome(draft,postCallLead.source,outcome));
   }
   async function syncLeadDisposition(completedLead:Lead,patch:{sourceDisposition:string;stage:string;outcome:string;followUp:string;notes:string}){
     try{
@@ -237,28 +249,27 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if(!postCallLeadId||sourceSyncing)return;
     const completedLead=leadsRef.current.find(item=>item.id===postCallLeadId);if(!completedLead)return;
     setSourceSyncing(true);
-    const patch:Partial<Lead>={stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,sourceDisposition:postCallDraft.sourceDisposition,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes,status:postCallDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:new Date().toLocaleString()};
+    const won=postCallDraft.crmOutcome==="Sold / Won";
+    const patch:Partial<Lead>={stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,sourceDisposition:postCallDraft.sourceDisposition,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes,status:postCallDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:new Date().toLocaleString(),closedAt:won?new Date().toISOString():completedLead.closedAt};
     updateLead(completedLead.id,patch);
     const syncMessage=await syncLeadDisposition(completedLead,{sourceDisposition:postCallDraft.sourceDisposition,stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes});
     const resume=resumeAfterWrapRef.current;resumeAfterWrapRef.current=false;setResumeAfterWrap(false);setPostCallLeadId(null);setSourceSyncing(false);setToast(syncMessage);
     if(resume){autoDialRef.current=true;setAutoDialing(true);scheduleNextAuto(completedLead.id)}
   }
-  function finishCall(wasManual:boolean,leadId?:number,message="Call ended — save an outcome, then resume",outcome="Completed",errorCode?:string){
-    if(advancingRef.current)return;advancingRef.current=true;
+  function finishCall(wasManual:boolean,leadId?:number,message="Call ended — save an outcome, then resume",outcome="Completed",errorCode?:string,attemptId=callAttemptRef.current){
+    if(attemptId!==callAttemptRef.current||advancingRef.current)return;advancingRef.current=true;
     const wasConnected=Boolean(currentLogRef.current?.connectedAt);const shouldResume=autoDialRef.current;
+    const attemptWasEstablished=establishedAttemptRef.current===attemptId;
     if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;finalizeLog(outcome,message,errorCode);
     callRef.current=null;setCurrentCallLeadId(null);setIndex(0);setDialing(false);setConnected(false);setSeconds(0);elapsedRef.current=0;setMuted(false);setHeld(false);setDtmfDisplay("");setManualCall(false);
-    if(!wasManual&&leadId&&wasConnected){openPostCall(leadId,shouldResume);setToast("Connected call complete · choose a result before the next call");return}
-    if(!wasManual&&leadId&&!wasConnected&&["Timed out","Rejected","Canceled"].includes(outcome)){
-      const attemptedLead=leadsRef.current.find(item=>item.id===leadId);
-      if(attemptedLead){const retry=attemptedLead.followUp||suggestedRetryAt();const sourceDisposition="Attempted Contact";updateLead(leadId,{stage:"Follow-up",outcome:"No answer",sourceDisposition,followUp:retry,lastContact:new Date().toLocaleString()});void syncLeadDisposition(attemptedLead,{sourceDisposition,stage:"Follow-up",outcome:"No answer",followUp:retry,notes:attemptedLead.notes})}
-    }
+    if(!wasManual&&leadId&&attemptWasEstablished){openPostCall(leadId,shouldResume,outcome,wasConnected);setToast(`${wasConnected?"Conversation":"Call attempt"} complete · save the result before continuing`);return}
+    if(!wasManual&&shouldResume)stopAutoDial(`${message} · queue paused so the failed setup cannot skip a lead`);
     if(!wasManual&&leadId&&!autoDialRef.current)setSelectedLead(leadId);
-    setToast(autoDialRef.current&&!wasManual?`${message} · advancing to next contact`:message);
-    if(!wasManual)scheduleNextAuto(leadId);
+    setToast(message);
   }
   async function placeCall(number:string,wasManual:boolean,queuedLead:Lead=lead){
     if(dialing)return;
+    const attemptId=++callAttemptRef.current;
     advancingRef.current=false;
     setManualCall(wasManual);setCurrentCallLeadId(wasManual?null:queuedLead.id);setDialing(true);setConnected(false);setSeconds(0);elapsedRef.current=0;setPhoneStatus("Connecting securely…");
     const currentLeadId=wasManual?undefined:queuedLead.id;
@@ -273,23 +284,25 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       if(audioPreferences.speaker!=="default")await device.audio?.speakerDevices?.set(audioPreferences.speaker);
       if(audioPreferences.ring!=="default")await device.audio?.ringtoneDevices?.set(audioPreferences.ring);
       const connectPromise=device.connect({params:{To:number,RouteToken:voiceRouteTokenRef.current}});
-      const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Twilio signaling timed out after 15 seconds")),15000))]);callRef.current=call;
-      if(currentLeadId){const attemptAt=new Date();setLeads(list=>list.map(item=>{if(item.id!==currentLeadId)return item;const attempts=(item.attempts||0)+1;return {...item,attempts,lastAttemptAt:attemptAt.toISOString(),lastContact:`Attempted ${attemptAt.toLocaleString()}`,automationEnabled:true,automationStep:attempts,automationNextAt:nextAutomationAfterAttempt(attempts,attemptAt.getTime()),automationStatus:attempts>=4?"complete":"scheduled"}}))}
-      watchdogRef.current=window.setTimeout(()=>{call.disconnect();finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out")},30000);
-      call.on("accept",()=>{if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?"Live call · ClearVoice active":"Live call over Wi-Fi")});
-      call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed"));
-      call.on("cancel",()=>finishCall(wasManual,currentLeadId,"Call canceled","Canceled"));
-      call.on("reject",()=>finishCall(wasManual,currentLeadId,"Call was rejected","Rejected"));
-      call.on("error",error=>{const code="code" in error?String(error.code):undefined;finishCall(wasManual,currentLeadId,error.message||"Call failed","Failed",code)});
+      const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>window.setTimeout(()=>reject(new Error("Twilio signaling timed out after 15 seconds")),15000))]);
+      if(attemptId!==callAttemptRef.current){call.disconnect();return}
+      callRef.current=call;establishedAttemptRef.current=attemptId;
+      if(currentLeadId){sessionAttemptedLeadIdsRef.current.add(currentLeadId);const attemptAt=new Date();setLeads(list=>list.map(item=>{if(item.id!==currentLeadId)return item;const attempts=(item.attempts||0)+1;return {...item,attempts,lastAttemptAt:attemptAt.toISOString(),lastContact:`Attempted ${attemptAt.toLocaleString()}`,automationEnabled:true,automationStep:attempts,automationNextAt:nextAutomationAfterAttempt(attempts,attemptAt.getTime()),automationStatus:attempts>=4?"complete":"scheduled"}}))}
+      watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out",undefined,attemptId);call.disconnect()},25000);
+      call.on("accept",()=>{if(attemptId!==callAttemptRef.current)return;if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?"Live call · ClearVoice active":"Live call over Wi-Fi")});
+      call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed",undefined,attemptId));
+      call.on("cancel",()=>finishCall(wasManual,currentLeadId,"Call canceled","Canceled",undefined,attemptId));
+      call.on("reject",()=>finishCall(wasManual,currentLeadId,"Call was rejected","Rejected",undefined,attemptId));
+      call.on("error",error=>{const code="code" in error?String(error.code):undefined;finishCall(wasManual,currentLeadId,error.message||"Call failed","Failed",code,attemptId)});
     }catch(error){
       deviceRef.current?.disconnectAll();
       const detail=error instanceof Error?error.message:"Unable to place call";
       const permission=error instanceof DOMException&&["NotAllowedError","PermissionDeniedError"].includes(error.name);
-      finishCall(wasManual,currentLeadId,permission?"Microphone permission was blocked. Allow it in the browser address bar, then retry.":detail,"Failed");
+      finishCall(wasManual,currentLeadId,permission?"Microphone permission was blocked. Allow it in the browser address bar, then retry.":detail,"Failed",undefined,attemptId);
       setPhoneStatus(permission?"Microphone permission blocked":detail);
     }
   }
-  function start(){ if(postCallLeadId){setToast("Save the connected call result before continuing");return} if(!callableLeads.length){setView("leads");setToast(lineLeads.length?"No open contacts are eligible to dial":`Import ${queueLabel(activeLine,workspaceProfile.mode)} first`);return} autoDialRef.current=true;setAutoDialing(true);void placeCall(lead.phone,false,lead) }
+  function start(){ if(postCallLeadId){setToast("Save the call result before continuing");return} if(!callableLeads.length){setView("leads");setToast(lineLeads.length?"No open contacts are eligible to dial":`Import ${queueLabel(activeLine,workspaceProfile.mode)} first`);return} sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=true;setAutoDialing(true);void placeCall(lead.phone,false,lead) }
   function hangup(){ callRef.current?.disconnect();if(!callRef.current)finishCall(manualCall,manualCall?undefined:lead.id) }
   function toggleMute(){const call=callRef.current;if(!call)return;const next=!muted;call.mute(next);setMuted(next)}
   function toggleHold(){const call=callRef.current;if(!call||!connected)return;const next=!held;call.mute(next?true:muted);setHeld(next);setPhoneStatus(next?"Call held · your microphone is private":"Live call resumed")}
@@ -301,17 +314,18 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   function rejectIncoming(){incomingCall?.reject();setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Incoming call declined")}
   function acceptIncoming(){
-    const call=incomingCall;if(!call)return;stopAutoDial("Inbound call answered");advancingRef.current=false;callRef.current=call;setManualCall(true);setDialing(true);setIncomingCall(null);
+    const call=incomingCall;if(!call)return;const attemptId=++callAttemptRef.current;stopAutoDial("Inbound call answered");advancingRef.current=false;establishedAttemptRef.current=attemptId;callRef.current=call;setDialing(true);setIncomingCall(null);
     const matched=leadsRef.current.find(item=>phoneDigits(item.phone)===phoneDigits(incomingNumber));
+    setManualCall(!matched);
     setCurrentCallLeadId(matched?.id||null);
     currentLogRef.current={id:crypto.randomUUID(),name:matched?.name||"Inbound caller",phone:incomingNumber,startedAt:new Date().toISOString(),duration:0,outcome:"Incoming",status:"Ringing",campaign:"Inbound",source:"Pacifica softphone"};
     call.on("accept",()=>{if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();setConnected(true);setSeconds(0);setPhoneStatus(`Live inbound call${matched?` · ${matched.name}`:""}`);if(matched){activeLineRef.current=matched.line;setActiveLine(matched.line);const queue=rankLeads(leadsRef.current.filter(item=>item.line===matched.line&&item.stage!=="Closed"&&!item.doNotCall));setIndex(Math.max(0,queue.findIndex(item=>item.id===matched.id)));setView("dialer");updateLead(matched.id,{lastContact:new Date().toLocaleString(),lastConnectedAt:new Date().toISOString()})}});
-    call.on("disconnect",()=>{finishCall(true,matched?.id,"Inbound call ended","Completed");if(matched)setSelectedLead(matched.id)});
-    call.on("reject",()=>finishCall(true,matched?.id,"Inbound call declined","Rejected"));
-    call.on("error",error=>finishCall(true,matched?.id,error.message||"Inbound call failed","Failed","code" in error?String(error.code):undefined));
+    call.on("disconnect",()=>{finishCall(!matched,matched?.id,"Inbound call ended","Completed",undefined,attemptId);if(matched)setSelectedLead(matched.id)});
+    call.on("reject",()=>finishCall(!matched,matched?.id,"Inbound call declined","Rejected",undefined,attemptId));
+    call.on("error",error=>finishCall(!matched,matched?.id,error.message||"Inbound call failed","Failed","code" in error?String(error.code):undefined,attemptId));
     call.accept();
   }
-  function callLeadById(id:number){const item=leadsRef.current.find(candidate=>candidate.id===id);if(!item||item.doNotCall||item.stage==="Closed")return;autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=item.line;setActiveLine(item.line);const queue=rankLeads(leadsRef.current.filter(candidate=>candidate.line===item.line&&candidate.stage!=="Closed"&&!candidate.doNotCall));setIndex(Math.max(0,queue.findIndex(candidate=>candidate.id===id)));setView("dialer");void placeCall(item.phone,false,item)}
+  function callLeadById(id:number){const item=leadsRef.current.find(candidate=>candidate.id===id);if(!item||item.doNotCall||item.stage==="Closed")return;sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=item.line;setActiveLine(item.line);const queue=rankLeads(leadsRef.current.filter(candidate=>candidate.line===item.line&&candidate.stage!=="Closed"&&!candidate.doNotCall));setIndex(Math.max(0,queue.findIndex(candidate=>candidate.id===id)));setView("dialer");void placeCall(item.phone,false,item)}
   function pressKey(key:string){if(callRef.current&&connected){callRef.current.sendDigits(key);setDtmfDisplay(value=>(value+key).slice(-12));setPhoneStatus(`Touch tone ${key} sent`);return}setDialNumber(value=>value+key)}
   function parseRow(row:string,delimiter:string){
     const values:string[]=[];let value="";let quoted=false;
@@ -576,10 +590,10 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
               {Object.entries(lead.extraFields||{}).map(([field,value])=><label key={field}><span>{field.replace(/([a-z])([A-Z])/g,"$1 $2").replace(/[_-]+/g," ")}</span><b>{value}</b></label>)}
             </div>
             {postCallLeadId===lead.id?<section className="post-call-wrap" aria-label="Post-call wrap-up">
-              <header><div><span>CONNECTED CALL COMPLETE</span><h3>Record the result before the next call.</h3></div><em>{lead.source||"Lead provider"}</em></header>
+              <header><div><span>{postCallConnected?"CONNECTED CALL COMPLETE":"CALL ATTEMPT COMPLETE"}</span><h3>Record the result before the next call.</h3></div><em>{lead.source||"Lead provider"}</em></header>
               <div className="post-call-fields">
                 <label><span>Pacifica CRM stage</span><select value={postCallDraft.crmStage} onChange={event=>setPostCallDraft(draft=>({...draft,crmStage:event.target.value}))}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
-                <label><span>Pacifica outcome</span><select value={postCallDraft.crmOutcome} onChange={event=>setPostCallDraft(draft=>({...draft,crmOutcome:event.target.value}))}><option>Not contacted</option><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Completed</option></select></label>
+                <label><span>Pacifica outcome</span><select value={postCallDraft.crmOutcome} onChange={event=>choosePostCallOutcome(event.target.value)}><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Sold / Won</option><option>Completed</option></select></label>
                 <label className="source-result"><span>{lead.source||"Lead source"} disposition</span><select value={postCallDraft.sourceDisposition} onChange={event=>setPostCallDraft(draft=>({...draft,sourceDisposition:event.target.value}))}>{sourceDispositionOptions(lead.source,postCallDraft.sourceDisposition).map(option=><option key={option}>{option}</option>)}</select><small>This updates the provider separately from your Pacifica workflow when its outbound API is connected.</small></label>
                 <label><span>Appointment / follow-up</span><input type="datetime-local" value={postCallDraft.appointmentAt} onChange={event=>setPostCallDraft(draft=>({...draft,appointmentAt:event.target.value}))}/></label>
                 <label className="wrap-notes"><span>Call notes</span><textarea value={postCallDraft.notes} onChange={event=>setPostCallDraft(draft=>({...draft,notes:event.target.value}))} placeholder="Conversation, needs, objections, and next steps…"/></label>
@@ -612,7 +626,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
 
       {view==="revenue"&&<RevenueCenter leads={leads}/>}
 
-      {view==="activity"&&<div className="page-view report-view"><div className="page-title"><div><span className="eyebrow">CALL REPORTS & NUMBER HEALTH</span><h1>Every call, result, and risk signal.</h1><p>Filter real browser-call history and monitor behaviors that can affect your caller reputation.</p></div></div><CallLogReport logs={callLogs}/></div>}
+      {view==="activity"&&<div className="page-view report-view"><div className="page-title"><div><span className="eyebrow">CALL REPORTS & NUMBER HEALTH</span><h1>Every call, result, and risk signal.</h1><p>Filter real browser-call history and monitor behaviors that can affect your caller reputation.</p></div></div><CallLogReport logs={callLogs} callerId={callerId}/></div>}
 
       {view==="quotes"&&<div className="page-view"><div className="page-title"><div><span className="eyebrow">INDUSTRY WORKSPACES · COMING SOON</span><h1>Tools made for the work your team sells.</h1><p>Pacifica is preparing optional workflows for insurance quoting, legal intake, home-service estimates, automotive appointments, real estate, and health-service inquiries.</p></div></div><div className="crm-summary"><article><span>INSURANCE</span><b>Quotes</b></article><article><span>HOME SERVICES</span><b>Estimates</b></article><article><span>PROFESSIONAL</span><b>Intakes</b></article><article><span>APPOINTMENT</span><b>Booking</b></article></div></div>}
 
@@ -629,6 +643,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     {showPhoneSettings&&<div className="phone-config-overlay"><PhoneSettings compact ensureDevice={ensureDevice} onClose={()=>setShowPhoneSettings(false)}/></div>}
     {incomingCall&&<div className="incoming-call-backdrop"><section className="incoming-call-card" role="dialog" aria-modal="true" aria-label="Incoming call"><span>INCOMING PACIFICA CALL</span><i>{incomingLead?incomingLead.name.split(" ").map(part=>part[0]).slice(0,2).join(""):"☎"}</i><h2>{incomingLead?.name||"Unknown caller"}</h2><p>{incomingNumber}</p><small>{incomingLead?`${incomingLead.product} · ${incomingLead.source}`:"New caller · create a lead after answering"}</small><div><button onClick={rejectIncoming}>Decline</button><button onClick={acceptIncoming}>Answer</button></div></section></div>}
     {showNewLead&&<div className="new-lead-backdrop" onClick={()=>setShowNewLead(false)}><form className="new-lead-modal" onSubmit={event=>{event.preventDefault();createLead()}} onClick={event=>event.stopPropagation()}><header><div><span>NEW OPPORTUNITY</span><h2>Add a lead</h2><p>Create the contact now and work it immediately.</p></div><button type="button" aria-label="Close" onClick={()=>setShowNewLead(false)}>×</button></header><div className="new-lead-fields"><label>Full name<input autoFocus value={newLead.name} onChange={event=>setNewLead(value=>({...value,name:event.target.value}))} placeholder="Maria Torres"/></label><label>Phone<input value={newLead.phone} onChange={event=>setNewLead(value=>({...value,phone:event.target.value}))} placeholder="(818) 555-0123"/></label><label>Email<input type="email" value={newLead.email} onChange={event=>setNewLead(value=>({...value,email:event.target.value}))} placeholder="maria@example.com"/></label><label>City<input value={newLead.city} onChange={event=>setNewLead(value=>({...value,city:event.target.value}))} placeholder="Van Nuys"/></label><label>Product or service<input value={newLead.product} onChange={event=>setNewLead(value=>({...value,product:event.target.value}))} placeholder="Roof estimate, legal intake, auto quote…"/></label><label>Lead source<input value={newLead.source} onChange={event=>setNewLead(value=>({...value,source:event.target.value}))} placeholder="Google Ads"/></label><label>Lead cost<input type="number" min="0" step="0.01" value={newLead.leadCost} onChange={event=>setNewLead(value=>({...value,leadCost:event.target.value}))} placeholder="0.00"/></label><label>Queue<select value={activeLine} onChange={event=>switchLine(event.target.value as LeadLine)}><option value="life">{queueLabel("life",workspaceProfile.mode)}</option><option value="home-auto">{queueLabel("home-auto",workspaceProfile.mode)}</option></select></label></div><footer><button type="button" onClick={()=>setShowNewLead(false)}>Cancel</button><button className="primary" type="submit">Add lead</button></footer></form></div>}
+    {postCallLead&&<PostCallDispositionModal lead={postCallLead} draft={postCallDraft} technicalOutcome={postCallTechnicalOutcome} connected={postCallConnected} resume={resumeAfterWrap} saving={sourceSyncing} onSelect={choosePostCallOutcome} onChange={patch=>setPostCallDraft(draft=>({...draft,...patch}))} onSave={()=>void savePostCall()} onPause={()=>{resumeAfterWrapRef.current=false;setResumeAfterWrap(false);stopAutoDial("Queue paused · save this call result when ready")}}/>}
     {activeLead&&<div className="drawer-backdrop" onClick={()=>setSelectedLead(null)}><aside className="contact-drawer" onClick={e=>e.stopPropagation()}><header><div className="drawer-person"><i>{activeLead.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><small>{queueLabel(activeLead.line,workspaceProfile.mode).toUpperCase()} CONTACT</small><h2>{activeLead.name}</h2><p>{activeLead.phone} · {activeLead.city}</p></span></div><button aria-label="Close contact" onClick={()=>setSelectedLead(null)}>×</button></header><div className="record-actions"><button disabled={activeLead.stage==="Closed"||activeLead.doNotCall} onClick={()=>{switchLine(activeLead.line);setSelectedLead(null);setView("dialer");setToast("Contact category loaded in dialer")}}><Icon name="dial"/> Load in dialer</button><button onClick={()=>updateLead(activeLead.id,{priorityOverride:activeLead.priorityOverride==="high"?"auto":"high"})}>{activeLead.priorityOverride==="high"?"Use smart priority":"Pin high priority"}</button><button onClick={()=>updateLead(activeLead.id,{doNotCall:!activeLead.doNotCall})} className={activeLead.doNotCall?"danger-active":""}>{activeLead.doNotCall?"Remove DNC":"Do not call"}</button><button className={activeLead.stage==="Closed"?"reopen-lead":"close-lead"} onClick={()=>{const reopening=activeLead.stage==="Closed";updateLead(activeLead.id,{stage:reopening?"New lead":"Closed",status:reopening?"Ready":"Closed",followUp:reopening?activeLead.followUp:""});setToast(reopening?"Lead reopened and returned to the active queue":"Lead closed and removed from follow-ups")}}>{activeLead.stage==="Closed"?"Reopen lead":"Close lead"}</button></div><section className="record-section"><span className="section-label">CONTACT DETAILS</span><div className="field-grid"><label>Name<input value={activeLead.name} onChange={e=>updateLead(activeLead.id,{name:e.target.value})}/></label><label>Phone<input value={activeLead.phone} onChange={e=>updateLead(activeLead.id,{phone:e.target.value})}/></label><label>Email<input value={activeLead.email} onChange={e=>updateLead(activeLead.id,{email:e.target.value})}/></label><label>City<input value={activeLead.city} onChange={e=>updateLead(activeLead.id,{city:e.target.value})}/></label><label>Lead queue<select value={activeLead.line} onChange={e=>updateLead(activeLead.id,{line:e.target.value as LeadLine})}><option value="life">{queueLabel("life",workspaceProfile.mode)}</option><option value="home-auto">{queueLabel("home-auto",workspaceProfile.mode)}</option></select></label><label className="sms-consent-field"><span>Text message consent</span><select value={activeLead.smsOptOut?"optout":activeLead.smsConsent?"yes":"no"} onChange={e=>updateLead(activeLead.id,e.target.value==="yes"?{smsConsent:true,smsOptOut:false}:e.target.value==="optout"?{smsConsent:false,smsOptOut:true}:{smsConsent:false,smsOptOut:false})}><option value="no">Not documented</option><option value="yes">Opted in</option><option value="optout">Opted out / STOP</option></select><small>Only select Opted in when you have documented permission to text.</small></label></div></section><section className="record-section"><span className="section-label">PIPELINE & OUTCOME</span><div className="field-grid"><label>Stage<select value={activeLead.stage} onChange={e=>updateLead(activeLead.id,{stage:e.target.value,status:e.target.value==="Closed"?"Closed":"Ready"})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label><label>Call outcome<select value={activeLead.outcome} onChange={e=>{const outcome=e.target.value;const closed=outcome==="Not interested"||outcome==="Wrong number";const appointment=outcome==="Appointment set";updateLead(activeLead.id,{outcome,lastContact:"Just now",sourceDisposition:sourceDispositionForOutcome(activeLead.source,outcome,activeLead.sourceDisposition),stage:closed?"Closed":appointment?"Appointment":outcome==="Interested"?"Follow-up":activeLead.stage,status:closed?"Closed":"Ready"})}}><option>Not contacted</option><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option></select></label><label>Follow-up date<input type="datetime-local" value={activeLead.followUp} onChange={e=>updateLead(activeLead.id,{followUp:e.target.value,stage:e.target.value&&activeLead.stage==="New lead"?"Follow-up":activeLead.stage})}/></label><label>Last contact<input disabled value={activeLead.lastContact}/></label></div><div className="quick-follow-up"><span>QUICK FOLLOW-UP</span><button onClick={()=>updateLead(activeLead.id,{followUp:suggestedRetryAt(),stage:"Follow-up"})}>Later today</button><button onClick={()=>updateLead(activeLead.id,{followUp:followUpInDays(1),stage:"Follow-up"})}>Tomorrow</button><button onClick={()=>updateLead(activeLead.id,{followUp:followUpInDays(3),stage:"Follow-up"})}>In 3 days</button><button onClick={()=>updateLead(activeLead.id,{followUp:""})}>Clear</button></div></section><section className="record-section"><span className="section-label">NOTES</span><textarea value={activeLead.notes} onChange={e=>updateLead(activeLead.id,{notes:e.target.value})} placeholder="Add conversation notes, needs, objections, or next steps…"/></section><section className="timeline"><span className="section-label">ACTIVITY</span><div><i/><span><b>{activeLead.outcome}</b><small>{activeLead.lastContact}</small></span></div>{activeLead.lastSmsAt&&<div><i className="navy"/><span><b>Text message sent</b><small>{new Date(activeLead.lastSmsAt).toLocaleString()}</small></span></div>}{activeLead.stage==="Closed"&&<div><i className="navy"/><span><b>Lead closed</b><small>Excluded from dialing and follow-ups</small></span></div>}{activeLead.followUp&&<div><i className="amber"/><span><b>Follow-up scheduled</b><small>{new Date(activeLead.followUp).toLocaleString()}</small></span></div>}<div><i className="navy"/><span><b>Contact added to Pacifica CRM</b><small>{activeLead.importedAt?new Date(activeLead.importedAt).toLocaleDateString():"Date unavailable"}</small></span></div></section><footer><button onClick={()=>void syncLeadDisposition(activeLead,{sourceDisposition:activeLead.sourceDisposition,stage:activeLead.stage,outcome:activeLead.outcome,followUp:activeLead.followUp,notes:activeLead.notes}).then(message=>{setToast(message);setSelectedLead(null)})}>Save contact</button></footer></aside></div>}
     {activeLead&&<LeadGrowthPanel lead={activeLead} teamMembers={workspaceProfile.teamMembers} onPatch={patch=>{const won=patch.outcome==="Sold / Won";updateLead(activeLead.id,{...patch,status:won?"Closed":activeLead.status,sourceDisposition:won?sourceDispositionForOutcome(activeLead.source,"Sold / Won",activeLead.sourceDisposition):activeLead.sourceDisposition,closedAt:won?new Date().toISOString():activeLead.closedAt} as Partial<Lead>);if(won)setToast(`${activeLead.name} marked won`)}} onGoogleCalendar={()=>{const url=googleCalendarUrl(activeLead);if(url)window.open(url,"_blank","noopener,noreferrer");else setToast("Choose a follow-up date first")}} onDownloadCalendar={()=>downloadCalendar(activeLead)}/>}
     {toast&&<div className="toast">{toast}</div>}

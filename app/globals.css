@@ -799,6 +799,10 @@ button,input,select,textarea{font-family:inherit}
 .reputation-panel>header span{color:#60c4cf;font-size:7px;letter-spacing:.14em;font-weight:900}
 .reputation-panel h2{font-size:17px;max-width:650px;margin:7px 0 0;line-height:1.4}
 .reputation-panel>header strong{white-space:nowrap;padding:8px 10px;background:#10211f;border:1px solid #27473d;border-radius:18px;font-size:8px}
+.scam-label-response{display:grid;grid-template-columns:minmax(220px,.85fr) 1.3fr;gap:20px;align-items:center;margin:0 18px 18px;padding:15px 17px;border:1px solid #684d2c;background:linear-gradient(135deg,#2a2116,#171b1d);border-radius:9px}
+.scam-label-response span{display:block;color:#efb865;font-size:7px;font-weight:900;letter-spacing:.13em}
+.scam-label-response b{display:block;margin-top:6px;color:#f2e6d2;font-size:11px;line-height:1.45}
+.scam-label-response ol{display:grid;grid-template-columns:1fr 1fr;gap:8px 22px;margin:0;padding-left:18px;color:#c5b9a7;font-size:8px;line-height:1.5}
 .reputation-grid{display:grid;grid-template-columns:repeat(3,1fr);border-block:1px solid #243446}
 .reputation-grid article{padding:18px;border-right:1px solid #243446}
 .reputation-grid article:last-child{border:0}
@@ -1058,6 +1062,30 @@ button,input,select,textarea{font-family:inherit}
 .post-call-wrap>footer small{color:#8f918c;font-size:7px;line-height:1.45}
 .post-call-wrap>footer button{flex:none;border:1px solid #258a7d;background:#16776e;color:#fff;border-radius:4px;padding:9px 12px;font-size:8px;font-weight:900;cursor:pointer}
 .post-call-wrap>footer button:disabled{opacity:.55;cursor:wait}
+.post-call-modal-backdrop{position:fixed;z-index:130;inset:0;display:grid;place-items:center;padding:18px;background:rgba(2,7,10,.82);backdrop-filter:blur(8px)}
+.post-call-modal{width:min(760px,100%);max-height:calc(100vh - 36px);overflow:auto;border:1px solid #3c6667;background:linear-gradient(180deg,#172123,#111718);color:#e8eeee;box-shadow:0 28px 100px #000c}
+.post-call-modal>header{display:flex;justify-content:space-between;gap:20px;padding:21px 22px 18px;border-bottom:1px solid #354144;background:linear-gradient(135deg,#1b2b2e,#171b1d)}
+.post-call-modal>header span{color:#65d1cd;font-size:7px;font-weight:900;letter-spacing:.14em}
+.post-call-modal>header h2{margin:7px 0 5px;font-size:21px;line-height:1.25}
+.post-call-modal>header p{margin:0;color:#8b999b;font-size:9px}
+.post-call-modal>header em{align-self:flex-start;max-width:180px;padding:6px 9px;border:1px solid #3f5152;background:#172022;color:#b1c3c4;font-size:7px;font-style:normal;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-call-outcomes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:18px 22px 4px}
+.post-call-outcomes button{min-height:42px;border:1px solid #3b4749;background:#202728;color:#bdc7c8;font-size:8px;font-weight:900;cursor:pointer}
+.post-call-outcomes button:hover,.post-call-outcomes button:focus-visible{border-color:#4fa5a2;color:#ebffff;outline:none}
+.post-call-outcomes button.active{border-color:#43b9b0;background:#185b56;color:#efffff;box-shadow:inset 0 0 0 1px #43b9b0}
+.post-call-modal-fields{display:grid;grid-template-columns:1fr 170px;gap:11px;padding:15px 22px 20px}
+.post-call-modal-fields label>span{display:block;margin-bottom:6px;color:#899798;font-size:7px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.post-call-modal-fields input,.post-call-modal-fields select,.post-call-modal-fields textarea{width:100%;border:1px solid #465052!important;background:#111617!important;color:#edf3f3!important;border-radius:3px!important;padding:10px;font:inherit;font-size:9px;outline:none}
+.post-call-modal-fields input:focus,.post-call-modal-fields select:focus,.post-call-modal-fields textarea:focus{border-color:#4aa29e!important}
+.post-call-modal-notes{grid-column:1/-1}
+.post-call-modal-fields textarea{min-height:95px;resize:vertical;line-height:1.5}
+.post-call-modal>footer{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 22px;border-top:1px solid #354144;background:#121819}
+.post-call-modal>footer>div{display:flex;align-items:center;gap:13px}
+.post-call-modal>footer small{color:#839092;font-size:7px}
+.post-call-modal>footer button{border-radius:3px;padding:10px 14px;font-size:8px;font-weight:900;cursor:pointer}
+.post-call-pause{border:1px solid #4a5354;background:#202627;color:#c2cbcc}
+.post-call-save{border:1px solid #319890;background:#197a72;color:#fff}
+.post-call-modal>footer button:disabled{opacity:.55;cursor:wait}
 .lead-file>footer{display:flex;gap:8px;padding:0 14px 14px}
 .lead-file>footer button{border:1px solid #2d5b69;background:#123241;color:#73d4dc;border-radius:7px;padding:9px 10px;font-size:8px;font-weight:900;cursor:pointer}
 .lead-file>footer button:first-child{flex:1}
@@ -1080,7 +1108,7 @@ button,input,select,textarea{font-family:inherit}
   .lead-file{max-width:760px;margin:auto}
   .dialer-main-grid>.side-pad{max-width:430px}
 }
-@media(max-width:560px){.lead-file-grid,.lead-file-edit,.post-call-fields{grid-template-columns:1fr}.lead-file-grid label{border-right:0}.lead-file-edit .file-notes,.post-call-fields .source-result,.post-call-fields .wrap-notes{grid-column:auto}.lead-file>footer,.post-call-wrap>footer{align-items:stretch;flex-direction:column}}
+@media(max-width:560px){.lead-file-grid,.lead-file-edit,.post-call-fields,.post-call-modal-fields{grid-template-columns:1fr}.lead-file-grid label{border-right:0}.lead-file-edit .file-notes,.post-call-fields .source-result,.post-call-fields .wrap-notes,.post-call-modal-notes{grid-column:auto}.lead-file>footer,.post-call-wrap>footer,.post-call-modal>footer,.post-call-modal>footer>div{align-items:stretch;flex-direction:column}.post-call-outcomes{grid-template-columns:1fr 1fr}.post-call-modal>header{display:block}.post-call-modal>header em{display:inline-block;margin-top:12px}.scam-label-response,.scam-label-response ol{grid-template-columns:1fr}}
 
 /* Pacifica operator UI — flat, familiar, and built for long work sessions. */
 body{background:#111315}
