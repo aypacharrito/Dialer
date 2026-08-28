@@ -1125,6 +1125,7 @@ body{background:#111315}
 .sidebar nav button:hover{background:#222629;color:#eef2f3}
 .sidebar nav button.active{background:#176f73;color:#fff;box-shadow:none}
 .sidebar nav button em{background:#2b3033;color:#dce3e5}
+.sidebar nav button.nav-pending,.sidebar nav button.nav-pending:hover{background:#141719;border-color:#292d30;color:#5f666a;cursor:not-allowed;opacity:.68;box-shadow:none}.sidebar nav button.nav-pending svg{color:#4b5256}.sidebar nav button.nav-pending .nav-soon{color:#737b7f;border-color:#383e42;background:#1b1e20}
 .nav-soon{margin-left:auto;padding:3px 5px;border:1px solid #52585c;border-radius:3px;color:#979fa3;font-size:6px;font-weight:900;letter-spacing:.1em}
 .hero-call,.side-pad,.lead-file,.stats-row article,.queue-card,.table-card,.campaign-card,.chart-card,.provider-card,.phone-pad,.phone-config,.smart-connect,.setup-help,.pricing-grid article,.billing-compliance,.import-hint,.crm-summary article,.ai-summary,.ai-priority-list,.ai-actions-panel,.connection-card,.recent-quotes,.quote-form-card,.carrier-catalog,.quote-results-card{background:#1b1e20;border-color:#353a3e;border-radius:6px;box-shadow:none}
 .hero-call:before{display:none}

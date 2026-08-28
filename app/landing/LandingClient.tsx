@@ -8,7 +8,7 @@ import { pacificaPlans } from "../lib/plans";
 import styles from "./landing.module.css";
 
 const plans=[
-  {id:"solo",...pacificaPlans.solo,features:["1 user and assigned calling number","Universal lead CRM","Sequential browser dialer","Pacifica ClearVoice","Pacifica AI and reports"],popular:false},
+  {id:"solo",...pacificaPlans.solo,features:["1 user and assigned calling number","Universal lead CRM","Sequential browser dialer","Pacifica ClearVoice","Reports included · Pacifica AI coming soon"],popular:false},
   {id:"team",...pacificaPlans.team,features:["Up to 5 users and numbers","Everything in Solo","Shared lead operations","Priority onboarding","Team reporting"],popular:true},
   {id:"agency",...pacificaPlans.agency,features:["Up to 15 users and numbers","Everything in Team","Campaign capacity","Number-health monitoring","White-glove setup"],popular:false},
 ] as const;
