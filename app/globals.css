@@ -1318,3 +1318,69 @@ html[data-theme="light"] .system-health button{background:#fff;border-color:#cdd
 html[data-theme="light"] .health-grid{background:#dfe7ea}
 html[data-theme="light"] .health-grid article{background:#fff}
 html[data-theme="light"] .health-grid small{color:#718692}
+
+/* Professional light workspace: readable type, consistent surfaces, and no dark-mode remnants. */
+body{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html[data-theme="light"] .page-view{padding-top:38px}
+html[data-theme="light"] .page-title{margin-bottom:24px}
+html[data-theme="light"] .page-title h1{max-width:900px;font-size:clamp(32px,3.2vw,44px);line-height:1.08;letter-spacing:-.045em}
+html[data-theme="light"] .page-title p{max-width:900px;color:#637989;font-size:15px;line-height:1.6}
+html[data-theme="light"] .eyebrow{color:#0f8991;font-size:10px;letter-spacing:.16em}
+html[data-theme="light"] :where(.primary,.import,.start-call,.pricing-grid button,.membership-actions button){min-height:44px;font-size:12px;font-weight:750}
+
+html[data-theme="light"] .import-hint{background:#eef8f8;border:1px solid #cfe5e6;color:#395b68;padding:13px 16px}
+html[data-theme="light"] .import-hint span{color:#0e7d84;font-size:10px}
+html[data-theme="light"] .import-hint p{color:#56717e;font-size:12px;line-height:1.5}
+html[data-theme="light"] .crm-summary span{font-size:10px;letter-spacing:.11em}
+html[data-theme="light"] .crm-summary b{font-size:30px}
+html[data-theme="light"] .crm-tools label,html[data-theme="light"] .crm-tools select{min-height:48px;background:#fff!important;border-color:#cedce2!important;color:#29495b!important;font-size:13px;box-shadow:0 2px 8px rgba(24,53,70,.03)}
+html[data-theme="light"] .crm-tools input{background:transparent!important;color:#173247!important;font-size:13px}
+html[data-theme="light"] .crm-tools input::placeholder{color:#81939e!important}
+html[data-theme="light"] .smart-table .table-head{height:48px;font-size:10px;color:#5f7684}
+html[data-theme="light"] .smart-table .table-row{min-height:76px;height:auto;padding-block:10px;font-size:13px}
+html[data-theme="light"] .smart-table .table-row{content-visibility:auto;contain-intrinsic-size:76px}
+html[data-theme="light"] .smart-table .table-row b{font-size:13px}
+html[data-theme="light"] .smart-table .table-row small{font-size:10px;line-height:1.45}
+html[data-theme="light"] .smart-table .table-row i{background:#e8f2f4;color:#0d7178}
+html[data-theme="light"] .priority-pill,html[data-theme="light"] .stage{font-size:9px}
+
+html[data-theme="light"] .lead-file{background:#fff;border-color:#cfdee4;color:#203a4c;box-shadow:0 10px 28px rgba(28,55,72,.06)}
+html[data-theme="light"] .lead-file>header{background:#f2f8f9;border-color:#d8e5e9}
+html[data-theme="light"] .lead-file>header span{color:#0d7d85;font-size:9px}
+html[data-theme="light"] .lead-file>header b{color:#173247;font-size:16px}
+html[data-theme="light"] .lead-file>header em{background:#fff;border-color:#cbdde3;color:#58717f;font-size:9px}
+html[data-theme="light"] .lead-file-identity,html[data-theme="light"] .lead-file-grid,html[data-theme="light"] .lead-file-grid label{border-color:#dce6ea}
+html[data-theme="light"] .file-avatar{background:#e7f3f4;border-color:#c3dfe3;color:#0d757c}
+html[data-theme="light"] .lead-file-identity a{color:#0d7f88;font-size:12px}
+html[data-theme="light"] .lead-file-identity small{color:#6b818e;font-size:10px}
+html[data-theme="light"] .lead-file-grid span,html[data-theme="light"] .lead-file-edit span{color:#617987;font-size:9px}
+html[data-theme="light"] .lead-file-grid b{color:#203a4c;font-size:11px}
+html[data-theme="light"] .lead-file-edit select,html[data-theme="light"] .lead-file-edit input,html[data-theme="light"] .lead-file-edit textarea{background:#fff!important;border-color:#cfdee4!important;color:#173247!important;font-size:11px}
+html[data-theme="light"] .lead-file>footer button{background:#eaf6f6;border-color:#b8dadd;color:#0c747a;font-size:10px}
+html[data-theme="light"] .lead-file>footer button:last-child{background:#fff4f4;border-color:#e5c6c8;color:#a84349}
+
+html[data-theme="light"] .pricing-grid{gap:18px}
+html[data-theme="light"] .pricing-grid article,html[data-theme="light"] .pricing-grid article.featured{background:#fff;border:1px solid #d6e2e7;color:#203a4c;border-radius:12px;padding:28px;box-shadow:0 12px 34px rgba(28,55,72,.06)}
+html[data-theme="light"] .pricing-grid article.featured{border:2px solid #21939a;background:linear-gradient(180deg,#f4fbfb,#fff 26%)}
+html[data-theme="light"] .pricing-grid article>span{color:#0d7f87;font-size:10px}
+html[data-theme="light"] .pricing-grid article>em{background:#dff2ed;color:#176c59;font-size:9px}
+html[data-theme="light"] .pricing-grid h2{color:#173247;font-size:44px}
+html[data-theme="light"] .pricing-grid h2 small{color:#6c818e;font-size:12px}
+html[data-theme="light"] .pricing-grid p{min-height:64px;color:#607886;font-size:13px;line-height:1.55}
+html[data-theme="light"] .pricing-grid ul{border-color:#e0e8eb;padding-block:16px}
+html[data-theme="light"] .pricing-grid li{color:#345264;font-size:12px;line-height:1.45;padding:8px 0}
+html[data-theme="light"] .pricing-grid button{background:#118991;border-color:#118991;color:#fff}
+html[data-theme="light"] .membership-actions button{background:#fff;border-color:#bdd5d9;color:#0d7379}
+html[data-theme="light"] .membership-actions span,html[data-theme="light"] .billing-note{color:#637b89;font-size:11px;line-height:1.5}
+html[data-theme="light"] .billing-compliance{background:#eff8f5;border-color:#cbe4dc;color:#234c44}
+html[data-theme="light"] .billing-compliance span{color:#267c67;font-size:9px}
+html[data-theme="light"] .billing-compliance h2{color:#173f38;font-size:19px}
+html[data-theme="light"] .billing-compliance p{color:#58736b;font-size:12px}
+html[data-theme="light"] .billing-compliance a{background:#fff;border-color:#b8d8cd;color:#176a59;font-size:10px}
+
+html[data-theme="light"] .hero-head p{font-size:14px}
+html[data-theme="light"] .line-toggle button{font-size:11px}
+html[data-theme="light"] .stats-row span,html[data-theme="light"] .queue-card header span{font-size:9px}
+html[data-theme="light"] .stats-row small,html[data-theme="light"] .queue-row small{font-size:10px}
+html[data-theme="light"] .queue-row b{font-size:12px}
+@media(max-width:760px){html[data-theme="light"] .page-title h1{font-size:32px}html[data-theme="light"] .page-title p{font-size:14px}html[data-theme="light"] .pricing-grid p{min-height:0}}

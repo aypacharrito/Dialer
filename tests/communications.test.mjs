@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {recommendedAutomationChannel} from "../app/lib/lead-automation.ts";
-import {renderCommunicationTemplate,templatizeCommunication} from "../app/lib/message-templates.ts";
+import {renderCommunicationTemplate,starterCommunicationTemplates,templatizeCommunication} from "../app/lib/message-templates.ts";
 import {defaultWorkspaceProfile} from "../app/lib/workspace-profile.ts";
 
 const profile={...defaultWorkspaceProfile,businessName:"Valley Roofing",agentName:"Alejandro",callbackNumber:"818-555-0100",emailSignature:"Alejandro · Valley Roofing"};
@@ -26,4 +26,11 @@ test("automation alternates channels and falls back safely",()=>{
   assert.equal(recommendedAutomationChannel(base,1),"email");
   assert.equal(recommendedAutomationChannel({...base,smsConsent:false},0),"email");
   assert.equal(recommendedAutomationChannel({...base,smsConsent:false,emailConsent:false},0),"salesperson");
+});
+
+test("starter texts stay professional, identified, and opt-out compliant",()=>{
+  const messages=starterCommunicationTemplates.filter(template=>template.channel==="sms").map(template=>renderCommunicationTemplate(template.body,lead,profile));
+  assert.ok(messages.every(message=>message.startsWith("Hi Maria,")));
+  assert.ok(messages.every(message=>message.includes("Valley Roofing")));
+  assert.ok(messages.every(message=>message.endsWith("Reply STOP to opt out.")));
 });

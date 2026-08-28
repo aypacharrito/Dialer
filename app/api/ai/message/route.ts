@@ -15,10 +15,10 @@ function localDraft(name:string,product:string,city:string,agentName:string,busi
   const sender=[agentName,businessName&&`with ${businessName}`].filter(Boolean).join(" ")||"from our team";
   const callback=callbackNumber?` or call ${callbackNumber}`:"";
   const templates=[
-    `Hey ${firstName(name)}, it’s ${sender}. Just checking in about your ${product} request${place}. If you still want help, text me here${callback}. Reply STOP to opt out.`,
-    `Hi ${firstName(name)}, ${sender} here. I wanted to follow up on your interest in ${product}${place}. I’m happy to help whenever the timing is right—text me back${callback}. Reply STOP to opt out.`,
-    `Hey ${firstName(name)}—it’s ${sender}. I have your ${product} inquiry and wanted to see what questions I can clear up for you${place}. You can reply here${callback}. Reply STOP to opt out.`,
-    `Hi ${firstName(name)}, this is ${sender}. I’m following up on the ${product} information you requested${place}. No pressure—when you’re ready, text me here${callback}. Reply STOP to opt out.`,
+    `Hi ${firstName(name)}, this is ${sender}. I’m following up on your request for ${product}${place}. Are you still looking for assistance? Reply here when convenient${callback}. Reply STOP to opt out.`,
+    `Hi ${firstName(name)}, ${sender} here. I wanted to check in regarding ${product}${place}. I’m available to answer questions and help with the next step${callback}. Reply STOP to opt out.`,
+    `Hi ${firstName(name)}, this is ${sender}. We received your ${product} inquiry${place}, and I wanted to see how I can help. You can reply directly to this message${callback}. Reply STOP to opt out.`,
+    `Hi ${firstName(name)}, this is ${sender}. I’m following up on the ${product} information you requested${place}. Please let me know if you would still like assistance${callback}. Reply STOP to opt out.`,
   ];
   return templates[stableIndex(seed,lengthOrOne(templates.length))].slice(0,500);
 }
@@ -27,7 +27,7 @@ function localEmailDraft(name:string,product:string,city:string,agentName:string
   const sender=[agentName,businessName&&`with ${businessName}`].filter(Boolean).join(" ")||"from our team";
   const place=city?` in ${city}`:"";
   const callback=callbackNumber?` You can also call ${callbackNumber}.`:"";
-  return {subject:`Following up about your ${product} request`.slice(0,160),draft:`Hi ${firstName(name)},\n\nThis is ${sender}. I’m following up about the ${product} information you requested${place}. I’m happy to answer questions and help with the next step whenever the timing is right.${callback}\n\nBest,\n${agentName||businessName||"The team"}`.slice(0,3000)};
+  return {subject:`Following up on your ${product} request`.slice(0,160),draft:`Hi ${firstName(name)},\n\nThis is ${sender}. I’m following up on your request for ${product}${place}. I’m available to answer questions and help with the next step whenever convenient.${callback}\n\nBest,\n${agentName||businessName||"The team"}`.slice(0,3000)};
 }
 
 function lengthOrOne(length:number){return Math.max(1,length)}
