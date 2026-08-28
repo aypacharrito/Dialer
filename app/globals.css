@@ -267,6 +267,12 @@ button{cursor:pointer}
 .field-grid input,.field-grid select{width:100%;height:39px;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:white;padding:0 10px;color:var(--ink);font-size:10px}
 .field-grid input:disabled{background:#f0f1ee}
 .record-section textarea{width:100%;height:100px;border:1px solid var(--line);border-radius:9px;padding:12px;resize:vertical;font:inherit;font-size:10px;line-height:1.6}
+.imported-record-heading{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+.imported-record-heading small{color:#71808b;font-size:8px;text-align:right;line-height:1.5}
+.imported-data-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.imported-data-grid>div{min-width:0;padding:10px;border:1px solid var(--line);border-radius:8px;background:white}
+.imported-data-grid span{display:block;color:#71808b;font-size:7px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
+.imported-data-grid b{display:block;color:var(--ink);font-size:10px;line-height:1.4;overflow-wrap:anywhere}
 .timeline{padding:19px 25px}
 .timeline>div{display:flex;gap:11px;margin:13px 0}
 .timeline>div>i{width:9px;height:9px;border-radius:50%;background:var(--mint);margin-top:3px;box-shadow:0 0 0 4px #dff5ed}
@@ -287,7 +293,7 @@ button{cursor:pointer}
 .crm-tools{flex-direction:column}
 .crm-tools select{height:43px}
 .crm-summary{grid-template-columns:1fr 1fr}
-.field-grid{grid-template-columns:1fr}
+.field-grid,.imported-data-grid{grid-template-columns:1fr}
 .contact-drawer{width:100%}
 .crm-table .table-head,.crm-table .table-row{grid-template-columns:1.3fr .7fr}
 .crm-table .table-head span:nth-child(3),.crm-table .table-head span:nth-child(4),.crm-table .table-row>span:nth-child(3),.crm-table .table-row>span:nth-child(4){display:none}
@@ -497,6 +503,7 @@ button,input,select,textarea{font-family:inherit}
 .record-actions button:first-child{background:#168ea7;border-color:#2ebcc8}
 .field-grid label{color:#8298aa}
 .field-grid input,.field-grid select,.record-section textarea{background:#101d2a;border-color:#2a3b4d;color:#dce8ee}
+.imported-data-grid>div{background:#101d2a;border-color:#2a3b4d}.imported-data-grid span,.imported-record-heading small{color:#8298aa}.imported-data-grid b{color:#dce8ee}
 .field-grid input:disabled{background:#0b151f}
 .contact-drawer>footer{background:#0d1823;border-color:#263647}
 .contact-drawer>footer button{background:linear-gradient(135deg,#21b8ca,#1683a7)}
