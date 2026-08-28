@@ -29,7 +29,9 @@ if [[ "${VERCEL:-}" == "1" ]]; then
 fi
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
-  exec bash "${script_dir}/sites-env.sh" -- "$0" "$@"
+  # Run through bash explicitly so GitHub web uploads do not need to preserve
+  # executable file modes for this script.
+  exec bash "${script_dir}/sites-env.sh" -- bash "$0" "$@"
 fi
 
 command -v timeout >/dev/null || {
