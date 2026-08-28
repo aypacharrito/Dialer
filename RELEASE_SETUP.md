@@ -2,14 +2,14 @@
 
 ## Required Vercel environment variables
 
-- `CRON_SECRET`: long random secret used to authenticate the five-minute automation worker.
+- `CRON_SECRET`: long random secret used to authenticate the scheduled automation worker.
 - `TWILIO_A2P_APPROVED`: keep `false` until the messaging campaign is approved; then change to `true` and redeploy.
 - `RESEND_API_KEY` and `PACIFICA_EMAIL_FROM`: outbound email delivery and verified sender.
 - `RESEND_WEBHOOK_SECRET`: verifies delivery, bounce, complaint, suppression, and inbound-email events.
 - `PACIFICA_INBOUND_EMAIL_DOMAIN`: receiving subdomain used for private workspace reply addresses.
 - `OPENAI_API_KEY`: AI drafting, CRM analysis, transcription, and call summaries.
 
-Existing Clerk, Upstash Redis, Twilio, Stripe, and lead webhook variables remain required. Use a Vercel plan that supports five-minute Cron Jobs. After changing environment variables, redeploy Production.
+Existing Clerk, Upstash Redis, Twilio, Stripe, and lead webhook variables remain required. Vercel Hobby runs the included daily backup at 16:00 UTC; Pacifica also checks every five minutes while an Autopilot workspace is open. Use Vercel Pro or an external scheduler only if you need five-minute server runs while every browser is closed. After changing environment variables, redeploy Production.
 
 ## Provider callbacks
 
@@ -30,7 +30,7 @@ Existing Clerk, Upstash Redis, Twilio, Stripe, and lead webhook variables remain
 
 ## Production behavior
 
-- The automation worker runs every five minutes, uses deterministic idempotency keys, retries transient failures, and moves repeatedly failing actions to needs-attention status.
+- The automation worker runs every five minutes while Pacifica is open and once daily from the included Hobby cron. It uses deterministic idempotency keys, retries transient failures, and moves repeatedly failing actions to needs-attention status.
 - If the preferred provider is unavailable, Pacifica can use another consented and configured channel.
 - Incoming text/email replies stop active sequences while Pacifica is closed.
 - Email bounce, complaint, and suppression events block additional email.

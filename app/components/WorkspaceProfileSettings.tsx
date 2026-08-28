@@ -10,6 +10,13 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
       <button className={profile.mode==="sales"?"active":""} onClick={()=>update({mode:"sales"})}><b>General sales</b><small>Priority leads + General leads</small></button>
       <button className={profile.mode==="insurance"?"active":""} onClick={()=>update({mode:"insurance"})}><b>Insurance</b><small>Life leads + Home &amp; Auto leads</small></button>
     </div>
+    <div className="workspace-appearance-setting">
+      <div><b>Appearance</b><small>White is the default. Your choice saves only to this account.</small></div>
+      <div className="appearance-picker" role="group" aria-label="Workspace appearance">
+        <button type="button" className={profile.appearance==="light"?"active":""} aria-pressed={profile.appearance==="light"} onClick={()=>update({appearance:"light"})}><span aria-hidden="true">☀</span><b>Light</b><small>Clean white workspace</small></button>
+        <button type="button" className={profile.appearance==="dark"?"active":""} aria-pressed={profile.appearance==="dark"} onClick={()=>update({appearance:"dark"})}><span aria-hidden="true">☾</span><b>Dark</b><small>Low-light workspace</small></button>
+      </div>
+    </div>
     <div className="workspace-profile-fields">
       <label>Business name<input value={profile.businessName} onChange={event=>update({businessName:event.target.value})} placeholder="David's Car Insurance"/></label>
       <label>Representative name<input value={profile.agentName} onChange={event=>update({agentName:event.target.value})} placeholder="David"/></label>

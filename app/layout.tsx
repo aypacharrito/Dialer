@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   const clerkEnabled = isClerkConfigured();
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light">
       <body>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</body>
     </html>
   );
