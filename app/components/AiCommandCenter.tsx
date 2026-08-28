@@ -71,7 +71,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onOpen,onCall
   const [service,setService]=useState("Checking AI connection…");
   const eligible=useMemo(()=>leads.filter(lead=>!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
 
-  useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"Pacifica intelligence online":"Smart fallback ready")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
+  useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;model?:string;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?`${data.model||"OpenAI"} connected securely`:"Smart fallback ready")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
 
   async function run(nextPrompt=prompt){
     const question=nextPrompt.trim();

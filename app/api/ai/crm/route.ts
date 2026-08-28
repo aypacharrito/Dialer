@@ -16,12 +16,12 @@ function localAnalysis(leads:Array<Record<string,unknown>>,notice="Pacifica Smar
 }
 
 function modelCandidates(){
-  return Array.from(new Set([process.env.OPENAI_MODEL?.trim(),"gpt-5-mini","gpt-4.1-mini"].filter(Boolean) as string[]));
+  return Array.from(new Set([process.env.OPENAI_MODEL?.trim(),"gpt-5.6","gpt-5-mini"].filter(Boolean) as string[]));
 }
 
 export async function GET(){
   if(!await hasPacificaWorkspaceApiAccess())return Response.json({ok:false,error:"Your signed-in account does not have Pacifica access."},{status:403});
-  return Response.json({ok:true,providerConfigured:Boolean(process.env.OPENAI_API_KEY),fallbackReady:true,model:process.env.OPENAI_MODEL?.trim()||"gpt-5-mini"},{headers:{"Cache-Control":"no-store"}});
+  return Response.json({ok:true,providerConfigured:Boolean(process.env.OPENAI_API_KEY),fallbackReady:true,model:process.env.OPENAI_MODEL?.trim()||"gpt-5.6"},{headers:{"Cache-Control":"no-store"}});
 }
 
 export async function POST(request:Request) {
