@@ -15,6 +15,17 @@ export async function GET(){
     billing:Boolean(process.env.STRIPE_SECRET_KEY),
   };
   const ready=checks.app&&checks.clerk&&checks.storage;
-  return Response.json({status:ready?"ready":"degraded",ready,checks,time:new Date().toISOString(),release:process.env.VERCEL_GIT_COMMIT_SHA?.slice(0,8)||"local"},{headers:{"Cache-Control":"no-store"}});
+  const release=process.env.VERCEL_GIT_COMMIT_SHA?.slice(0,8)||"local";
+  return Response.json({
+    status:ready?"ready":"degraded",
+    ready,
+    checks,
+    time:new Date().toISOString(),
+    release,
+    deployment:{
+      branch:process.env.VERCEL_GIT_COMMIT_REF||"local",
+      environment:process.env.VERCEL_ENV||"local",
+      url:process.env.VERCEL_PROJECT_PRODUCTION_URL||process.env.VERCEL_URL||"local",
+    },
+  },{headers:{"Cache-Control":"no-store","X-Pacifica-Release":release}});
 }
-
