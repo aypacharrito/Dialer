@@ -32,6 +32,7 @@ import { cleanCommunications, type StoredCommunication } from "./lib/communicati
 import { createCallStartGate, dialDigits, findDialedContact } from "./lib/call-start-gate";
 import { readAudioPreferences } from "./audio-preferences";
 import { PacificaClearVoiceProcessor, supportsClearVoice } from "./clearvoice";
+import { playDialTone } from "./lib/dtmf-tone";
 
 type LeadLine = "life" | "home-auto";
 type Lead = { id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; vendorId?:string; sourceSyncStatus?:string; providerUpdatedAt?:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string; extraFields?:Record<string,string>; csvFileName?:string; csvUpdatedAt?:string; importedFields?:Record<string,string>; smsConsent?:boolean; smsOptOut?:boolean; lastSmsAt?:string; emailConsent?:boolean; emailOptOut?:boolean; lastEmailAt?:string; communications?:StoredCommunication[]; attempts?:number; lastAttemptAt?:string; lastConnectedAt?:string; priorityOverride?:"auto"|"high"|"low"; assignedTo?:string; estimatedValue?:number; closedRevenue?:number; closedAt?:string; automationEnabled?:boolean; automationSequenceId?:string; automationStep?:number; automationNextAt?:string; automationStatus?:string; automationDeliveryFailures?:number; automationLastError?:string; automationDeadLetterAt?:string; automationUpdatedAt?:string; lastInboundAt?:string };
@@ -376,7 +377,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     call.accept();
   }
   function callLeadById(id:number){const item=leadsRef.current.find(candidate=>candidate.id===id);if(!item||item.doNotCall||item.stage==="Closed")return;sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=item.line;setActiveLine(item.line);const queue=rankLeads(leadsRef.current.filter(candidate=>candidate.line===item.line&&candidate.stage!=="Closed"&&!candidate.doNotCall));setIndex(Math.max(0,queue.findIndex(candidate=>candidate.id===id)));setView("dialer");void placeCall(item.phone,false,item)}
-  function pressKey(key:string){if(callRef.current&&connected){callRef.current.sendDigits(key);setDtmfDisplay(value=>(value+key).slice(-12));setPhoneStatus(`Touch tone ${key} sent`);return}setDialNumber(value=>value+key)}
+  function pressKey(key:string){void playDialTone(key);if(callRef.current&&connected){callRef.current.sendDigits(key);setDtmfDisplay(value=>(value+key).slice(-12));setPhoneStatus(`Touch tone ${key} sent`);return}setDialNumber(value=>value+key)}
   function parseRow(row:string,delimiter:string){
     const values:string[]=[];let value="";let quoted=false;
     for(let i=0;i<row.length;i++){const char=row[i];if(char==='"'&&quoted&&row[i+1]==='"'){value+='"';i++;continue}if(char==='"'){quoted=!quoted;continue}if(char===delimiter&&!quoted){values.push(value.trim());value="";continue}value+=char}
@@ -479,7 +480,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         const mapped = crmFieldsForDisposition(disposition);
         const combinedName = hasHeader ? [get(cells, firstNameIndex), get(cells, lastNameIndex)].filter(Boolean).join(" ") : "";
         const received=get(cells,receivedIndex);
-        const importedFields=Object.fromEntries(displayHeaders.map((field,index)=>[field,cells[index]?.trim()||""]).filter(([,value])=>Boolean(value)));
+        const importedFields=Object.fromEntries(displayHeaders.map((field,index)=>[field,cells[index]?.trim()||""]));
 
         parsed.push({
           id: Date.now() + rowIndex,

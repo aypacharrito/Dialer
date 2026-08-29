@@ -45,3 +45,12 @@ test("an identical re-upload is reported as already current",()=>{
   const result=mergeCsvLeads([lead],[{...lead,id:55}]);
   assert.equal(result.leads[0],lead);assert.equal(result.updated,0);assert.equal(result.unchanged,1);assert.equal(result.matched,1);
 });
+
+test("re-upload preserves every source column while blank cells do not erase known data",()=>{
+  const current={...lead,importedFields:{Address:"100 Main St",Bedrooms:"3"}};
+  const incoming={...lead,id:22,importedFields:{Address:"",Bedrooms:"",RoofAge:""}};
+  const result=mergeCsvLeads([current],[incoming],"2026-08-29T12:00:00Z");
+  assert.equal(result.leads[0].importedFields.Address,"100 Main St");
+  assert.equal(result.leads[0].importedFields.Bedrooms,"3");
+  assert.equal(result.leads[0].importedFields.RoofAge,"");
+});

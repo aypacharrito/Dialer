@@ -18,7 +18,7 @@ function useful(value:unknown){return typeof value==="string"&&Boolean(value.tri
 function generic(value:string){return !value||/^(manual|csv import|existing crm|lead provider|leads? export(?:\s*\(\d+\))?)$/i.test(value.trim())}
 function recordWithUsefulValues(current:Record<string,string>|undefined,incoming:Record<string,string>|undefined){
   const next={...(current||{})};
-  for(const [key,value] of Object.entries(incoming||{}))if(value.trim())next[key]=value.trim();
+  for(const [key,value] of Object.entries(incoming||{}))if(value.trim()||!(key in next))next[key]=value.trim();
   return next;
 }
 function sameRecord(left:Record<string,string>|undefined,right:Record<string,string>|undefined){
