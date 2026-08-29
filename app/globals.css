@@ -1538,3 +1538,72 @@ html[data-theme] textarea:focus{border-color:var(--ui-accent)!important;box-shad
 @media(prefers-reduced-motion:reduce){
   html[data-theme] *,html[data-theme] *::before,html[data-theme] *::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
 }
+
+/* Phone reliability release: a collision-free header and a calm, one-click softphone. */
+@media(min-width:1201px){
+  html[data-theme] .topbar{display:grid;grid-template-columns:minmax(190px,1fr) max-content minmax(560px,1fr);gap:18px}
+  html[data-theme] .lead-line-switch{position:static;left:auto;transform:none;justify-self:center;margin:0}
+  html[data-theme] .top-actions{justify-self:end;min-width:0}
+}
+
+html[data-theme] .side-pad{overflow:hidden}
+html[data-theme] .side-pad.phone-active{border-color:#9acdb9!important;box-shadow:0 16px 42px rgba(17,134,109,.14)!important}
+html[data-theme] .side-pad>header{padding-bottom:14px}
+html[data-theme] .number-display{padding:18px 0 16px;text-align:left}
+html[data-theme] .number-display>label{display:block;margin:0 0 7px;color:var(--ui-muted);font-size:7px;font-weight:900;letter-spacing:.14em}
+html[data-theme] .number-input-shell{height:54px;display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid var(--ui-border-strong);border-radius:12px;background:var(--ui-surface-soft);box-shadow:inset 0 1px 2px rgba(25,69,54,.04)}
+html[data-theme] .number-input-shell:focus-within{border-color:var(--ui-accent);box-shadow:0 0 0 4px var(--ui-focus)}
+html[data-theme] .number-input-shell>svg{width:17px;flex:none;color:var(--ui-accent)}
+html[data-theme] .number-input-shell input,
+html[data-theme] .number-input-shell input:hover,
+html[data-theme] .number-input-shell input:focus{height:50px!important;min-width:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:var(--ui-text)!important;box-shadow:none!important;outline:0!important;text-align:left;font-size:19px;font-variant-numeric:tabular-nums;letter-spacing:.035em}
+html[data-theme] .number-input-shell input::placeholder{color:#91a39c!important}
+html[data-theme] .number-input-shell input:read-only{cursor:default}
+html[data-theme] .number-display>small{min-height:24px;display:flex;align-items:flex-start;gap:7px;margin:8px 2px 0;color:var(--ui-muted);font-size:7px;line-height:1.45;letter-spacing:.04em;text-transform:none}
+html[data-theme] .number-display>small>i{width:7px;height:7px;flex:none;margin-top:2px;border-radius:50%;background:#c59245;box-shadow:0 0 0 3px rgba(197,146,69,.1)}
+html[data-theme] .number-display>small>i.ready{background:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-focus)}
+html[data-theme] .key-grid button{box-shadow:0 2px 8px rgba(25,69,54,.045)}
+html[data-theme] .key-grid button:not(:disabled):hover{border-color:var(--ui-accent)!important;background:var(--ui-accent-soft)!important;color:var(--ui-accent);box-shadow:0 8px 20px rgba(17,134,109,.13);transform:translateY(-2px)}
+html[data-theme] .phone-actions{grid-template-columns:1fr auto 1fr;gap:8px;margin-top:18px}
+html[data-theme] .phone-actions .erase{width:42px;height:42px;border:1px solid var(--ui-border)!important;border-radius:50%;background:var(--ui-surface-soft);color:var(--ui-muted);font-size:16px}
+html[data-theme] .phone-actions .erase:not(:disabled):hover{border-color:var(--ui-border-strong)!important;background:var(--ui-surface-hover);color:var(--ui-text)}
+html[data-theme] .phone-call{width:112px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,var(--ui-accent),#28b88c);box-shadow:0 10px 24px rgba(17,134,109,.23)}
+html[data-theme] .phone-call svg{width:18px}
+html[data-theme] .phone-call span{font-size:9px;font-weight:900;letter-spacing:.01em}
+html[data-theme] .phone-call:not(:disabled):hover{background:linear-gradient(135deg,var(--ui-accent-hover),var(--ui-accent));box-shadow:0 15px 30px rgba(17,134,109,.3);transform:translateY(-2px)}
+html[data-theme] .phone-call:disabled{background:#dfe7e3;color:#91a29b;box-shadow:none;opacity:1}
+html[data-theme] .live-phone-actions{gap:7px;margin-top:18px}
+html[data-theme] .live-phone-actions button{min-height:48px;border-radius:10px!important}
+html[data-theme] .live-phone-actions button:not(.hangup):hover{border-color:var(--ui-accent)!important;background:var(--ui-accent-soft)!important;color:var(--ui-accent)}
+html[data-theme] .live-phone-actions .hangup{background:#a93d46!important;border-color:#ba4a52!important;color:#fff!important;box-shadow:0 8px 20px rgba(169,61,70,.18)}
+
+html[data-theme="light"] .number-input-shell{background:#fff;border-color:#cbdad4}
+html[data-theme="light"] .side-pad.phone-active .number-input-shell{background:#f1faf6;border-color:#91cbb4}
+html[data-theme="light"] .key-grid button{background:#f4f8f6;color:#24483c;border-color:#dce7e2!important}
+html[data-theme="light"] .phone-actions .erase{background:#f4f8f6;color:#647b72}
+html[data-theme="dark"] .number-input-shell{background:#0e1612;border-color:#355046}
+html[data-theme="dark"] .number-input-shell input::placeholder{color:#657a72!important}
+html[data-theme="dark"] .phone-call:disabled{background:#24312c;color:#6f827a}
+
+html[data-theme] .manual-call-file{min-height:340px;padding:26px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+html[data-theme] .manual-call-orbit{width:66px;height:66px;margin-bottom:17px;border-radius:50%;display:grid;place-items:center;background:var(--ui-accent-soft);color:var(--ui-accent);box-shadow:0 0 0 8px color-mix(in srgb,var(--ui-accent-soft) 70%,transparent)}
+html[data-theme] .manual-call-orbit.connected{animation:manualCallPulse 1.8s ease-in-out infinite}
+html[data-theme] .manual-call-orbit svg{width:25px}
+html[data-theme] .manual-call-file>span{color:var(--ui-accent);font-size:7px;font-weight:900;letter-spacing:.14em}
+html[data-theme] .manual-call-file>b{margin-top:8px;color:var(--ui-text);font-size:22px;font-weight:650;font-variant-numeric:tabular-nums}
+html[data-theme] .manual-call-file>p{margin:7px 0 17px;color:var(--ui-muted);font-size:10px}
+html[data-theme] .manual-call-file dl{width:100%;margin:0 0 16px;border:1px solid var(--ui-border);border-radius:11px;background:var(--ui-surface-soft);overflow:hidden;text-align:left}
+html[data-theme] .manual-call-file dl>div{display:flex;justify-content:space-between;gap:16px;padding:10px 12px;border-bottom:1px solid var(--ui-border)}
+html[data-theme] .manual-call-file dl>div:last-child{border-bottom:0}
+html[data-theme] .manual-call-file dt{color:var(--ui-muted);font-size:7px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+html[data-theme] .manual-call-file dd{margin:0;color:var(--ui-text);font-size:8px;font-weight:800;text-align:right}
+html[data-theme] .manual-call-file>button{width:100%;min-height:42px;border:1px solid #9bd1bc;border-radius:9px;background:var(--ui-accent-soft);color:var(--ui-accent);font-size:8px;font-weight:900;cursor:pointer}
+html[data-theme] .manual-call-file>button:hover{background:var(--ui-accent);border-color:var(--ui-accent);color:#fff;box-shadow:0 9px 22px rgba(17,134,109,.18);transform:translateY(-1px)}
+html[data-theme] .manual-call-file>small{margin-top:8px;color:var(--ui-muted);font-size:7px}
+@keyframes manualCallPulse{50%{box-shadow:0 0 0 13px color-mix(in srgb,var(--ui-accent-soft) 55%,transparent)}}
+
+@media(max-width:1450px) and (min-width:1201px){
+  html[data-theme] .topbar{grid-template-columns:minmax(170px,1fr) max-content minmax(430px,1fr);gap:12px;padding-inline:18px}
+  html[data-theme] .workspace-sync{display:none}
+  html[data-theme] .inbound-availability{width:38px;padding:0;justify-content:center;font-size:0}
+}

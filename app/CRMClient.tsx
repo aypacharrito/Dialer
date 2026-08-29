@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { AudioProcessor, Call, Device } from "@twilio/voice-sdk";
 import PhoneSettings from "./components/PhoneSettings";
@@ -29,6 +29,7 @@ import { calendarIcs, googleCalendarUrl } from "./lib/calendar";
 import { nextAutomationAfterAttempt, refreshAutomation } from "./lib/lead-automation";
 import { postCallDraftForEnd, selectPostCallOutcome, type PostCallDraft } from "./lib/post-call";
 import { cleanCommunications, type StoredCommunication } from "./lib/communications";
+import { createCallStartGate, dialDigits, findDialedContact } from "./lib/call-start-gate";
 import { readAudioPreferences } from "./audio-preferences";
 import { PacificaClearVoiceProcessor, supportsClearVoice } from "./clearvoice";
 
@@ -51,7 +52,6 @@ function queueLabel(line:LeadLine,mode:WorkspaceMode){
   if(mode==="insurance")return line==="life"?"Life leads":"Home & Auto leads";
   return line==="life"?"Priority leads":"General leads";
 }
-function phoneDigits(value:string){return value.replace(/\D/g,"").slice(-10)}
 function followUpInDays(days:number){const date=new Date();date.setDate(date.getDate()+days);date.setHours(9,0,0,0);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}T${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}`}
 
 function normalizeSavedLeads(value:unknown):Lead[]{
@@ -133,6 +133,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [recordingBusy,setRecordingBusy]=useState(false);
   const inputRef=useRef<HTMLInputElement>(null);
   const deviceRef=useRef<Device|null>(null);
+  const deviceInitPromiseRef=useRef<Promise<Device>|null>(null);
+  const callStartGateRef=useRef(createCallStartGate());
   const clearVoiceProcessorRef=useRef<(AudioProcessor & {mode?:string})|null>(null);
   const callRef=useRef<Call|null>(null);
   const voiceRouteTokenRef=useRef("");
@@ -169,14 +171,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   useEffect(()=>{const refresh=()=>setPriorityNow(Date.now());const reconnect=()=>{refresh();setWorkspaceSavePulse(value=>value+1)};const timer=window.setInterval(refresh,15000);window.addEventListener("focus",refresh);window.addEventListener("online",reconnect);document.addEventListener("visibilitychange",refresh);return()=>{window.clearInterval(timer);window.removeEventListener("focus",refresh);window.removeEventListener("online",reconnect);document.removeEventListener("visibilitychange",refresh)}},[]);
   useEffect(()=>{if(!workspaceHydrated||!workspaceProfile.serverAutomationEnabled)return;const refresh=()=>setLeads(list=>{let changed=false;const next=list.map(item=>{const updated=refreshAutomation(item);if(updated!==item)changed=true;return updated});return changed?next:list});const initial=window.setTimeout(refresh,0);const timer=window.setInterval(refresh,60000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[workspaceHydrated,workspaceProfile.serverAutomationEnabled]);
   useEffect(()=>{if(!workspaceHydrated||!workspaceProfile.serverAutomationEnabled)return;const throttleKey=`pacifica:${workspaceId}:automation-browser-run`;const run=()=>{if(document.hidden||!navigator.onLine||workspaceSaveTimerRef.current)return;let lastRun=0;try{lastRun=Number(localStorage.getItem(throttleKey))||0}catch{}if(Date.now()-lastRun<270000)return;try{localStorage.setItem(throttleKey,String(Date.now()))}catch{}void fetch("/api/automation/run",{method:"POST"}).then(response=>{if(!response.ok)throw new Error("Automation check failed");return fetch("/api/crm/workspace",{cache:"no-store"})}).then(response=>response.json()).then(data=>{if(Array.isArray(data.leads))setLeads(normalizeSavedLeads(data.leads))}).catch(()=>undefined)};const initial=window.setTimeout(run,5000);const timer=window.setInterval(run,300000);window.addEventListener("focus",run);return()=>{window.clearTimeout(initial);window.clearInterval(timer);window.removeEventListener("focus",run)}},[workspaceHydrated,workspaceProfile.serverAutomationEnabled,workspaceId]);
-  async function refreshPhoneStatus(){
-    try{const response=await fetch("/api/twilio/status",{cache:"no-store"});const data=await response.json();setPhoneReady(Boolean(data.configured));if(data.phoneNumber)setCallerId(String(data.phoneNumber));setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:data.phoneNumber==="No number assigned"?"Assign this workspace a number in Phone Number Center":"Secure API key still needed")}
-    catch{setPhoneStatus("Unable to check Twilio setup")}
-  }
-  useEffect(()=>{const timer=window.setTimeout(()=>void refreshPhoneStatus(),0);return()=>{window.clearTimeout(timer);if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy();clearVoiceProcessorRef.current=null}},[]);
-
-  async function fetchToken(){const response=await fetch("/api/twilio/token",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Twilio is not configured");voiceRouteTokenRef.current=String(data.routeToken||"");return String(data.token)}
-  async function configureClearVoice(device:Device){
+  const fetchToken=useCallback(async()=>{const response=await fetch("/api/twilio/token",{cache:"no-store"});const data=await response.json();if(!response.ok)throw new Error(data.error||"Twilio is not configured");voiceRouteTokenRef.current=String(data.routeToken||"");return String(data.token)},[]);
+  const configureClearVoice=useCallback(async(device:Device)=>{
     const preferences=readAudioPreferences();
     const audio=device.audio;
     if(!audio)return false;
@@ -199,23 +195,34 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       catch{await audio.setAudioConstraints({echoCancellation:true,autoGainControl:true,noiseSuppression:true}).catch(()=>undefined);return false}
     }
     return true;
-  }
-  async function ensureDevice(){
-    const token=await fetchToken();
-    let device=deviceRef.current;
-    if(!device){
-      const sdk=await import("@twilio/voice-sdk");
-      device=new sdk.Device(token,{logLevel:1,closeProtection:true});deviceRef.current=device;
-      device.on("tokenWillExpire",async()=>{try{device?.updateToken(await fetchToken())}catch(error){setPhoneStatus(error instanceof Error?error.message:"Token refresh failed")}});
-      device.on("error",error=>{const code="code" in error?` ${String(error.code)}`:"";setPhoneStatus(`Twilio${code}: ${error.message}`);setToast(`Twilio${code}: ${error.message}`)});
-      device.on("registered",()=>{setPhoneAvailable(true);setPhoneStatus("Available for inbound and outbound calls")});
-      device.on("unregistered",()=>{setPhoneAvailable(false);setPhoneStatus("Inbound calls paused · outbound still ready")});
-      device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
-      device.audio?.on("deviceChange",()=>setPhoneStatus("Audio device changed — run the phone test"));
-    }else device.updateToken(token);
-    await configureClearVoice(device);
-    return device;
-  }
+  },[]);
+  const ensureDevice=useCallback(async()=>{
+    if(deviceInitPromiseRef.current)return deviceInitPromiseRef.current;
+    const initialization=(async()=>{
+      const token=await fetchToken();
+      let device=deviceRef.current;
+      if(!device){
+        const sdk=await import("@twilio/voice-sdk");
+        device=new sdk.Device(token,{logLevel:1,closeProtection:true});deviceRef.current=device;
+        device.on("tokenWillExpire",async()=>{try{device?.updateToken(await fetchToken())}catch(error){setPhoneStatus(error instanceof Error?error.message:"Token refresh failed")}});
+        device.on("error",error=>{const code="code" in error?` ${String(error.code)}`:"";setPhoneStatus(`Twilio${code}: ${error.message}`);setToast(`Twilio${code}: ${error.message}`)});
+        device.on("registered",()=>{setPhoneAvailable(true);setPhoneStatus("Available for inbound and outbound calls")});
+        device.on("unregistered",()=>{setPhoneAvailable(false);setPhoneStatus("Inbound calls paused · outbound still ready")});
+        device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
+        device.audio?.on("deviceChange",()=>setPhoneStatus("Audio device changed — run the phone test"));
+      }else device.updateToken(token);
+      await configureClearVoice(device);
+      return device;
+    })();
+    deviceInitPromiseRef.current=initialization;
+    try{return await initialization}
+    finally{if(deviceInitPromiseRef.current===initialization)deviceInitPromiseRef.current=null}
+  },[configureClearVoice,fetchToken]);
+  const refreshPhoneStatus=useCallback(async()=>{
+    try{const response=await fetch("/api/twilio/status",{cache:"no-store"});const data=await response.json();setPhoneReady(Boolean(data.configured));if(data.phoneNumber)setCallerId(String(data.phoneNumber));setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:data.phoneNumber==="No number assigned"?"Assign this workspace a number in Phone Number Center":"Secure API key still needed");if(data.configured&&!deviceRef.current)void ensureDevice().then(()=>setPhoneStatus(`${data.phoneNumber} ready · one-click dialing enabled`)).catch(error=>setPhoneStatus(error instanceof Error?error.message:"Phone setup needs attention"))}
+    catch{setPhoneStatus("Unable to check Twilio setup")}
+  },[ensureDevice]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void refreshPhoneStatus(),0);return()=>{window.clearTimeout(timer);if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy();deviceRef.current=null;deviceInitPromiseRef.current=null;clearVoiceProcessorRef.current=null}},[refreshPhoneStatus]);
   function finalizeLog(outcome:string,status:string,errorCode?:string){
     const current=currentLogRef.current;if(!current||current.finalized)return;current.finalized=true;
     const duration=current.connectedAt?elapsedRef.current:0;
@@ -275,14 +282,14 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const wasConnected=Boolean(currentLogRef.current?.connectedAt);const shouldResume=autoDialRef.current;
     const attemptWasEstablished=establishedAttemptRef.current===attemptId;
     if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;finalizeLog(outcome,message,errorCode);
-    callRef.current=null;setCurrentCallLeadId(null);setRecordingSid("");setIndex(0);setDialing(false);setConnected(false);setSeconds(0);elapsedRef.current=0;setMuted(false);setHeld(false);setDtmfDisplay("");setManualCall(false);
+    callRef.current=null;callStartGateRef.current.finish();setCurrentCallLeadId(null);setRecordingSid("");setIndex(0);setDialing(false);setConnected(false);setSeconds(0);elapsedRef.current=0;setMuted(false);setHeld(false);setDtmfDisplay("");setManualCall(false);
     if(!wasManual&&leadId&&attemptWasEstablished){openPostCall(leadId,shouldResume,outcome,wasConnected);setToast(`${wasConnected?"Conversation":"Call attempt"} complete · save the result before continuing`);return}
     if(!wasManual&&shouldResume)stopAutoDial(`${message} · queue paused so the failed setup cannot skip a lead`);
     if(!wasManual&&leadId&&!autoDialRef.current)setSelectedLead(leadId);
     setToast(message);
   }
   async function placeCall(number:string,wasManual:boolean,queuedLead:Lead=lead){
-    if(dialing)return;
+    if(dialing||!callStartGateRef.current.tryStart())return;
     const attemptId=++callAttemptRef.current;
     advancingRef.current=false;
     setManualCall(wasManual);setCurrentCallLeadId(wasManual?null:queuedLead.id);setDialing(true);setConnected(false);setSeconds(0);elapsedRef.current=0;setPhoneStatus("Connecting securely…");
@@ -314,10 +321,18 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       const permission=error instanceof DOMException&&["NotAllowedError","PermissionDeniedError"].includes(error.name);
       finishCall(wasManual,currentLeadId,permission?"Microphone permission was blocked. Allow it in the browser address bar, then retry.":detail,"Failed",undefined,attemptId);
       setPhoneStatus(permission?"Microphone permission blocked":detail);
+    }finally{
+      if(attemptId!==establishedAttemptRef.current)callStartGateRef.current.finish();
     }
   }
   function start(){ if(postCallLeadId){setToast("Save the call result before continuing");return} if(!callableLeads.length){setView("leads");setToast(lineLeads.length?"No open contacts are eligible to dial":`Import ${queueLabel(activeLine,workspaceProfile.mode)} first`);return} sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=true;setAutoDialing(true);void placeCall(lead.phone,false,lead) }
-  function hangup(){ callRef.current?.disconnect();if(!callRef.current)finishCall(manualCall,manualCall?undefined:lead.id) }
+  function hangup(){
+    const call=callRef.current;
+    if(call){call.disconnect();return}
+    const attemptId=callAttemptRef.current;
+    finishCall(manualCall,manualCall?undefined:lead.id,"Call canceled before connection","Canceled",undefined,attemptId);
+    callAttemptRef.current=attemptId+1;
+  }
   function toggleMute(){const call=callRef.current;if(!call)return;const next=!muted;call.mute(next);setMuted(next)}
   function toggleHold(){const call=callRef.current;if(!call||!connected)return;const next=!held;call.mute(next?true:muted);setHeld(next);setPhoneStatus(next?"Call held · your microphone is private":"Live call resumed")}
   async function toggleRecording(){
@@ -327,7 +342,20 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     try{const response=await fetch("/api/twilio/recordings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:recordingSid?"stop":"start",callSid:sid,recordingSid,leadId:currentCallLeadId||0,consentConfirmed:!recordingSid})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Recording request failed");if(recordingSid){setRecordingSid("");setToast("Recording stopped and saved securely")}else{setRecordingSid(String(data.recordingSid||""));setToast("Recording started after consent confirmation")}}catch(error){setToast(error instanceof Error?error.message:"Recording request failed")}finally{setRecordingBusy(false)}
   }
   function pauseQueue(){resumeAfterWrapRef.current=false;setResumeAfterWrap(false);stopAutoDial("Auto dialing paused — finish the current call or wrap-up safely")}
-  function callTypedNumber(){ if(dialNumber.replace(/\D/g,"").length<7){setToast("Enter a complete phone number");return} stopAutoDial("Manual call mode");void placeCall(dialNumber,true) }
+  function callTypedNumber(){
+    if(dialDigits(dialNumber).length<7){setToast("Enter a complete phone number");return}
+    const matched=findDialedContact(leadsRef.current,dialNumber);
+    if(matched?.doNotCall){setToast(`${matched.name} is marked Do Not Call`);return}
+    if(matched?.stage==="Closed"){setToast(`${matched.name} is already closed · reopen the contact before calling`);return}
+    stopAutoDial(matched?`Calling ${matched.name}`:"Manual call mode");
+    if(matched){
+      activeLineRef.current=matched.line;setActiveLine(matched.line);
+      const queue=rankLeads(leadsRef.current.filter(item=>item.line===matched.line&&item.stage!=="Closed"&&!item.doNotCall));
+      setIndex(Math.max(0,queue.findIndex(item=>item.id===matched.id)));
+      void placeCall(matched.phone,false,matched);return;
+    }
+    void placeCall(dialNumber,true);
+  }
   async function togglePhoneAvailability(){
     try{const device=await ensureDevice();if(phoneAvailable){await device.unregister();return}await device.register()}
     catch(error){const message=error instanceof Error?error.message:"Unable to start inbound calling";setPhoneStatus(message);setToast(message)}
@@ -335,7 +363,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function rejectIncoming(){incomingCall?.reject();setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Incoming call declined")}
   function acceptIncoming(){
     const call=incomingCall;if(!call)return;const attemptId=++callAttemptRef.current;stopAutoDial("Inbound call answered");advancingRef.current=false;establishedAttemptRef.current=attemptId;callRef.current=call;setDialing(true);setIncomingCall(null);
-    const matched=leadsRef.current.find(item=>phoneDigits(item.phone)===phoneDigits(incomingNumber));
+    const matched=findDialedContact(leadsRef.current,incomingNumber);
     setManualCall(!matched);
     setCurrentCallLeadId(matched?.id||null);
     currentLogRef.current={id:crypto.randomUUID(),name:matched?.name||"Inbound caller",phone:incomingNumber,startedAt:new Date().toISOString(),duration:0,outcome:"Incoming",status:"Ringing",campaign:"Inbound",source:"Pacifica softphone"};
@@ -518,7 +546,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
   const nav:[View,string,string][]=[["today","Today","spark"],["dialer","Dialer","dial"],["leads","Contacts","users"],["messages","Messages","chat"],["ai","Pacifica AI","spark"],["campaigns","Pipeline","list"],["revenue","Revenue","chart"],["activity","Reports","chart"],["quotes","Industry Tools","shield"],["billing","Plans & Billing","list"]];
   const activeLead=leads.find(l=>l.id===selectedLead);
-  const incomingLead=leads.find(item=>phoneDigits(item.phone)===phoneDigits(incomingNumber));
+  const incomingLead=findDialedContact(leads,incomingNumber);
   const sourceOptions=["All sources",...Array.from(new Set(lineLeads.map(item=>item.source)))];
   const ownerOptions=["All owners","Unassigned",...Array.from(new Set([...workspaceProfile.teamMembers,...lineLeads.map(item=>item.assignedTo||"")].filter(Boolean)))];
   const matchingLeads=lineLeads.filter(l=>(stageFilter==="All stages"||l.stage===stageFilter)&&(sourceFilter==="All sources"||l.source===sourceFilter)&&(ownerFilter==="All owners"||(ownerFilter==="Unassigned"?!l.assignedTo:l.assignedTo===ownerFilter))&&`${l.name} ${l.phone} ${l.email} ${l.city} ${l.source} ${l.product} ${l.assignedTo||""} ${Object.entries(l.importedFields||{}).flat().join(" ")} ${Object.entries(l.extraFields||{}).flat().join(" ")}`.toLowerCase().includes(search.toLowerCase()));
@@ -526,6 +554,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const dueLeadCount=lineLeads.filter(item=>leadPriority(item,priorityNow).due&&item.stage!=="Closed"&&!item.doNotCall).length;
   function updateLead(id:number, patch:Partial<Lead>){setLeads(list=>list.map(l=>l.id===id?{...l,...patch}:l))}
   function createLead(){const phone=newLead.phone.trim();const name=newLead.name.trim();if(!name||phone.replace(/\D/g,"").length<7){setToast("Add a name and complete phone number");return}const createdAt=new Date().toISOString();const item:Lead={id:Date.now(),name,phone,email:newLead.email.trim(),city:newLead.city.trim()||"No city",status:"Ready",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never",line:activeLine,source:newLead.source.trim()||"Manual",leadCost:Number(newLead.leadCost)||0,product:newLead.product.trim()||"Service inquiry",sourceDisposition:"New",importedAt:createdAt,received:createdAt,smsConsent:false,smsOptOut:false,emailConsent:false,emailOptOut:false,communications:[],automationEnabled:true};setLeads(old=>[item,...old]);setNewLead({name:"",phone:"",email:"",city:"",product:"",source:"Manual",leadCost:""});setShowNewLead(false);setSelectedLead(item.id);setView("leads");setToast(`${name} added to ${queueLabel(activeLine,workspaceProfile.mode)}`)}
+  function addManualCallContact(){setNewLead(value=>({...value,phone:dialNumber,source:"Manual phone call"}));setShowNewLead(true)}
   function applyAiAction(action:AiAction){
     const current=leads.find(item=>item.id===action.leadId);if(!current)return;
     const patch:Partial<Lead>={};
@@ -631,9 +660,17 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
               <label className="file-notes"><span>Agent notes</span><textarea value={lead.notes} onChange={event=>updateLead(lead.id,{notes:event.target.value})} placeholder="Add notes while you speak…"/></label>
             </div>}
             <footer><button onClick={()=>{setSelectedLead(lead.id);setView("leads")}}>Open complete CRM record</button><button className={lead.doNotCall?"dnc-active":""} onClick={()=>updateLead(lead.id,{doNotCall:!lead.doNotCall})}>{lead.doNotCall?"Remove DNC":"Mark DNC"}</button></footer>
-          </>:<div className="lead-file-empty"><Icon name="users"/><b>No queued lead selected</b><span>Import contacts or switch from manual dialing to see the full lead file here.</span></div>}
+          </>:manualCall?<div className="manual-call-file">
+            <div className={`manual-call-orbit ${connected?"connected":""}`}><Icon name="dial"/></div>
+            <span>MANUAL OUTBOUND CALL</span>
+            <b>{dialNumber||"Unknown number"}</b>
+            <p>{connected?`Connected for ${fmt}`:dialing?"Pacifica is connecting this call…":"Call completed"}</p>
+            <dl><div><dt>Caller ID</dt><dd>{callerId}</dd></div><div><dt>Connection</dt><dd>{connected?"Live over browser / Wi-Fi":"Secure browser phone"}</dd></div></dl>
+            <button onClick={addManualCallContact}>+ Add this number to Contacts</button>
+            <small>The call stays active while you create the contact.</small>
+          </div>:<div className="lead-file-empty"><Icon name="users"/><b>No queued lead selected</b><span>Import contacts or enter a number. Pacifica will automatically open the CRM record when the number already belongs to a contact.</span></div>}
         </aside>
-        <aside className="phone-pad side-pad" aria-label="Phone keypad"><header><span><i/> {connected?"LIVE KEYPAD":"MANUAL KEYPAD"}</span><span className="pad-tools"><small>{held?"ON HOLD":phoneReady?"TWILIO":"SETUP"}</small></span></header><div className="number-display"><input value={connected?dtmfDisplay:dialNumber} readOnly={connected} onChange={e=>setDialNumber(e.target.value.replace(/[^0-9+*#() -]/g,""))} placeholder={connected?"Touch tones":"Enter a number"}/><small>{phoneStatus.toUpperCase()}</small></div><div className="key-grid">{[["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""] ,["0","+"],["#",""]].map(([n,l])=><button key={n} onClick={()=>pressKey(n)}><b>{n}</b><small>{l}</small></button>)}</div>{connected?<div className="live-phone-actions"><button className={muted?"active":""} onClick={toggleMute} disabled={held}><Icon name="mute"/><span>{muted?"Unmute":"Mute"}</span></button><button className={held?"active hold":""} onClick={toggleHold}><Icon name={held?"play":"pause"}/><span>{held?"Resume":"Hold"}</span></button><button className="hangup" onClick={hangup}><Icon name="end"/><span>End</span></button></div>:<div className="phone-actions"><button className="erase" onClick={()=>setDialNumber(v=>v.slice(0,-1))}>⌫</button><button className="phone-call" onClick={callTypedNumber} disabled={dialing}><Icon name="dial"/></button><span/></div>}<p>{connected?"Every key sends a live touch tone to the connected call.":"Calls use your browser microphone and speakers over Wi-Fi."}</p></aside></div>
+        <aside className={`phone-pad side-pad ${dialing?"phone-active":""}`} aria-label="Phone keypad"><header><span><i/> {connected?"LIVE KEYPAD":"MANUAL KEYPAD"}</span><span className="pad-tools"><small>{held?"ON HOLD":dialing?"ACTIVE":phoneReady?"READY":"SETUP"}</small></span></header><div className="number-display"><label htmlFor="manual-dial-number">{connected?"TOUCH TONES":"NUMBER TO CALL"}</label><div className="number-input-shell"><Icon name="dial"/><input id="manual-dial-number" type="tel" inputMode="tel" autoComplete="tel" aria-label={connected?"Touch tones sent":"Phone number to call"} value={connected?dtmfDisplay:dialNumber} readOnly={dialing} onKeyDown={event=>{if(event.key==="Enter"&&!dialing)callTypedNumber()}} onChange={e=>setDialNumber(e.target.value.replace(/[^0-9+*#() -]/g,""))} placeholder={connected?"Touch tones":"Enter a number"}/></div><small><i className={phoneReady?"ready":""}/>{phoneStatus}</small></div><div className="key-grid">{[["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""] ,["0","+"],["#",""]].map(([n,l])=><button key={n} type="button" aria-label={`Key ${n}`} onClick={()=>pressKey(n)}><b>{n}</b><small>{l}</small></button>)}</div>{connected?<div className="live-phone-actions"><button className={muted?"active":""} onClick={toggleMute} disabled={held}><Icon name="mute"/><span>{muted?"Unmute":"Mute"}</span></button><button className={held?"active hold":""} onClick={toggleHold}><Icon name={held?"play":"pause"}/><span>{held?"Resume":"Hold"}</span></button><button className="hangup" onClick={hangup}><Icon name="end"/><span>End</span></button></div>:<div className="phone-actions"><button className="erase" aria-label="Delete last digit" title="Delete last digit" onClick={()=>setDialNumber(v=>v.slice(0,-1))} disabled={!dialNumber||dialing}>⌫</button><button className="phone-call" aria-label={dialing?"Call starting":"Call entered number"} title={phoneReady?"Call now":"Phone setup is required"} onClick={callTypedNumber} disabled={dialing||!phoneReady||dialDigits(dialNumber).length<7}><Icon name="dial"/><span>{dialing?"Starting":"Call now"}</span></button><span/></div>}<p>{connected?"Use the keypad for menus. Every key sends a live touch tone.":phoneReady?"One click starts the call using your browser microphone.":"Finish Phone Setup before placing calls."}</p></aside></div>
 
         <section className="bottom-grid">
           <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b><small>Tracked by the browser dialer</small></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b><small>Connected calls recorded</small></article><article><span>PHONE STATUS</span><b className="phone-stat">{phoneReady?"Ready":"Setup"}</b><small>{phoneStatus}</small></article></div>
