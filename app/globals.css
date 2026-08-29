@@ -1630,3 +1630,197 @@ html[data-theme="dark"] .pwa-install{border-color:#315c4d;background:#142a22;col
   .sidebar-install .pwa-install{width:48px;min-height:48px;margin-inline:auto;padding:0;justify-content:center;border-radius:12px}
   .sidebar-install .pwa-install-copy{display:none}
 }
+
+/* Product-finish release: calmer spacing, compact imports, and organized settings. */
+html[data-theme] .top-actions{gap:8px;flex-wrap:nowrap}
+html[data-theme] .top-actions .import{
+  width:auto;min-width:0;max-width:none;height:40px;min-height:40px;padding:0 13px!important;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:none;
+  border-radius:10px;white-space:nowrap;font-size:9px;line-height:1;font-weight:850;letter-spacing:.01em
+}
+html[data-theme] .top-actions .import svg{width:17px;height:17px;flex:none}
+html[data-theme] .top-actions :is(.queue-pause,.inbound-availability,.notification){height:40px;min-height:40px;border-radius:10px}
+html[data-theme] .page-view{padding:clamp(30px,3vw,48px) clamp(24px,3.4vw,56px)}
+html[data-theme] .page-title{margin-bottom:28px;gap:28px}
+html[data-theme] .page-title>div{max-width:900px}
+html[data-theme] .page-title h1{margin:8px 0 10px;font-size:clamp(35px,3.2vw,48px);line-height:1.04;letter-spacing:-.045em}
+html[data-theme] .page-title p{max-width:780px;font-size:13px;line-height:1.65}
+html[data-theme] .page-title .primary{min-height:42px;padding:0 15px;display:inline-flex;align-items:center;gap:8px;flex:none;border-radius:10px;white-space:nowrap}
+html[data-theme] :is(.crm-summary,.stats-row,.today-metrics,.report-metrics,.revenue-metrics){gap:14px}
+html[data-theme] :is(.crm-summary,.stats-row,.today-metrics,.report-metrics,.revenue-metrics)>article{border-radius:14px!important}
+html[data-theme] :is(.table-card,.queue-card,.call-report,.revenue-table,.focus-list,.source-pulse){border-radius:14px!important;overflow:hidden}
+
+html[data-theme] .import-hint{
+  min-height:40px;margin:-8px 0 20px;padding:9px 12px;display:flex;align-items:center;gap:12px;
+  border:1px solid var(--ui-border);border-radius:10px;background:var(--ui-surface);box-shadow:0 5px 16px rgba(25,69,54,.04)
+}
+html[data-theme] .import-hint span{display:inline-flex;align-items:center;gap:7px;flex:none;color:var(--ui-accent);font-size:8px;font-weight:900;letter-spacing:.11em}
+html[data-theme] .import-hint span::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-focus)}
+html[data-theme] .import-hint p{min-width:0;margin:0;overflow:hidden;color:var(--ui-muted);font-size:10px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
+html[data-theme] .crm-tools{gap:10px;margin-bottom:14px}
+html[data-theme] .crm-tools :is(label,select){min-height:44px;border-radius:10px}
+html[data-theme] .crm-table{box-shadow:var(--ui-shadow)!important}
+
+html[data-theme] .settings-page{width:min(100%,1640px);margin:0 auto;min-height:calc(100vh - 76px)}
+html[data-theme] .settings-title-bar{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-bottom:30px}
+html[data-theme] .settings-title-bar>div{max-width:900px}
+html[data-theme] .settings-title-bar h1{margin:8px 0 10px;color:var(--ui-text);font-size:clamp(36px,3.4vw,50px);line-height:1.02;letter-spacing:-.05em;font-weight:620}
+html[data-theme] .settings-title-bar p{max-width:790px;margin:0;color:var(--ui-muted);font-size:13px;line-height:1.65}
+html[data-theme] .settings-save-state{min-height:38px;padding:0 12px;display:inline-flex;align-items:center;gap:8px;flex:none;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);box-shadow:0 5px 16px rgba(25,69,54,.04);font-size:9px;font-weight:800;white-space:nowrap}
+html[data-theme] .settings-save-state i{width:8px;height:8px;border-radius:50%;background:var(--ui-accent);box-shadow:0 0 0 4px var(--ui-focus)}
+html[data-theme] .settings-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:26px;align-items:start}
+html[data-theme] .settings-nav{position:sticky;top:96px;padding:9px;border:1px solid var(--ui-border);border-radius:15px;background:var(--ui-surface);box-shadow:var(--ui-shadow)}
+html[data-theme] .settings-nav>span{display:block;padding:9px 10px 12px;color:var(--ui-muted);font-size:8px;font-weight:900;letter-spacing:.14em}
+html[data-theme] .settings-nav button{width:100%;min-height:62px;padding:10px;display:grid;grid-template-columns:30px minmax(0,1fr);align-items:center;gap:10px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--ui-muted);text-align:left;cursor:pointer}
+html[data-theme] .settings-nav button+button{margin-top:3px}
+html[data-theme] .settings-nav button>i{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-surface-soft);color:var(--ui-muted);font-size:8px;font-style:normal;font-weight:900}
+html[data-theme] .settings-nav button>span{min-width:0;display:flex;flex-direction:column;gap:3px}
+html[data-theme] .settings-nav button b{color:var(--ui-text);font-size:11px}
+html[data-theme] .settings-nav button small{overflow:hidden;color:var(--ui-muted);font-size:8px;text-overflow:ellipsis;white-space:nowrap}
+html[data-theme] .settings-nav button:hover{background:var(--ui-surface-hover);border-color:var(--ui-border)}
+html[data-theme] .settings-nav button.active{background:var(--ui-accent-soft);border-color:var(--ui-border-strong);box-shadow:inset 3px 0 var(--ui-accent)}
+html[data-theme] .settings-nav button.active>i{border-color:var(--ui-accent);background:var(--ui-accent);color:#fff;box-shadow:0 6px 14px rgba(17,134,109,.2)}
+html[data-theme] .settings-nav button.active b{color:var(--ui-accent)}
+html[data-theme] .settings-content{min-width:0}
+html[data-theme] .settings-section{display:grid;gap:18px;min-width:0}
+html[data-theme] .settings-section-intro{min-height:88px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:24px;border:1px solid var(--ui-border);border-radius:15px;background:linear-gradient(135deg,var(--ui-surface),var(--ui-surface-soft));box-shadow:var(--ui-shadow)}
+html[data-theme] .settings-section-intro>div{max-width:760px}
+html[data-theme] .settings-section-intro span{color:var(--ui-accent);font-size:8px;font-weight:900;letter-spacing:.14em}
+html[data-theme] .settings-section-intro h2{margin:6px 0 5px;color:var(--ui-text);font-size:22px;line-height:1.15}
+html[data-theme] .settings-section-intro p{margin:0;color:var(--ui-muted);font-size:11px;line-height:1.55}
+html[data-theme] .settings-section-intro em{flex:none;padding:7px 9px;border:1px solid var(--ui-border-strong);border-radius:999px;background:var(--ui-accent-soft);color:var(--ui-accent);font-size:7px;font-style:normal;font-weight:900;letter-spacing:.08em;white-space:nowrap}
+html[data-theme] .settings-section-intro em.attention{border-color:#d9bd89;background:#fff8e9;color:#9a681c}
+html[data-theme="dark"] .settings-section-intro em.attention{border-color:#6f5632;background:#302719;color:#e1b66d}
+
+html[data-theme] .settings-content :is(.workspace-profile-settings,.team-management,.phone-config,.provider-card,.setup-help,.phone-workspace-setup,.number-center,.smart-connect,.email-workspace-setup,.system-health){margin:0;border:1px solid var(--ui-border);border-radius:15px;background:var(--ui-surface);color:var(--ui-text);box-shadow:var(--ui-shadow);overflow:hidden}
+html[data-theme] .settings-content .workspace-profile-settings{padding:24px}
+html[data-theme] .settings-content .workspace-profile-settings>header h2{margin-top:6px;color:var(--ui-text);font-size:20px}
+html[data-theme] .settings-content .workspace-profile-settings>header p{max-width:720px;color:var(--ui-muted);font-size:11px;line-height:1.6}
+html[data-theme] .settings-content .workspace-profile-settings>header span{font-size:8px}
+html[data-theme] .settings-content .workspace-profile-settings>header strong{padding:7px 9px;border-radius:999px;font-size:7px}
+html[data-theme] .settings-content .workspace-mode-picker{gap:10px;margin-top:20px}
+html[data-theme] .settings-content .workspace-mode-picker button{min-height:68px;padding:14px;border-radius:11px}
+html[data-theme] .settings-content .workspace-mode-picker b{font-size:11px}
+html[data-theme] .settings-content .workspace-mode-picker small{font-size:9px;line-height:1.4}
+html[data-theme] .settings-content .workspace-appearance-setting{margin-top:12px;padding:15px;border-radius:11px;background:var(--ui-surface-soft);border-color:var(--ui-border)}
+html[data-theme] .settings-content .workspace-appearance-setting>div:first-child b{color:var(--ui-text);font-size:11px}
+html[data-theme] .settings-content .workspace-appearance-setting>div:first-child small{color:var(--ui-muted);font-size:9px}
+html[data-theme] .settings-content .appearance-picker button{min-width:145px;min-height:52px;border-radius:10px}
+html[data-theme] .settings-content .appearance-picker button b{font-size:10px}
+html[data-theme] .settings-content .appearance-picker button small{font-size:8px}
+html[data-theme] .settings-content .workspace-profile-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:17px}
+html[data-theme] .settings-content .workspace-profile-fields label{color:var(--ui-muted);font-size:9px;letter-spacing:.02em}
+html[data-theme] .settings-content .workspace-profile-fields :is(input,select){min-height:44px;margin-top:7px;padding:0 12px;border-radius:9px;background:var(--ui-surface);border-color:var(--ui-border-strong);color:var(--ui-text);font-size:11px}
+html[data-theme] .settings-content :is(.server-automation-toggle,.workspace-safety-toggles>label){min-height:74px;padding:15px;border-radius:11px;background:var(--ui-surface-soft);border-color:var(--ui-border)}
+html[data-theme] .settings-content :is(.server-automation-toggle,.workspace-safety-toggles>label) b{color:var(--ui-text);font-size:10px}
+html[data-theme] .settings-content :is(.server-automation-toggle,.workspace-safety-toggles>label) small{color:var(--ui-muted);font-size:9px;line-height:1.5}
+html[data-theme] .settings-content .workspace-profile-settings>small{margin-top:14px;color:var(--ui-muted);font-size:9px;line-height:1.5}
+
+html[data-theme] .settings-content .team-management>header{padding:22px 24px;background:var(--ui-surface-soft);border-color:var(--ui-border)}
+html[data-theme] .settings-content .team-management>header span{color:var(--ui-accent);font-size:8px}
+html[data-theme] .settings-content .team-management h2{font-size:20px;color:var(--ui-text)}
+html[data-theme] .settings-content .team-management p{color:var(--ui-muted);font-size:10px;line-height:1.5}
+html[data-theme] .settings-content .team-management>header label{color:var(--ui-text);font-size:10px}
+html[data-theme] .settings-content .team-management :is(input,select){min-height:42px;border-radius:9px;background:var(--ui-surface);border-color:var(--ui-border-strong);color:var(--ui-text);font-size:10px}
+html[data-theme] .settings-content .team-management>form{padding:18px 24px;gap:11px}
+html[data-theme] .settings-content .team-management button{min-height:42px;border-radius:9px;background:var(--ui-accent);border-color:var(--ui-accent);font-size:9px}
+html[data-theme] .settings-content .team-roster{border-color:var(--ui-border)}
+html[data-theme] .settings-content .team-roster>article{padding:14px 24px;border-color:var(--ui-border)}
+
+html[data-theme] .settings-content .phone-setup-layout{grid-template-columns:minmax(460px,1.18fr) minmax(310px,.82fr);gap:18px}
+html[data-theme] .settings-content .phone-setup-side{gap:18px;margin:0}
+html[data-theme] .settings-content .phone-config>header{height:62px;padding:0 20px;background:linear-gradient(110deg,#0c775f,#159b79);color:#fff}
+html[data-theme] .settings-content .phone-config>header span{font-size:8px}
+html[data-theme] .settings-content .phone-config>header b{font-size:13px}
+html[data-theme] .settings-content .phone-config .config-section{padding:18px 20px}
+html[data-theme] .settings-content .phone-config .config-section>span{font-size:8px}
+html[data-theme] .settings-content .phone-config .config-section label{grid-template-columns:130px minmax(0,1fr);font-size:10px;color:var(--ui-muted)}
+html[data-theme] .settings-content .phone-config .config-section select{height:42px;border-radius:9px;background:var(--ui-surface);border-color:var(--ui-border-strong);color:var(--ui-text);font-size:10px}
+html[data-theme] .settings-content .provider-card{padding:21px;align-items:flex-start;gap:18px}
+html[data-theme] .settings-content .provider-card h2{color:var(--ui-text);font-size:20px}
+html[data-theme] .settings-content .provider-card p{color:var(--ui-muted);font-size:10px;line-height:1.55}
+html[data-theme] .settings-content .setup-help{padding:20px}
+html[data-theme] .settings-content .setup-help>span{font-size:8px;color:var(--ui-accent)}
+html[data-theme] .settings-content .setup-help code{padding:12px;border-radius:9px;background:var(--ui-surface-soft);border-color:var(--ui-border);color:var(--ui-accent);font-size:9px}
+html[data-theme] .settings-content .setup-help p,html[data-theme] .settings-content .setup-help a{font-size:9px;line-height:1.55}
+html[data-theme] .settings-content .phone-workspace-setup{padding:20px}
+html[data-theme] .settings-content .phone-workspace-setup h2{color:var(--ui-text);font-size:17px}
+html[data-theme] .settings-content .phone-workspace-setup>p{color:var(--ui-muted);font-size:10px}
+html[data-theme] .settings-content .phone-workspace-setup code{background:var(--ui-surface-soft);border-color:var(--ui-border);color:var(--ui-accent);font-size:9px}
+html[data-theme] .settings-content .phone-workspace-setup>small{color:var(--ui-muted);font-size:8px}
+
+html[data-theme] .settings-integrations .smart-connect{padding:24px}
+html[data-theme] .settings-integrations .smart-connect h2{color:var(--ui-text);font-size:20px}
+html[data-theme] .settings-integrations .smart-connect>p{color:var(--ui-muted);font-size:10px}
+html[data-theme] .settings-integrations .lead-api-details{border-color:var(--ui-border)}
+html[data-theme] .settings-integrations .lead-api-details>div{border-color:var(--ui-border)}
+html[data-theme] .settings-integrations .lead-api-details dt{color:var(--ui-muted);font-size:8px}
+html[data-theme] .settings-integrations .lead-api-details dd{color:var(--ui-text);font-size:9px;overflow-wrap:anywhere}
+html[data-theme] .settings-integrations .smart-connect button{background:var(--ui-accent);font-size:9px}
+html[data-theme] .settings-integrations .smart-connect small{color:var(--ui-muted);font-size:9px}
+html[data-theme] .settings-content .email-workspace-setup>header{padding:20px 22px;border-color:var(--ui-border)}
+html[data-theme] .settings-content .email-workspace-setup>header span{font-size:8px;color:var(--ui-accent)}
+html[data-theme] .settings-content .email-workspace-setup h2{color:var(--ui-text);font-size:19px}
+html[data-theme] .settings-content .email-workspace-setup>p{padding:15px 22px;color:var(--ui-muted);font-size:10px}
+html[data-theme] .settings-content .email-workspace-setup>div{grid-template-columns:repeat(3,minmax(0,1fr));border-color:var(--ui-border)}
+html[data-theme] .settings-content .email-workspace-setup section{padding:17px 18px}
+html[data-theme] .settings-content .email-workspace-setup section+section{border-color:var(--ui-border)}
+html[data-theme] .settings-content .email-workspace-setup section b{font-size:10px;color:var(--ui-text)}
+html[data-theme] .settings-content .email-workspace-setup section code{padding:7px 8px;border-radius:7px;background:var(--ui-surface-soft);color:var(--ui-accent);font-size:8px;overflow-wrap:anywhere}
+html[data-theme] .settings-content .email-workspace-setup>footer{padding:15px 22px}
+html[data-theme] .settings-content .email-workspace-setup>footer span{color:var(--ui-muted);font-size:9px}
+html[data-theme] .settings-content .email-workspace-setup>footer button{min-height:38px;border-radius:9px;background:var(--ui-accent-soft);border-color:var(--ui-border-strong);color:var(--ui-accent);font-size:8px}
+
+html[data-theme] .settings-content .system-health{margin:0}
+html[data-theme] .settings-content .system-health>header{padding:22px 24px;background:linear-gradient(135deg,var(--ui-surface-soft),var(--ui-surface))}
+html[data-theme] .settings-content .system-health>header span{color:var(--ui-accent);font-size:8px}
+html[data-theme] .settings-content .system-health h2{color:var(--ui-text);font-size:22px}
+html[data-theme] .settings-content .system-health p{color:var(--ui-muted);font-size:10px}
+html[data-theme] .settings-content .health-grid{gap:1px;background:var(--ui-border)}
+html[data-theme] .settings-content .health-grid article{min-height:68px;padding:14px;background:var(--ui-surface)}
+html[data-theme] .settings-content .health-grid b{color:var(--ui-text);font-size:10px}
+html[data-theme] .settings-content .health-grid small{color:var(--ui-muted);font-size:8px;line-height:1.4}
+html[data-theme] .settings-content .system-health>footer{color:var(--ui-muted);font-size:9px}
+
+html[data-theme] .settings-content .number-center{margin:0}
+html[data-theme] .settings-content .number-center>header{padding:22px;border-color:var(--ui-border)}
+html[data-theme] .settings-content .number-center>header h2{color:var(--ui-text);font-size:20px}
+html[data-theme] .settings-content .number-center>header p{color:var(--ui-muted);font-size:9px}
+html[data-theme] .settings-content .number-center :is(select,input){min-height:42px;border-radius:8px;background:var(--ui-surface);border-color:var(--ui-border-strong);color:var(--ui-text)}
+html[data-theme] .settings-content .number-center-message,html[data-theme] .settings-content .number-center>footer{background:var(--ui-surface-soft);border-color:var(--ui-border);color:var(--ui-muted)}
+
+@media(max-width:1280px){
+  html[data-theme] .settings-layout{grid-template-columns:1fr}
+  html[data-theme] .settings-nav{position:static;display:flex;gap:6px;overflow-x:auto;padding:7px}
+  html[data-theme] .settings-nav>span{display:none}
+  html[data-theme] .settings-nav button{min-width:175px;min-height:56px;margin:0!important}
+  html[data-theme] .settings-content .phone-setup-layout{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  html[data-theme] .settings-title-bar{align-items:flex-start;flex-direction:column;margin-bottom:22px}
+  html[data-theme] .settings-save-state{align-self:flex-start}
+  html[data-theme] .settings-content .workspace-profile-fields{grid-template-columns:1fr}
+  html[data-theme] .settings-content .email-workspace-setup>div{grid-template-columns:1fr}
+  html[data-theme] .settings-content .email-workspace-setup section+section{border-left:0;border-top:1px solid var(--ui-border)}
+}
+@media(max-width:760px){
+  html[data-theme] .page-view{padding:76px 16px 24px}
+  html[data-theme] .page-title h1,html[data-theme] .settings-title-bar h1{font-size:32px}
+  html[data-theme] .page-title .primary{width:100%;justify-content:center}
+  html[data-theme] .import-hint{align-items:flex-start;flex-direction:column;gap:5px;margin-top:-6px}
+  html[data-theme] .import-hint p{overflow:visible;white-space:normal}
+  html[data-theme] .settings-nav button{min-width:158px}
+  html[data-theme] .settings-section-intro{align-items:flex-start;flex-direction:column;padding:18px}
+  html[data-theme] .settings-content .workspace-profile-settings{padding:18px}
+  html[data-theme] .settings-content .workspace-profile-settings>header{flex-direction:column}
+  html[data-theme] .settings-content .appearance-picker{grid-template-columns:1fr}
+  html[data-theme] .settings-content .appearance-picker button{min-width:0}
+  html[data-theme] .settings-content .phone-config .config-section label{grid-template-columns:1fr}
+  html[data-theme] .settings-content .team-management>form{padding-inline:18px}
+  html[data-theme] .settings-content .email-workspace-setup>header,html[data-theme] .settings-content .email-workspace-setup>footer{align-items:flex-start;flex-direction:column}
+}
+@media(max-width:520px){
+  html[data-theme] .top-actions .import{width:40px;padding:0!important;font-size:0}
+  html[data-theme] .top-actions .import::after{content:"";font-size:0}
+  html[data-theme] .top-actions .import svg{width:18px}
+}
