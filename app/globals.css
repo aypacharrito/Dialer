@@ -1199,7 +1199,17 @@ input,select,textarea,.crm-tools label,.lead-file-edit select,.lead-file-edit in
 /* Inbound softphone availability and answer screen. */
 .inbound-availability{height:38px;border:1px solid #4c5559;background:#22272a;color:#aeb8bc;border-radius:4px;padding:0 10px;display:flex;align-items:center;gap:7px;font-size:8px;font-weight:900;white-space:nowrap;cursor:pointer}.inbound-availability i{width:7px;height:7px;border-radius:50%;background:#8b5c5f}.inbound-availability.available{border-color:#2c745d;background:#17362c;color:#9de4c8}.inbound-availability.available i{background:#43d69e;box-shadow:0 0 0 3px rgba(67,214,158,.13)}
 .inbound-availability:disabled{opacity:.45;cursor:not-allowed}
-.pwa-install{height:38px;border:1px solid #45666d;background:#1b3035;color:#9ddce0;border-radius:4px;padding:0 10px;font-size:8px;font-weight:900;white-space:nowrap;cursor:pointer}
+.sidebar-install:empty{display:none}
+.sidebar-install:not(:empty){margin-top:auto;padding-top:14px}
+.sidebar-install:not(:empty)+.sidebar-foot{margin-top:10px}
+.pwa-install{width:100%;min-height:54px;border:1px solid #315c4d;background:#142a22;color:#9ce4c8;border-radius:10px;padding:9px 10px;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.12)}
+.pwa-install svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pwa-install-copy{min-width:0;display:block}
+.pwa-install-copy b,.pwa-install-copy small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pwa-install-copy b{font-size:9px;letter-spacing:.01em}
+.pwa-install-copy small{margin-top:3px;color:#6fa990;font-size:6px;font-weight:700}
+.pwa-install:hover{border-color:#4e9a7d;background:#19382d;color:#c7f4e3;transform:translateY(-1px);box-shadow:0 11px 26px rgba(0,0,0,.16)}
+.pwa-install:disabled{opacity:.65;cursor:wait}
 .incoming-call-backdrop{position:fixed;z-index:120;inset:0;background:rgba(4,8,10,.82);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}.incoming-call-card{width:min(390px,100%);border:1px solid #3f5b61;background:#171c1f;padding:28px;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.6)}.incoming-call-card>span{color:#63d2d6;font-size:7px;font-weight:900;letter-spacing:.15em}.incoming-call-card>i{width:74px;height:74px;margin:20px auto 14px;border-radius:50%;background:#20383d;color:#8ee2e5;display:grid;place-items:center;font-size:19px;font-style:normal;font-weight:900;box-shadow:0 0 0 8px rgba(79,190,195,.08)}.incoming-call-card h2{margin:0;color:#f0f3f4;font-size:22px}.incoming-call-card p{margin:7px 0 0;color:#bdc7ca;font-size:12px}.incoming-call-card>small{display:block;margin-top:7px;color:#77868c;font-size:8px}.incoming-call-card>div{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:24px}.incoming-call-card button{border:1px solid #754449;background:#3c2226;color:#f3a5aa;border-radius:5px;padding:12px;font-size:9px;font-weight:900;cursor:pointer}.incoming-call-card button:last-child{border-color:#2a8064;background:#1b604b;color:#c8f4e3}
 @media(max-width:1120px){.inbound-availability{padding:0 8px}.inbound-availability+ .queue-pause{display:none}}
 
@@ -1606,4 +1616,17 @@ html[data-theme] .manual-call-file>small{margin-top:8px;color:var(--ui-muted);fo
   html[data-theme] .topbar{grid-template-columns:minmax(170px,1fr) max-content minmax(430px,1fr);gap:12px;padding-inline:18px}
   html[data-theme] .workspace-sync{display:none}
   html[data-theme] .inbound-availability{width:38px;padding:0;justify-content:center;font-size:0}
+}
+
+/* The install offer belongs to the app chrome, never over the lead switch. */
+html[data-theme="light"] .pwa-install{border-color:#b9ddcf;background:#f0f9f5;color:var(--ui-accent);box-shadow:0 7px 20px rgba(25,69,54,.07)}
+html[data-theme="light"] .pwa-install-copy small{color:#6f8a7f}
+html[data-theme="light"] .pwa-install:hover{border-color:#85c5ad;background:#e4f5ed;color:var(--ui-accent-hover);box-shadow:0 11px 27px rgba(25,69,54,.12)}
+html[data-theme="dark"] .pwa-install{border-color:#315c4d;background:#142a22;color:#9ce4c8}
+
+@media(max-width:760px){
+  .sidebar-install:not(:empty){padding-top:9px}
+  .sidebar-install:not(:empty)+.sidebar-foot{margin-top:8px}
+  .sidebar-install .pwa-install{width:48px;min-height:48px;margin-inline:auto;padding:0;justify-content:center;border-radius:12px}
+  .sidebar-install .pwa-install-copy{display:none}
 }
