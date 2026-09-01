@@ -1901,3 +1901,81 @@ html[data-theme="light"] :is(.crm-summary,.today-metrics,.report-metrics,.revenu
   .quote-workspace,.contact-drawer,.page-view,.today-workspace,.messages-view,.dialer-view,.key-grid button:active{animation:none!important}
   :is(button,[role="button"],.pipeline>section>button,.table-row){transition:none!important}
 }
+
+/* Call workflow polish: every connected and wrap-up surface follows light mode. */
+html[data-theme="light"] .live-phone-actions button:not(.hangup){
+  border-color:#d4e3dd!important;background:#f5f9f7!important;color:#315b4c!important;
+  box-shadow:0 5px 14px rgba(25,69,54,.06)
+}
+html[data-theme="light"] .live-phone-actions button:not(.hangup).active{
+  border-color:#83c8ae!important;background:#e7f7f0!important;color:#0b8063!important
+}
+html[data-theme="light"] .live-phone-actions .hold.active{
+  border-color:#e0c17b!important;background:#fff8e8!important;color:#876315!important
+}
+html[data-theme="light"] .auto-session-note>span{
+  border-color:#a8d7c5;background:#eaf8f2;color:#0d735a;box-shadow:0 5px 14px rgba(17,134,109,.07)
+}
+html[data-theme="light"] .auto-session-note button{
+  border-color:#e3c5c7;background:#fff7f7;color:#a44249;box-shadow:0 5px 14px rgba(126,39,47,.05)
+}
+html[data-theme="light"] .connected-note{
+  border:1px solid #bce0d1;background:#edf9f4;color:#176f59;box-shadow:0 5px 16px rgba(17,134,109,.06)
+}
+
+html[data-theme="light"] .post-call-modal-backdrop{
+  background:rgba(22,52,43,.24);backdrop-filter:blur(7px)
+}
+html[data-theme="light"] .post-call-modal{
+  border:1px solid #bfd8cf;background:#fff;color:#173b30;border-radius:18px;
+  box-shadow:0 30px 90px rgba(12,41,31,.24)
+}
+html[data-theme="light"] .post-call-modal>header{
+  border-color:#d9e8e2;background:linear-gradient(135deg,#edf9f4,#fff)
+}
+html[data-theme="light"] .post-call-modal>header span{color:#11866a}
+html[data-theme="light"] .post-call-modal>header h2{color:#173b30}
+html[data-theme="light"] .post-call-modal>header p{color:#667d74}
+html[data-theme="light"] .post-call-modal>header em{
+  border-color:#c9dfd6;background:#fff;color:#446a5c;border-radius:999px
+}
+html[data-theme="light"] .post-call-outcomes button{
+  border-color:#d5e4de;background:#f7faf8;color:#315b4c;border-radius:10px;
+  box-shadow:0 3px 10px rgba(25,69,54,.035)
+}
+html[data-theme="light"] .post-call-outcomes button:hover,
+html[data-theme="light"] .post-call-outcomes button:focus-visible{
+  border-color:#77bda3;background:#edf9f4;color:#0c765c
+}
+html[data-theme="light"] .post-call-outcomes button.active{
+  border-color:#11866a;background:#11866a;color:#fff;box-shadow:0 8px 20px rgba(17,134,106,.18)
+}
+html[data-theme="light"] .post-call-modal-fields label>span{color:#617a70}
+html[data-theme="light"] .post-call-modal-fields :is(input,select,textarea){border-radius:9px!important}
+html[data-theme="light"] .post-call-modal>footer{
+  border-color:#d9e8e2;background:#f7faf8
+}
+html[data-theme="light"] .post-call-modal>footer small{color:#6b8178}
+html[data-theme="light"] .post-call-modal>footer button{border-radius:9px}
+html[data-theme="light"] .post-call-pause{
+  border-color:#cbded6;background:#fff;color:#3c6556
+}
+html[data-theme="light"] .post-call-save{
+  border-color:#11866a;background:#11866a;color:#fff;box-shadow:0 8px 20px rgba(17,134,106,.18)
+}
+
+html[data-theme="light"] .post-call-wrap{
+  border-color:#c9ded5;background:#fff;color:#173b30;border-radius:12px;box-shadow:0 7px 22px rgba(25,69,54,.07)
+}
+html[data-theme="light"] .post-call-wrap>header{
+  border-color:#d9e8e2;background:linear-gradient(135deg,#edf9f4,#fff)
+}
+html[data-theme="light"] .post-call-wrap>header span{color:#11866a}
+html[data-theme="light"] .post-call-wrap>header h3{color:#173b30}
+html[data-theme="light"] .post-call-wrap>header em{
+  border-color:#c9dfd6;background:#fff;color:#446a5c;border-radius:999px
+}
+html[data-theme="light"] .post-call-wrap :is(input,select,textarea){
+  border-color:#cbded5!important;background:#fff!important;color:#16342b!important;-webkit-text-fill-color:#16342b!important;color-scheme:light!important
+}
+html[data-theme="light"] .post-call-wrap>footer small{color:#6b8178}

@@ -240,11 +240,12 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   function scheduleNextAuto(completedLeadId?:number){
     if(!autoDialRef.current)return;
+    if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);
     if(completedLeadId)sessionAttemptedLeadIdsRef.current.add(completedLeadId);
     const queue=rankLeads(leadsRef.current.filter(l=>!sessionAttemptedLeadIdsRef.current.has(l.id)&&l.line===activeLineRef.current&&l.stage!=="Closed"&&!l.doNotCall));
     if(!queue.length){stopAutoDial(`${queueLabel(activeLineRef.current,workspaceProfile.mode)} queue completed`);return}
-    const nextLead=queue[0];setIndex(0);setPhoneStatus(`Next best call: ${nextLead.name}`);
-    nextCallTimerRef.current=window.setTimeout(()=>{if(autoDialRef.current)void placeCall(nextLead.phone,false,nextLead)},5000);
+    const nextLead=queue[0];setIndex(0);setPhoneStatus(`Calling ${nextLead.name} next…`);setToast(`Result saved · calling ${nextLead.name} next`);
+    nextCallTimerRef.current=window.setTimeout(()=>{nextCallTimerRef.current=undefined;if(autoDialRef.current)void placeCall(nextLead.phone,false,nextLead)},450);
   }
   function openPostCall(leadId:number,resumeQueue:boolean,technicalOutcome:string,wasConnected:boolean){
     const completedLead=leadsRef.current.find(item=>item.id===leadId);if(!completedLead)return;
@@ -276,9 +277,13 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const automation:Partial<Lead>=missed?{automationEnabled:true,automationSequenceId:"missed-call",automationStep:0,automationNextAt:new Date(now.getTime()+120*60_000).toISOString(),automationStatus:"scheduled",automationDeliveryFailures:0,automationLastError:"",automationUpdatedAt:now.toISOString()}:terminal||humanFollowUp?{automationEnabled:!terminal,automationStatus:terminal?"complete":"waiting for salesperson",automationNextAt:"",automationUpdatedAt:now.toISOString()}:{};
     const patch:Partial<Lead>={stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,sourceDisposition:postCallDraft.sourceDisposition,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes,status:postCallDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:now.toLocaleString(),closedAt:won?now.toISOString():completedLead.closedAt,...automation};
     updateLead(completedLead.id,patch);
-    const syncMessage=await syncLeadDisposition(completedLead,{sourceDisposition:postCallDraft.sourceDisposition,stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes});
-    const resume=resumeAfterWrapRef.current;resumeAfterWrapRef.current=false;setResumeAfterWrap(false);setPostCallLeadId(null);setSourceSyncing(false);setToast(syncMessage);
+    const sourcePatch={sourceDisposition:postCallDraft.sourceDisposition,stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,followUp:postCallDraft.appointmentAt,notes:postCallDraft.notes};
+    const resume=resumeAfterWrapRef.current;
+    resumeAfterWrapRef.current=false;setResumeAfterWrap(false);setPostCallLeadId(null);setSourceSyncing(false);
     if(resume){autoDialRef.current=true;setAutoDialing(true);scheduleNextAuto(completedLead.id)}
+    else setToast("Call result saved in Pacifica");
+    // Provider status sync must never hold the salesperson or the next call hostage.
+    void syncLeadDisposition(completedLead,sourcePatch);
   }
   function finishCall(wasManual:boolean,leadId?:number,message="Call ended — save an outcome, then resume",outcome="Completed",errorCode?:string,attemptId=callAttemptRef.current){
     if(attemptId!==callAttemptRef.current||advancingRef.current)return;advancingRef.current=true;
