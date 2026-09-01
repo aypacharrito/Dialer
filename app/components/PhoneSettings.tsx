@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Device } from "@twilio/voice-sdk";
 import { defaultAudioPreferences, readAudioPreferences, saveAudioPreferences } from "../audio-preferences";
-import { clearVoiceModeLabels, PacificaClearVoiceProcessor, supportsClearVoice, type ClearVoiceMetrics, type ClearVoiceMode } from "../clearvoice";
+import { clearVoiceEngineInfo, clearVoiceModeLabels, PacificaClearVoiceProcessor, supportsClearVoice, type ClearVoiceMetrics, type ClearVoiceMode } from "../clearvoice";
 
 type AudioChoice = { deviceId: string; label: string };
 type MonitorMode = "test" | "raw" | "clearvoice" | null;
@@ -43,6 +43,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   const [clearVoiceEnabled, setClearVoiceEnabled] = useState(defaultAudioPreferences.clearVoiceEnabled);
   const [clearVoiceMode, setClearVoiceMode] = useState<ClearVoiceMode>(defaultAudioPreferences.clearVoiceMode);
   const [clearVoiceSupported, setClearVoiceSupported] = useState(true);
+  const [clearVoiceEngine, setClearVoiceEngine] = useState(clearVoiceEngineInfo(defaultAudioPreferences.clearVoiceMode).label);
   const [clearVoiceMetrics, setClearVoiceMetrics] = useState<ClearVoiceMetrics>(emptyMetrics);
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState("Run the test to grant microphone access and load your devices.");
@@ -90,6 +91,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       setBeep(saved.beep);
       setClearVoiceEnabled(saved.clearVoiceEnabled);
       setClearVoiceMode(saved.clearVoiceMode);
+      setClearVoiceEngine(clearVoiceEngineInfo(saved.clearVoiceMode).label);
       setClearVoiceSupported(supportsClearVoice());
       if (saved.input !== "default") setMessage("Your saved microphone will be used for tests and every call.");
     });
@@ -100,11 +102,14 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   async function requestMicrophone(mode: MonitorMode = null) {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("This browser does not expose microphone controls. Use current Chrome or Edge over HTTPS.");
     const selectedInput = inputRef.current;
-    const useCallProcessing = mode === null || mode === "test";
+    const useNativeProcessing = mode === null || mode === "test";
+    const useClearVoiceProcessing = mode === "clearvoice";
     const preferred: MediaTrackConstraints = {
-      echoCancellation: useCallProcessing,
-      noiseSuppression: useCallProcessing,
-      autoGainControl: useCallProcessing,
+      echoCancellation: useNativeProcessing || useClearVoiceProcessing,
+      noiseSuppression: useNativeProcessing,
+      autoGainControl: useNativeProcessing || useClearVoiceProcessing,
+      channelCount: 1,
+      sampleRate: { ideal: 48_000 },
       ...(selectedInput === "default" ? {} : { deviceId: { exact: selectedInput } }),
     };
     try {
@@ -147,7 +152,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     let audibleStream = stream;
     if (mode === "clearvoice") {
       if (!supportsClearVoice()) throw new Error("ClearVoice processing is unavailable in this browser. Use current Chrome or Edge.");
-      const processor = new PacificaClearVoiceProcessor(clearVoiceMode, setClearVoiceMetrics);
+      const processor = new PacificaClearVoiceProcessor(clearVoiceMode, setClearVoiceMetrics, info => setClearVoiceEngine(info.label));
       monitorProcessorRef.current = processor;
       audibleStream = await processor.createProcessedStream(stream);
       monitorProcessedStreamRef.current = audibleStream;
@@ -255,6 +260,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     stopMonitor();
     setClearVoiceEnabled(enabled);
     setClearVoiceMode(mode);
+    setClearVoiceEngine(clearVoiceEngineInfo(mode).label);
     saveAudioPreferences({ clearVoiceEnabled: enabled, clearVoiceMode: mode });
     try {
       await ensureDevice();
@@ -270,10 +276,10 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing ? "Testing…" : listening === "test" ? "Stop microphone playback" : "Run device, playback & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
 
     <section className={`clearvoice-card ${clearVoiceEnabled ? "enabled" : ""}`}>
-      <div className="clearvoice-head"><div><span>PACIFICA AUDIO LABS</span><h3>ClearVoice</h3><p>Adaptive on-device speech enhancement for every browser call.</p></div><label className="clearvoice-switch"><input type="checkbox" checked={clearVoiceEnabled} onChange={event => void updateClearVoice(event.target.checked)}/><i/><b>{clearVoiceEnabled ? "ON" : "OFF"}</b></label></div>
-      <div className="clearvoice-status"><strong><i/>{clearVoiceSupported ? "ON-DEVICE ENGINE READY" : "NATIVE FALLBACK"}</strong><span>{clearVoiceSupported ? "Your audio stays in this browser." : "Update Chrome or Edge for the full engine."}</span></div>
-      <div className="clearvoice-modes" aria-label="ClearVoice suppression level">{(["natural", "balanced", "focus"] as ClearVoiceMode[]).map(mode => <button key={mode} className={clearVoiceMode === mode ? "active" : ""} disabled={!clearVoiceEnabled} onClick={() => void updateClearVoice(true, mode)}><b>{clearVoiceModeLabels[mode]}</b><small>{mode === "natural" ? "Light cleanup" : mode === "balanced" ? "Everyday office" : "Loud spaces"}</small></button>)}</div>
-      <div className="clearvoice-meter"><div><span>VOICE</span><i className={clearVoiceMetrics.voiceDetected ? "speaking" : ""}/></div><div><span>NOISE REDUCTION</span><b>{listening === "clearvoice" ? `${clearVoiceMetrics.reduction}%` : "READY"}</b></div></div>
+      <div className="clearvoice-head"><div><span>PACIFICA AUDIO LABS</span><h3>ClearVoice</h3><p>Multi-engine, on-device speech enhancement for every browser call.</p></div><label className="clearvoice-switch"><input type="checkbox" checked={clearVoiceEnabled} onChange={event => void updateClearVoice(event.target.checked)}/><i/><b>{clearVoiceEnabled ? "ON" : "OFF"}</b></label></div>
+      <div className="clearvoice-status"><strong><i/>{clearVoiceSupported ? "NEURAL ENGINE READY" : "NATIVE FALLBACK"}</strong><span>{clearVoiceSupported ? `${clearVoiceEngine} · audio stays on this device.` : "Update Chrome or Edge for the full engine."}</span></div>
+      <div className="clearvoice-modes" aria-label="ClearVoice suppression level">{(["natural", "balanced", "focus"] as ClearVoiceMode[]).map(mode => <button key={mode} className={clearVoiceMode === mode ? "active" : ""} disabled={!clearVoiceEnabled} onClick={() => void updateClearVoice(true, mode)} title={clearVoiceEngineInfo(mode).description}><b>{clearVoiceModeLabels[mode]}</b><small>{clearVoiceEngineInfo(mode).label}</small></button>)}</div>
+      <div className="clearvoice-meter"><div><span>VOICE</span><i className={clearVoiceMetrics.voiceDetected ? "speaking" : ""}/></div><div><span>LIVE REDUCTION</span><b>{listening === "clearvoice" ? `${clearVoiceMetrics.reduction}%` : "READY"}</b></div></div>
       <div className="clearvoice-compare"><button className={listening === "raw" ? "active raw" : ""} onClick={() => void toggleMonitor("raw")}>{listening === "raw" ? "Stop original" : "Hear original"}</button><button className={listening === "clearvoice" ? "active" : ""} disabled={!clearVoiceEnabled || !clearVoiceSupported} onClick={() => void toggleMonitor("clearvoice")}>{listening === "clearvoice" ? "Stop ClearVoice" : "Hear ClearVoice"}</button><small>Use headphones, then make the same background noise during both tests.</small></div>
     </section>
 
@@ -287,6 +293,6 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       <label className="check-row"><input type="checkbox" checked={beep} onChange={event => { setBeep(event.target.checked); saveAudioPreferences({ beep:event.target.checked }); }}/> Beep when auto-answering</label>
     </div>
     <audio ref={monitorAudioRef} playsInline hidden/>
-    <footer>ClearVoice runs locally. Browser and operating-system volume still control the final listening level.</footer>
+    <footer>ClearVoice combines browser echo control, neural suppression, a gentle speech gate, and voice leveling locally on this device.</footer>
   </section>;
 }

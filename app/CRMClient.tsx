@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import type { AudioProcessor, Call, Device } from "@twilio/voice-sdk";
+import type { Call, Device } from "@twilio/voice-sdk";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
 import AiCommandCenter, { type AiAction } from "./components/AiCommandCenter";
@@ -31,7 +31,7 @@ import { postCallDraftForEnd, selectPostCallOutcome, type PostCallDraft } from "
 import { cleanCommunications, type StoredCommunication } from "./lib/communications";
 import { createCallStartGate, dialDigits, findDialedContact } from "./lib/call-start-gate";
 import { readAudioPreferences } from "./audio-preferences";
-import { PacificaClearVoiceProcessor, supportsClearVoice } from "./clearvoice";
+import { PacificaClearVoiceProcessor, supportsClearVoice, warmClearVoice } from "./clearvoice";
 import { playDialTone } from "./lib/dtmf-tone";
 
 type LeadLine = "life" | "home-auto";
@@ -138,7 +138,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const deviceRef=useRef<Device|null>(null);
   const deviceInitPromiseRef=useRef<Promise<Device>|null>(null);
   const callStartGateRef=useRef(createCallStartGate());
-  const clearVoiceProcessorRef=useRef<(AudioProcessor & {mode?:string})|null>(null);
+  const clearVoiceProcessorRef=useRef<PacificaClearVoiceProcessor|null>(null);
   const callRef=useRef<Call|null>(null);
   const voiceRouteTokenRef=useRef("");
   const watchdogRef=useRef<number|undefined>(undefined);
@@ -185,7 +185,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       await audio.removeProcessor(current,false).catch(()=>undefined);
       clearVoiceProcessorRef.current=null;
     }
-    const baseConstraints:MediaTrackConstraints={echoCancellation:true,autoGainControl:true,noiseSuppression:!preferences.clearVoiceEnabled};
+    const baseConstraints:MediaTrackConstraints={echoCancellation:true,autoGainControl:true,noiseSuppression:!preferences.clearVoiceEnabled,channelCount:1,sampleRate:{ideal:48000}};
     await audio.setAudioConstraints(baseConstraints).catch(()=>undefined);
     if(!preferences.clearVoiceEnabled)return false;
     if(!supportsClearVoice()){
@@ -194,7 +194,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     }
     if(!clearVoiceProcessorRef.current){
       const processor=new PacificaClearVoiceProcessor(preferences.clearVoiceMode);
-      try{await audio.addProcessor(processor,false);clearVoiceProcessorRef.current=processor}
+      try{await warmClearVoice(preferences.clearVoiceMode).catch(()=>false);await audio.addProcessor(processor,false);clearVoiceProcessorRef.current=processor}
       catch{await audio.setAudioConstraints({echoCancellation:true,autoGainControl:true,noiseSuppression:true}).catch(()=>undefined);return false}
     }
     return true;
@@ -305,7 +305,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     currentLogRef.current={id:crypto.randomUUID(),name:wasManual?"Manual call":queuedLead.name,phone:number,startedAt:new Date().toISOString(),duration:0,outcome:"Dialing",status:"Connecting",campaign:queueLabel(queuedLead.line,workspaceProfile.mode),source:wasManual?"Manual keypad":"CRM auto dial"};
     try{
       const audioPreferences=readAudioPreferences();
-      const audioConstraints:MediaTrackConstraints={echoCancellation:true,autoGainControl:true,noiseSuppression:!audioPreferences.clearVoiceEnabled,...(audioPreferences.input==="default"?{}:{deviceId:{exact:audioPreferences.input}})};
+      const audioConstraints:MediaTrackConstraints={echoCancellation:true,autoGainControl:true,noiseSuppression:!audioPreferences.clearVoiceEnabled,channelCount:1,sampleRate:{ideal:48000},...(audioPreferences.input==="default"?{}:{deviceId:{exact:audioPreferences.input}})};
       const stream=await navigator.mediaDevices.getUserMedia({audio:audioConstraints});stream.getTracks().forEach(track=>track.stop());
       const device=await ensureDevice();
       await device.audio?.setInputDevice(audioPreferences.input);
@@ -318,7 +318,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       callRef.current=call;establishedAttemptRef.current=attemptId;
       if(currentLeadId){sessionAttemptedLeadIdsRef.current.add(currentLeadId);const attemptAt=new Date();setLeads(list=>list.map(item=>{if(item.id!==currentLeadId)return item;const attempts=(item.attempts||0)+1;return {...item,attempts,lastAttemptAt:attemptAt.toISOString(),lastContact:`Attempted ${attemptAt.toLocaleString()}`,automationEnabled:true,automationSequenceId:"missed-call",automationStep:0,automationNextAt:nextAutomationAfterAttempt(1,attemptAt.getTime()),automationStatus:"scheduled"}}))}
       watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out",undefined,attemptId);call.disconnect()},25000);
-      call.on("accept",()=>{if(attemptId!==callAttemptRef.current)return;if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?"Live call · ClearVoice active":"Live call over Wi-Fi")});
+      call.on("accept",()=>{if(attemptId!==callAttemptRef.current)return;if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi")});
       call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed",undefined,attemptId));
       call.on("cancel",()=>finishCall(wasManual,currentLeadId,"Call canceled","Canceled",undefined,attemptId));
       call.on("reject",()=>finishCall(wasManual,currentLeadId,"Call was rejected","Rejected",undefined,attemptId));
