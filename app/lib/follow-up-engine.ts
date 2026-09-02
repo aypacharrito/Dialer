@@ -3,6 +3,7 @@ import {logError,logEvent} from "./observability";
 import {inboundReplyAddress,outboundEmailStatus,sendOutboundEmail} from "./outbound-email";
 import {outboundSmsStatus,sendOutboundSms} from "./outbound-sms";
 import {renderCommunicationTemplate,starterCommunicationTemplates} from "./message-templates";
+import {deduplicateCsvLeads,type CsvManagedLead} from "./csv-lead-merge";
 import {queuedProviderLeads} from "./provider-inbox";
 import {mergeProviderLeads,type ProviderLeadRecord,type ProviderManagedLead} from "./provider-lead-merge";
 import {listStoredWorkspaces,workspaceRedis,writeStoredWorkspace} from "./workspace-storage";
@@ -14,7 +15,7 @@ export type FollowUpLead={
   automationEnabled?:boolean;automationSequenceId?:string;automationStep?:number;automationNextAt?:string;automationStatus?:string;automationDeliveryFailures?:number;automationLastError?:string;automationDeadLetterAt?:string;automationUpdatedAt?:string;lastInboundAt?:string;
 };
 
-export type AutomationRun={ok:true;startedAt:string;completedAt:string;workspaces:number;changed:number;due:number;sent:number;smsSent:number;emailSent:number;tasksCreated:number;fallbacks:number;retried:number;blocked:number;deadLettered:number;failed:number};
+export type AutomationRun={ok:true;startedAt:string;completedAt:string;workspaces:number;changed:number;duplicatesRemoved:number;due:number;sent:number;smsSent:number;emailSent:number;tasksCreated:number;fallbacks:number;retried:number;blocked:number;deadLettered:number;failed:number};
 
 const retryDelays=[5,15,60,240,720];
 const closedOutcomes=new Set(["not interested","wrong number","sold / won"]);
@@ -94,12 +95,13 @@ function assignRoundRobin<T extends {assignedTo?:string;stage?:string;doNotCall?
 }
 
 export async function runFollowUpAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number}={}):Promise<AutomationRun>{
-  const startedAt=new Date().toISOString();let workspaces=0,changed=0,due=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
+  const startedAt=new Date().toISOString();let workspaces=0,changed=0,duplicatesRemoved=0,due=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
   const records=(await listStoredWorkspaces(options.workspaceLimit||500)).filter(record=>!options.workspaceId||record.workspaceId===options.workspaceId);
   for(const record of records){
     workspaces++;const profile=record.workspace.profile;
     let workspaceChanged=false;let currentLeads=record.workspace.leads as Array<FollowUpLead&ProviderManagedLead>;
     try{const incoming=await queuedProviderLeads(record.workspaceId);if(incoming.length){const merged=mergeProviderLeads(currentLeads,incoming,createProviderLead);if(merged.added||merged.updated){currentLeads=merged.leads as Array<FollowUpLead&ProviderManagedLead>;workspaceChanged=true}}}catch(error){logError("provider_inbox_merge_failed",error,{workspaceId:record.workspaceId})}
+    const deduplicated=deduplicateCsvLeads(currentLeads as unknown as CsvManagedLead[]);if(deduplicated.removed){currentLeads=deduplicated.leads as unknown as Array<FollowUpLead&ProviderManagedLead>;duplicatesRemoved+=deduplicated.removed;workspaceChanged=true}
     const assigned=assignRoundRobin(currentLeads,profile);if(assigned!==currentLeads){currentLeads=assigned;workspaceChanged=true}
     if(!profile.serverAutomationEnabled){if(workspaceChanged){await writeStoredWorkspace(record.workspaceId,{...record.workspace,leads:currentLeads});changed++}continue}
     const leads=currentLeads.map(raw=>{const prepared=prepareAutomationLead(raw,profile);if(JSON.stringify(prepared)!==JSON.stringify(raw))workspaceChanged=true;return prepared});
@@ -130,7 +132,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
     }
     if(workspaceChanged){await writeStoredWorkspace(record.workspaceId,{...record.workspace,leads});changed++}
   }
-  const run:AutomationRun={ok:true,startedAt,completedAt:new Date().toISOString(),workspaces,changed,due,sent,smsSent,emailSent,tasksCreated,fallbacks,retried,blocked,deadLettered,failed};
+  const run:AutomationRun={ok:true,startedAt,completedAt:new Date().toISOString(),workspaces,changed,duplicatesRemoved,due,sent,smsSent,emailSent,tasksCreated,fallbacks,retried,blocked,deadLettered,failed};
   await workspaceRedis(["SET","pacifica:v2:automation:last-run",JSON.stringify(run)]).catch(()=>null);
   logEvent("follow_up_automation_complete",run);
   return run;

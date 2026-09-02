@@ -25,6 +25,17 @@ export type LeadPriority={
   fresh:boolean;
 };
 
+export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall">;
+
+export function isDialerEligibleLead(lead:DialerEligibilityInput){
+  if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment")return false;
+  const outcome=lead.outcome.trim().toLowerCase();
+  const disposition=lead.sourceDisposition.trim().toLowerCase();
+  if(new Set(["interested","appointment set","not interested","wrong number","sold / won","sold","won"]).has(outcome))return false;
+  if(/interested|working|quoted|appointment|sold|closed|lost|wrong number/.test(disposition))return false;
+  return true;
+}
+
 const hour=60*60*1000;
 const day=24*hour;
 

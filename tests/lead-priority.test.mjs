@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { crmFieldsForDisposition, leadPriority, rankLeads, sourceDispositionForOutcome, suggestedRetryAt } from "../app/lib/lead-priority.ts";
+import { crmFieldsForDisposition, isDialerEligibleLead, leadPriority, rankLeads, sourceDispositionForOutcome, suggestedRetryAt } from "../app/lib/lead-priority.ts";
 
 const now=Date.parse("2026-08-26T18:00:00Z");
 
@@ -61,4 +61,15 @@ test("automatic retry stays in business hours",()=>{
 test("not interested is never mistaken for interested",()=>{
   assert.deepEqual(crmFieldsForDisposition("Lost - Not Interested"),{stage:"Closed",outcome:"Not interested"});
   assert.equal(sourceDispositionForOutcome("SmartFinancial","Not interested",""),"Lost - Not Interested");
+});
+
+test("automatic dialing skips active policy work while retaining retryable leads",()=>{
+  assert.equal(isDialerEligibleLead(lead({outcome:"Interested",stage:"Follow-up",sourceDisposition:"Interested - Working"})),false);
+  assert.equal(isDialerEligibleLead(lead({outcome:"Appointment set",stage:"Appointment",sourceDisposition:"Interested - Working"})),false);
+  assert.equal(isDialerEligibleLead(lead({outcome:"No answer",stage:"Follow-up",sourceDisposition:"Attempted Contact"})),true);
+  assert.equal(isDialerEligibleLead(lead({doNotCall:true})),false);
+});
+
+test("SmartFinancial interest maps back to its working disposition",()=>{
+  assert.equal(sourceDispositionForOutcome("SmartFinancial","Interested","Received - not worked yet"),"Interested - Working");
 });
