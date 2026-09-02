@@ -3,7 +3,7 @@ import {isClerkConfigured} from "../../../lib/clerk-config";
 import {phoneAssignmentForWorkspace} from "../../../lib/phone-assignments";
 import {twilioAccountConfig,twilioApiErrorMessage,twilioApiRequest,type TwilioApiError} from "../../../lib/twilio-rest";
 import {twilioClientIdentity} from "../../../lib/twilio-workspaces";
-import {readStoredWorkspace} from "../../../lib/workspace-storage";
+import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 
@@ -26,8 +26,19 @@ async function ownedCall(workspaceId:string,sid:string){
 export async function POST(request:Request){
   const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
   try{
-    const body=await request.json() as {action?:"start"|"stop";callSid?:string;recordingSid?:string;leadId?:number;consentConfirmed?:boolean};const sid=callSid(String(body.callSid||""));if(!sid)return Response.json({error:"A live Twilio Call SID is required"},{status:400});
-    const stored=await readStoredWorkspace(workspace.userId);if(!stored?.profile.callRecordingEnabled)return Response.json({error:"Enable consent-based call recording in Owner Settings first"},{status:403});
+    const body=await request.json() as {action?:"start"|"stop"|"sync";callSid?:string;recordingSid?:string;recordingSids?:string[];leadId?:number;consentConfirmed?:boolean};
+    if(body.action==="sync"){
+      const stored=await readStoredWorkspace(workspace.userId);if(!stored)return Response.json({ok:true,callLogs:[]});
+      const allowed=new Set(stored.callLogs.map(raw=>recordingSid(String((raw as Record<string,unknown>).recordingSid||""))).filter(Boolean));
+      const requested=Array.from(new Set((body.recordingSids||[]).map(value=>recordingSid(String(value))).filter(value=>value&&allowed.has(value)))).slice(0,20);
+      if(!requested.length)return Response.json({ok:true,callLogs:stored.callLogs});
+      const {accountSid,credentials}=twilioAccountConfig();
+      const results=await Promise.all(requested.map(async sid=>{const result=await twilioApiRequest<TwilioRecording>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${sid}.json`,{},credentials);return result.response.ok?{sid,status:String(result.data.status||"")}:null}));
+      const statuses=new Map(results.filter((item):item is {sid:string;status:string}=>Boolean(item)).map(item=>[item.sid,item.status]));let changed=false;
+      const callLogs=stored.callLogs.map(raw=>{const log=raw as Record<string,unknown>;const sid=recordingSid(String(log.recordingSid||""));const status=statuses.get(sid);if(!status)return log;const recordingUrl=status==="completed"?`/api/twilio/recordings?sid=${sid}`:String(log.recordingUrl||"");if(log.recordingStatus===status&&String(log.recordingUrl||"")===recordingUrl)return log;changed=true;return {...log,recordingStatus:status,...(recordingUrl?{recordingUrl}:{})}});
+      if(changed)await writeStoredWorkspace(workspace.userId,{...stored,callLogs});return Response.json({ok:true,callLogs});
+    }
+    const sid=callSid(String(body.callSid||""));if(!sid)return Response.json({error:"A live Twilio Call SID is required"},{status:400});
     const {accountSid,credentials}=await ownedCall(workspace.userId,sid);
     if(body.action==="stop"){
       const recording=recordingSid(String(body.recordingSid||""));if(!recording)return Response.json({error:"Recording SID is required"},{status:400});
