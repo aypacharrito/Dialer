@@ -9,7 +9,7 @@ const labels:Record<string,string>={storage:"Workspace storage",voice:"Calling",
 
 export default function SystemHealthPanel(){
   const [health,setHealth]=useState<Health|null>(null);
-  const [message,setMessage]=useState("Checking every production dependency…");
+  const [message,setMessage]=useState("Checking…");
 
   const load=useCallback(async()=>{
     try{
@@ -17,7 +17,7 @@ export default function SystemHealthPanel(){
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Health check failed");
       setHealth(data);
-      setMessage(data.status==="launch ready"?"Every configured system reports ready.":"Finish the items marked Setup before promising them in a demo.");
+      setMessage(data.status==="launch ready"?"Ready":"Setup required");
     }catch(error){setMessage(error instanceof Error?error.message:"Health check failed")}
   },[]);
 
@@ -28,7 +28,7 @@ export default function SystemHealthPanel(){
   },[load]);
 
   return <section className="system-health">
-    <header><div><span>LAUNCH CONTROL</span><h2>{health?`${health.ready}/${health.total} systems ready`:"Checking Pacifica…"}</h2><p>{message}</p></div><button onClick={()=>void load()}>Refresh checks</button></header>
+    <header><div><span>SYSTEM HEALTH</span><h2>{health?`${health.ready}/${health.total} ready`:"Checking…"}</h2><p>{message}</p></div><button onClick={()=>void load()}>Refresh</button></header>
     <div className="health-grid">{health&&Object.entries(health.checks).map(([key,check])=><article key={key} className={check.ready?"ready":"setup"}><i/><span><b>{labels[key]||key}</b><small>{check.detail}</small></span><em>{check.ready?"READY":"SETUP"}</em></article>)}</div>
     {health?.lastAutomationRun&&<footer><span>Last automation run: {health.lastAutomationRun.completedAt?new Date(health.lastAutomationRun.completedAt).toLocaleString():"unknown"}</span><span>{health.lastAutomationRun.sent||0} sent · {health.lastAutomationRun.blocked||0} safely blocked · {health.lastAutomationRun.failed||0} failed</span><span>Release {health.release}</span></footer>}
   </section>;

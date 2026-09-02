@@ -144,7 +144,7 @@ export default function TermsPage() {
         <p>
           Pacifica CRM is provided on an “as available” basis. We do not
           guarantee uninterrupted availability, message deliverability,
-          regulatory compliance for a user's specific business, or any
+          regulatory compliance for a user&apos;s specific business, or any
           particular business result.
         </p>
 
