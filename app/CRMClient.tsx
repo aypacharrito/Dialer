@@ -68,6 +68,26 @@ function mergeRecordingUpdates(local:CallLog[],remote:CallLog[]){
   return [...remote.filter(log=>!matched.has(log.id)&&Boolean(log.recordingSid)),...merged].slice(0,500);
 }
 
+const displayedLeadFieldKeys=new Set([
+  "id","leadid","vendorid","firstname","lastname","fullname","name","contactname",
+  "phone","phonenumber","cell","cellphone","mobile","mobilephone",
+  "email","emailaddress","address","street","streetaddress","address1","address2","city","state","province","zip","zipcode","postalcode",
+  "source","leadsource","provider","product","producttype","leadcost","received","receivedat","created","createdat","datecreated",
+  "status","originalstatus","disposition","sourcedisposition","lastcontact","brand","agency","brandagency","leadprofile","profilename","territory","returnstatus","employees","employeecount","searchpro",
+  "csvfilename","csvsourcefile","importedat","csvupdatedat"
+]);
+
+function normalizedLeadFieldKey(value:string){return value.toLowerCase().replace(/[^a-z0-9]/g,"")}
+function leadFieldLabel(value:string){return value.replace(/([a-z0-9])([A-Z])/g,"$1 $2").replace(/[_-]+/g," ").replace(/\s+/g," ").trim().replace(/\b\w/g,letter=>letter.toUpperCase())}
+function supplementalLeadDetails(lead:Lead){
+  const details=new Map<string,{label:string;value:string}>();
+  for(const [field,raw] of [...Object.entries(lead.importedFields||{}),...Object.entries(lead.extraFields||{})]){
+    const value=String(raw||"").trim();const key=normalizedLeadFieldKey(field);if(!value||!key||displayedLeadFieldKeys.has(key)||details.has(key))continue;
+    details.set(key,{label:leadFieldLabel(field),value});
+  }
+  return Array.from(details.values());
+}
+
 function Icon({name}:{name:string}) {
   const paths:Record<string,React.ReactNode> = {
     dial:<><path d="M6.6 3.8 9 7.6 7.5 9.1c1.1 2.3 2.9 4.1 5.2 5.2l1.5-1.5 3.8 2.4c.5.3.7.9.5 1.5-.5 1.6-2 2.7-3.7 2.6C8.2 18.7 3.3 13.8 2.7 7.2c-.1-1.7 1-3.2 2.6-3.7.5-.2 1.1 0 1.3.3Z"/></>,
@@ -110,7 +130,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [ownerFilter,setOwnerFilter]=useState("All owners");
   const [leadSort,setLeadSort]=useState("Next best");
   const [phoneReady,setPhoneReady]=useState(false);
-  const [phoneStatus,setPhoneStatus]=useState("Checking Twilio setup…");
+  const [,setPhoneStatus]=useState("Checking Twilio setup…");
   const [muted,setMuted]=useState(false);
   const [held,setHeld]=useState(false);
   const [dtmfDisplay,setDtmfDisplay]=useState("");
@@ -168,6 +188,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const queuedLead=callableLeads[index%Math.max(callableLeads.length,1)]||emptyLead;
   const postCallLead=postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined;
   const lead=(currentCallLeadId?leads.find(item=>item.id===currentCallLeadId):undefined)||postCallLead||queuedLead;
+  const importedLeadDetails=useMemo(()=>supplementalLeadDetails(lead),[lead]);
   const upNextLeads=callableLeads.filter(item=>item.id!==lead.id).slice(0,3);
   const leadQueuePosition=Math.max(0,callableLeads.findIndex(item=>item.id===lead.id));
 
@@ -625,29 +646,40 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       {view==="today"&&<TodayWorkspace leads={leads} onOpen={id=>{setSelectedLead(id);setView("leads")}} onCall={callLeadById} onImport={()=>inputRef.current?.click()} onAdd={()=>setShowNewLead(true)}/>}
 
       {view==="dialer"&&<div className="dialer-view"><div className="dialer-main-grid">
-        <section className={`hero-call ${connected?"connected":""}`}>
-          <div className="hero-head"><div><span className="eyebrow">PACIFICA · {queueLabel(activeLine,workspaceProfile.mode).toUpperCase()}</span><h1>{postCallLeadId?"Close the loop.":connected?`Live with ${manualCall?"this contact":lead.name}.`:dialing?`Connecting to ${manualCall?dialNumber:lead.name}.`:autoDialing?"Selecting the next opportunity.":"Your next conversation, prioritized."}</h1><p>{postCallLeadId?"Capture the outcome and next move. Pacifica handles the handoff.":connected?"Stay focused on the conversation. Notes, recording, and next steps remain within reach.":dialing?`${callerId} is opening a secure line. Pacifica keeps the next record ready in the background.`:`Pacifica ranks ${queueLabel(activeLine,workspaceProfile.mode)} by recency, intent, and follow-up urgency.`}</p></div></div>
+        <section className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
           <div className="call-grid">
-            <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><span>{connected?"LIVE CONVERSATION":"PRIORITY CONTACT"}</span><h2>{manualCall?"Manual call":lead.name}</h2><a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":lead.city}</p></div><b className="timer">{connected?fmt:"—:—"}</b></article>
-            <div className={`signal ${dialing?"moving":""}`}>{Array.from({length:35}).map((_,i)=><i key={i} style={{height:`${12+((i*17)%39)}px`}}/> )}</div>
-            <div className="call-controls">
-              <button className={`round ${muted?"muted":""}`} aria-label={muted?"Unmute":"Mute"} onClick={toggleMute} disabled={!connected||held}><Icon name="mute"/><small>{muted?"Unmute":"Mute"}</small></button>
-              {!dialing?<button className="start-call" onClick={start}><Icon name="play"/><span>{autoDialing?"Continue priority flow":"Begin priority flow"}</span></button>:<button className="end-call" onClick={hangup}><Icon name="end"/><span>{connected?"End call":"Cancel call"}</span></button>}
-              <button className={`round ${held?"held":""}`} aria-label={held?"Resume":"Hold"} onClick={toggleHold} disabled={!connected}><Icon name={held?"play":"pause"}/><small>{held?"Resume":"Hold"}</small></button>
-              <button className={`round recording-control ${recordingSid?"recording":""}`} aria-label={recordingSid?"Stop recording":"Start consent-based recording"} title={connected?"Confirm disclosure and record this call":"Recording becomes available when the call connects"} onClick={()=>void toggleRecording()} disabled={!connected||recordingBusy}><span className="record-dot"/><small>{recordingBusy?"Working…":recordingSid?"Stop rec":"Record"}</small></button>
-            </div>
-            {autoDialing&&<div className="auto-session-note"><span><i/> AUTOMATION RUNNING · {callableLeads.length} CONTACTS RANKED</span><button onClick={()=>stopAutoDial("Priority flow paused after the current attempt")}>Pause flow</button></div>}
-            {connected&&<div className="connected-note"><i/> Live line · Save the outcome when finished and Pacifica advances automatically.</div>}
+            <div className="call-status-line"><span><i/>{postCallLeadId?"CALL COMPLETE":connected?"LIVE":dialing?"CONNECTING":"NEXT UP"}</span>{!postCallLeadId&&autoDialing&&<em>{callableLeads.length} IN FLOW</em>}</div>
+            <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><h2>{manualCall?"Manual call":lead.name}</h2><a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":[lead.city,lead.state].filter(Boolean).join(", ")}</p></div>{connected&&<b className="timer">{fmt}</b>}</article>
+            {!postCallLeadId&&<><div className={`signal ${dialing?"moving":""}`}>{Array.from({length:35}).map((_,i)=><i key={i} style={{height:`${12+((i*17)%39)}px`}}/> )}</div>
+            <div className={`call-controls ${!dialing?"idle":""}`}>
+              {!dialing?<button className="start-call" onClick={start}><Icon name="play"/><span>Start calling</span></button>:<>
+                {connected&&<button className={`round ${muted?"muted":""}`} aria-label={muted?"Unmute":"Mute"} onClick={toggleMute} disabled={held}><Icon name="mute"/><small>{muted?"Unmute":"Mute"}</small></button>}
+                <button className="end-call" onClick={hangup}><Icon name="end"/><span>{connected?"End call":"Cancel"}</span></button>
+                {connected&&<button className={`round ${held?"held":""}`} aria-label={held?"Resume":"Hold"} onClick={toggleHold}><Icon name={held?"play":"pause"}/><small>{held?"Resume":"Hold"}</small></button>}
+                {connected&&<button className={`round recording-control ${recordingSid?"recording":""}`} aria-label={recordingSid?"Stop recording":"Start consent-based recording"} title="Confirm disclosure and record this call" onClick={()=>void toggleRecording()} disabled={recordingBusy}><span className="record-dot"/><small>{recordingBusy?"Working…":recordingSid?"Stop rec":"Record"}</small></button>}
+              </>}
+            </div></>}
           </div>
         </section>
         <aside className="lead-file" aria-label="Current lead file">
           <header>
-            <div><span>LIVE LEAD FILE</span><b>{manualCall?"Manual call":lead.name}</b></div>
-            <em className={connected?"live":""}>{connected?"ON CALL":callableLeads.length?`${leadQueuePosition+1} OF ${callableLeads.length}`:"NO QUEUE"}</em>
+            <div><span>CONTACT</span><b>{manualCall?"Manual call":lead.name}</b></div>
+            <em className={connected?"live":""}>{postCallLeadId?"WRAP UP":connected?"LIVE":callableLeads.length?`${leadQueuePosition+1} OF ${callableLeads.length}`:"OPEN"}</em>
           </header>
           {lead.id&&!manualCall?<>
             <div className="lead-file-identity"><span className="file-avatar">{lead.name.split(" ").map(part=>part[0]).slice(0,2).join("")}</span><div><a href={`tel:${lead.phone}`}>{lead.phone}</a><a href={`mailto:${lead.email}`}>{lead.email||"No email provided"}</a><small>{[lead.address,lead.city,lead.state,lead.zip].filter(Boolean).join(", ")||lead.city||"No address provided"}</small></div></div>
-            <div className="lead-file-grid">
+            {postCallLeadId===lead.id?<section className="post-call-wrap" aria-label="Post-call wrap-up">
+              <header><div><span>{postCallConnected?"CONNECTED CALL COMPLETE":"CALL ATTEMPT COMPLETE"}</span><h3>Save the outcome</h3></div><em>{lead.source||"Lead provider"}</em></header>
+              <div className="post-call-fields">
+                <label><span>Pacifica CRM stage</span><select value={postCallDraft.crmStage} onChange={event=>setPostCallDraft(draft=>({...draft,crmStage:event.target.value}))}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
+                <label><span>Pacifica outcome</span><select value={postCallDraft.crmOutcome} onChange={event=>choosePostCallOutcome(event.target.value)}><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Sold / Won</option><option>Completed</option></select></label>
+                <label className="source-result"><span>{lead.source||"Lead source"} disposition</span><select value={postCallDraft.sourceDisposition} onChange={event=>setPostCallDraft(draft=>({...draft,sourceDisposition:event.target.value}))}>{sourceDispositionOptions(lead.source,postCallDraft.sourceDisposition).map(option=><option key={option}>{option}</option>)}</select></label>
+                <label><span>Appointment / follow-up</span><input type="datetime-local" value={postCallDraft.appointmentAt} onChange={event=>setPostCallDraft(draft=>({...draft,appointmentAt:event.target.value}))}/></label>
+                <label className="wrap-notes"><span>Call notes</span><textarea value={postCallDraft.notes} onChange={event=>setPostCallDraft(draft=>({...draft,notes:event.target.value}))} placeholder="Conversation, needs, objections, and next steps…"/></label>
+              </div>
+              <footer>{lead.sourceSyncStatus?<small>{lead.sourceSyncStatus}</small>:<span/>}<button disabled={sourceSyncing} onClick={()=>void savePostCall()}>{sourceSyncing?"Saving…":resumeAfterWrap?"Save & call next":"Save result"}</button></footer>
+            </section>:null}
+            <section className="lead-detail-group"><span>LEAD DETAILS</span><div className="lead-file-grid">
               <label><span>Lead source</span><b>{lead.source||"Unknown"}</b></label>
               <label><span>Product</span><b>{lead.product||"—"}</b></label>
               <label><span>Lead cost</span><b>{lead.leadCost?`$${lead.leadCost.toFixed(2)}`:"—"}</b></label>
@@ -660,42 +692,22 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
               {lead.returnStatus&&<label><span>Return status</span><b>{lead.returnStatus}</b></label>}
               {lead.employeeCount&&<label><span>Employees</span><b>{lead.employeeCount}</b></label>}
               {lead.searchPro&&<label><span>Search Pro</span><b>{lead.searchPro}</b></label>}
-              {lead.csvFileName&&<label><span>CSV source file</span><b>{lead.csvFileName}</b></label>}
-              {Object.keys(lead.importedFields||{}).length>0&&<label><span>CSV fields captured</span><b>{Object.keys(lead.importedFields||{}).length}</b></label>}
-              {Object.entries(lead.extraFields||{}).map(([field,value])=><label key={field}><span>{field.replace(/([a-z])([A-Z])/g,"$1 $2").replace(/[_-]+/g," ")}</span><b>{value}</b></label>)}
-            </div>
-            {postCallLeadId===lead.id?<section className="post-call-wrap" aria-label="Post-call wrap-up">
-              <header><div><span>{postCallConnected?"CONNECTED CALL COMPLETE":"CALL ATTEMPT COMPLETE"}</span><h3>Record the result before the next call.</h3></div><em>{lead.source||"Lead provider"}</em></header>
-              <div className="post-call-fields">
-                <label><span>Pacifica CRM stage</span><select value={postCallDraft.crmStage} onChange={event=>setPostCallDraft(draft=>({...draft,crmStage:event.target.value}))}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
-                <label><span>Pacifica outcome</span><select value={postCallDraft.crmOutcome} onChange={event=>choosePostCallOutcome(event.target.value)}><option>No answer</option><option>Voicemail</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Sold / Won</option><option>Completed</option></select></label>
-                <label className="source-result"><span>{lead.source||"Lead source"} disposition</span><select value={postCallDraft.sourceDisposition} onChange={event=>setPostCallDraft(draft=>({...draft,sourceDisposition:event.target.value}))}>{sourceDispositionOptions(lead.source,postCallDraft.sourceDisposition).map(option=><option key={option}>{option}</option>)}</select><small>This updates the provider separately from your Pacifica workflow when its outbound API is connected.</small></label>
-                <label><span>Appointment / follow-up</span><input type="datetime-local" value={postCallDraft.appointmentAt} onChange={event=>setPostCallDraft(draft=>({...draft,appointmentAt:event.target.value}))}/></label>
-                <label className="wrap-notes"><span>Call notes</span><textarea value={postCallDraft.notes} onChange={event=>setPostCallDraft(draft=>({...draft,notes:event.target.value}))} placeholder="Conversation, needs, objections, and next steps…"/></label>
-              </div>
-              <footer><small>{lead.sourceSyncStatus||`Pacifica will save this result. ${lead.source||"Lead-source"} sync runs after its status API is connected.`}</small><button disabled={sourceSyncing} onClick={()=>void savePostCall()}>{sourceSyncing?"Saving…":resumeAfterWrap?"Save & call next":"Save result"}</button></footer>
-            </section>:<div className="lead-file-edit">
-              <label><span>CRM stage</span><select value={lead.stage} onChange={event=>updateLead(lead.id,{stage:event.target.value})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
-              <label><span>Outcome</span><select value={lead.outcome} onChange={event=>updateLead(lead.id,{outcome:event.target.value})}><option>Not contacted</option><option>No answer</option><option>Interested</option><option>Appointment set</option><option>Not interested</option><option>Wrong number</option><option>Completed</option></select></label>
-              <label><span>Follow-up</span><input value={lead.followUp} onChange={event=>updateLead(lead.id,{followUp:event.target.value})} placeholder="Date, time, or reminder"/></label>
-              <label className="file-notes"><span>Agent notes</span><textarea value={lead.notes} onChange={event=>updateLead(lead.id,{notes:event.target.value})} placeholder="Add notes while you speak…"/></label>
-            </div>}
-            <footer><button onClick={()=>{setSelectedLead(lead.id);setView("leads")}}>Open complete CRM record</button><button className={lead.doNotCall?"dnc-active":""} onClick={()=>updateLead(lead.id,{doNotCall:!lead.doNotCall})}>{lead.doNotCall?"Remove DNC":"Mark DNC"}</button></footer>
+            </div></section>
+            {importedLeadDetails.length>0&&<section className="lead-detail-group imported-lead-details"><span>QUOTE & IMPORTED DETAILS</span><div className="lead-file-grid">{importedLeadDetails.map(detail=><label key={detail.label}><span>{detail.label}</span><b title={detail.value}>{detail.value}</b></label>)}</div></section>}
+            {lead.notes&&<section className="lead-existing-notes"><span>PREVIOUS NOTES</span><p>{lead.notes}</p></section>}
           </>:manualCall?<div className="manual-call-file">
             <div className={`manual-call-orbit ${connected?"connected":""}`}><Icon name="dial"/></div>
             <span>MANUAL OUTBOUND CALL</span>
             <b>{dialNumber||"Unknown number"}</b>
-            <p>{connected?`Connected for ${fmt}`:dialing?"Pacifica is connecting this call…":"Call completed"}</p>
             <dl><div><dt>Caller ID</dt><dd>{callerId}</dd></div><div><dt>Connection</dt><dd>{connected?"Live over browser / Wi-Fi":"Secure browser phone"}</dd></div></dl>
             <button onClick={addManualCallContact}>+ Add this number to Contacts</button>
-            <small>The call stays active while you create the contact.</small>
-          </div>:<div className="lead-file-empty"><Icon name="users"/><b>No queued lead selected</b><span>Import contacts or enter a number. Pacifica will automatically open the CRM record when the number already belongs to a contact.</span></div>}
+          </div>:<div className="lead-file-empty"><Icon name="users"/><b>No contact selected</b></div>}
         </aside>
-        <aside className={`phone-pad side-pad ${dialing?"phone-active":""}`} aria-label="Phone keypad"><header><span><i/> {connected?"LIVE KEYPAD":"MANUAL KEYPAD"}</span><span className="pad-tools"><small>{held?"ON HOLD":dialing?"ACTIVE":phoneReady?"READY":"SETUP"}</small></span></header><div className="number-display"><label htmlFor="manual-dial-number">{connected?"TOUCH TONES":"NUMBER TO CALL"}</label><div className="number-input-shell"><Icon name="dial"/><input id="manual-dial-number" type="tel" inputMode="tel" autoComplete="tel" aria-label={connected?"Touch tones sent":"Phone number to call"} value={connected?dtmfDisplay:dialNumber} readOnly={dialing} onKeyDown={event=>{if(event.key==="Enter"&&!dialing)callTypedNumber()}} onChange={e=>setDialNumber(e.target.value.replace(/[^0-9+*#() -]/g,""))} placeholder={connected?"Touch tones":"Enter a number"}/></div><small><i className={phoneReady?"ready":""}/>{phoneStatus}</small></div><div className="key-grid">{[["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""] ,["0","+"],["#",""]].map(([n,l])=><button key={n} type="button" aria-label={`Key ${n}`} onClick={()=>pressKey(n)}><b>{n}</b><small>{l}</small></button>)}</div>{connected?<div className="live-phone-actions"><button className={muted?"active":""} onClick={toggleMute} disabled={held}><Icon name="mute"/><span>{muted?"Unmute":"Mute"}</span></button><button className={held?"active hold":""} onClick={toggleHold}><Icon name={held?"play":"pause"}/><span>{held?"Resume":"Hold"}</span></button><button className="hangup" onClick={hangup}><Icon name="end"/><span>End</span></button></div>:<div className="phone-actions"><button className="erase" aria-label="Delete last digit" title="Delete last digit" onClick={()=>setDialNumber(v=>v.slice(0,-1))} disabled={!dialNumber||dialing}>⌫</button><button className="phone-call" aria-label={dialing?"Call starting":"Call entered number"} title={phoneReady?"Call now":"Phone setup is required"} onClick={callTypedNumber} disabled={dialing||!phoneReady||dialDigits(dialNumber).length<7}><Icon name="dial"/><span>{dialing?"Starting":"Call now"}</span></button><span/></div>}<p>{connected?"Use the keypad for menus. Every key sends a live touch tone.":phoneReady?"One click starts the call using your browser microphone.":"Finish Phone Setup before placing calls."}</p></aside></div>
+        <aside className={`phone-pad side-pad ${dialing?"phone-active":""}`} aria-label="Phone keypad"><header><span><i/> {connected?"LIVE KEYPAD":"MANUAL KEYPAD"}</span><span className="pad-tools"><small>{held?"ON HOLD":dialing?"ACTIVE":phoneReady?"READY":"SETUP"}</small></span></header><div className="number-display"><label htmlFor="manual-dial-number">{connected?"TOUCH TONES":"NUMBER TO CALL"}</label><div className="number-input-shell"><Icon name="dial"/><input id="manual-dial-number" type="tel" inputMode="tel" autoComplete="tel" aria-label={connected?"Touch tones sent":"Phone number to call"} value={connected?dtmfDisplay:dialNumber} readOnly={dialing} onKeyDown={event=>{if(event.key==="Enter"&&!dialing)callTypedNumber()}} onChange={e=>setDialNumber(e.target.value.replace(/[^0-9+*#() -]/g,""))} placeholder={connected?"Touch tones":"Enter a number"}/></div></div><div className="key-grid">{[["1",""],["2","ABC"],["3","DEF"],["4","GHI"],["5","JKL"],["6","MNO"],["7","PQRS"],["8","TUV"],["9","WXYZ"],["*",""] ,["0","+"],["#",""]].map(([n,l])=><button key={n} type="button" aria-label={`Key ${n}`} onClick={()=>pressKey(n)}><b>{n}</b><small>{l}</small></button>)}</div>{connected?<div className="live-phone-actions"><button className={muted?"active":""} onClick={toggleMute} disabled={held}><Icon name="mute"/><span>{muted?"Unmute":"Mute"}</span></button><button className={held?"active hold":""} onClick={toggleHold}><Icon name={held?"play":"pause"}/><span>{held?"Resume":"Hold"}</span></button><button className="hangup" onClick={hangup}><Icon name="end"/><span>End</span></button></div>:<div className="phone-actions"><button className="erase" aria-label="Delete last digit" title="Delete last digit" onClick={()=>setDialNumber(v=>v.slice(0,-1))} disabled={!dialNumber||dialing}>⌫</button><button className="phone-call" aria-label={dialing?"Call starting":"Call entered number"} title={phoneReady?"Call now":"Phone setup is required"} onClick={callTypedNumber} disabled={dialing||!phoneReady||dialDigits(dialNumber).length<7}><Icon name="dial"/><span>{dialing?"Starting":"Call now"}</span></button><span/></div>}</aside></div>
 
         <section className="bottom-grid">
-          <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b><small>Tracked by the browser dialer</small></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b><small>Connected calls recorded</small></article><article><span>PHONE STATUS</span><b className="phone-stat">{phoneReady?"Ready":"Setup"}</b><small>{phoneStatus}</small></article></div>
-          <article className="queue-card"><header><div><span>PRIORITY FLOW · {queueLabel(activeLine,workspaceProfile.mode).toUpperCase()}</span><b>{callableLeads.length?`${Math.max(0,callableLeads.length-(dialing?1:0))} contacts ranked by next best action`:"No outreach due right now"}</b></div><button onClick={()=>setView("leads")}>View contacts</button></header>{upNextLeads.map((l,i)=><div className="queue-row" key={l.id}><em>{String(i+1).padStart(2,"0")}</em><span className="mini-avatar">{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><div><b>{l.name}</b><small>{l.phone} · {l.city}</small></div></div>)}{!callableLeads.length&&<div className="empty-queue"><b>{lineLeads.length?"Every active opportunity is handled":"No contacts yet"}</b><span>{lineLeads.length?"Interested, working, appointed, closed, and do-not-call contacts remain safely in the CRM without re-entering outreach.":`Import a CSV or TXT file into the ${queueLabel(activeLine,workspaceProfile.mode)} CRM.`}</span>{!lineLeads.length&&<button onClick={()=>inputRef.current?.click()}>Import contacts</button>}</div>}</article>
+          <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b></article><article><span>PHONE</span><b className="phone-stat">{phoneReady?"Ready":"Setup"}</b></article></div>
+          <article className="queue-card"><header><div><span>PRIORITY FLOW · {queueLabel(activeLine,workspaceProfile.mode).toUpperCase()}</span><b>{callableLeads.length?`${Math.max(0,callableLeads.length-(dialing?1:0))} READY`:"QUEUE CLEAR"}</b></div><button onClick={()=>setView("leads")}>Contacts</button></header>{upNextLeads.map((l,i)=><div className="queue-row" key={l.id}><em>{String(i+1).padStart(2,"0")}</em><span className="mini-avatar">{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><div><b>{l.name}</b><small>{l.phone} · {l.city}</small></div></div>)}{!callableLeads.length&&<div className="empty-queue"><b>{lineLeads.length?"Queue clear":"No contacts"}</b>{!lineLeads.length&&<button onClick={()=>inputRef.current?.click()}>Import</button>}</div>}</article>
         </section>
       </div>}
 

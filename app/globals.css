@@ -1030,7 +1030,7 @@ button,input,select,textarea{font-family:inherit}
 .membership-actions span{color:#6e8291;font-size:8px}
 @media(max-width:780px){.top-auth>button{display:none}.membership-actions{align-items:flex-start;flex-direction:column}.membership-actions span{line-height:1.5}}
 
-/* Dialer-side lead file: follows the active queue record and stays editable during calls. */
+/* Dialer-side lead file: read-only context during calls, focused wrap-up after hang-up. */
 .dialer-main-grid{grid-template-columns:minmax(0,1fr) 370px;align-items:start}
 .dialer-main-grid>.hero-call{grid-column:1;grid-row:1 / span 2}
 .dialer-main-grid>.lead-file{grid-column:2;grid-row:1}
@@ -2051,6 +2051,51 @@ html[data-theme="light"] .recording-readiness.off{border-color:#ead9b9;backgroun
 html[data-theme="light"] .recording-processing{border-color:#afd6c7;background:#eaf8f2;color:#0f785c}html[data-theme="light"] .recording-missing{border-color:#d7e2dd;background:#f4f7f5;color:#73877f}
 @media(max-width:700px){.recording-readiness{align-items:stretch;flex-direction:column}.recording-readiness button{width:100%}}
 @media(prefers-reduced-motion:reduce){.recording-processing i{animation:none}}
+
+/* Conversation-first dialer: lead context while speaking, decisions only after hang-up. */
+.focused-call .call-grid{padding:18px 20px 22px;border-top:0}
+.call-status-line{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;max-width:760px;margin:0 auto 14px;color:var(--ui-muted)}
+.call-status-line span{display:inline-flex;align-items:center;gap:7px;color:var(--ui-accent);font-size:8px;font-weight:900;letter-spacing:.13em}
+.call-status-line span i{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 12%,transparent)}
+.call-status-line em{justify-self:end;padding:5px 8px;border:1px solid var(--ui-border);border-radius:999px;background:var(--ui-surface-soft);color:var(--ui-muted);font-size:7px;font-style:normal;font-weight:850;letter-spacing:.06em}
+.focused-call .contact-card{max-width:760px;min-height:90px;margin:0 auto;padding:15px 16px;border-radius:13px;background:var(--ui-surface-soft);border-color:var(--ui-border);box-shadow:none}
+.focused-call .contact-card h2{margin:0 0 5px;color:var(--ui-text);font-size:20px;letter-spacing:-.025em}
+.focused-call .contact-card a{color:var(--ui-accent);font-size:11px;font-weight:750}
+.focused-call .contact-card p{color:var(--ui-muted)}
+.focused-call .avatar{width:54px;height:54px;background:var(--ui-accent-soft);border:1px solid var(--ui-border-strong);color:var(--ui-accent)}
+.focused-call .timer{color:var(--ui-text);font-size:22px}
+.focused-call .signal{height:64px}
+.focused-call .call-controls.idle{min-height:58px}
+.focused-call.wrap-ready .call-grid{padding-bottom:18px}
+.focused-call.wrap-ready .contact-card{min-height:76px}
+
+.lead-detail-group{border-bottom:1px solid var(--ui-border)}
+.lead-detail-group>span,.lead-existing-notes>span{display:block;padding:12px 13px 8px;color:var(--ui-accent);font-size:7px;font-weight:900;letter-spacing:.13em}
+.lead-detail-group .lead-file-grid{border-bottom:0}
+.lead-file-grid b{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.42}
+.lead-existing-notes{padding-bottom:13px;border-bottom:1px solid var(--ui-border)}
+.lead-existing-notes p{margin:0 13px;padding:11px 12px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-surface-soft);color:var(--ui-text);font-size:9px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.post-call-wrap{order:-1;margin:12px;border-radius:12px}
+.post-call-wrap>header{padding:13px 14px}
+.post-call-wrap>footer button{min-height:38px;border-radius:8px;padding-inline:14px}
+.stats-row b{margin-bottom:0}
+.lead-file-empty{min-height:180px}
+
+html[data-theme="light"] .focused-call .contact-card{background:#f8fbf9;border-color:#d8e6e0}
+html[data-theme="light"] .call-status-line em{background:#f6faf8;border-color:#d7e5df;color:#5e786e}
+html[data-theme="light"] .lead-detail-group,html[data-theme="light"] .lead-existing-notes{border-color:#dce7e2}
+html[data-theme="light"] .lead-detail-group>span,html[data-theme="light"] .lead-existing-notes>span{color:#117c63}
+html[data-theme="light"] .lead-existing-notes p{background:#f7faf8;border-color:#d8e5df;color:#27493d}
+
+@media(min-width:1450px){
+  .dialer-main-grid{grid-template-columns:minmax(420px,.9fr) minmax(430px,1.05fr) 280px}
+  .dialer-main-grid>.lead-file{max-height:calc(100vh - 150px);overflow:auto;scrollbar-gutter:stable}
+  .lead-file>header{position:sticky;top:0;z-index:3}
+}
+@media(max-width:700px){
+  .call-status-line{grid-template-columns:auto 1fr}.call-status-line em{justify-self:end}
+  .focused-call .contact-card{align-items:center}.focused-call .contact-card h2{font-size:17px}.focused-call .timer{font-size:18px}
+}
 
 /* Dialer atelier: less dashboard chrome, more focused conversation flow. */
 .hero-head>div{max-width:760px}
