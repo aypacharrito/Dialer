@@ -1,19 +1,16 @@
-PACIFICA CRM A2P SITE FIXES
+PACIFICA VERCEL FIX
 
-Drop these files into the ROOT of your GitHub repo and allow them to replace the matching existing files.
+Problem:
+The root Next.js TypeScript config includes every **/*.ts and **/*.tsx file, so Vercel
+tries to type-check the separate Expo app under /mobile without installing the Expo
+dependencies from mobile/package.json.
 
-Included:
-- app/sms/page.tsx                 NEW
-- app/terms/page.tsx               REPLACE
-- app/privacy/page.tsx             REPLACE
-- app/landing/LandingClient.tsx    REPLACE
+Fix:
+1. Replace root /tsconfig.json with the included tsconfig.json.
+2. Replace root /eslint.config.mjs with the included eslint.config.mjs.
+3. Commit and push.
+4. Redeploy Vercel.
 
-IMPORTANT:
-Before deploying, open app/sms/page.tsx and replace:
-+1 (XXX) XXX-XXXX
-with the actual Pacifica CRM Twilio number used for this messaging campaign.
-
-After deployment verify:
-https://pacificacrm.com/sms
-https://pacificacrm.com/terms
-https://pacificacrm.com/privacy
+Expo remains independent:
+- Vercel builds the repository root web app.
+- Expo/EAS uses Base directory: mobile
