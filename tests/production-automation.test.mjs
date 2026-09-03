@@ -41,3 +41,10 @@ test("recording intelligence merges into the browser call log by Call SID",()=>{
   assert.equal(merged.callLogs[0].recordingSid,"RE123");
   assert.equal(merged.callLogs[0].transcript,"Customer wants Tuesday");
 });
+
+test("server reminder receipts survive a stale browser save",()=>{
+  const serverLead=lead({clientReminderKeys:["renewal:2026-10-02:owner:30"]});
+  const clientLead=lead({clientReminderKeys:[]});
+  const merged=mergeStoredWorkspace({leads:[serverLead],callLogs:[],profile},{leads:[clientLead],callLogs:[],profile});
+  assert.deepEqual(merged.leads[0].clientReminderKeys,["renewal:2026-10-02:owner:30"]);
+});

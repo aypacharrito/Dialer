@@ -127,6 +127,13 @@ export default function TermsPage() {
 
         <h2>8. Third-party services</h2>
         <p>
+          Document scanning is an optional data-entry aid. Users may scan only
+          documents they are authorized to possess and process, and must verify
+          extracted fields before saving or using them. Pacifica CRM does not
+          guarantee that automated extraction is complete or error-free.
+        </p>
+
+        <p>
           Pacifica CRM may use third-party providers for communications,
           identity, payments, hosting, security, and other functions.
           Availability or delivery through outside networks and carriers

@@ -117,7 +117,18 @@ export default function PrivacyPage() {
           lawful use of personal information.
         </p>
 
-        <h2>6. Data retention</h2>
+        <h2>6. Document scanning</h2>
+
+        <p>
+          When a user chooses document scanning, Pacifica CRM sends the
+          selected image to its artificial-intelligence service provider only
+          to extract visible lead and policy fields. Scanned images are not
+          saved as CRM attachments by this feature. Users should scan only
+          documents they are authorized to process and must review extracted
+          information before saving a contact.
+        </p>
+
+        <h2>7. Data retention</h2>
 
         <p>
           We retain information for as long as reasonably necessary to
@@ -126,7 +137,7 @@ export default function PrivacyPage() {
           obligations.
         </p>
 
-        <h2>7. Security</h2>
+        <h2>8. Security</h2>
 
         <p>
           We use reasonable administrative, technical, and organizational
@@ -134,7 +145,7 @@ export default function PrivacyPage() {
           storage system can be guaranteed to be completely secure.
         </p>
 
-        <h2>8. Your choices and rights</h2>
+        <h2>9. Your choices and rights</h2>
 
         <p>
           Depending on where you live, you may have rights concerning access,
@@ -143,7 +154,7 @@ export default function PrivacyPage() {
           messages.
         </p>
 
-        <h2>9. Cookies</h2>
+        <h2>10. Cookies</h2>
 
         <p>
           Pacifica CRM and its service providers may use cookies and similar
@@ -151,14 +162,14 @@ export default function PrivacyPage() {
           performance, and service operation.
         </p>
 
-        <h2>10. Children</h2>
+        <h2>11. Children</h2>
 
         <p>
           Pacifica CRM is a business service and is not directed to children
           under 13.
         </p>
 
-        <h2>11. Policy updates</h2>
+        <h2>12. Policy updates</h2>
 
         <p>
           We may update this Privacy Policy to reflect changes in our
@@ -166,7 +177,7 @@ export default function PrivacyPage() {
           posted on this page.
         </p>
 
-        <h2>12. Contact</h2>
+        <h2>13. Contact</h2>
 
         <p>
           Privacy questions may be sent to{" "}

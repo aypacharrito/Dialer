@@ -11,9 +11,11 @@ Pacifica is a lead-sales command center with a CRM, Twilio auto dialer, quote wo
 - Local number-health risk signals and Twilio Trust Hub guidance
 - Permanent manual keypad with in-call touch tones
 - CSV, TSV, and TXT contact import
+- Camera document capture that turns a license or policy image into a reviewable lead draft
 - Power-dialing queue that skips closed and do-not-call records
 - Contact drawer with stage, outcome, follow-up, notes, and DNC controls
 - New Lead, Follow-up, Appointment, and Closed pipeline
+- Active-client book of business with renewal and birthday reminders
 - CRM search and stage filters
 - Live reports based on saved contact data
 - Optional insurance quote intake linked to CRM contacts
@@ -121,9 +123,15 @@ Add these Production environment variables in Vercel and redeploy:
 ```text
 OPENAI_API_KEY
 OPENAI_MODEL=gpt-5.6-luna
+# Optional: choose a separate vision-capable model for document capture
+OPENAI_VISION_MODEL=gpt-5-mini
 ```
 
-The key is used only in the server-side `/api/ai/crm` route and must never be prefixed with `NEXT_PUBLIC_`. Phone numbers and emails are excluded from model requests. CRM notes are excluded unless the agent turns on **Include CRM notes** for that request. AI-proposed record changes always require a human to click **Apply update**. Without an API key, the page provides a limited local priority analysis so the interface remains testable.
+The key is used only by server-side AI routes and must never be prefixed with `NEXT_PUBLIC_`. Phone numbers and emails are excluded from CRM-assistant requests. CRM notes are excluded unless the agent turns on **Include CRM notes** for that request. AI-proposed record changes always require a human to click **Apply update**. Document capture sends the selected image to the configured OpenAI model, returns a reviewable lead draft, and does not save the image as a CRM attachment. Without an API key, local priority analysis remains available, but document capture stays disabled.
+
+## Activate client renewal and birthday reminders
+
+Open **Clients → Reminder settings**, save the owner mobile number, and choose whether to text the owner, documented client opt-ins, or both. Reminders use the Twilio number assigned to that workspace and the existing daily `/api/cron/follow-ups` job. Production SMS still requires Twilio credentials, an SMS-capable assigned number, `TWILIO_A2P_APPROVED=true`, Redis, and `CRON_SECRET`. Pacifica never sends a client reminder without documented SMS opt-in and never resends the same reminder milestone after successful delivery.
 
 ### If the dialer stays on “Calling through Twilio”
 

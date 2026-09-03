@@ -40,6 +40,10 @@ export type WorkspaceProfile={
   teamRoster:WorkspaceTeamMember[];
   callRecordingEnabled:boolean;
   callAiSummaryEnabled:boolean;
+  clientRemindersEnabled:boolean;
+  customerReminderSmsEnabled:boolean;
+  ownerReminderSmsEnabled:boolean;
+  ownerReminderPhone:string;
 };
 
 export const defaultWorkspaceProfile:WorkspaceProfile={
@@ -61,6 +65,10 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   teamRoster:[],
   callRecordingEnabled:false,
   callAiSummaryEnabled:false,
+  clientRemindersEnabled:false,
+  customerReminderSmsEnabled:false,
+  ownerReminderSmsEnabled:false,
+  ownerReminderPhone:"",
 };
 
 function cleanSequence(raw:unknown,index:number):AutomationSequence|null{
@@ -108,5 +116,9 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     }):[],
     callRecordingEnabled:profile.callRecordingEnabled===true,
     callAiSummaryEnabled:profile.callAiSummaryEnabled===true,
+    clientRemindersEnabled:profile.clientRemindersEnabled===true,
+    customerReminderSmsEnabled:profile.customerReminderSmsEnabled===true,
+    ownerReminderSmsEnabled:profile.ownerReminderSmsEnabled===true,
+    ownerReminderPhone:String(profile.ownerReminderPhone||"").trim().slice(0,40),
   };
 }
