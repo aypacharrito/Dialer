@@ -2199,3 +2199,40 @@ html[data-theme] .settings-section-intro em{padding:6px 8px}
   html[data-theme] .today-actions{display:grid;grid-template-columns:1fr 1fr}
   html[data-theme] .settings-section-intro>div{align-items:flex-start;flex-direction:column;gap:5px}
 }
+
+/* Document intake and contact hierarchy */
+html[data-theme] .crm-view{width:min(100%,1640px);margin:0 auto}
+html[data-theme] .crm-view .module-bar>.eyebrow{font-size:11px;letter-spacing:.12em}
+.module-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+html[data-theme] .module-actions button{min-height:40px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--ui-border-strong);border-radius:10px;background:var(--ui-surface);color:var(--ui-text);font:inherit;font-size:9px;font-weight:900;white-space:nowrap;cursor:pointer;transition:transform .16s ease,box-shadow .2s ease,border-color .2s ease,background-color .2s ease}
+html[data-theme] .module-actions button svg{width:15px;height:15px;color:var(--ui-accent)}
+html[data-theme] .module-actions button:not(:disabled):hover{border-color:var(--ui-accent);background:var(--ui-surface-hover);box-shadow:0 8px 20px rgba(25,69,54,.09);transform:translateY(-1px)}
+html[data-theme] .module-actions button.primary{min-width:108px;border-color:var(--ui-accent);background:var(--ui-accent);color:#fff;box-shadow:0 8px 20px rgba(17,134,109,.18)}
+html[data-theme] .module-actions button.primary:hover{background:var(--ui-accent-hover);color:#fff}
+html[data-theme] .module-actions button:disabled{opacity:.6;cursor:wait}
+html[data-theme] .crm-view .crm-summary>article{min-height:92px;padding:17px 19px}
+html[data-theme] .crm-view .crm-summary>article b{font-size:30px;line-height:1}
+html[data-theme] .crm-view .smart-table .table-head{min-height:48px;font-size:9px}
+html[data-theme] .crm-view .smart-table .table-row{min-height:76px;height:auto;padding-block:10px;font-size:12px}
+html[data-theme] .crm-view .smart-table .table-row b{font-size:12px}
+html[data-theme] .crm-view .smart-table .table-row small{font-size:9px;line-height:1.4}
+
+.scan-lead-action{border-style:dashed!important}
+.scan-lead-action.busy{border-color:var(--ui-accent);background:var(--ui-accent-soft)}
+.scan-lead-action button:disabled{opacity:.62;cursor:wait}
+
+.file-drop-overlay{position:fixed;z-index:250;inset:12px;display:grid;place-items:center;border:2px dashed color-mix(in srgb,var(--ui-accent) 72%,#fff);border-radius:20px;background:color-mix(in srgb,var(--ui-surface) 86%,transparent);backdrop-filter:blur(12px);pointer-events:none;animation:fileDropIn .16s ease-out}
+.file-drop-overlay>div{width:min(460px,calc(100vw - 56px));padding:40px 30px;display:grid;justify-items:center;border:1px solid var(--ui-border-strong);border-radius:18px;background:var(--ui-surface);box-shadow:0 26px 80px rgba(10,52,40,.2);text-align:center}
+.file-drop-overlay svg{width:32px;height:32px;color:var(--ui-accent)}
+.file-drop-overlay span{margin-top:18px;color:var(--ui-accent);font-size:9px;font-weight:950;letter-spacing:.16em}
+.file-drop-overlay b{margin-top:8px;color:var(--ui-text);font-size:22px;line-height:1.15;letter-spacing:-.025em}
+.file-drop-overlay small{max-width:350px;margin-top:9px;color:var(--ui-muted);font-size:10px;line-height:1.55}
+@keyframes fileDropIn{from{opacity:0;transform:scale(.99)}to{opacity:1;transform:scale(1)}}
+
+@media(max-width:760px){
+  .module-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  html[data-theme] .module-actions button.primary{grid-column:1/-1}
+  html[data-theme] .module-actions button{width:100%}
+  html[data-theme] .crm-view .module-bar>.eyebrow{text-align:center}
+}
+@media(prefers-reduced-motion:reduce){.file-drop-overlay{animation:none}}

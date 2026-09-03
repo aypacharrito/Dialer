@@ -54,6 +54,10 @@ export function documentLeadName(extraction:DocumentLeadExtraction){
   return extraction.fullName||[extraction.firstName,extraction.middleName,extraction.lastName].filter(Boolean).join(" ");
 }
 
+export function documentLeadHasUsefulData(extraction:DocumentLeadExtraction){
+  return Boolean(documentLeadName(extraction)||extraction.licenseNumber||extraction.policyNumber||extraction.vin||extraction.address||extraction.dateOfBirth||extraction.phone||extraction.email||extraction.otherFields.length);
+}
+
 export function documentLeadImportedFields(extraction:DocumentLeadExtraction){
   const pairs:Array<[string,string]>=[
     ["Document type",extraction.documentType],["Full name",documentLeadName(extraction)],["Phone",extraction.phone],["Email",extraction.email],

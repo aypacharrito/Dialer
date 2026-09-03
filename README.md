@@ -11,7 +11,7 @@ Pacifica is a lead-sales command center with a CRM, Twilio auto dialer, quote wo
 - Local number-health risk signals and Twilio Trust Hub guidance
 - Permanent manual keypad with in-call touch tones
 - CSV, TSV, and TXT contact import
-- Camera document capture that turns a license or policy image into a reviewable lead draft
+- Camera or drag-and-drop document capture that rotates difficult license and policy photos into a reviewable lead draft
 - Power-dialing queue that skips closed and do-not-call records
 - Contact drawer with stage, outcome, follow-up, notes, and DNC controls
 - New Lead, Follow-up, Appointment, and Closed pipeline

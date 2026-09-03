@@ -15,6 +15,6 @@ Do not upload node_modules, .next, dist, or public/clearvoice. They are generate
 Verification completed before packaging:
 - ESLint passed
 - Vercel production build passed
-- 67 of 67 unit tests passed
+- 68 of 68 unit tests passed
 
 After deployment, add OPENAI_API_KEY (and optionally OPENAI_VISION_MODEL) in Vercel for document capture. Client and owner reminder texts also require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.
