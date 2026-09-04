@@ -64,7 +64,11 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": "https://pacificacrm.com"
+      "apiUrl": "https://pacificacrm.com",
+      "router": {},
+      "eas": {
+        "projectId": "81a757fb-5912-49c8-8f7a-821eded66e39"
+      }
     }
   }
 }
