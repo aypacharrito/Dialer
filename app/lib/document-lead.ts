@@ -25,6 +25,8 @@ export type DocumentLeadExtraction={
   email:string;
   phone:string;
   product:string;
+  policyPremium:string;
+  policyTermMonths:string;
   otherFields:DocumentLeadField[];
 };
 
@@ -34,6 +36,7 @@ const keys:[keyof Omit<DocumentLeadExtraction,"otherFields">,number][]=[
   ["licenseNumber",80],["licenseState",60],["licenseExpiration",30],["policyNumber",100],
   ["carrier",160],["policyEffectiveDate",30],["policyExpirationDate",30],["vin",40],
   ["vehicleYear",10],["vehicleMake",80],["vehicleModel",100],["email",180],["phone",50],["product",100],
+  ["policyPremium",30],["policyTermMonths",10],
 ];
 
 function text(value:unknown,max:number){return String(value||"").replace(/\s+/g," ").trim().slice(0,max)}
@@ -58,6 +61,10 @@ export function documentLeadHasUsefulData(extraction:DocumentLeadExtraction){
   return Boolean(documentLeadName(extraction)||extraction.licenseNumber||extraction.policyNumber||extraction.vin||extraction.address||extraction.dateOfBirth||extraction.phone||extraction.email||extraction.otherFields.length);
 }
 
+export function documentLeadCompletenessScore(extraction:DocumentLeadExtraction){
+  return (documentLeadName(extraction)?2:0)+(extraction.dateOfBirth?1:0)+(extraction.address?2:0)+(extraction.city?.trim()?0.5:0)+(extraction.state?.trim()?0.5:0)+(extraction.zip?0.5:0)+(extraction.licenseNumber?2:0)+(extraction.licenseExpiration?1:0)+(extraction.policyNumber?2:0)+(extraction.carrier?1:0)+(extraction.policyEffectiveDate?0.5:0)+(extraction.policyExpirationDate?1:0)+(extraction.vin?2:0)+([extraction.vehicleYear,extraction.vehicleMake,extraction.vehicleModel].filter(Boolean).length?1:0)+(extraction.phone?1:0)+(extraction.email?1:0)+Math.min(2,extraction.otherFields.length*.5);
+}
+
 export function documentLeadImportedFields(extraction:DocumentLeadExtraction){
   const pairs:Array<[string,string]>=[
     ["Document type",extraction.documentType],["Full name",documentLeadName(extraction)],["Phone",extraction.phone],["Email",extraction.email],
@@ -67,6 +74,7 @@ export function documentLeadImportedFields(extraction:DocumentLeadExtraction){
     ["Insurance carrier",extraction.carrier],["Policy effective date",extraction.policyEffectiveDate],
     ["Policy expiration date",extraction.policyExpirationDate],["VIN",extraction.vin],
     ["Vehicle year",extraction.vehicleYear],["Vehicle make",extraction.vehicleMake],["Vehicle model",extraction.vehicleModel],
+    ["Policy premium",extraction.policyPremium],["Policy term months",extraction.policyTermMonths],
     ...extraction.otherFields.map(field=>[field.label,field.value] as [string,string]),
   ];
   return Object.fromEntries(pairs.filter(([,value])=>Boolean(value)));

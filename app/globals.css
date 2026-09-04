@@ -2155,6 +2155,20 @@ html[data-theme="light"] :is(.client-reminder-grid input:not([type="checkbox"]),
 @media(max-width:900px){.client-reminder-grid{grid-template-columns:1fr 1fr}.client-summary{grid-template-columns:1fr 1fr!important}}
 @media(max-width:560px){.scan-lead-action,.new-lead-modal footer{align-items:stretch;flex-direction:column}.new-lead-modal footer small{max-width:none}.new-lead-fields .wide-field,.new-lead-section-label{grid-column:auto}.client-module-bar>div{display:grid;grid-template-columns:1fr 1fr}.client-reminder-grid,.client-summary{grid-template-columns:1fr!important}}
 
+/* Contact workspace alignment and collision-safe result columns. */
+html[data-theme] .crm-tools select{
+  min-width:140px;padding-inline:14px;text-align:center;text-align-last:center;
+}
+html[data-theme] .smart-table{overflow-x:auto}
+html[data-theme] .smart-table :is(.table-head,.table-row){
+  min-width:1080px;grid-template-columns:minmax(300px,1.45fr) minmax(170px,.78fr) minmax(120px,.58fr) minmax(165px,.76fr) minmax(190px,.88fr);gap:18px;
+}
+html[data-theme] .smart-table .table-row>span{min-width:0}
+html[data-theme] .smart-table .table-row>span:nth-child(4){display:grid;align-content:center;gap:4px}
+html[data-theme] .smart-table .table-row>span:nth-child(4)>small{display:block;margin:0!important;white-space:normal}
+html[data-theme] .smart-table .table-row>span:nth-child(5){white-space:normal;overflow-wrap:anywhere}
+@media(max-width:760px){html[data-theme] .smart-table :is(.table-head,.table-row){min-width:0;grid-template-columns:1.3fr 1fr;gap:10px}html[data-theme] .smart-table :is(.table-head,.table-row)>span:nth-child(n+3){display:none}}
+
 html[data-theme] .inline-pause{
   min-height:34px;margin:10px auto 0;padding:0 13px;display:flex;align-items:center;justify-content:center;gap:7px;
   border:1px solid var(--ui-border-strong);border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);

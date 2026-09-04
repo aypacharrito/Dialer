@@ -11,6 +11,15 @@ Pacifica ClearVoice uses the following open-source projects through
 Pacifica uses these engines locally in the browser; microphone audio is not
 uploaded to a separate noise-suppression service.
 
+Pacifica local document capture also uses:
+
+- `tesseract.js` and Tesseract OCR — Apache License 2.0
+- `zxing-wasm` / ZXing-C++ — MIT License and Apache License 2.0
+- `pdfjs-dist` / Mozilla PDF.js — Apache License 2.0
+
+These components read supported license images and declaration PDFs in the
+user's browser. Pacifica does not require a paid vision API for this workflow.
+
 ## @sapphi-red/web-noise-suppressor
 
 MIT License

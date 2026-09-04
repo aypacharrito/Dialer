@@ -124,10 +124,10 @@ Add these Production environment variables in Vercel and redeploy:
 OPENAI_API_KEY
 OPENAI_MODEL=gpt-5.6-luna
 # Optional: choose a separate vision-capable model for document capture
-OPENAI_VISION_MODEL=gpt-5-mini
+OPENAI_VISION_MODEL=gpt-5.4
 ```
 
-The key is used only by server-side AI routes and must never be prefixed with `NEXT_PUBLIC_`. Phone numbers and emails are excluded from CRM-assistant requests. CRM notes are excluded unless the agent turns on **Include CRM notes** for that request. AI-proposed record changes always require a human to click **Apply update**. Document capture sends the selected image to the configured OpenAI model, returns a reviewable lead draft, and does not save the image as a CRM attachment. Without an API key, local priority analysis remains available, but document capture stays disabled.
+The key is used only by server-side AI routes and must never be prefixed with `NEXT_PUBLIC_`. Phone numbers and emails are excluded from CRM-assistant requests. CRM notes are excluded unless the agent turns on **Include CRM notes** for that request. AI-proposed record changes always require a human to click **Apply update**. Document capture sends the selected image and, when useful, an automatically rotated view to the configured OpenAI vision model at original detail. It returns a reviewable lead draft and does not save the image as a CRM attachment. Without an API key, local priority analysis remains available, but document capture stays disabled.
 
 ## Activate client renewal and birthday reminders
 

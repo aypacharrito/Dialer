@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {cleanDocumentLeadExtraction,documentLeadHasUsefulData,documentLeadImportedFields,documentLeadName} from "../app/lib/document-lead.ts";
+import {cleanDocumentLeadExtraction,documentLeadCompletenessScore,documentLeadHasUsefulData,documentLeadImportedFields,documentLeadName} from "../app/lib/document-lead.ts";
+import {parseAamvaBarcode,parseInsuranceDeclarationText,parseLicenseOcrText} from "../app/lib/local-document-parser.ts";
 
 test("document scans are cleaned without inventing missing fields",()=>{
   const extraction=cleanDocumentLeadExtraction({firstName:"  Maya ",lastName:" Chen ",address:" 10 Main St ",policyNumber:12345,otherFields:[{label:"Height",value:"5-07"},{label:"",value:"ignored"}]});
@@ -17,5 +18,27 @@ test("all useful scanned values remain visible in imported details",()=>{
 
 test("empty vision responses are rejected while partial IDs remain usable",()=>{
   assert.equal(documentLeadHasUsefulData(cleanDocumentLeadExtraction({})),false);
-  assert.equal(documentLeadHasUsefulData(cleanDocumentLeadExtraction({licenseNumber:"Y5681328"})),true);
+  assert.equal(documentLeadHasUsefulData(cleanDocumentLeadExtraction({licenseNumber:"D0000000"})),true);
+});
+
+test("complete document reads outrank partial OCR results",()=>{
+  const partial=cleanDocumentLeadExtraction({fullName:"Test Person"});
+  const complete=cleanDocumentLeadExtraction({fullName:"Test Person",dateOfBirth:"1990-01-01",address:"123 Example St",city:"Example",state:"CA",zip:"90000",licenseNumber:"D0000000",licenseExpiration:"2030-01-01"});
+  assert.ok(documentLeadCompletenessScore(complete)>=8);
+  assert.ok(documentLeadCompletenessScore(complete)>documentLeadCompletenessScore(partial));
+});
+
+test("local PDF417 parsing fills a driver-license lead without a paid API",()=>{
+  const extraction=parseAamvaBarcode("@\nANSI 636014\nDCSDOE\nDACJANE\nDADMARIE\nDAG123 MAIN ST\nDAIPASADENA\nDAJCA\nDAK911010000\nDAQD1234567\nDBA10302030\nDBB01021990\nDBCF\nDAYBRN");
+  assert.equal(extraction.fullName,"Jane Marie Doe");assert.equal(extraction.city,"Pasadena");assert.equal(extraction.licenseNumber,"D1234567");assert.equal(extraction.dateOfBirth,"1990-01-02");
+});
+
+test("local OCR parser handles the supplied California license layout",()=>{
+  const extraction=parseLicenseOcrText("California\nLN ORTIZ SANDOVAL\nFN OSCAR HECTOR\n12635 VANOWEN ST APT 11\nN HOLLYWOOD, CA 91605\nDOB 10301999\nRSTR NONE\nSEX M HAIR BLK\nEYES BRN\nHGT 5'-06\nWGT 180 lb\nEXP 10302028");
+  assert.equal(extraction.fullName,"Oscar Hector Ortiz Sandoval");assert.equal(extraction.address,"12635 Vanowen St Apt 11");assert.equal(extraction.city,"N Hollywood");assert.equal(extraction.dateOfBirth,"1999-10-30");
+});
+
+test("declaration parser captures policy, insured, vehicles, premium, and renewal",()=>{
+  const extraction=parseInsuranceDeclarationText("New Auto Policy Declarations Policy Number CAAP0001394639 From: 09/01/2026 To: 03/01/2027 Mercury Insurance Company Named Insured SULEN CHAVEZ 13190 ROAD 29 MADERA, CA 93638-5915 (818) 438-1446 losprotectores@att.net Listed Drivers SULEN CHAVEZ - 15 Years License Experience ALEJANDRO CARRANZA - 20 Years License Experience Excluded Drivers Vehicles 2021 BMW 330I SED 4DR, VIN: WBA5R1C06MFK55877 2018 BMW X5 SDRIVE35I UTL 4X2 4D, VIN: 5UXKR2C50J0Z14587 Total 6 Month Policy Premium $ 838.58");
+  assert.equal(extraction.policyNumber,"CAAP0001394639");assert.equal(extraction.fullName,"Sulen Chavez");assert.equal(extraction.policyExpirationDate,"2027-03-01");assert.equal(extraction.policyPremium,"838.58");assert.equal(extraction.policyTermMonths,"6");assert.equal(extraction.vin,"WBA5R1C06MFK55877");assert.equal(extraction.otherFields.filter(field=>/VIN$/.test(field.label)).length,2);
 });

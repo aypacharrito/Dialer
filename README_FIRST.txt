@@ -1,20 +1,20 @@
-PACIFICA CRM SCAN-TO-LEAD + CLIENT CARE UPDATE — SEPTEMBER 3, 2026
+PACIFICA CRM LOCAL SCANNER + BOOK OF BUSINESS UPDATE — SEPTEMBER 4, 2026
 
 This bundle contains the complete source changes for the professional CRM refresh, document capture, and client reminders. It is safely below GitHub's 100-file web-upload limit.
 
-1. Extract Pacifica_CRM_Premium_Dialer_Update_2026-09-02.zip on your computer.
+1. Extract Pacifica_CRM_Local_Scanner_and_Book_of_Business_2026-09-04.zip on your computer.
 2. Open https://github.com/aypacharrito/Dialer and stay on the main branch.
 3. Choose Add file > Upload files.
 4. Drag the CONTENTS of the extracted folder into the upload area. Keep the app, tests, and mobile folders intact.
 5. Commit directly to main with this message:
-   Add document capture and client renewal care
+   Add local document scanner and policy book
 6. Vercel should build the new commit automatically. If it does not, open the newest deployment and choose Redeploy.
 
-Do not upload node_modules, .next, dist, or public/clearvoice. They are generated during installation/build.
+Do not upload node_modules, .next, dist, public/clearvoice, or public/scanner. They are generated during installation/build.
 
 Verification completed before packaging:
 - ESLint passed
 - Vercel production build passed
-- 68 of 68 unit tests passed
+- 72 of 72 unit tests passed
 
-After deployment, add OPENAI_API_KEY (and optionally OPENAI_VISION_MODEL) in Vercel for document capture. Client and owner reminder texts also require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.
+The scanner does not require OPENAI_API_KEY. It first reads a license PDF417 barcode, then uses local OCR for photos, and reads text-based declaration PDFs locally. Always review extracted fields before saving. Client and owner reminder texts still require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.

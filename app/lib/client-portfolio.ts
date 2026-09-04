@@ -2,7 +2,7 @@ import type {WorkspaceProfile} from "./workspace-profile";
 
 export type ClientRecord={
   id:number;name:string;phone:string;email?:string;product?:string;source?:string;city?:string;stage?:string;outcome?:string;closedRevenue?:number;smsConsent?:boolean;smsOptOut?:boolean;
-  clientStatus?:"active"|"inactive";dateOfBirth?:string;policyNumber?:string;policyEffectiveDate?:string;policyExpirationDate?:string;renewalDate?:string;clientReminderKeys?:string[];
+  clientStatus?:"active"|"inactive";dateOfBirth?:string;policyNumber?:string;policyEffectiveDate?:string;policyExpirationDate?:string;renewalDate?:string;policyPremium?:number;policyTermMonths?:number;clientReminderKeys?:string[];
   importedFields?:Record<string,string>;extraFields?:Record<string,string>;
 };
 
@@ -27,6 +27,13 @@ export function clientDates(lead:ClientRecord){
   const policyEffectiveDate=isoDate(lead.policyEffectiveDate||importedValue(lead,["policy effective date","effective date"]));
   const policyNumber=lead.policyNumber||importedValue(lead,["policy number","policy #","policy no"]);
   return {dateOfBirth,renewalDate,policyEffectiveDate,policyNumber};
+}
+
+export function clientPolicyMetrics(lead:ClientRecord){
+  const premium=Math.max(0,Number(lead.policyPremium||importedValue(lead,["policy premium","term premium","total policy premium"]))||0);
+  const termMonths=Math.max(0,Number(lead.policyTermMonths||importedValue(lead,["policy term months","term months"]))||0);
+  const annualizedPremium=premium&&termMonths?premium*12/termMonths:premium;
+  return {premium,termMonths,annualizedPremium};
 }
 
 export function isActiveClient(lead:ClientRecord){
