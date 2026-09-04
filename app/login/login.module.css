@@ -17,6 +17,8 @@
 .clerkCard{padding-bottom:30px}
 .clerkCard h1{margin-bottom:9px}
 .clerkCard .back{display:block}
+.configKeys{display:grid;gap:8px;margin:0 0 22px}
+.configKeys code{display:block;padding:11px 12px;border:1px solid #ccd9d4;border-radius:7px;background:#eef5f1;color:#176b60;font-size:10px;overflow-wrap:anywhere}
 @media(max-width:540px){.page{padding:20px}
 .card{padding:28px}
 .card h1{font-size:32px}

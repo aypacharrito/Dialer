@@ -1,4 +1,5 @@
-.site{--ink:#101716;--muted:#66706c;--paper:#f4f2ec;--line:#d9d8d0;--mint:#baff84;--teal:#0d796f;background:var(--paper);color:var(--ink);min-height:100vh;font-family:Arial,Helvetica,sans-serif}
+.site{--ink:#101716;--muted:#66706c;--paper:#f7faf8;--panel:#ffffff;--panel-soft:#eef5f1;--line:#d8e2dd;--mint:#baff84;--teal:#0d796f;--button-ink:#102a31;--button-text:#fff;background:var(--paper);color:var(--ink);min-height:100vh;font-family:Arial,Helvetica,sans-serif;transition:background-color .25s ease,color .25s ease}
+.site[data-landing-theme="dark"]{--ink:#eef8f3;--muted:#a4b6af;--paper:#0c1413;--panel:#121d1b;--panel-soft:#172421;--line:#2b3b37;--teal:#64d7c0;--button-ink:#9bedcf;--button-text:#0d1a17;color-scheme:dark}
 .site *{box-sizing:border-box}
 .nav{height:76px;max-width:1240px;margin:auto;padding:0 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none}
@@ -6,8 +7,11 @@
 .brand>b{font-size:17px}
 .nav>div{display:flex;align-items:center;gap:25px}
 .nav>div>a{font-size:12px;color:#39423f;text-decoration:none}
-.nav .navCta{padding:11px 17px;border-radius:7px;background:var(--ink);color:white}
+.nav .navCta{padding:11px 17px;border-radius:7px;background:var(--button-ink);color:var(--button-text)}
 .nav :global(.nav-logout){border:0;background:transparent;color:#39423f;font-size:12px;padding:0;cursor:pointer}
+.themeToggle{width:36px;height:36px;border:1px solid var(--line);border-radius:50%;background:var(--panel);color:var(--ink);display:grid;place-items:center;cursor:pointer;font-size:16px;transition:transform .16s ease,background-color .2s ease,border-color .2s ease}
+.themeToggle:hover{transform:translateY(-1px);border-color:var(--teal)}
+.themeToggle:active{transform:scale(.93)}
 .hero{max-width:1240px;margin:auto;padding:92px 28px 70px;display:grid;grid-template-columns:.88fr 1.12fr;gap:58px;align-items:center}
 .kicker{font-size:10px!important;letter-spacing:.16em;font-weight:900;color:var(--teal)!important}
 .kicker i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px #baff8433;margin-right:8px}
@@ -20,7 +24,7 @@
 .pricePunch strong{font-size:12px;line-height:1.4}
 .pricePunch small{font-size:9px;color:var(--muted);letter-spacing:.04em}
 .heroActions{display:flex;align-items:center;gap:14px;margin-top:30px}
-.heroActions>a{height:48px;padding:0 19px;display:flex;align-items:center;border-radius:8px;background:var(--ink);color:white;text-decoration:none;font-size:12px;font-weight:800}
+.heroActions>a{height:48px;padding:0 19px;display:flex;align-items:center;border-radius:8px;background:var(--button-ink);color:var(--button-text);text-decoration:none;font-size:12px;font-weight:800}
 .heroActions>a+ a{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .heroActions span{margin-left:12px}
 .heroCopy>small{display:block;margin-top:14px;color:#7a817e;font-size:10px}
@@ -162,6 +166,51 @@
 .askBox,.queue,.frameStats article,.planGrid article{box-shadow:none}
 .nav .navCta,.heroActions>a,.planGrid button,.finalCta a{border-radius:6px}
 .kicker i{box-shadow:none}
+
+/* The public site owns its theme. Dashboard theme selectors on html never leak in here. */
+.site[data-landing-theme="light"] .productFrame,
+.site[data-landing-theme="light"] .featureGrid .featureWide,
+.site[data-landing-theme="light"] .pricing{background:#fff;color:#11251f;border-color:var(--line)}
+.site[data-landing-theme="light"] .productFrame{box-shadow:0 20px 55px rgba(31,67,55,.12)}
+.site[data-landing-theme="light"] .productFrame>header,
+.site[data-landing-theme="light"] .productBody>aside,
+.site[data-landing-theme="light"] .queue article,
+.site[data-landing-theme="light"] .planGrid ul{border-color:var(--line)}
+.site[data-landing-theme="light"] .productBody>aside span,
+.site[data-landing-theme="light"] .frameTop>p,
+.site[data-landing-theme="light"] .queue span,
+.site[data-landing-theme="light"] .featureWide>p,
+.site[data-landing-theme="light"] .pricing .sectionIntro>p:last-child,
+.site[data-landing-theme="light"] .planGrid article>p,
+.site[data-landing-theme="light"] .planGrid h3 small,
+.site[data-landing-theme="light"] .planGrid li span,
+.site[data-landing-theme="light"] .priceNote{color:var(--muted)}
+.site[data-landing-theme="light"] .productBody>aside .active,
+.site[data-landing-theme="light"] .queue strong{background:#dff5ed;color:#087467}
+.site[data-landing-theme="light"] .queue,
+.site[data-landing-theme="light"] .frameStats article,
+.site[data-landing-theme="light"] .askBox,
+.site[data-landing-theme="light"] .planGrid article,
+.site[data-landing-theme="light"] .planGrid article.popular{background:var(--panel-soft);border-color:var(--line);color:var(--ink)}
+.site[data-landing-theme="light"] .askBox p{color:var(--ink);border-color:var(--line)}
+.site[data-landing-theme="light"] .queue button{background:#fff;border-color:var(--line);color:var(--ink)}
+.site[data-landing-theme="light"] .planGrid article.popular{border-color:#73b897}
+.site[data-landing-theme="light"] .planGrid li{color:#087467}
+.site[data-landing-theme="light"] .pricing .kicker{color:var(--teal)!important}
+.site[data-landing-theme="dark"] .nav>div>a,
+.site[data-landing-theme="dark"] .nav :global(.nav-logout),
+.site[data-landing-theme="dark"] .trust b,
+.site[data-landing-theme="dark"] .footer>div:last-child a{color:#c4d4ce}
+.site[data-landing-theme="dark"] .featureGrid>article,
+.site[data-landing-theme="dark"] .industryGrid article,
+.site[data-landing-theme="dark"] .compareTable>div:first-child{background:var(--panel-soft);border-color:var(--line)}
+.site[data-landing-theme="dark"] .compareTable .ours{background:#17382f}
+.site[data-landing-theme="dark"] .compareTable span,
+.site[data-landing-theme="dark"] .compareTable a{color:var(--ink)}
+.site[data-landing-theme="dark"] .pills i{border-color:var(--line);color:var(--teal)}
+.site[data-landing-theme="dark"] .finalCta{background:#1d5f50;color:#fff}
+.site[data-landing-theme="dark"] .finalCta p{color:#c9ddd5}
+.site[data-landing-theme="dark"] .finalCta a{background:#fff;color:#12332b}
 
 /* Human, operations-first finish: flat panels, compact corners, no glossy effects. */
 .productFrame{border-radius:7px;box-shadow:none}

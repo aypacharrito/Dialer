@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ClerkNavAuth from "../components/ClerkNavAuth";
 import { pacificaPlans } from "../lib/plans";
 import styles from "./landing.module.css";
@@ -23,13 +23,27 @@ const industries=[
 export default function LandingClient({clerkEnabled=false}:{clerkEnabled?:boolean}){
   const [checkout,setCheckout]=useState("");
   const [error,setError]=useState("");
+  const [theme,setTheme]=useState<"light"|"dark">("light");
+  useEffect(()=>{
+    const saved=window.localStorage.getItem("pacifica-public-theme");
+    const next=saved==="dark"||saved==="light"?saved:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
+    const frame=window.requestAnimationFrame(()=>setTheme(next));
+    return ()=>window.cancelAnimationFrame(frame);
+  },[]);
+  function toggleTheme(){
+    setTheme(current=>{
+      const next=current==="light"?"dark":"light";
+      window.localStorage.setItem("pacifica-public-theme",next);
+      return next;
+    });
+  }
   async function subscribe(plan:"solo"|"team"|"agency"){
     setCheckout(plan);setError("");
     try{const response=await fetch("/api/stripe/checkout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({plan})});const data=await response.json().catch(()=>({}));if(!response.ok||!data.url)throw new Error(data.error||"Checkout is not active yet");window.location.assign(String(data.url))}
     catch(err){setError(err instanceof Error?err.message:"Checkout is not active yet");setCheckout("")}
   }
-  return <main className={styles.site}>
-    <nav className={styles.nav}><Link href="/" className={styles.brand}><span><Image src="/pacifica-mark.png" width={28} height={28} alt=""/></span><b>Pacifica CRM</b></Link><div><a href="#product">Product</a><a href="#industries">Industries</a><a href="#pricing">Pricing</a>{clerkEnabled?<ClerkNavAuth/>:<Link href="/dashboard">Open CRM</Link>}<a className={styles.navCta} href="#pricing">Start now</a></div></nav>
+  return <main className={styles.site} data-landing-theme={theme}>
+    <nav className={styles.nav}><Link href="/" className={styles.brand}><span><Image src="/pacifica-mark.png" width={28} height={28} alt=""/></span><b>Pacifica CRM</b></Link><div><a href="#product">Product</a><a href="#industries">Industries</a><a href="#pricing">Pricing</a><button type="button" className={styles.themeToggle} onClick={toggleTheme} aria-label={`Switch to ${theme==="light"?"dark":"light"} mode`} title={`Switch to ${theme==="light"?"dark":"light"} mode`}><span aria-hidden="true">{theme==="light"?"☾":"☀"}</span></button>{clerkEnabled?<ClerkNavAuth/>:<Link href="/login">Log in</Link>}<a className={styles.navCta} href="#pricing">Start now</a></div></nav>
 
     <section className={styles.hero}>
       <div className={styles.heroCopy}><p className={styles.kicker}>BUILT FOR BUSINESSES THAT BUY LEADS</p><h1>Every lead worked.<br/><em>Every follow-up handled.</em></h1><p className={styles.sub}>Pacifica puts your contacts, calls, texts, appointments, pipeline, and AI follow-up in one clean workspace—so paid leads stop dying in a spreadsheet.</p><div className={styles.pricePunch}><b>$25</b><span><strong>A complete lead CRM for less than Netflix Premium.</strong><small>Solo plan · month to month</small></span></div><div className={styles.heroActions}><a href="#pricing">Start for $25/month</a><Link href="/login">Open the CRM <span>→</span></Link></div><small>Twilio usage billed separately · Cancel anytime</small></div>
