@@ -3,10 +3,10 @@
 .brand span{width:38px;height:38px;display:grid;place-items:center;background:#102b36;border-radius:9px}
 .brand img{width:27px;height:27px;object-fit:contain}
 .brand b{font-size:17px;letter-spacing:-.02em}
-.card{width:min(100%,470px);align-self:center;justify-self:center;background:#f8faf8;border:1px solid #d4dcda;border-radius:14px;padding:40px;box-shadow:0 12px 32px rgba(22,42,49,.08)}
+.card{width:min(100%,440px);align-self:center;justify-self:center;background:#fff;border:1px solid #d8e3df;border-radius:18px;padding:36px;box-shadow:0 20px 60px rgba(22,42,49,.09)}
 .kicker{margin:0;color:#24786f;font-size:9px;font-weight:900;letter-spacing:.17em}
-.card h1{margin:14px 0 13px;font-size:38px;line-height:1.03;letter-spacing:-.045em}
-.copy{color:#69767b;font-size:13px;line-height:1.65;margin:0 0 25px}
+.card h1{margin:10px 0 8px;font-size:36px;line-height:1.03;letter-spacing:-.045em}
+.copy{color:#69767b;font-size:13px;line-height:1.55;margin:0 0 25px}
 .primary{height:48px;border-radius:8px;background:#14313c;color:#fff;text-decoration:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
 .primary:hover{background:#1b4652}
 .divider{display:flex;align-items:center;gap:12px;color:#94a09f;font-size:8px;letter-spacing:.14em;margin:25px 0 17px}
@@ -17,6 +17,7 @@
 .clerkCard{padding-bottom:30px}
 .clerkCard h1{margin-bottom:9px}
 .clerkCard .back{display:block}
+.loginHeader{padding-bottom:22px;border-bottom:1px solid #e3ebe7;margin-bottom:24px}
 .configKeys{display:grid;gap:8px;margin:0 0 22px}
 .configKeys code{display:block;padding:11px 12px;border:1px solid #ccd9d4;border-radius:7px;background:#eef5f1;color:#176b60;font-size:10px;overflow-wrap:anywhere}
 @media(max-width:540px){.page{padding:20px}

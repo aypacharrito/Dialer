@@ -1,15 +1,16 @@
 import React from "react";
-import { Platform, SafeAreaView, ScrollView, StyleSheet, useColorScheme, View, type ScrollViewProps } from "react-native";
+import { Platform, ScrollView, StyleSheet, useColorScheme, View, type ScrollViewProps } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../lib/theme";
 
 export function Screen({ children, scroll = true, contentContainerStyle, ...props }: ScrollViewProps & { scroll?: boolean }) {
   const dark = useColorScheme() === "dark";
   const backgroundColor = dark ? colors.darkBg : colors.bg;
   if (!scroll) {
-    return <SafeAreaView style={[styles.safe, { backgroundColor }]}><View style={styles.fill}>{children}</View></SafeAreaView>;
+    return <SafeAreaView edges={["top", "left", "right"]} style={[styles.safe, { backgroundColor }]}><View style={styles.fill}>{children}</View></SafeAreaView>;
   }
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor }]}>
+    <SafeAreaView edges={["top", "left", "right"]} style={[styles.safe, { backgroundColor }]}>
       <ScrollView
         {...props}
         keyboardShouldPersistTaps="handled"

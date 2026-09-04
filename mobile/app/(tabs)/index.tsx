@@ -22,7 +22,7 @@ export default function TodayScreen() {
     const unique = new Map<number, (typeof workspace.leads)[number]>();
     [...due, ...hot, ...workspace.leads].forEach(lead => unique.set(lead.id, lead));
     return [...unique.values()].slice(0, 8);
-  }, [due, hot, workspace.leads]);
+  }, [due, hot, workspace]);
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void refresh()} tintColor={p.green} />}>

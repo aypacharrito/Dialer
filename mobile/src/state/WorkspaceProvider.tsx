@@ -89,7 +89,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [getToken, isSignedIn]);
 
   useEffect(() => {
-    void refresh();
+    const frame = requestAnimationFrame(() => void refresh());
+    return () => cancelAnimationFrame(frame);
   }, [refresh]);
 
   const updateLead = useCallback(async (id: number, patch: Partial<Lead>) => {

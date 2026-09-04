@@ -28,6 +28,12 @@ export default function MoreScreen() {
       </Card>
 
       <Card style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: p.text }]}>Pipeline</Text>
+        <Muted>Open opportunities and active policy work.</Muted>
+        <Button title="Open Pipeline" kind="secondary" onPress={() => router.push("/pipeline")} />
+      </Card>
+
+      <Card style={styles.section}>
         <Text style={[styles.sectionTitle, { color: p.text }]}>Drive Mode</Text>
         <Muted>Open a simple prioritized calling queue.</Muted>
         <Button title="Open Drive Mode" kind="secondary" onPress={() => router.push("/drive")} />
