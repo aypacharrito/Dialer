@@ -217,7 +217,7 @@ button{cursor:pointer}
 .stage.closed{background:#ececf0;color:#686a76}
 .dnc{display:inline-block;margin-left:7px;background:#ffe5e5;color:#b13a3a;border-radius:10px;padding:4px 6px;font-size:7px}
 .empty-state{padding:40px;text-align:center;color:#84909a}
-.pipeline{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;align-items:start}
+.pipeline{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:13px;align-items:start;overflow-x:auto;padding-bottom:8px}
 .pipeline>section{background:#eef0ec;border-radius:14px;padding:12px;min-height:300px}
 .pipeline>section>header{height:38px;display:flex;justify-content:space-between;align-items:center;padding:0 4px}
 .pipeline>section>header b{font-size:11px}
@@ -2268,3 +2268,47 @@ html[data-theme] .crm-view .smart-table .table-row small{font-size:9px;line-heig
   html[data-theme] .crm-view .module-bar>.eyebrow{text-align:center}
 }
 @media(prefers-reduced-motion:reduce){.file-drop-overlay{animation:none}}
+
+/* Contact scanning hierarchy: identity first, priority beside the name. */
+.contact-name-line{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:3px}
+.contact-name-line>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contact-name-line .priority-pill{flex:none;min-height:20px;padding:0 8px;border-radius:999px;font-size:8px!important;line-height:18px;letter-spacing:.075em}
+.smart-table .priority-summary{display:block!important;margin-top:4px!important;color:var(--ui-muted);font-size:9px!important;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html[data-theme="light"] .priority-pill.hot{border-color:#d88e8b;background:#fff0ef;color:#9d302e}
+html[data-theme="light"] .priority-pill.high{border-color:#dcc58c;background:#fff8df;color:#76520a}
+html[data-theme="light"] .priority-pill.medium{border-color:#9fd0ca;background:#eaf8f5;color:#0d7168}
+html[data-theme="light"] .priority-pill.low{border-color:#cedad5;background:#f3f7f5;color:#60736b}
+html[data-theme="light"] .stage{min-height:24px;padding:0 10px;display:inline-flex;align-items:center;border:1px solid #d7e4df;border-radius:999px;background:#edf5f2;color:#365b4f;font-weight:800}
+
+@media(max-width:920px){
+  .contact-name-line{align-items:flex-start;flex-direction:column;gap:4px}
+  .smart-table .priority-summary{white-space:normal}
+}
+
+/* Light workspace completeness: third-party account UI and legacy status chips. */
+html[data-theme="light"] :is(.cl-modalContent,.cl-card,.cl-profileSectionContent,.cl-navbar,.cl-pageScrollBox,.cl-page){background:#fff!important;color:#173b31!important}
+html[data-theme="light"] :is(.cl-headerTitle,.cl-profileSectionTitle,.cl-formFieldLabel,.cl-navbarButton,.cl-userPreviewMainIdentifier,.cl-userPreviewSecondaryIdentifier){color:#173b31!important}
+html[data-theme="light"] :is(.cl-headerSubtitle,.cl-profileSectionSubtitle,.cl-formFieldHintText,.cl-footerActionText){color:#667d74!important}
+html[data-theme="light"] :is(.cl-formFieldInput,.cl-input,.cl-formFieldInputShowPasswordButton){background:#fff!important;border-color:#cdded7!important;color:#173b31!important;-webkit-text-fill-color:#173b31!important;color-scheme:light!important}
+html[data-theme="light"] .cl-formFieldInput:focus{border-color:#16866d!important;box-shadow:0 0 0 3px rgba(22,134,109,.14)!important}
+html[data-theme="light"] :is(.cl-profileSection,.cl-profileSectionPrimaryButton,.cl-navbarButton[data-active="true"]){background:#f3f8f5!important;border-color:#d8e5df!important}
+html[data-theme="light"] .cl-navbarButton[data-active="true"]{color:#0d7960!important}
+
+html[data-theme="light"] .message-contacts>button>em{min-width:72px;padding:6px 8px;border:1px solid #d1e0da;border-radius:999px;background:#eef6f2!important;color:#3e6255!important;text-align:center;font-size:7px!important;letter-spacing:.045em}
+html[data-theme="light"] .message-contacts>button>em.urgent{border-color:#e8bbb8;background:#fff0ef!important;color:#a13d39!important}
+html[data-theme="light"] .message-contacts>button>em.warm{border-color:#e4ce9d;background:#fff8e7!important;color:#7b5b17!important}
+html[data-theme="light"] .health-grid em{padding:5px 7px;border:1px solid #e2cf9f;border-radius:999px;background:#fff8e7;color:#8c6418}
+html[data-theme="light"] .health-grid article.ready em{border-color:#b7dece;background:#eaf8f2;color:#0e795d}
+html[data-theme="light"] :is(.provider-health em,.number-readiness em){border-color:#e1cda2;background:#fff7e5;color:#7e5a15}
+html[data-theme="light"] :is(.provider-health em.ready,.number-readiness em.ready){border-color:#b3dccb;background:#e9f8f1;color:#0d775b}
+html[data-theme="light"] .provider-health em.standby{border-color:#d5e0db;background:#f2f6f4;color:#687c74}
+html[data-theme="light"] .record-actions .quoted-active{border-color:#9ed1bd;background:#e7f7f0;color:#0d775b}
+
+/* Stable three-zone top bar with the queue switch optically centered. */
+@media(min-width:1201px){
+  html[data-theme] .topbar{display:grid!important;grid-template-columns:minmax(210px,1fr) max-content minmax(620px,1fr)!important;column-gap:22px;padding-inline:30px}
+  html[data-theme] .caller-id{justify-self:start}
+  html[data-theme] .lead-line-switch{position:static!important;left:auto!important;transform:none!important;justify-self:center!important;margin:0!important;padding:4px}
+  html[data-theme] .lead-line-switch button{min-width:112px}
+  html[data-theme] .top-actions{justify-self:end!important}
+}

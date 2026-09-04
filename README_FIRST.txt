@@ -15,6 +15,6 @@ Do not upload node_modules, .next, dist, public/clearvoice, or public/scanner. T
 Verification completed before packaging:
 - ESLint passed
 - Vercel production build passed
-- 74 of 74 unit tests passed
+- 77 of 77 unit tests passed
 
 The scanner does not require OPENAI_API_KEY. It first reads a license PDF417 barcode, then uses local OCR for photos, and reads text-based declaration PDFs locally. Always review extracted fields before saving. Policy premiums remain exactly as written on each declaration; Pacifica never annualizes them. Explicit monthly or installment payments are stored separately and never multiplied into book premium. Client and owner reminder texts still require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.
