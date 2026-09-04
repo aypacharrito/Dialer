@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",
   description: "A focused lead CRM with browser calling, messaging, AI-assisted follow-up, pipelines, and live reporting.",
   icons: {
-    icon: [{ url: "/pacifica-mark.png", type: "image/png" }],
-    shortcut: "/pacifica-mark.png",
-    apple: "/pacifica-mark.png",
+    icon: [{ url: "/pacifica-icon-192.png?v=2", type: "image/png" }],
+    shortcut: "/favicon.ico?v=2",
+    apple: "/apple-touch-icon.png?v=2",
   },
   openGraph: {
     title: "Pacifica CRM | Every Lead Worked",
