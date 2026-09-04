@@ -1,9 +1,9 @@
-.page{min-height:100vh;background:#eef1ef;color:#15222b;display:grid;grid-template-rows:auto 1fr auto;padding:28px;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.page{min-height:100svh;background:radial-gradient(circle at 12% 15%,rgba(31,139,110,.13),transparent 30%),#edf3f0;color:#15222b;display:grid;place-items:center;padding:32px;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .brand{width:max-content;display:flex;align-items:center;gap:11px;color:#14232d;text-decoration:none}
 .brand span{width:38px;height:38px;display:grid;place-items:center;background:#102b36;border-radius:9px}
 .brand img{width:27px;height:27px;object-fit:contain}
 .brand b{font-size:17px;letter-spacing:-.02em}
-.card{width:min(100%,440px);align-self:center;justify-self:center;background:#fff;border:1px solid #d8e3df;border-radius:18px;padding:36px;box-shadow:0 20px 60px rgba(22,42,49,.09)}
+.card{width:min(100%,920px);min-height:610px;display:grid;grid-template-columns:minmax(300px,.82fr) minmax(390px,1.18fr);overflow:hidden;background:#fff;border:1px solid #d7e4de;border-radius:24px;padding:0;box-shadow:0 28px 80px rgba(19,55,43,.14)}
 .kicker{margin:0;color:#24786f;font-size:9px;font-weight:900;letter-spacing:.17em}
 .card h1{margin:10px 0 8px;font-size:36px;line-height:1.03;letter-spacing:-.045em}
 .copy{color:#69767b;font-size:13px;line-height:1.55;margin:0 0 25px}
@@ -14,13 +14,15 @@
 .note{color:#778483;font-size:10px;line-height:1.6;margin:0}
 .back{display:inline-block;margin-top:25px;color:#2a6e69;text-decoration:none;font-size:10px;font-weight:800}
 .page>footer{text-align:center;color:#889392;font-size:9px}
-.clerkCard{padding-bottom:30px}
+.clerkCard{padding:0}
 .clerkCard h1{margin-bottom:9px}
 .clerkCard .back{display:block}
-.loginHeader{padding-bottom:22px;border-bottom:1px solid #e3ebe7;margin-bottom:24px}
+.loginHeader{padding:38px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(155deg,#0d4539,#092b28 72%,#071f1e);color:#fff}
+.loginHeader .brand{color:#fff}.loginHeader .brand span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14)}.loginHeader .brand b{font-size:14px;letter-spacing:.18em}
+.loginHeader .kicker{color:#69d6b4}.loginHeader h1{margin:13px 0 0;color:#fff;font-size:46px;line-height:1.02;letter-spacing:-.055em}.loginHeader .back{color:#a5c9bd;margin:0;font-size:11px}
+.authPanel{display:flex;flex-direction:column;justify-content:center;padding:48px 54px;background:#fff;color:#17342b;min-width:0}
+.authIntro{margin-bottom:24px}.authIntro .kicker{color:#0b8065}.authIntro h2{margin:9px 0 0;font-size:30px;letter-spacing:-.04em}
 .configKeys{display:grid;gap:8px;margin:0 0 22px}
 .configKeys code{display:block;padding:11px 12px;border:1px solid #ccd9d4;border-radius:7px;background:#eef5f1;color:#176b60;font-size:10px;overflow-wrap:anywhere}
-@media(max-width:540px){.page{padding:20px}
-.card{padding:28px}
-.card h1{font-size:32px}
+@media(max-width:760px){.page{display:block;padding:0;background:#fff}.card{width:100%;min-height:100svh;display:block;border:0;border-radius:0;box-shadow:none}.loginHeader{min-height:190px;padding:26px 24px;display:grid;grid-template-columns:1fr auto;gap:28px}.loginHeader>div{grid-column:1/-1}.loginHeader h1{font-size:34px}.loginHeader .back{grid-column:2;grid-row:1;margin:auto 0}.authPanel{padding:36px 24px 44px}.authIntro h2{font-size:28px}
 }

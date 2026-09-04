@@ -2170,6 +2170,23 @@ html[data-theme] .smart-table .table-row>span:nth-child(4)>small{display:block;m
 html[data-theme] .smart-table .table-row>span:nth-child(5){white-space:normal;overflow-wrap:anywhere}
 @media(max-width:760px){html[data-theme] .smart-table :is(.table-head,.table-row){min-width:0;grid-template-columns:1.3fr 1fr;gap:10px}html[data-theme] .smart-table :is(.table-head,.table-row)>span:nth-child(n+3){display:none}}
 
+/* Responsive application shell: collapse before desktop controls begin to collide. */
+@media(max-width:1360px) and (min-width:761px){
+  .app-shell{grid-template-columns:78px minmax(0,1fr)}
+  .sidebar{width:78px;padding:22px 10px}
+  .logo{justify-content:center;padding:0 4px 25px}.logo>div,.sidebar nav span,.sidebar nav em,.agent>div{display:none}
+  .sidebar nav button{justify-content:center;padding:0}.sidebar-foot{justify-content:center}.sidebar-foot>button{display:none}.agent{justify-content:center}.agent>span{flex:none}
+  .workspace{grid-column:2!important;margin-left:0!important;min-width:0}
+  .topbar{padding-inline:18px;gap:12px}.workspace-sync,.connection{display:none}.top-actions{gap:7px}
+  .lead-line-switch{margin-left:auto}.today-workspace{padding:24px}.today-grid{grid-template-columns:1fr}
+}
+@media(max-width:1080px) and (min-width:761px){
+  .topbar{height:auto;min-height:74px;display:grid!important;grid-template-columns:auto 1fr auto!important;padding-block:10px}
+  .caller-id{min-width:0}.lead-line-switch{position:static;transform:none;justify-self:center;margin:0}.top-actions{justify-self:end}
+  .inbound-availability{width:38px;padding:0;justify-content:center;font-size:0}.top-actions .scan-action{display:none}.top-actions .import{width:42px;padding:0;justify-content:center;font-size:0}.top-actions .import svg{display:block}
+  .today-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.focus-reason{display:none}.focus-list article{grid-template-columns:30px minmax(0,1fr) auto}
+}
+
 html[data-theme] .inline-pause{
   min-height:34px;margin:10px auto 0;padding:0 13px;display:flex;align-items:center;justify-content:center;gap:7px;
   border:1px solid var(--ui-border-strong);border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);
