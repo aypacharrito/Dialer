@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@clerk/expo";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 import { getWorkspace, putWorkspace } from "../lib/api";
 import type { Lead, Workspace } from "../lib/types";
 
@@ -92,6 +93,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const frame = requestAnimationFrame(() => void refresh());
     return () => cancelAnimationFrame(frame);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const timer = setInterval(() => {
+      if (AppState.currentState === "active") void refresh();
+    }, 5000);
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active") void refresh();
+    });
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, [isSignedIn, refresh]);
 
   const updateLead = useCallback(async (id: number, patch: Partial<Lead>) => {
     const next: Workspace = {

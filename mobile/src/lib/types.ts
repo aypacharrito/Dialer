@@ -85,6 +85,16 @@ export type CallLog = {
 
 export type WorkspaceProfile = Record<string, unknown>;
 
+export type LiveCallSession = {
+  leadId: number | null;
+  name: string;
+  phone: string;
+  line: LeadLine;
+  status: "dialing" | "connected";
+  startedAt: string;
+  updatedAt: string;
+};
+
 export type Workspace = {
   found?: boolean;
   leads: Lead[];

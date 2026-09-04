@@ -50,6 +50,7 @@ test("manual priority can promote a salesperson-selected lead",()=>{
 
 test("closed and do-not-call records are excluded from active priority",()=>{
   assert.equal(leadPriority(lead({stage:"Closed"}),now).score,-1000);
+  assert.equal(leadPriority(lead({stage:"Quoted"}),now).score,-1000);
   assert.equal(leadPriority(lead({doNotCall:true}),now).score,-1000);
 });
 
@@ -66,6 +67,7 @@ test("not interested is never mistaken for interested",()=>{
 test("automatic dialing skips active policy work while retaining retryable leads",()=>{
   assert.equal(isDialerEligibleLead(lead({outcome:"Interested",stage:"Follow-up",sourceDisposition:"Interested - Working"})),false);
   assert.equal(isDialerEligibleLead(lead({outcome:"Appointment set",stage:"Appointment",sourceDisposition:"Interested - Working"})),false);
+  assert.equal(isDialerEligibleLead(lead({outcome:"Quoted",stage:"Quoted",sourceDisposition:"Quoted"})),false);
   assert.equal(isDialerEligibleLead(lead({outcome:"No answer",stage:"Follow-up",sourceDisposition:"Attempted Contact"})),true);
   assert.equal(isDialerEligibleLead(lead({doNotCall:true})),false);
 });
