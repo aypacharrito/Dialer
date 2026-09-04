@@ -8,12 +8,11 @@ export const metadata: Metadata = {
   description: "A focused lead CRM with browser calling, messaging, AI-assisted follow-up, pipelines, and live reporting.",
   icons: {
     icon: [
-      { url: "/favicon.svg?v=3", type: "image/svg+xml" },
-      { url: "/favicon-32.png?v=3", sizes: "32x32", type: "image/png" },
-      { url: "/pacifica-icon-192.png?v=3", sizes: "192x192", type: "image/png" },
+      { url: "/favicon-32.png?v=4", sizes: "32x32", type: "image/png" },
+      { url: "/pacifica-icon-192.png?v=4", sizes: "192x192", type: "image/png" },
     ],
-    shortcut: "/favicon.ico?v=3",
-    apple: "/apple-touch-icon.png?v=3",
+    shortcut: "/favicon.ico?v=4",
+    apple: "/apple-touch-icon.png?v=4",
   },
   openGraph: {
     title: "Pacifica CRM | Every Lead Worked",

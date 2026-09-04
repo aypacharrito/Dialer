@@ -66,7 +66,7 @@ export function Button({
       disabled={props.disabled || loading}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor, borderColor: kind === "secondary" ? p.border : backgroundColor, opacity: pressed ? .78 : props.disabled ? .5 : 1 },
+        { backgroundColor, borderColor: kind === "secondary" ? p.border : backgroundColor, opacity: props.disabled ? .5 : 1, transform: [{ scale: pressed ? .975 : 1 }], shadowColor: p.dark ? "#000000" : "#123E2D", shadowOpacity: pressed ? .08 : .14 },
         typeof props.style === "function" ? props.style({ pressed }) : props.style,
       ]}
     >
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 29, lineHeight: 34, fontWeight: "800", letterSpacing: -0.8 },
   muted: { fontSize: 14, lineHeight: 20 },
   card: { borderWidth: 1, borderRadius: 18, padding: 16 },
-  button: { minHeight: 48, paddingHorizontal: 18, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  button: { minHeight: 48, paddingHorizontal: 18, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 3 },
   buttonText: { fontSize: 15, fontWeight: "800" },
   field: { minHeight: 48, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, fontSize: 15 },
   pill: { borderWidth: 1, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 11 },

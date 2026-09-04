@@ -3,7 +3,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { WorkspaceProvider } from "../src/state/WorkspaceProvider";
 import { colors } from "../src/lib/theme";
 
@@ -12,7 +12,7 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 function MissingConfiguration() {
   return (
     <View style={styles.config}>
-      <View style={styles.logo}><Text style={styles.logoText}>P</Text></View>
+      <Image source={require("../assets/icon.png")} style={styles.logo} accessibilityLabel="Pacifica" />
       <Text style={styles.title}>Pacifica mobile is installed.</Text>
       <Text style={styles.body}>Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in Expo/EAS environment variables, then rebuild the development app.</Text>
     </View>
@@ -44,8 +44,7 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   config: { flex: 1, backgroundColor: "#F7FAF9", alignItems: "center", justifyContent: "center", padding: 28, gap: 14 },
-  logo: { width: 72, height: 72, backgroundColor: colors.green, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  logoText: { color: "white", fontSize: 42, fontWeight: "900" },
+  logo: { width: 72, height: 72, borderRadius: 22 },
   title: { fontSize: 24, fontWeight: "900", color: colors.text, textAlign: "center" },
   body: { maxWidth: 420, color: colors.muted, textAlign: "center", lineHeight: 21 },
 });

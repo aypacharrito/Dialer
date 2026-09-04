@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/expo";
 import { AuthView } from "@clerk/expo/native";
 import { Redirect } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Modal, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Modal, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../src/components/Screen";
 import { Button, Card, Muted, Title, usePalette } from "../src/components/Primitives";
 
@@ -19,7 +19,7 @@ export default function EntryScreen() {
   return (
     <Screen contentContainerStyle={styles.screen}>
       <View style={styles.brand}>
-        <View style={[styles.logo, { backgroundColor: p.green }]}><Text style={styles.logoText}>P</Text></View>
+        <Image source={require("../assets/icon.png")} style={styles.logo} accessibilityLabel="Pacifica" />
         <Title eyebrow="PACIFICA CRM">Your sales desk, in your pocket.</Title>
         <Muted>Leads, follow-ups, messages, contact details and Drive Mode using the same Pacifica workspace as the web CRM.</Muted>
       </View>
@@ -39,8 +39,7 @@ const styles = StyleSheet.create({
   loading: { flex: 1, alignItems: "center", justifyContent: "center" },
   screen: { flexGrow: 1, justifyContent: "center", gap: 28 },
   brand: { gap: 12 },
-  logo: { width: 64, height: 64, borderRadius: 20, alignItems: "center", justifyContent: "center", marginBottom: 6 },
-  logoText: { color: "white", fontWeight: "900", fontSize: 36 },
+  logo: { width: 64, height: 64, borderRadius: 20, marginBottom: 6 },
   card: { gap: 14 },
   cardTitle: { fontSize: 18, fontWeight: "900" },
 });
