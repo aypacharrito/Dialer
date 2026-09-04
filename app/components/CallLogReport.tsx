@@ -23,7 +23,7 @@ export type CallLog = {
 
 function duration(value: number) { return value < 60 ? `${value}s` : `${Math.floor(value / 60)}m ${value % 60}s`; }
 
-export default function CallLogReport({ logs, callerId, agentName, recordingEnabled, onOpenRecordingSettings }: { logs: CallLog[]; callerId: string; agentName:string; recordingEnabled:boolean; onOpenRecordingSettings:()=>void }) {
+export default function CallLogReport({ logs, leadSpend, callerId, agentName, recordingEnabled, onOpenRecordingSettings }: { logs: CallLog[]; leadSpend:number; callerId: string; agentName:string; recordingEnabled:boolean; onOpenRecordingSettings:()=>void }) {
   const [outcome, setOutcome] = useState("All outcomes");
   const [durationFilter, setDurationFilter] = useState("All durations");
   const [query, setQuery] = useState("");
@@ -47,7 +47,7 @@ export default function CallLogReport({ logs, callerId, agentName, recordingEnab
   }
 
   return <>
-    <div className="report-metrics"><article><span>CALLS</span><b>{logs.length}</b></article><article><span>CONNECTED</span><b>{answerRate}%</b></article><article><span>NUMBER HEALTH</span><b className={reputationScore < 70 ? "risk" : "good"}>{reputationScore}</b></article></div>
+    <div className="report-metrics"><article><span>CALLS</span><b>{logs.length}</b></article><article><span>CONNECTED</span><b>{answerRate}%</b></article><article><span>LEAD SPEND</span><b>${leadSpend.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</b></article><article><span>NUMBER HEALTH</span><b className={reputationScore < 70 ? "risk" : "good"}>{reputationScore}</b></article></div>
     <section className="recording-readiness ready"><div><span>RECORDING</span><b>{recordingEnabled?"Ready":"Available"}</b><small>Consent required · press Record during the live call</small></div><button type="button" onClick={onOpenRecordingSettings}>Settings</button></section>
     <section className="call-report">
       <header><div><span>CALL LOG</span><b>{filtered.length} results</b></div><button onClick={exportCsv} disabled={!filtered.length}>Export CSV</button></header>

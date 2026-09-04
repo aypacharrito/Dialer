@@ -326,6 +326,7 @@ button{cursor:pointer}
 .record-actions button:disabled{opacity:.4;cursor:not-allowed}
 .record-actions .close-lead{margin-left:auto;background:#fff0f0;color:#af3434;border-color:#f2caca}
 .record-actions .reopen-lead{margin-left:auto;background:#e5f8ef;color:#26785c;border-color:#bfe7d7}
+.record-actions .move-queue{display:none}
 .priority-summary{display:flex!important;align-items:center;gap:6px;white-space:nowrap}
 .priority-pill{display:inline-flex!important;align-items:center;justify-content:center;width:max-content;margin:0!important;padding:3px 5px;border:1px solid #526066;background:#252c2f;color:#aeb9bd;border-radius:3px;font-size:6px!important;font-style:normal;font-weight:900;letter-spacing:.05em}
 .priority-pill.hot{border-color:#9a4d4c;background:#422426;color:#ffb0aa}
@@ -776,7 +777,7 @@ button,input,select,textarea{font-family:inherit}
 .listen-row button.active{border-color:#a74c55;background:#3a2026;color:#ff9ca5}
 .listen-row small{color:#748b9d;font-size:7px;line-height:1.45}
 
-.report-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:15px}
+.report-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
 .report-metrics article{background:linear-gradient(180deg,#111d2a,#0e1925);border:1px solid #243446;border-radius:12px;padding:17px}
 .report-metrics span{color:#6e8699;font-size:7px;letter-spacing:.12em;font-weight:900}
 .report-metrics b{display:block;font-size:28px;margin:8px 0 4px}

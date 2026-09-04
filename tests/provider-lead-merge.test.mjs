@@ -25,3 +25,11 @@ test("unchanged provider records keep the same array and do not trigger cloud wr
   const result=mergeProviderLeads([current],[provider],()=>{throw new Error("should not create")});
   assert.equal(result.updated,0);assert.equal(result.leads[0],current);assert.equal(result.leads.length,1);
 });
+
+test("provider sync cannot undo a manual queue change",()=>{
+  const moved={...baseLead,line:"life",queueOverride:true};
+  const changedProduct={...provider,product:"Home",line:"home-auto"};
+  const result=mergeProviderLeads([moved],[changedProduct],()=>{throw new Error("should not create")});
+  assert.equal(result.leads[0].line,"life");
+  assert.equal(result.leads[0].queueOverride,true);
+});

@@ -1,7 +1,7 @@
 import {crmFieldsForDisposition} from "./lead-priority";
 
 export type CsvManagedLead={
-  id:number;vendorId?:string;source:string;name:string;phone:string;email:string;city:string;product:string;line:"life"|"home-auto";sourceDisposition:string;stage:string;outcome:string;status:string;leadCost:number;importedAt?:string;
+  id:number;vendorId?:string;source:string;name:string;phone:string;email:string;city:string;product:string;line:"life"|"home-auto";queueOverride?:boolean;sourceDisposition:string;stage:string;outcome:string;status:string;leadCost:number;importedAt?:string;
   providerUpdatedAt?:string;address?:string;state?:string;zip?:string;territory?:string;brand?:string;profileName?:string;received?:string;returnStatus?:string;employeeCount?:string;searchPro?:string;extraFields?:Record<string,string>;
   csvFileName?:string;csvUpdatedAt?:string;importedFields?:Record<string,string>;priorityOverride?:"auto"|"high"|"low";assignedTo?:string;estimatedValue?:number;closedRevenue?:number;
   notes?:string;followUp?:string;lastContact?:string;doNotCall?:boolean;attempts?:number;lastAttemptAt?:string;communications?:Array<{id?:string;sentAt?:string;[key:string]:unknown}>;
@@ -74,7 +74,7 @@ function mergeMatchedLead<T extends CsvManagedLead>(current:T,item:T,nowIso:stri
     source:nextSource,
     leadCost:Number.isFinite(incomingCost)&&(incomingCost>0||current.leadCost===0)?incomingCost:current.leadCost,
     product:useful(item.product)&&item.product!=="Service inquiry"?item.product:current.product,
-    line:useful(item.product)&&item.product!=="Service inquiry"?item.line:current.line,
+    line:current.queueOverride?current.line:useful(item.product)&&item.product!=="Service inquiry"?item.line:current.line,
     sourceDisposition:nextDisposition,
     address:item.address||current.address,state:item.state||current.state,zip:item.zip||current.zip,territory:item.territory||current.territory,brand:item.brand||current.brand,profileName:item.profileName||current.profileName,received:item.received||current.received,returnStatus:item.returnStatus||current.returnStatus,employeeCount:item.employeeCount||current.employeeCount,searchPro:item.searchPro||current.searchPro,
     extraFields,importedFields,csvFileName:item.csvFileName||current.csvFileName,

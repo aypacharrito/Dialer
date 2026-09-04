@@ -6,7 +6,7 @@ export type ProviderLeadRecord={
 };
 
 export type ProviderManagedLead={
-  id:number;vendorId?:string;source:string;name:string;phone:string;email:string;city:string;product:string;line:"life"|"home-auto";sourceDisposition:string;stage:string;outcome:string;status:string;leadCost:number;
+  id:number;vendorId?:string;source:string;name:string;phone:string;email:string;city:string;product:string;line:"life"|"home-auto";queueOverride?:boolean;sourceDisposition:string;stage:string;outcome:string;status:string;leadCost:number;
   providerUpdatedAt?:string;address?:string;state?:string;zip?:string;territory?:string;brand?:string;profileName?:string;received?:string;returnStatus?:string;employeeCount?:string;searchPro?:string;extraFields?:Record<string,string>;
 };
 
@@ -33,7 +33,7 @@ export function mergeProviderLeads<T extends ProviderManagedLead>(existing:T[],i
     const detailsChanged=Boolean((hasName&&item.name!==current.name)||(item.email&&item.email!==current.email)||(hasCity&&item.city!==current.city)||(hasProduct&&item.product!==current.product)||(shouldUpdateCost&&incomingCost!==current.leadCost)||(item.address&&item.address!==current.address)||(item.returnStatus&&item.returnStatus!==current.returnStatus));
     if(!statusChanged&&!detailsChanged)continue;
 
-    next[existingPosition]={...current,vendorId:item.vendorId||current.vendorId,name:hasName?item.name:current.name,phone:item.phone||current.phone,email:item.email||current.email,city:hasCity?item.city:current.city,source:item.source||current.source,leadCost:shouldUpdateCost?incomingCost:current.leadCost,product:hasProduct?item.product:current.product,line:hasProduct?item.line:current.line,sourceDisposition:statusChanged?item.disposition:current.sourceDisposition,providerUpdatedAt:nowIso,address:item.address||current.address,state:item.state||current.state,zip:item.zip||current.zip,territory:item.territory||current.territory,brand:item.brand||current.brand,profileName:item.profileName||current.profileName,received:item.received||current.received,returnStatus:item.returnStatus||current.returnStatus,employeeCount:item.employeeCount||current.employeeCount,searchPro:item.searchPro||current.searchPro,extraFields:{...current.extraFields,...item.extraFields},...(meaningfulStatus&&statusChanged?{stage:mapped.stage,outcome:mapped.outcome,status:mapped.stage==="Closed"?"Closed":"Ready"}:{})};
+    next[existingPosition]={...current,vendorId:item.vendorId||current.vendorId,name:hasName?item.name:current.name,phone:item.phone||current.phone,email:item.email||current.email,city:hasCity?item.city:current.city,source:item.source||current.source,leadCost:shouldUpdateCost?incomingCost:current.leadCost,product:hasProduct?item.product:current.product,line:current.queueOverride?current.line:hasProduct?item.line:current.line,sourceDisposition:statusChanged?item.disposition:current.sourceDisposition,providerUpdatedAt:nowIso,address:item.address||current.address,state:item.state||current.state,zip:item.zip||current.zip,territory:item.territory||current.territory,brand:item.brand||current.brand,profileName:item.profileName||current.profileName,received:item.received||current.received,returnStatus:item.returnStatus||current.returnStatus,employeeCount:item.employeeCount||current.employeeCount,searchPro:item.searchPro||current.searchPro,extraFields:{...current.extraFields,...item.extraFields},...(meaningfulStatus&&statusChanged?{stage:mapped.stage,outcome:mapped.outcome,status:mapped.stage==="Closed"?"Closed":"Ready"}:{})};
     updated++;
   }
 

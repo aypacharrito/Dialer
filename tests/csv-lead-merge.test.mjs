@@ -56,6 +56,14 @@ test("re-upload preserves every source column while blank cells do not erase kno
   assert.equal(result.leads[0].importedFields.RoofAge,"");
 });
 
+test("a salesperson queue change survives later CSV updates",()=>{
+  const moved={...lead,line:"life",queueOverride:true};
+  const incoming={...lead,id:22,line:"home-auto",city:"Burbank"};
+  const result=mergeCsvLeads([moved],[incoming]);
+  assert.equal(result.leads[0].line,"life");
+  assert.equal(result.leads[0].queueOverride,true);
+});
+
 test("maintenance removes historical address duplicates and keeps their strongest data",()=>{
   const first={...lead,id:1,vendorId:"",phone:"",email:"",address:"100 Main St",zip:"91401",leadCost:19,attempts:1,importedFields:{Address:"100 Main St",Zip:"91401",RoofAge:"10"}};
   const duplicate={...lead,id:2,vendorId:"",phone:"8185550199",email:"ana.new@example.com",address:"100 Main Street",zip:"91401",leadCost:25,attempts:4,sourceDisposition:"Received - not worked yet",stage:"New lead",outcome:"Not contacted",importedFields:{Address:"100 Main Street",Zip:"91401",Bedrooms:"3"}};

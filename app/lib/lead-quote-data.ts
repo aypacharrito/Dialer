@@ -16,11 +16,6 @@ export function quoteSourceEntries(lead:QuoteDataLead):QuoteDataEntry[]{
   const combined=new Map<string,string>();
   for(const [label,value] of Object.entries(lead.importedFields||{}))combined.set(label,text(value));
   for(const [label,value] of Object.entries(lead.extraFields||{}))if(!combined.has(label))combined.set(label,text(value));
-  if(combined.size)return [...combined].map(([label,value])=>({label,value}));
-  return [
-    ["Address",lead.address],["City",lead.city],["State",lead.state],["ZIP code",lead.zip],["Product",lead.product],
-    ["Lead source",lead.source],["Lead cost",lead.leadCost?`$${lead.leadCost.toFixed(2)}`:""],["Received",lead.received],
-    ["Territory",lead.territory],["Brand / agency",lead.brand],["Lead profile",lead.profileName],
-    ["Original status",lead.sourceDisposition],["Return status",lead.returnStatus],["Employees",lead.employeeCount],["Search Pro",lead.searchPro],
-  ].map(([label,value])=>({label:String(label),value:text(value)}));
+  if(![...combined.values()].some(Boolean))return [];
+  return [...combined].map(([label,value])=>({label,value}));
 }

@@ -16,3 +16,8 @@ test("provider extras join CSV data without overwriting source values",()=>{
 test("quote address combines all available location fields",()=>{
   assert.equal(quoteAddressLine({address:"100 Main St",city:"Van Nuys",state:"CA",zip:"91401"}),"100 Main St, Van Nuys, CA, 91401");
 });
+
+test("manual records do not show a fake imported-data section",()=>{
+  assert.deepEqual(quoteSourceEntries({name:"Manual contact",source:"Manual"}),[]);
+  assert.deepEqual(quoteSourceEntries({importedFields:{Address:"",City:""}}),[]);
+});
