@@ -38,14 +38,16 @@ export function parseInsuranceDeclarationText(raw:string):DocumentLeadExtraction
   const insured=flat.match(/Named Insured\s+([A-Z][A-Z .'-]{2,}?)\s+(\d{1,6}\s+[A-Z0-9 .'-]+?)\s+([A-Z .'-]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\s+(\(\d{3}\)\s*\d{3}-\d{4})\s+([\w.+-]+@[\w.-]+\.[A-Z]{2,})/i);
   const email=insured?.[7]||flat.match(/[\w.+-]+@[\w.-]+\.[A-Z]{2,}/i)?.[0]||"";const phone=insured?.[6]||flat.match(/\(\d{3}\)\s*\d{3}-\d{4}/)?.[0]||"";
   const company=flat.match(/\b([A-Z][A-Za-z& ]{2,60}(?:Insurance|Assurance|Indemnity) (?:Company|Group))\b/)?.[1]||"";
-  const premium=flat.match(/Total\s+(\d+)\s+Month\s+Policy Premium[^$]{0,80}\$\s*([\d,]+\.\d{2})/i);
+  const premium=flat.match(/Total\s+(?:(\d+)\s+Month\s+)?Policy Premium[^$]{0,80}\$\s*([\d,]+\.\d{2})/i);
+  const billingFrequency=flat.match(/(?:Billing|Payment|Pay)\s+(?:Plan|Frequency|Mode)\s*:?\s*(Monthly|Quarterly|Semi[- ]?Annual|Annual|Paid in Full|Full Pay)/i)?.[1]||"";
+  const installment=flat.match(/(?:Monthly|Installment)\s+(?:Premium|Payment|Amount)\s*:?[^$\d]{0,30}\$\s*([\d,]+\.\d{2})/i)?.[1]?.replace(/,/g,"")||"";
   const vehicles=[...flat.matchAll(/((?:19|20)\d{2})\s+([A-Z0-9][A-Z0-9 ]{2,55}?),\s*VIN:\s*([A-HJ-NPR-Z0-9]{17})/gi)];
   const otherFields:DocumentLeadField[]=[];
   vehicles.forEach((match,index)=>{otherFields.push({label:`Vehicle ${index+1}`,value:`${match[1]} ${title(match[2].trim())}`},{label:`Vehicle ${index+1} VIN`,value:match[3]})});
   const drivers=flat.match(/Listed Drivers\s+([\s\S]*?)\s+Excluded Drivers/i)?.[1]?.replace(/\s+-\s+\d+\s+Years License Experience/g,"; ").trim().replace(/;+$/,"")||"";
   if(drivers)otherFields.push({label:"Listed drivers",value:title(drivers)});
   const firstVehicle=vehicles[0];const vehicleWords=firstVehicle?.[2]?.trim().split(/\s+/)||[];
-  return cleanDocumentLeadExtraction({documentType:"Insurance declarations",fullName:title(insured?.[1]||""),address:title(insured?.[2]||""),city:title(insured?.[3]?.trim()||""),state:insured?.[4]||"",zip:insured?.[5]||"",phone,email,policyNumber,carrier:company,policyEffectiveDate:effective,policyExpirationDate:expiration,policyPremium:premium?.[2]?.replace(/,/g,"")||"",policyTermMonths:premium?.[1]||monthsBetween(effective,expiration),vin:firstVehicle?.[3]||"",vehicleYear:firstVehicle?.[1]||"",vehicleMake:title(vehicleWords.shift()||""),vehicleModel:title(vehicleWords.join(" ")),product:"Auto insurance",otherFields});
+  return cleanDocumentLeadExtraction({documentType:"Insurance declarations",fullName:title(insured?.[1]||""),address:title(insured?.[2]||""),city:title(insured?.[3]?.trim()||""),state:insured?.[4]||"",zip:insured?.[5]||"",phone,email,policyNumber,carrier:company,policyEffectiveDate:effective,policyExpirationDate:expiration,policyPremium:premium?.[2]?.replace(/,/g,"")||"",policyTermMonths:premium?.[1]||monthsBetween(effective,expiration),billingFrequency,installmentAmount:installment,vin:firstVehicle?.[3]||"",vehicleYear:firstVehicle?.[1]||"",vehicleMake:title(vehicleWords.shift()||""),vehicleModel:title(vehicleWords.join(" ")),product:"Auto insurance",otherFields});
 }
 
 export function bestDocumentExtraction(raw:string){

@@ -42,3 +42,11 @@ test("declaration parser captures policy, insured, vehicles, premium, and renewa
   const extraction=parseInsuranceDeclarationText("New Auto Policy Declarations Policy Number CAAP0001394639 From: 09/01/2026 To: 03/01/2027 Mercury Insurance Company Named Insured SULEN CHAVEZ 13190 ROAD 29 MADERA, CA 93638-5915 (818) 438-1446 losprotectores@att.net Listed Drivers SULEN CHAVEZ - 15 Years License Experience ALEJANDRO CARRANZA - 20 Years License Experience Excluded Drivers Vehicles 2021 BMW 330I SED 4DR, VIN: WBA5R1C06MFK55877 2018 BMW X5 SDRIVE35I UTL 4X2 4D, VIN: 5UXKR2C50J0Z14587 Total 6 Month Policy Premium $ 838.58");
   assert.equal(extraction.policyNumber,"CAAP0001394639");assert.equal(extraction.fullName,"Sulen Chavez");assert.equal(extraction.policyExpirationDate,"2027-03-01");assert.equal(extraction.policyPremium,"838.58");assert.equal(extraction.policyTermMonths,"6");assert.equal(extraction.vin,"WBA5R1C06MFK55877");assert.equal(extraction.otherFields.filter(field=>/VIN$/.test(field.label)).length,2);
 });
+
+test("monthly billing is stored separately and never projected into policy premium",()=>{
+  const extraction=parseInsuranceDeclarationText("Auto Policy Declarations Policy Number AUTO123456 From: 09/01/2026 To: 03/01/2027 Payment Plan Monthly Monthly Payment $ 145.22");
+  assert.equal(extraction.policyPremium,"");
+  assert.equal(extraction.billingFrequency,"Monthly");
+  assert.equal(extraction.installmentAmount,"145.22");
+  assert.equal(documentLeadImportedFields(extraction)["Installment amount"],"145.22");
+});

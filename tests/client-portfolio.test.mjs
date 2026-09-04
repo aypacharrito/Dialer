@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {clientDates,isActiveClient,nextClientEvents,planClientReminders} from "../app/lib/client-portfolio.ts";
+import {clientDates,clientPolicyMetrics,isActiveClient,nextClientEvents,planClientReminders} from "../app/lib/client-portfolio.ts";
 import {defaultWorkspaceProfile} from "../app/lib/workspace-profile.ts";
 
 const lead={id:1,name:"Jordan Lee",phone:"+18185550123",email:"jordan@example.com",product:"Auto policy",outcome:"Sold / Won",smsConsent:true,importedFields:{DOB:"09/09/1990","Policy Number":"PA-42","Policy Expiration Date":"10/02/2026"}};
@@ -14,6 +14,10 @@ test("sold contacts become active clients and retain imported policy dates",()=>
 
 test("inactive clients stay out of the book of business",()=>{
   assert.equal(isActiveClient({...lead,clientStatus:"inactive"}),false);
+});
+
+test("book premium preserves the exact declaration amount without annualizing",()=>{
+  assert.deepEqual(clientPolicyMetrics({...lead,policyPremium:838.58,policyTermMonths:6}),{premium:838.58,termMonths:6});
 });
 
 test("reminders target the owner and only consented customers",()=>{

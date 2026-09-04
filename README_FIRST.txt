@@ -2,7 +2,7 @@ PACIFICA CRM LOCAL SCANNER + BOOK OF BUSINESS UPDATE — SEPTEMBER 4, 2026
 
 This bundle contains the complete source changes for the professional CRM refresh, document capture, and client reminders. It is safely below GitHub's 100-file web-upload limit.
 
-1. Extract Pacifica_CRM_Local_Scanner_and_Book_of_Business_2026-09-04.zip on your computer.
+1. Extract Pacifica_CRM_Exact_Policy_Book_2026-09-04.zip on your computer.
 2. Open https://github.com/aypacharrito/Dialer and stay on the main branch.
 3. Choose Add file > Upload files.
 4. Drag the CONTENTS of the extracted folder into the upload area. Keep the app, tests, and mobile folders intact.
@@ -15,6 +15,6 @@ Do not upload node_modules, .next, dist, public/clearvoice, or public/scanner. T
 Verification completed before packaging:
 - ESLint passed
 - Vercel production build passed
-- 72 of 72 unit tests passed
+- 74 of 74 unit tests passed
 
-The scanner does not require OPENAI_API_KEY. It first reads a license PDF417 barcode, then uses local OCR for photos, and reads text-based declaration PDFs locally. Always review extracted fields before saving. Client and owner reminder texts still require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.
+The scanner does not require OPENAI_API_KEY. It first reads a license PDF417 barcode, then uses local OCR for photos, and reads text-based declaration PDFs locally. Always review extracted fields before saving. Policy premiums remain exactly as written on each declaration; Pacifica never annualizes them. Explicit monthly or installment payments are stored separately and never multiplied into book premium. Client and owner reminder texts still require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.

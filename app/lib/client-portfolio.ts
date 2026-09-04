@@ -32,8 +32,7 @@ export function clientDates(lead:ClientRecord){
 export function clientPolicyMetrics(lead:ClientRecord){
   const premium=Math.max(0,Number(lead.policyPremium||importedValue(lead,["policy premium","term premium","total policy premium"]))||0);
   const termMonths=Math.max(0,Number(lead.policyTermMonths||importedValue(lead,["policy term months","term months"]))||0);
-  const annualizedPremium=premium&&termMonths?premium*12/termMonths:premium;
-  return {premium,termMonths,annualizedPremium};
+  return {premium,termMonths};
 }
 
 export function isActiveClient(lead:ClientRecord){

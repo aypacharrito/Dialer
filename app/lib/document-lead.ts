@@ -27,6 +27,8 @@ export type DocumentLeadExtraction={
   product:string;
   policyPremium:string;
   policyTermMonths:string;
+  billingFrequency:string;
+  installmentAmount:string;
   otherFields:DocumentLeadField[];
 };
 
@@ -36,7 +38,7 @@ const keys:[keyof Omit<DocumentLeadExtraction,"otherFields">,number][]=[
   ["licenseNumber",80],["licenseState",60],["licenseExpiration",30],["policyNumber",100],
   ["carrier",160],["policyEffectiveDate",30],["policyExpirationDate",30],["vin",40],
   ["vehicleYear",10],["vehicleMake",80],["vehicleModel",100],["email",180],["phone",50],["product",100],
-  ["policyPremium",30],["policyTermMonths",10],
+  ["policyPremium",30],["policyTermMonths",10],["billingFrequency",40],["installmentAmount",30],
 ];
 
 function text(value:unknown,max:number){return String(value||"").replace(/\s+/g," ").trim().slice(0,max)}
@@ -75,6 +77,7 @@ export function documentLeadImportedFields(extraction:DocumentLeadExtraction){
     ["Policy expiration date",extraction.policyExpirationDate],["VIN",extraction.vin],
     ["Vehicle year",extraction.vehicleYear],["Vehicle make",extraction.vehicleMake],["Vehicle model",extraction.vehicleModel],
     ["Policy premium",extraction.policyPremium],["Policy term months",extraction.policyTermMonths],
+    ["Billing frequency",extraction.billingFrequency],["Installment amount",extraction.installmentAmount],
     ...extraction.otherFields.map(field=>[field.label,field.value] as [string,string]),
   ];
   return Object.fromEntries(pairs.filter(([,value])=>Boolean(value)));
