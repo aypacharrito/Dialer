@@ -1,8 +1,10 @@
 import * as Linking from "expo-linking";
+import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../src/components/Screen";
 import { Button, Card, Field, Muted, Title, usePalette } from "../../src/components/Primitives";
+import type { LiveCallSession } from "../../src/lib/types";
 import { useWorkspace } from "../../src/state/WorkspaceProvider";
 
 const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
@@ -10,6 +12,7 @@ const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 export default function DialerScreen() {
   const p = usePalette();
   const { workspace } = useWorkspace();
+  const liveCall = (workspace.profile.liveCallSession || null) as LiveCallSession | null;
   const [number, setNumber] = useState("");
   const normalized = number.replace(/[^+\d]/g, "");
   const match = useMemo(() => {
@@ -30,6 +33,14 @@ export default function DialerScreen() {
   return (
     <Screen>
       <Title eyebrow="PACIFICA">Dialer</Title>
+      {liveCall ? <Card style={[styles.liveCall, { borderColor: p.green }]}>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={[styles.liveEyebrow, { color: p.green }]}>{liveCall.status === "connected" ? "LIVE ON PACIFICA WEB" : "CALLING ON PACIFICA WEB"}</Text>
+          <Text style={[styles.liveName, { color: p.text }]}>{liveCall.name}</Text>
+          <Muted>{liveCall.phone}</Muted>
+        </View>
+        <Button title="Open" kind="secondary" onPress={() => { setNumber(liveCall.phone); if (liveCall.leadId) router.push(`/lead/${liveCall.leadId}`); }} />
+      </Card> : null}
       <Card style={styles.card}>
         <Field
           value={number}
@@ -64,6 +75,9 @@ export default function DialerScreen() {
 }
 
 const styles = StyleSheet.create({
+  liveCall: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1.5 },
+  liveEyebrow: { fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  liveName: { fontSize: 18, fontWeight: "900" },
   card: { gap: 14 },
   number: { minHeight: 58, fontSize: 23, textAlign: "center", letterSpacing: 1 },
   match: { textAlign: "center", fontSize: 14, fontWeight: "800" },

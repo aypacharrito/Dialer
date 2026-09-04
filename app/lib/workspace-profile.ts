@@ -6,6 +6,7 @@ export type AutomationTrigger="new-lead"|"no-answer"|"interested";
 export type AutomationStep={id:string;channel:AutomationChannel;delayMinutes:number;templateId:string;enabled:boolean};
 export type AutomationSequence={id:string;name:string;trigger:AutomationTrigger;active:boolean;stopOnReply:boolean;steps:AutomationStep[]};
 export type WorkspaceTeamMember={userId:string;email:string;name:string;role:"manager"|"agent";active:boolean};
+export type LiveCallSession={leadId:number|null;name:string;phone:string;line:"life"|"home-auto";status:"dialing"|"connected";startedAt:string;updatedAt:string};
 
 export const defaultAutomationSequences:AutomationSequence[]=[
   {id:"speed-to-lead",name:"Fresh lead follow-up",trigger:"new-lead",active:true,stopOnReply:true,steps:[
@@ -44,6 +45,7 @@ export type WorkspaceProfile={
   customerReminderSmsEnabled:boolean;
   ownerReminderSmsEnabled:boolean;
   ownerReminderPhone:string;
+  liveCallSession:LiveCallSession|null;
 };
 
 export const defaultWorkspaceProfile:WorkspaceProfile={
@@ -69,6 +71,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   customerReminderSmsEnabled:false,
   ownerReminderSmsEnabled:false,
   ownerReminderPhone:"",
+  liveCallSession:null,
 };
 
 function cleanSequence(raw:unknown,index:number):AutomationSequence|null{
@@ -87,6 +90,7 @@ function cleanSequence(raw:unknown,index:number):AutomationSequence|null{
 
 export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   const profile=value&&typeof value==="object"?value as Partial<WorkspaceProfile>:{};
+  const rawLiveCall=profile.liveCallSession&&typeof profile.liveCallSession==="object"?profile.liveCallSession:null;
   return {
     mode:profile.mode==="insurance"?"insurance":"sales",
     appearance:profile.appearance==="dark"?"dark":"light",
@@ -120,5 +124,6 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     customerReminderSmsEnabled:profile.customerReminderSmsEnabled===true,
     ownerReminderSmsEnabled:profile.ownerReminderSmsEnabled===true,
     ownerReminderPhone:String(profile.ownerReminderPhone||"").trim().slice(0,40),
+    liveCallSession:rawLiveCall&&String(rawLiveCall.phone||"").trim()?{leadId:Number.isFinite(Number(rawLiveCall.leadId))?Number(rawLiveCall.leadId):null,name:String(rawLiveCall.name||"Active call").trim().slice(0,120),phone:String(rawLiveCall.phone||"").trim().slice(0,40),line:rawLiveCall.line==="life"?"life":"home-auto",status:rawLiveCall.status==="connected"?"connected":"dialing",startedAt:String(rawLiveCall.startedAt||new Date().toISOString()),updatedAt:String(rawLiveCall.updatedAt||new Date().toISOString())}:null,
   };
 }

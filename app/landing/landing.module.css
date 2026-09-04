@@ -221,3 +221,31 @@
 .planGrid article.popular{border-color:#6e8f79}
 .planGrid article>em{border-radius:3px}
 .nav .navCta,.heroActions>a,.planGrid button,.finalCta a{border-radius:4px}
+
+/* Final theme authority: every CTA belongs to its selected landing theme. */
+.site[data-landing-theme="light"] .nav .navCta,
+.site[data-landing-theme="light"] .heroActions>a:first-child,
+.site[data-landing-theme="light"] .planGrid button,
+.site[data-landing-theme="light"] .finalCta a{
+  background:#0d796f;
+  color:#fff;
+  border:1px solid #0d796f;
+  box-shadow:0 7px 18px rgba(13,121,111,.16);
+}
+.site[data-landing-theme="light"] .nav .navCta:hover,
+.site[data-landing-theme="light"] .heroActions>a:first-child:hover,
+.site[data-landing-theme="light"] .planGrid button:hover,
+.site[data-landing-theme="light"] .finalCta a:hover{background:#09685f;border-color:#09685f;transform:translateY(-1px)}
+.site[data-landing-theme="light"] .heroActions>a+a{background:#fff;color:#173b34;border-color:#cdded7;box-shadow:none}
+.site[data-landing-theme="light"] .finalCta{background:linear-gradient(135deg,#dff5ed 0%,#c9efdf 100%);color:#12372e;border-block:1px solid #b8dfd0}
+.site[data-landing-theme="light"] .finalCta p{color:#4f6f64}
+.site[data-landing-theme="light"] .planGrid article,
+.site[data-landing-theme="light"] .planGrid article.popular{box-shadow:0 10px 30px rgba(22,71,56,.055)}
+.site[data-landing-theme="light"] .planGrid article.popular{background:linear-gradient(180deg,#edf9f4,#fff 42%);border-color:#54a98a}
+
+.site[data-landing-theme="dark"] .nav .navCta,
+.site[data-landing-theme="dark"] .heroActions>a:first-child,
+.site[data-landing-theme="dark"] .planGrid button{background:#8de0c4;color:#0b211a;border:1px solid #8de0c4}
+.site[data-landing-theme="dark"] .heroActions>a+a{background:transparent;color:#eef8f3;border-color:#3d514a}
+.site :is(.navCta,.heroActions>a,.planGrid button,.finalCta a){transition:background-color .18s ease,border-color .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease}
+.site :is(.navCta,.heroActions>a,.planGrid button,.finalCta a):focus-visible{outline:3px solid color-mix(in srgb,var(--teal) 30%,transparent);outline-offset:3px}

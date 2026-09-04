@@ -9,14 +9,14 @@ export default function manifest():MetadataRoute.Manifest{
     start_url:"/dashboard",
     scope:"/",
     display:"standalone",
-    background_color:"#111315",
-    theme_color:"#177e83",
+    background_color:"#EAF6F2",
+    theme_color:"#0F7B70",
     orientation:"any",
     categories:["business","productivity"],
     icons:[
-      {src:"/pacifica-icon-192.png",sizes:"192x192",type:"image/png"},
-      {src:"/pacifica-icon-512.png",sizes:"512x512",type:"image/png"},
-      {src:"/pacifica-icon-512-maskable.png",sizes:"512x512",type:"image/png",purpose:"maskable"},
+      {src:"/pacifica-icon-192.png?v=3",sizes:"192x192",type:"image/png"},
+      {src:"/pacifica-icon-512.png?v=3",sizes:"512x512",type:"image/png"},
+      {src:"/pacifica-icon-512-maskable.png?v=3",sizes:"512x512",type:"image/png",purpose:"maskable"},
     ],
   };
 }

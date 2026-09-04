@@ -28,7 +28,7 @@ export type LeadPriority={
 export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall">;
 
 export function isDialerEligibleLead(lead:DialerEligibilityInput){
-  if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment")return false;
+  if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||lead.stage==="Quoted")return false;
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
   if(new Set(["interested","appointment set","not interested","wrong number","sold / won","sold","won"]).has(outcome))return false;
@@ -53,7 +53,7 @@ export function leadCreatedAt(lead:Pick<LeadPriorityInput,"importedAt"|"received
 }
 
 export function leadPriority(lead:LeadPriorityInput,now=Date.now()):LeadPriority{
-  if(lead.doNotCall||lead.stage==="Closed")return {score:-1000,level:"LOW",reason:lead.doNotCall?"Do not call":"Closed",detail:"Excluded from active calling",due:false,fresh:false};
+  if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Quoted")return {score:-1000,level:"LOW",reason:lead.doNotCall?"Do not call":lead.stage==="Quoted"?"Quote prepared":"Closed",detail:"Excluded from active calling",due:false,fresh:false};
   const outcome=lead.outcome.toLowerCase();
   const disposition=lead.sourceDisposition.toLowerCase();
   const created=leadCreatedAt(lead);
