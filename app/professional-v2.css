@@ -1,0 +1,628 @@
+/* Pacifica CRM professional desktop system v2
+   Purpose: consistent readable typography, compact SaaS density, uniform controls.
+*/
+
+html[data-theme] {
+  --p-xs: 10px;
+  --p-sm: 11.5px;
+  --p-md: 13px;
+  --p-lg: 15px;
+  --p-xl: 20px;
+  --p-kpi: 27px;
+  --p-control-h: 40px;
+  --p-pill-h: 26px;
+  --p-card-radius: 16px;
+  --p-control-radius: 10px;
+  --p-gap-1: 8px;
+  --p-gap-2: 12px;
+  --p-gap-3: 16px;
+  --p-gap-4: 24px;
+}
+
+html[data-display-size="comfortable"] {
+  --p-xs: 9.5px;
+  --p-sm: 11px;
+  --p-md: 12.5px;
+  --p-lg: 14px;
+  --p-xl: 19px;
+  --p-kpi: 25px;
+  --p-control-h: 38px;
+}
+
+html[data-display-size="extra-large"] {
+  --p-xs: 11px;
+  --p-sm: 12.5px;
+  --p-md: 14px;
+  --p-lg: 16px;
+  --p-xl: 22px;
+  --p-kpi: 30px;
+  --p-control-h: 44px;
+  --p-pill-h: 29px;
+}
+
+html[data-theme] body,
+html[data-theme] button,
+html[data-theme] input,
+html[data-theme] select,
+html[data-theme] textarea {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+html[data-theme] .app-shell {
+  font-size: var(--p-md);
+  letter-spacing: 0;
+}
+
+/* One typography language across the whole product. */
+html[data-theme] .app-shell button,
+html[data-theme] .app-shell input,
+html[data-theme] .app-shell select,
+html[data-theme] .app-shell textarea {
+  font-size: var(--p-md);
+}
+
+html[data-theme] .app-shell small {
+  font-size: var(--p-sm);
+  line-height: 1.4;
+}
+
+html[data-theme] :is(
+  .eyebrow,
+  .call-status-line span,
+  .lead-file > header span,
+  .lead-detail-group > span,
+  .lead-file-grid label span,
+  .number-display > label,
+  .side-pad > header span,
+  .stats-row article span,
+  .queue-card > header span,
+  .crm-summary article span,
+  .table-head span,
+  .section-label,
+  .new-lead-section-label,
+  .settings-nav > span,
+  .workspace-profile-settings > header span,
+  .provider-card .eyebrow
+) {
+  font-size: var(--p-xs) !important;
+  line-height: 1.25 !important;
+  letter-spacing: .105em !important;
+  font-weight: 800 !important;
+}
+
+/* Sidebar: closer to Gmail/HubSpot density and legibility. */
+html[data-theme] .sidebar {
+  padding: 18px 13px 14px !important;
+}
+
+html[data-theme] .logo {
+  min-height: 60px !important;
+  padding: 3px 8px 17px !important;
+}
+
+html[data-theme] .logo b {
+  font-size: 13px !important;
+  letter-spacing: .15em !important;
+}
+
+html[data-theme] .sidebar nav {
+  gap: 3px !important;
+}
+
+html[data-theme] .sidebar nav button {
+  height: 45px !important;
+  min-height: 45px !important;
+  padding: 0 12px !important;
+  gap: 11px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .sidebar nav button svg {
+  width: 17px !important;
+  height: 17px !important;
+}
+
+html[data-theme] .sidebar nav em,
+html[data-theme] .message-unread {
+  height: 23px !important;
+  min-width: 23px !important;
+  padding: 0 7px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme] .agent b { font-size: 12px !important; }
+html[data-theme] .agent small { font-size: 10px !important; }
+
+/* Header: fewer competing sizes, same control family. */
+html[data-theme] .topbar {
+  height: 72px !important;
+  min-height: 72px !important;
+  padding: 0 22px !important;
+  gap: 14px !important;
+}
+
+html[data-theme] .caller-id {
+  min-width: 190px !important;
+  gap: 7px !important;
+}
+
+html[data-theme] .caller-id small {
+  font-size: var(--p-xs) !important;
+  letter-spacing: .105em !important;
+}
+
+html[data-theme] .caller-id b {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+html[data-theme] :is(
+  .idle-badge,
+  .lead-file > header em,
+  .pad-tools small,
+  .twilio-selected,
+  .priority-pill,
+  .stage,
+  .nav-soon
+) {
+  min-height: var(--p-pill-h) !important;
+  height: var(--p-pill-h) !important;
+  padding: 0 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  font-size: var(--p-xs) !important;
+  line-height: 1 !important;
+  letter-spacing: .045em !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
+
+html[data-theme] .lead-line-switch {
+  min-height: 42px !important;
+  height: 42px !important;
+  padding: 4px !important;
+  border-radius: 11px !important;
+}
+
+html[data-theme] .lead-line-switch button {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 15px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+html[data-theme] .top-actions {
+  gap: 7px !important;
+}
+
+html[data-theme] .top-actions > button,
+html[data-theme] .top-auth > button,
+html[data-theme] .scan-action,
+html[data-theme] .import,
+html[data-theme] .inbound-availability {
+  height: var(--p-control-h) !important;
+  min-height: var(--p-control-h) !important;
+  padding-inline: 12px !important;
+  border-radius: var(--p-control-radius) !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+html[data-theme] .notification {
+  width: var(--p-control-h) !important;
+  min-width: var(--p-control-h) !important;
+  padding: 0 !important;
+}
+
+html[data-theme] .workspace-sync,
+html[data-theme] .connection {
+  min-height: 32px !important;
+  padding: 0 8px !important;
+  font-size: 10.5px !important;
+}
+
+/* Main desktop canvas */
+html[data-theme] .page-view,
+html[data-theme] .dialer-view {
+  padding: 22px 24px 30px !important;
+}
+
+html[data-theme] .dialer-main-grid {
+  gap: 14px !important;
+  grid-template-columns: minmax(500px, 1.34fr) minmax(365px, .94fr) minmax(300px, .72fr) !important;
+}
+
+html[data-theme] :is(.hero-call,.lead-file,.side-pad,.queue-card,.table-card) {
+  border-radius: var(--p-card-radius) !important;
+}
+
+html[data-theme] .hero-call,
+html[data-theme] .lead-file,
+html[data-theme] .side-pad {
+  min-height: 500px !important;
+}
+
+html[data-theme] .call-grid {
+  min-height: 500px !important;
+  padding: 26px !important;
+}
+
+html[data-theme] .call-status-line {
+  min-height: 28px !important;
+  margin-bottom: 15px !important;
+}
+
+html[data-theme] .call-status-line em {
+  min-height: var(--p-pill-h);
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--pro-accent-soft);
+  color: var(--pro-accent-strong);
+  font-size: var(--p-xs) !important;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+html[data-theme] .contact-card {
+  min-height: 104px !important;
+  padding: 17px 18px !important;
+  gap: 14px !important;
+  border-radius: 14px !important;
+}
+
+html[data-theme] .avatar {
+  width: 56px !important;
+  height: 56px !important;
+  flex-basis: 56px !important;
+  font-size: 15px !important;
+}
+
+html[data-theme] .contact-card h2 {
+  margin: 2px 0 4px !important;
+  font-size: var(--p-xl) !important;
+  font-weight: 720 !important;
+}
+
+html[data-theme] .contact-card a {
+  font-size: var(--p-md) !important;
+  font-weight: 650 !important;
+}
+
+html[data-theme] .contact-card p {
+  font-size: var(--p-sm) !important;
+}
+
+html[data-theme] .timer {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .signal {
+  min-height: 72px !important;
+  margin-block: 10px 4px !important;
+}
+
+html[data-theme] .start-call,
+html[data-theme] .end-call {
+  min-width: 150px !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+
+html[data-theme] .round,
+html[data-theme] .recording-control {
+  min-width: 54px !important;
+  min-height: 54px !important;
+}
+
+html[data-theme] .round small,
+html[data-theme] .recording-control small,
+html[data-theme] .inline-pause {
+  font-size: 10.5px !important;
+}
+
+/* Contact detail column */
+html[data-theme] .lead-file > header,
+html[data-theme] .side-pad > header {
+  min-height: 64px !important;
+  padding: 16px 18px !important;
+}
+
+html[data-theme] .lead-file > header b {
+  margin-top: 4px;
+  font-size: 14px !important;
+  font-weight: 760 !important;
+}
+
+html[data-theme] .lead-file-identity {
+  padding: 16px 18px !important;
+}
+
+html[data-theme] .file-avatar {
+  width: 45px !important;
+  height: 45px !important;
+  flex: 0 0 45px !important;
+  font-size: 12px !important;
+}
+
+html[data-theme] .lead-file-identity a {
+  font-size: 12.5px !important;
+  line-height: 1.4 !important;
+}
+
+html[data-theme] .lead-file-identity small {
+  font-size: 10.5px !important;
+}
+
+html[data-theme] .lead-detail-group {
+  padding: 16px 18px !important;
+}
+
+html[data-theme] .lead-file-grid {
+  gap: 8px !important;
+}
+
+html[data-theme] .lead-file-grid label {
+  min-height: 49px !important;
+  padding: 9px 10px !important;
+  border-radius: 9px !important;
+}
+
+html[data-theme] .lead-file-grid label b {
+  margin-top: 4px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+}
+
+/* Keypad */
+html[data-theme] .number-display,
+html[data-theme] .key-grid,
+html[data-theme] .phone-actions,
+html[data-theme] .live-phone-actions {
+  margin-inline: 18px !important;
+}
+
+html[data-theme] .number-display {
+  padding-top: 16px !important;
+}
+
+html[data-theme] .number-input-shell {
+  height: 50px !important;
+  border-radius: 11px !important;
+}
+
+html[data-theme] .number-input-shell input,
+html[data-theme] .number-input-shell input:hover,
+html[data-theme] .number-input-shell input:focus {
+  height: 48px !important;
+  font-size: 17px !important;
+}
+
+html[data-theme] .key-grid {
+  gap: 7px !important;
+}
+
+html[data-theme] .key-grid button {
+  min-height: 54px !important;
+  height: 54px !important;
+  border-radius: 10px !important;
+}
+
+html[data-theme] .key-grid button b {
+  font-size: 17px !important;
+  font-weight: 620 !important;
+}
+
+html[data-theme] .key-grid button small {
+  margin-top: 3px !important;
+  font-size: 8.5px !important;
+  letter-spacing: .07em !important;
+}
+
+html[data-theme] .phone-call {
+  width: 114px !important;
+  height: 46px !important;
+  border-radius: 12px !important;
+}
+
+html[data-theme] .phone-call span { font-size: 11px !important; }
+
+/* Bottom section: KPI cards no longer stretch into giant empty boxes. */
+html[data-theme] .bottom-grid {
+  margin-top: 14px !important;
+  gap: 14px !important;
+  align-items: start !important;
+  grid-template-columns: minmax(390px, .72fr) minmax(600px, 1.28fr) !important;
+}
+
+html[data-theme] .stats-row {
+  gap: 9px !important;
+  align-self: start !important;
+}
+
+html[data-theme] .stats-row article {
+  height: 112px !important;
+  min-height: 112px !important;
+  padding: 15px 16px !important;
+  border-radius: 14px !important;
+}
+
+html[data-theme] .stats-row article b {
+  margin-top: auto !important;
+  font-size: var(--p-kpi) !important;
+  line-height: 1 !important;
+  font-weight: 710 !important;
+}
+
+html[data-theme] .stats-row article .phone-stat {
+  font-size: 18px !important;
+}
+
+html[data-theme] .queue-card {
+  min-height: 0 !important;
+}
+
+html[data-theme] .queue-card > header {
+  min-height: 54px !important;
+  padding: 12px 16px !important;
+}
+
+html[data-theme] .queue-card > header b {
+  margin-top: 4px !important;
+  font-size: 13px !important;
+}
+
+html[data-theme] .queue-card > header button {
+  min-height: 34px !important;
+  padding: 0 10px !important;
+  font-size: 10.5px !important;
+}
+
+html[data-theme] .queue-row {
+  min-height: 53px !important;
+  padding: 8px 14px !important;
+  gap: 10px !important;
+}
+
+html[data-theme] .queue-row > em {
+  font-size: 10px !important;
+}
+
+html[data-theme] .mini-avatar {
+  width: 31px !important;
+  height: 31px !important;
+  flex: 0 0 31px !important;
+  font-size: 9.5px !important;
+}
+
+html[data-theme] .queue-row b { font-size: 11.5px !important; }
+html[data-theme] .queue-row small { font-size: 10px !important; }
+
+/* Contacts: one consistent data-table scale. */
+html[data-theme] .module-bar,
+html[data-theme] .settings-title-bar {
+  min-height: 48px !important;
+  margin-bottom: 14px !important;
+}
+
+html[data-theme] .module-actions button,
+html[data-theme] .module-bar > button,
+html[data-theme] .crm-tools select,
+html[data-theme] .crm-tools input {
+  min-height: var(--p-control-h) !important;
+  height: var(--p-control-h) !important;
+  font-size: 12px !important;
+}
+
+html[data-theme] .crm-summary article {
+  min-height: 94px !important;
+  padding: 15px 16px !important;
+  border-radius: 14px !important;
+}
+
+html[data-theme] .crm-summary article b {
+  font-size: var(--p-kpi) !important;
+  font-weight: 710 !important;
+}
+
+html[data-theme] .crm-tools {
+  margin: 12px 0 !important;
+  gap: 8px !important;
+}
+
+html[data-theme] .table-head {
+  min-height: 44px !important;
+}
+
+html[data-theme] .table-row {
+  min-height: 70px !important;
+  font-size: 12px !important;
+}
+
+html[data-theme] .table-row b { font-size: 12.5px !important; }
+html[data-theme] .table-row small { font-size: 10.5px !important; }
+
+/* Drawers/settings/modals use the same control scale. */
+html[data-theme] .record-actions button,
+html[data-theme] .record-actions button:first-child,
+html[data-theme] .quick-follow-up button,
+html[data-theme] .settings-nav button,
+html[data-theme] .new-lead-modal button {
+  font-size: 12px !important;
+}
+
+html[data-theme] .field-grid label,
+html[data-theme] .new-lead-fields label,
+html[data-theme] .workspace-profile-fields label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .field-grid input,
+html[data-theme] .field-grid select,
+html[data-theme] .new-lead-fields input,
+html[data-theme] .new-lead-fields select,
+html[data-theme] .workspace-profile-fields input,
+html[data-theme] .workspace-profile-fields select {
+  min-height: var(--p-control-h) !important;
+  height: var(--p-control-h) !important;
+  font-size: 12.5px !important;
+}
+
+html[data-theme] .settings-nav button {
+  min-height: 45px !important;
+}
+
+html[data-theme] .settings-nav button b { font-size: 12px !important; }
+
+html[data-theme] .workspace-profile-settings > header h2,
+html[data-theme] .team-management h2,
+html[data-theme] .system-health h2 {
+  font-size: 21px !important;
+  letter-spacing: -.02em !important;
+}
+
+/* Large and extra-large remain useful without destroying the grid. */
+html[data-display-size="extra-large"] .sidebar nav button { height: 48px !important; min-height: 48px !important; font-size: 14px !important; }
+html[data-display-size="extra-large"] .lead-file-grid label { min-height: 53px !important; }
+html[data-display-size="extra-large"] .table-row { min-height: 76px !important; }
+html[data-display-size="extra-large"] .stats-row article { height: 120px !important; min-height: 120px !important; }
+
+@media (max-width: 1499px) {
+  html[data-theme] .dialer-main-grid {
+    grid-template-columns: minmax(470px, 1.18fr) minmax(350px, .82fr) !important;
+  }
+  html[data-theme] .side-pad {
+    grid-column: 1 / -1 !important;
+  }
+  html[data-theme] .side-pad .key-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  html[data-theme] .bottom-grid { grid-template-columns: 1fr !important; }
+  html[data-theme] .stats-row { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
+}
+
+@media (max-width: 760px) {
+  html[data-theme] .topbar { min-height: 68px !important; }
+  html[data-theme] .page-view,
+  html[data-theme] .dialer-view { padding: 14px 12px 22px !important; }
+  html[data-theme] .stats-row { grid-template-columns: 1fr !important; }
+  html[data-theme] .stats-row article { height: 92px !important; min-height: 92px !important; }
+}
