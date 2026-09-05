@@ -2503,6 +2503,51 @@ html[data-theme] .message-contacts>button>i{width:42px;height:42px;font-size:cal
 html[data-theme] .message-contacts>button b{font-size:calc(14px * var(--ui-type-scale,1));font-weight:800}
 html[data-theme] .message-contacts>button small{font-size:calc(12px * var(--ui-type-scale,1));line-height:1.35}
 html[data-theme] .message-contacts>button>em{min-width:92px!important;padding:7px 10px!important}
+
+/* Adaptive command bar: preserves a centered queue switch at every display size. */
+@media(min-width:1201px){
+  html[data-theme] .topbar{
+    height:80px!important;
+    min-height:80px;
+    display:grid!important;
+    grid-template-columns:minmax(250px,1fr) auto minmax(250px,1fr)!important;
+    column-gap:18px!important;
+    padding-inline:28px!important;
+    overflow:visible;
+  }
+  html[data-theme] .caller-id{min-width:0;justify-self:start;white-space:nowrap}
+  html[data-theme] .lead-line-switch{min-width:340px;justify-self:center!important;overflow:visible}
+  html[data-theme] .lead-line-switch button{min-width:166px!important;padding-inline:16px!important;white-space:nowrap;line-height:1}
+  html[data-theme] .top-actions{min-width:0;max-width:100%;justify-self:end!important;justify-content:flex-end;gap:8px!important;white-space:nowrap}
+  html[data-theme] .top-actions>*{flex:0 0 auto}
+  html[data-theme] .top-actions :is(button,.connection,.workspace-sync){white-space:nowrap;line-height:1}
+  html[data-theme] .top-auth{flex:0 0 auto;min-width:0}
+  html[data-theme] .top-auth>button{min-width:82px!important;white-space:nowrap!important;line-height:1!important}
+}
+
+/* Large/extra-large visibility uses compact status affordances before overlap is possible. */
+@media(min-width:1201px) and (max-width:2200px){
+  html[data-theme] .workspace-sync{display:none!important}
+  html[data-theme] .connection{width:42px;height:42px;padding:0;display:inline-flex!important;justify-content:center;border:1px solid var(--ui-border);border-radius:11px;background:var(--ui-surface)}
+  html[data-theme] .connection>span{display:none!important}
+  html[data-theme] .connection svg{width:18px;height:18px}
+}
+
+@media(min-width:1201px) and (max-width:1780px){
+  html[data-theme] .topbar{grid-template-columns:minmax(225px,1fr) auto minmax(225px,1fr)!important;padding-inline:20px!important;column-gap:12px!important}
+  html[data-theme] .lead-line-switch{min-width:306px}
+  html[data-theme] .lead-line-switch button{min-width:149px!important;padding-inline:12px!important}
+  html[data-theme] .top-actions .scan-action{width:42px!important;padding:0!important;justify-content:center;font-size:0!important}
+  html[data-theme] .top-actions .scan-action svg{width:18px;height:18px}
+}
+
+@media(min-width:1201px) and (max-width:1480px){
+  html[data-theme] .topbar{height:auto!important;min-height:124px;grid-template-columns:1fr auto!important;grid-template-areas:"caller actions" "switch switch";row-gap:10px;padding-block:10px!important}
+  html[data-theme] .caller-id{grid-area:caller}
+  html[data-theme] .lead-line-switch{grid-area:switch;width:min(430px,100%)}
+  html[data-theme] .lead-line-switch button{flex:1;min-width:0!important}
+  html[data-theme] .top-actions{grid-area:actions}
+}
 html[data-theme] .message-thread>header{min-height:68px;padding:14px 18px}
 html[data-theme] .message-thread>header b{font-size:calc(16px * var(--ui-type-scale,1));font-weight:800}
 html[data-theme] .message-thread>header small{font-size:calc(12px * var(--ui-type-scale,1))}
