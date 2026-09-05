@@ -1,0 +1,34 @@
+PACIFICA — COMPACT DIALER & TYPOGRAPHY UPDATE
+
+INSTALL
+1. Extract this ZIP.
+2. Open aypacharrito/Dialer on GitHub, on the main branch.
+3. Choose Add file > Upload files at the repository root.
+4. Drag the extracted app folder into the upload area. Keep the app folder structure.
+5. Commit the replacements and wait for your Vercel deployment to finish.
+6. Reload Pacifica. Open Settings > Workspace > Display size to choose your size.
+
+CHANGES
+- Compact call strip replaces the large idle call panel and decorative waveform.
+- Full contact details appear during a connected call and post-call wrap-up.
+- Keypad opens from the toolbar; manual dialing and live touch tones remain available.
+- Lead details use separated rows instead of individual rounded cards.
+- Compact statistics and queue layout.
+- A shared sans-serif family throughout the CRM, including settings.
+- Legacy pixel text sizes now follow the saved workspace size; small text has a 12px base floor.
+- Explicit desktop/mobile grid placement prevents the call strip, record and keypad overlapping.
+- Existing prebuild-generated stable queue and UI changes are included so the shipped source stays compatible with both upgrade scripts.
+
+VALIDATION
+- VERCEL=1 npm run build: passed (production compilation, type checking, page generation).
+- TypeScript: passed.
+- 16 existing lead-priority, post-call and workspace-profile tests: passed.
+- ESLint: the same two react-hooks/purity errors occur in both original prebuild-generated source and this update, in openView and createDialerRun.
+- Browser visual verification blocked: browser daemon startup failed; Chromium download timed out. Responsive layouts and live call visibility still need a visual check in the deployed app. No real calls were placed.
+
+BASE
+Repository main commit eba1139. If you have uploaded other changes since that commit, merge these files rather than blindly replacing newer work.
+
+DESIGN REFERENCES
+https://developer.apple.com/design/human-interface-guidelines/typography
+https://m3.material.io/foundations/layout/layout-overview

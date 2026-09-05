@@ -8,6 +8,7 @@ export type AutomationStep={id:string;channel:AutomationChannel;delayMinutes:num
 export type AutomationSequence={id:string;name:string;trigger:AutomationTrigger;active:boolean;stopOnReply:boolean;steps:AutomationStep[]};
 export type WorkspaceTeamMember={userId:string;email:string;name:string;role:"manager"|"agent";active:boolean};
 export type LiveCallSession={leadId:number|null;name:string;phone:string;line:"life"|"home-auto";status:"dialing"|"connected";startedAt:string;updatedAt:string};
+export type DialerRunState={ids:number[];completed:number;total:number;startedAt:string;updatedAt:string}; // PACIFICA_STABLE_DIALER_RUN_V2
 
 export const defaultAutomationSequences:AutomationSequence[]=[
   {id:"speed-to-lead",name:"Fresh lead follow-up",trigger:"new-lead",active:true,stopOnReply:true,steps:[
@@ -48,6 +49,7 @@ export type WorkspaceProfile={
   ownerReminderSmsEnabled:boolean;
   ownerReminderPhone:string;
   liveCallSession:LiveCallSession|null;
+  dialerRuns:{life:DialerRunState|null;"home-auto":DialerRunState|null};
   expoPushToken:string;
 };
 
@@ -76,6 +78,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   ownerReminderSmsEnabled:false,
   ownerReminderPhone:"",
   liveCallSession:null,
+  dialerRuns:{life:null,"home-auto":null},
   expoPushToken:"",
 };
 
@@ -93,9 +96,20 @@ function cleanSequence(raw:unknown,index:number):AutomationSequence|null{
   return {id:String(sequence.id||`sequence-${index}`).slice(0,100),name:String(sequence.name||"Follow-up sequence").trim().slice(0,100),trigger,active:sequence.active!==false,stopOnReply:sequence.stopOnReply!==false,steps};
 }
 
+function cleanDialerRun(value:unknown):DialerRunState|null{
+  if(!value||typeof value!=="object")return null;
+  const run=value as Partial<DialerRunState>;
+  const ids=Array.isArray(run.ids)?Array.from(new Set(run.ids.map(Number).filter(id=>Number.isFinite(id)&&id>0))).slice(0,10000):[];
+  if(!ids.length)return null;
+  const total=Math.max(ids.length,Math.round(Number(run.total)||ids.length));
+  const completed=Math.min(total,Math.max(0,Math.round(Number(run.completed)||0)));
+  return {ids,completed,total,startedAt:String(run.startedAt||new Date().toISOString()),updatedAt:String(run.updatedAt||new Date().toISOString())};
+}
+
 export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   const profile=value&&typeof value==="object"?value as Partial<WorkspaceProfile>:{};
   const rawLiveCall=profile.liveCallSession&&typeof profile.liveCallSession==="object"?profile.liveCallSession:null;
+  const rawDialerRuns=profile.dialerRuns&&typeof profile.dialerRuns==="object"?profile.dialerRuns as Partial<Record<"life"|"home-auto",DialerRunState>>:{};
   return {
     mode:profile.mode==="insurance"?"insurance":"sales",
     appearance:profile.appearance==="dark"?"dark":"light",
@@ -131,6 +145,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     ownerReminderSmsEnabled:profile.ownerReminderSmsEnabled===true,
     ownerReminderPhone:String(profile.ownerReminderPhone||"").trim().slice(0,40),
     liveCallSession:rawLiveCall&&String(rawLiveCall.phone||"").trim()?{leadId:Number.isFinite(Number(rawLiveCall.leadId))?Number(rawLiveCall.leadId):null,name:String(rawLiveCall.name||"Active call").trim().slice(0,120),phone:String(rawLiveCall.phone||"").trim().slice(0,40),line:rawLiveCall.line==="life"?"life":"home-auto",status:rawLiveCall.status==="connected"?"connected":"dialing",startedAt:String(rawLiveCall.startedAt||new Date().toISOString()),updatedAt:String(rawLiveCall.updatedAt||new Date().toISOString())}:null,
+    dialerRuns:{life:cleanDialerRun(rawDialerRuns.life),"home-auto":cleanDialerRun(rawDialerRuns["home-auto"])},
     expoPushToken:/^ExponentPushToken\[[^\]]+\]$/.test(String(profile.expoPushToken||""))?String(profile.expoPushToken):"",
   };
 }
