@@ -4,6 +4,7 @@ import { isClerkConfigured } from "./lib/clerk-config";
 import "./globals.css";
 import "./professional-polish.css";
 import "./professional-v2.css";
+import "./product-system.css";
 
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",

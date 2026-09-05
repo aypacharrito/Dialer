@@ -1,0 +1,1171 @@
+/*
+  Pacifica Product System v3
+  A single visual language inspired by the restraint of Apple software and the
+  information clarity of Google's productivity products.
+*/
+
+html[data-theme] {
+  --ps-bg: #f6f8f7;
+  --ps-surface: #ffffff;
+  --ps-surface-2: #f9fbfa;
+  --ps-surface-3: #f2f6f4;
+  --ps-text: #18352d;
+  --ps-text-strong: #0d251e;
+  --ps-muted: #657c73;
+  --ps-subtle: #8da098;
+  --ps-line: #dfe8e4;
+  --ps-line-strong: #ccdcd5;
+  --ps-accent: #0f8a74;
+  --ps-accent-hover: #0b765f;
+  --ps-accent-soft: #e9f6f1;
+  --ps-danger: #a94949;
+  --ps-danger-soft: #fff1f1;
+  --ps-warning: #9a6a18;
+  --ps-warning-soft: #fff7e4;
+  --ps-info: #3d6e8c;
+  --ps-info-soft: #edf5fa;
+  --ps-radius-xs: 8px;
+  --ps-radius-sm: 10px;
+  --ps-radius-md: 12px;
+  --ps-radius-lg: 16px;
+  --ps-radius-xl: 22px;
+  --ps-control: 42px;
+  --ps-control-lg: 46px;
+  --ps-shadow-card: 0 1px 2px rgba(12, 38, 29, .035), 0 8px 24px rgba(12, 38, 29, .045);
+  --ps-shadow-sheet: 0 24px 70px rgba(12, 38, 29, .19);
+  --ps-focus: 0 0 0 3px rgba(15, 138, 116, .16);
+  --ps-ease: cubic-bezier(.2,.8,.2,1);
+}
+
+html[data-theme="dark"] {
+  --ps-bg: #0d1512;
+  --ps-surface: #121d18;
+  --ps-surface-2: #16231e;
+  --ps-surface-3: #1a2a23;
+  --ps-text: #dcebe5;
+  --ps-text-strong: #f4fbf8;
+  --ps-muted: #9bafa6;
+  --ps-subtle: #738b81;
+  --ps-line: #293d35;
+  --ps-line-strong: #385248;
+  --ps-accent: #55c9a6;
+  --ps-accent-hover: #72d7b7;
+  --ps-accent-soft: #16372c;
+  --ps-danger: #f0a19e;
+  --ps-danger-soft: #321f20;
+  --ps-warning: #e8bf78;
+  --ps-warning-soft: #2f271a;
+  --ps-info: #9fcbe3;
+  --ps-info-soft: #172b37;
+  --ps-shadow-card: 0 1px 2px rgba(0,0,0,.22), 0 12px 28px rgba(0,0,0,.18);
+  --ps-shadow-sheet: 0 26px 80px rgba(0,0,0,.48);
+}
+
+/* ---------- Typography ---------- */
+html[data-theme] body,
+html[data-theme] button,
+html[data-theme] input,
+html[data-theme] select,
+html[data-theme] textarea {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-synthesis: none;
+  font-feature-settings: "kern", "liga", "calt";
+}
+
+html[data-theme] body {
+  background: var(--ps-bg) !important;
+  color: var(--ps-text) !important;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html[data-theme] .app-shell { color: var(--ps-text); }
+html[data-theme] .app-shell button,
+html[data-theme] .app-shell input,
+html[data-theme] .app-shell select,
+html[data-theme] .app-shell textarea { font-size: 13px !important; }
+html[data-theme] .app-shell small { font-size: 12px !important; line-height: 1.45 !important; }
+
+html[data-theme] :is(
+  .eyebrow,.section-label,.new-lead-section-label,.quote-section-label,
+  .lead-detail-group>span,.stats-row article>span,.crm-summary article>span,
+  .table-head>span,.number-display>label,.settings-nav>span,
+  .call-status-line>span,.queue-card>header span,.lead-file>header span
+) {
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  letter-spacing: .075em !important;
+  font-weight: 760 !important;
+  color: var(--ps-muted) !important;
+}
+
+html[data-display-size="comfortable"] body { font-size: 13px; }
+html[data-display-size="comfortable"] .app-shell button,
+html[data-display-size="comfortable"] .app-shell input,
+html[data-display-size="comfortable"] .app-shell select,
+html[data-display-size="comfortable"] .app-shell textarea { font-size: 12.5px !important; }
+
+html[data-display-size="extra-large"] body { font-size: 15px; }
+html[data-display-size="extra-large"] .app-shell button,
+html[data-display-size="extra-large"] .app-shell input,
+html[data-display-size="extra-large"] .app-shell select,
+html[data-display-size="extra-large"] .app-shell textarea { font-size: 14px !important; }
+html[data-display-size="extra-large"] .app-shell small { font-size: 12.5px !important; }
+
+/* ---------- Universal controls ---------- */
+html[data-theme] :is(input,select,textarea) {
+  border: 1px solid var(--ps-line-strong) !important;
+  background: var(--ps-surface) !important;
+  color: var(--ps-text-strong) !important;
+  border-radius: var(--ps-radius-sm) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] :is(input,select):not([type="checkbox"]):not([type="radio"]) {
+  min-height: var(--ps-control);
+}
+
+html[data-theme] textarea { min-height: 108px; line-height: 1.55; }
+
+html[data-theme] :is(input,select,textarea):hover {
+  border-color: #aec8bd !important;
+}
+
+html[data-theme] :is(input,select,textarea):focus {
+  border-color: var(--ps-accent) !important;
+  box-shadow: var(--ps-focus) !important;
+  outline: none !important;
+}
+
+html[data-theme] :is(button,a,input,select,textarea):focus-visible {
+  outline: none !important;
+  box-shadow: var(--ps-focus) !important;
+}
+
+html[data-theme] button {
+  transition: transform .14s var(--ps-ease), background-color .14s var(--ps-ease),
+              border-color .14s var(--ps-ease), box-shadow .14s var(--ps-ease), color .14s var(--ps-ease);
+}
+
+html[data-theme] button:not(:disabled):active { transform: scale(.985); }
+
+/* ---------- Shell + navigation ---------- */
+html[data-theme] .app-shell {
+  background: var(--ps-bg) !important;
+  grid-template-columns: 214px minmax(0,1fr) !important;
+}
+
+html[data-theme] .sidebar {
+  width: 214px !important;
+  padding: 18px 12px 14px !important;
+  background: var(--ps-surface) !important;
+  color: var(--ps-text) !important;
+  border-right: 1px solid var(--ps-line) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] .logo {
+  min-height: 62px !important;
+  padding: 4px 9px 18px !important;
+}
+
+html[data-theme] .logo b {
+  color: var(--ps-text-strong) !important;
+  font-size: 13px !important;
+  font-weight: 780 !important;
+  letter-spacing: .16em !important;
+}
+
+html[data-theme] .sidebar nav { gap: 3px !important; }
+html[data-theme] .sidebar nav button {
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 12px !important;
+  gap: 11px !important;
+  color: #4f6d62 !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+}
+
+html[data-theme] .sidebar nav button:hover:not(:disabled) {
+  background: var(--ps-surface-3) !important;
+  color: var(--ps-text-strong) !important;
+}
+
+html[data-theme] .sidebar nav button.active {
+  background: var(--ps-accent-soft) !important;
+  color: var(--ps-accent-hover) !important;
+  border-color: #c7e8dc !important;
+  box-shadow: inset 3px 0 var(--ps-accent) !important;
+}
+
+html[data-theme="dark"] .sidebar nav button.active { border-color: #285746 !important; }
+
+html[data-theme] .sidebar nav em,
+html[data-theme] .message-unread {
+  min-width: 22px !important;
+  height: 22px !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-style: normal !important;
+  font-weight: 750 !important;
+}
+
+html[data-theme] .sidebar-foot {
+  border-color: var(--ps-line) !important;
+  padding-top: 14px !important;
+}
+html[data-theme] .agent b { color: var(--ps-text-strong) !important; font-size: 12px !important; }
+html[data-theme] .agent small { color: var(--ps-muted) !important; font-size: 10.5px !important; }
+
+/* ---------- Top command bar ---------- */
+html[data-theme] .workspace { min-width: 0; background: var(--ps-bg) !important; }
+
+html[data-theme] .topbar {
+  height: 74px !important;
+  min-height: 74px !important;
+  padding: 0 22px !important;
+  gap: 12px !important;
+  background: color-mix(in srgb, var(--ps-surface) 94%, transparent) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+  box-shadow: 0 1px 0 rgba(14,42,33,.025) !important;
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+html[data-theme] .caller-id small { font-size: 10.5px !important; color: var(--ps-muted) !important; }
+html[data-theme] .caller-id b { font-size: 13px !important; font-weight: 750 !important; color: var(--ps-text-strong) !important; }
+
+html[data-theme] .idle-badge {
+  min-height: 24px !important;
+  height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 999px !important;
+  font-size: 9.5px !important;
+  font-weight: 780 !important;
+}
+
+html[data-theme] .lead-line-switch {
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 4px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 12px !important;
+  background: var(--ps-surface-3) !important;
+  box-shadow: inset 0 1px 2px rgba(15,45,35,.035) !important;
+}
+
+html[data-theme] .lead-line-switch button {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 15px !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 680 !important;
+  color: var(--ps-muted) !important;
+}
+
+html[data-theme] .lead-line-switch button.active {
+  background: var(--ps-surface) !important;
+  color: var(--ps-text-strong) !important;
+  box-shadow: 0 1px 2px rgba(12,38,29,.05),0 4px 10px rgba(12,38,29,.055) !important;
+}
+
+html[data-theme] .top-actions { gap: 7px !important; }
+
+html[data-theme] :is(.top-actions>button,.top-auth>button,.scan-action,.import,.inbound-availability) {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .import,
+html[data-theme] .primary {
+  background: var(--ps-accent) !important;
+  border-color: var(--ps-accent) !important;
+  color: #fff !important;
+  box-shadow: 0 1px 2px rgba(6,67,55,.08) !important;
+}
+
+html[data-theme] :is(.import,.primary):hover:not(:disabled) {
+  background: var(--ps-accent-hover) !important;
+  border-color: var(--ps-accent-hover) !important;
+  transform: translateY(-1px);
+}
+
+html[data-theme] .workspace-sync,
+html[data-theme] .connection {
+  color: var(--ps-muted) !important;
+  font-size: 10.5px !important;
+}
+
+/* ---------- Main content ---------- */
+html[data-theme] .page-view,
+html[data-theme] .dialer-view {
+  width: min(100%, 1680px) !important;
+  margin-inline: auto !important;
+  padding: 24px 24px 32px !important;
+}
+
+html[data-theme] .module-bar {
+  min-height: 52px !important;
+  margin-bottom: 14px !important;
+}
+html[data-theme] .module-bar .eyebrow {
+  color: var(--ps-text-strong) !important;
+  font-size: 18px !important;
+  letter-spacing: .035em !important;
+  font-weight: 720 !important;
+}
+
+html[data-theme] .module-actions { gap: 8px !important; }
+html[data-theme] .module-actions button { min-height: 40px !important; border-radius: 10px !important; }
+
+/* ---------- The weird "bubble" becomes a calm status row ---------- */
+html[data-theme] .import-hint {
+  min-height: 44px !important;
+  margin: 0 0 16px !important;
+  padding: 9px 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 11px !important;
+  background: var(--ps-surface) !important;
+  color: var(--ps-muted) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] .import-hint span {
+  flex: 0 0 auto;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--ps-text) !important;
+  font-size: 11.5px !important;
+  font-weight: 720 !important;
+  letter-spacing: .01em !important;
+  text-transform: none !important;
+}
+
+html[data-theme] .import-hint span i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ps-accent);
+  box-shadow: 0 0 0 4px rgba(15,138,116,.09);
+}
+
+html[data-theme] .import-hint p {
+  margin: 0 !important;
+  min-width: 0;
+  color: var(--ps-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  white-space: normal !important;
+}
+
+/* ---------- Cards / KPI ---------- */
+html[data-theme] :is(
+  .hero-call,.lead-file,.side-pad,.queue-card,.table-card,
+  .crm-summary article,.stats-row article,.pricing-grid article,
+  .workspace-profile-settings,.team-management,.system-health,
+  .provider-card,.smart-connect,.call-report,.revenue-table
+) {
+  border: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface) !important;
+  box-shadow: var(--ps-shadow-card) !important;
+}
+
+html[data-theme] :is(.hero-call,.lead-file,.side-pad,.queue-card,.table-card) {
+  border-radius: var(--ps-radius-lg) !important;
+}
+
+html[data-theme] .crm-summary {
+  gap: 10px !important;
+}
+html[data-theme] .crm-summary.five {
+  grid-template-columns: repeat(5,minmax(0,1fr)) !important;
+}
+html[data-theme] .crm-summary article {
+  min-height: 90px !important;
+  padding: 15px 17px !important;
+  border-radius: 14px !important;
+}
+html[data-theme] .crm-summary article span {
+  font-size: 11px !important;
+  letter-spacing: .065em !important;
+}
+html[data-theme] .crm-summary article b {
+  font-size: 27px !important;
+  line-height: 1 !important;
+  font-weight: 690 !important;
+  letter-spacing: -.035em !important;
+  color: var(--ps-text-strong) !important;
+}
+
+/* ---------- Filters ---------- */
+html[data-theme] .crm-tools {
+  gap: 8px !important;
+  margin: 14px 0 !important;
+  align-items: center !important;
+}
+html[data-theme] .crm-tools>label,
+html[data-theme] .crm-tools select {
+  min-height: 42px !important;
+  height: 42px !important;
+  border: 1px solid var(--ps-line-strong) !important;
+  border-radius: 10px !important;
+  background: var(--ps-surface) !important;
+}
+html[data-theme] .crm-tools>label {
+  padding: 0 12px !important;
+  box-shadow: none !important;
+}
+html[data-theme] .crm-tools>label:focus-within {
+  border-color: var(--ps-accent) !important;
+  box-shadow: var(--ps-focus) !important;
+}
+html[data-theme] .crm-tools>label input,
+html[data-theme] .crm-tools>label input:focus,
+html[data-theme] .crm-tools>label input:hover {
+  height: 40px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* ---------- Contacts table ---------- */
+html[data-theme] .table-card {
+  overflow: hidden !important;
+}
+
+html[data-theme] .table-head {
+  min-height: 45px !important;
+  padding: 0 17px !important;
+  background: var(--ps-surface-2) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+
+html[data-theme] .table-head span {
+  font-size: 10.5px !important;
+  letter-spacing: .065em !important;
+  color: var(--ps-muted) !important;
+}
+
+html[data-theme] .table-row {
+  min-height: 78px !important;
+  padding: 11px 17px !important;
+  color: var(--ps-text) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface) !important;
+}
+
+html[data-theme] .table-row:hover {
+  background: var(--ps-surface-2) !important;
+  transform: none !important;
+}
+
+html[data-theme] .table-row>span>span b,
+html[data-theme] .contact-name-line b {
+  color: var(--ps-text-strong) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .table-row small {
+  color: var(--ps-muted) !important;
+  font-size: 12px !important;
+}
+
+html[data-theme] .lead-source b {
+  color: var(--ps-text-strong) !important;
+  font-size: 13px !important;
+  font-weight: 670 !important;
+}
+
+html[data-theme] .priority-pill,
+html[data-theme] .stage {
+  min-height: 23px !important;
+  height: 23px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 750 !important;
+  letter-spacing: .02em !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] .priority-pill.hot {
+  color: #9d3e3c !important;
+  background: #fff0ef !important;
+  border-color: #efc4c1 !important;
+}
+html[data-theme] .priority-pill.high {
+  color: #856014 !important;
+  background: #fff7e2 !important;
+  border-color: #ecd59d !important;
+}
+html[data-theme] .priority-pill.medium {
+  color: #326b84 !important;
+  background: #edf6fa !important;
+  border-color: #c7dde8 !important;
+}
+html[data-theme] .priority-pill.low {
+  color: var(--ps-muted) !important;
+  background: var(--ps-surface-3) !important;
+  border-color: var(--ps-line) !important;
+}
+
+/* ---------- Dialer ---------- */
+html[data-theme] .dialer-main-grid {
+  gap: 14px !important;
+}
+html[data-theme] .hero-call,
+html[data-theme] .lead-file,
+html[data-theme] .side-pad { min-height: 500px !important; }
+
+html[data-theme] .call-grid {
+  min-height: 500px !important;
+  padding: 26px !important;
+}
+
+html[data-theme] .contact-card {
+  min-height: 108px !important;
+  padding: 18px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 14px !important;
+  background: var(--ps-surface-2) !important;
+  box-shadow: none !important;
+}
+html[data-theme] .contact-card h2 {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: var(--ps-text-strong) !important;
+}
+html[data-theme] .contact-card a { font-size: 13px !important; color: var(--ps-accent-hover) !important; }
+html[data-theme] .contact-card p { font-size: 12px !important; color: var(--ps-muted) !important; }
+
+html[data-theme] .start-call,
+html[data-theme] .end-call {
+  min-height: 48px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 720 !important;
+}
+
+html[data-theme] .lead-file>header,
+html[data-theme] .side-pad>header {
+  min-height: 64px !important;
+  padding: 16px 18px !important;
+  background: var(--ps-surface-2) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+
+html[data-theme] .lead-file>header b {
+  color: var(--ps-text-strong) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .lead-file-grid label {
+  min-height: 52px !important;
+  padding: 9px 10px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 10px !important;
+  background: var(--ps-surface-2) !important;
+}
+html[data-theme] .lead-file-grid label span { font-size: 10.5px !important; color: var(--ps-muted) !important; }
+html[data-theme] .lead-file-grid label b { font-size: 12px !important; color: var(--ps-text-strong) !important; }
+
+html[data-theme] .number-input-shell {
+  height: 52px !important;
+  border: 1px solid var(--ps-line-strong) !important;
+  border-radius: 12px !important;
+  background: var(--ps-surface) !important;
+}
+html[data-theme] .number-input-shell input { font-size: 17px !important; }
+
+html[data-theme] .key-grid { gap: 8px !important; }
+html[data-theme] .key-grid button {
+  min-height: 56px !important;
+  height: 56px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 11px !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-text-strong) !important;
+  box-shadow: none !important;
+}
+html[data-theme] .key-grid button:hover:not(:disabled) {
+  border-color: #b8d8cc !important;
+  background: var(--ps-accent-soft) !important;
+  transform: none !important;
+}
+html[data-theme] .key-grid button b { font-size: 17px !important; font-weight: 600 !important; }
+html[data-theme] .key-grid button small { font-size: 9px !important; color: var(--ps-subtle) !important; }
+
+/* KPI row: never stretch to neighboring queue card height. */
+html[data-theme] .bottom-grid {
+  align-items: start !important;
+  gap: 14px !important;
+}
+html[data-theme] .stats-row {
+  align-self: start !important;
+  gap: 9px !important;
+}
+html[data-theme] .stats-row article {
+  height: 108px !important;
+  min-height: 108px !important;
+  padding: 15px 16px !important;
+  border-radius: 14px !important;
+}
+html[data-theme] .stats-row article b {
+  margin-top: auto !important;
+  color: var(--ps-text-strong) !important;
+  font-size: 27px !important;
+  font-weight: 690 !important;
+}
+html[data-theme] .stats-row article .phone-stat { font-size: 18px !important; }
+
+html[data-theme] .queue-card>header {
+  min-height: 54px !important;
+  padding: 12px 16px !important;
+  background: var(--ps-surface-2) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+html[data-theme] .queue-row {
+  min-height: 56px !important;
+  padding: 9px 15px !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+html[data-theme] .queue-row b { color: var(--ps-text-strong) !important; font-size: 12.5px !important; }
+html[data-theme] .queue-row small { color: var(--ps-muted) !important; }
+
+/* ---------- One overlay model; no stacked sheets ---------- */
+html[data-theme] body:has(.drawer-backdrop),
+html[data-theme] body:has(.quote-modal-backdrop),
+html[data-theme] body:has(.new-lead-backdrop),
+html[data-theme] body:has(.incoming-call-backdrop) {
+  overflow: hidden;
+}
+
+html[data-theme] .drawer-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 80 !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  background: rgba(14, 30, 24, .22) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+html[data-theme] .contact-drawer {
+  position: relative !important;
+  width: min(720px, 94vw) !important;
+  max-width: 720px !important;
+  height: 100dvh !important;
+  border-left: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface) !important;
+  box-shadow: -20px 0 60px rgba(10,35,27,.15) !important;
+  overflow-y: auto !important;
+  animation: ps-sheet-in .22s var(--ps-ease) both;
+}
+
+html[data-theme] .contact-drawer>header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  min-height: 92px !important;
+  padding: 19px 22px !important;
+  background: color-mix(in srgb, var(--ps-surface) 95%, transparent) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+  color: var(--ps-text) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+html[data-theme] .drawer-person>i {
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 14px !important;
+  background: var(--ps-accent-soft) !important;
+  color: var(--ps-accent-hover) !important;
+  font-size: 12px !important;
+  font-weight: 760 !important;
+}
+
+html[data-theme] .drawer-person small {
+  color: var(--ps-muted) !important;
+  font-size: 10.5px !important;
+  letter-spacing: .06em !important;
+}
+html[data-theme] .drawer-person h2 {
+  margin: 3px 0 2px !important;
+  color: var(--ps-text-strong) !important;
+  font-size: 20px !important;
+  font-weight: 720 !important;
+}
+html[data-theme] .drawer-person p { color: var(--ps-muted) !important; font-size: 12px !important; }
+
+html[data-theme] .contact-drawer>header>button {
+  width: 38px !important;
+  height: 38px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 50% !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-muted) !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+}
+
+html[data-theme] .record-actions {
+  display: grid !important;
+  grid-template-columns: repeat(5,minmax(0,1fr)) !important;
+  gap: 8px !important;
+  padding: 14px 20px !important;
+  background: var(--ps-surface) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+
+html[data-theme] .record-actions button,
+html[data-theme] .record-actions button:first-child {
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 0 9px !important;
+  border: 1px solid var(--ps-line-strong) !important;
+  border-radius: 10px !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-text) !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 680 !important;
+}
+
+html[data-theme] .record-actions button:first-child,
+html[data-theme] .record-actions .quote-action {
+  border-color: #b9dfd1 !important;
+  background: var(--ps-accent-soft) !important;
+  color: var(--ps-accent-hover) !important;
+}
+
+html[data-theme] .record-actions button:hover:not(:disabled) {
+  border-color: #a9cfc1 !important;
+  background: var(--ps-accent-soft) !important;
+  color: var(--ps-accent-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+html[data-theme] .record-actions button:disabled { opacity: .46 !important; }
+
+html[data-theme] .record-section,
+html[data-theme] .timeline {
+  padding: 22px !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+
+html[data-theme] .field-grid {
+  gap: 11px !important;
+  margin-top: 12px !important;
+}
+
+html[data-theme] .field-grid label,
+html[data-theme] .new-lead-fields label,
+html[data-theme] .quote-edit-grid label,
+html[data-theme] .sales-control-grid label {
+  color: var(--ps-muted) !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+}
+
+html[data-theme] .field-grid input,
+html[data-theme] .field-grid select {
+  margin-top: 6px !important;
+  min-height: 43px !important;
+  color: var(--ps-text-strong) !important;
+  font-weight: 560 !important;
+}
+
+html[data-theme] .quick-follow-up {
+  gap: 7px !important;
+  padding-top: 14px !important;
+}
+html[data-theme] .quick-follow-up button {
+  min-height: 36px !important;
+  padding: 0 11px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 9px !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-text) !important;
+  font-size: 11.5px !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] .contact-drawer>footer {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 4 !important;
+  padding: 12px 20px 16px !important;
+  border-top: 1px solid var(--ps-line) !important;
+  background: color-mix(in srgb, var(--ps-surface) 94%, transparent) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+html[data-theme] .contact-drawer>footer button {
+  width: 100% !important;
+  min-height: 44px !important;
+  border-radius: 10px !important;
+  background: var(--ps-accent) !important;
+  color: white !important;
+  border: 1px solid var(--ps-accent) !important;
+  font-weight: 720 !important;
+}
+
+/* Quote is now one deliberate modal, never another page under/over a drawer. */
+html[data-theme] .quote-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 24px !important;
+  background: rgba(13, 29, 23, .34) !important;
+  backdrop-filter: blur(9px) saturate(.9);
+  -webkit-backdrop-filter: blur(9px) saturate(.9);
+  animation: ps-fade-in .18s ease both;
+}
+
+html[data-theme] .quote-modal-shell {
+  position: relative !important;
+  width: min(900px, calc(100vw - 48px)) !important;
+  max-height: min(88dvh, 900px) !important;
+  overflow: hidden !important;
+  border: 1px solid color-mix(in srgb,var(--ps-line) 85%,transparent) !important;
+  border-radius: var(--ps-radius-xl) !important;
+  background: var(--ps-surface) !important;
+  box-shadow: var(--ps-shadow-sheet) !important;
+  animation: ps-modal-in .22s var(--ps-ease) both;
+}
+
+html[data-theme] .quote-modal-close {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  z-index: 8 !important;
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 50% !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-muted) !important;
+  box-shadow: none !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+}
+
+html[data-theme] .quote-modal-close:hover {
+  background: var(--ps-surface-3) !important;
+  color: var(--ps-text-strong) !important;
+}
+
+html[data-theme] .quote-modal-shell .lead-growth-panel,
+html[data-theme] .quote-modal-shell .quote-workspace {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: min(88dvh,900px) !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--ps-surface) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+html[data-theme] .quote-workspace-header {
+  min-height: 82px !important;
+  padding: 19px 66px 17px 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface) !important;
+}
+html[data-theme] .quote-workspace-header span {
+  display: block !important;
+  color: var(--ps-accent-hover) !important;
+  font-size: 10.5px !important;
+  font-weight: 760 !important;
+  letter-spacing: .075em !important;
+}
+html[data-theme] .quote-workspace-header b {
+  display: block !important;
+  margin-top: 5px !important;
+  color: var(--ps-text-strong) !important;
+  font-size: 19px !important;
+  font-weight: 720 !important;
+}
+html[data-theme] .quote-workspace-header em {
+  padding: 5px 8px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 999px !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-muted) !important;
+  font-size: 10px !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme] .quote-workspace-scroll {
+  max-height: calc(min(88dvh,900px) - 146px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+html[data-theme] :is(.quote-identity,.quote-essentials,.sales-control,.source-record) {
+  padding: 20px 24px !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface) !important;
+}
+
+html[data-theme] .quote-identity {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+html[data-theme] .quote-identity>div>span { color: var(--ps-muted) !important; font-size: 10.5px !important; letter-spacing: .065em !important; font-weight: 750 !important; }
+html[data-theme] .quote-identity>div>b { display:block !important; margin-top:4px !important; color:var(--ps-text-strong) !important; font-size:18px !important; font-weight:720 !important; }
+html[data-theme] .quote-identity small { color: var(--ps-muted) !important; font-size: 12px !important; }
+html[data-theme] .quote-identity p {
+  margin: 0 !important;
+  padding: 11px 12px !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 10px !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-text) !important;
+  font-size: 12px !important;
+}
+
+html[data-theme] .quote-edit-grid,
+html[data-theme] .sales-control-grid {
+  gap: 11px !important;
+  margin-top: 12px !important;
+}
+html[data-theme] .quote-edit-grid input,
+html[data-theme] .quote-edit-grid select,
+html[data-theme] .sales-control-grid input,
+html[data-theme] .sales-control-grid select {
+  margin-top: 6px !important;
+  min-height: 43px !important;
+}
+
+html[data-theme] .source-record {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+html[data-theme] .source-record summary {
+  cursor: pointer;
+  color: var(--ps-text) !important;
+}
+html[data-theme] .quote-source-grid article {
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 10px !important;
+  background: var(--ps-surface-2) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme] .quote-workspace>footer {
+  min-height: 64px !important;
+  padding: 10px 16px !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1.25fr !important;
+  gap: 8px !important;
+  border-top: 1px solid var(--ps-line) !important;
+  background: color-mix(in srgb,var(--ps-surface) 96%,transparent) !important;
+  backdrop-filter: blur(14px);
+}
+html[data-theme] .quote-workspace>footer button {
+  min-height: 42px !important;
+  border: 1px solid var(--ps-line-strong) !important;
+  border-radius: 10px !important;
+  background: var(--ps-surface-2) !important;
+  color: var(--ps-text) !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 680 !important;
+}
+html[data-theme] .quote-workspace>footer .won {
+  border-color: var(--ps-accent) !important;
+  background: var(--ps-accent) !important;
+  color: #fff !important;
+}
+
+/* ---------- New lead modal ---------- */
+html[data-theme] .new-lead-backdrop {
+  z-index: 100 !important;
+  background: rgba(13,29,23,.34) !important;
+  backdrop-filter: blur(8px);
+}
+html[data-theme] .new-lead-modal {
+  width: min(860px,calc(100vw - 40px)) !important;
+  max-height: 88dvh !important;
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 20px !important;
+  background: var(--ps-surface) !important;
+  box-shadow: var(--ps-shadow-sheet) !important;
+}
+html[data-theme] .new-lead-modal>header {
+  min-height: 76px !important;
+  padding: 17px 22px !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface) !important;
+}
+html[data-theme] .new-lead-modal>header h2 { color: var(--ps-text-strong) !important; font-size: 20px !important; font-weight: 720 !important; }
+html[data-theme] .new-lead-fields { padding: 18px 22px 22px !important; gap: 12px !important; }
+html[data-theme] .new-lead-modal>footer {
+  padding: 12px 22px !important;
+  border-top: 1px solid var(--ps-line) !important;
+  background: var(--ps-surface-2) !important;
+}
+
+/* ---------- Pipeline ---------- */
+html[data-theme] .pipeline { gap: 12px !important; }
+html[data-theme] .pipeline>section {
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 14px !important;
+  background: var(--ps-surface-2) !important;
+  box-shadow: none !important;
+}
+html[data-theme] .pipeline-col>header {
+  min-height: 50px !important;
+  background: var(--ps-surface) !important;
+  border-bottom: 1px solid var(--ps-line) !important;
+}
+html[data-theme] .pipeline-card {
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 11px !important;
+  background: var(--ps-surface) !important;
+  box-shadow: 0 1px 2px rgba(12,38,29,.035) !important;
+}
+
+/* ---------- Settings / billing / reports ---------- */
+html[data-theme] .settings-nav {
+  border: 1px solid var(--ps-line) !important;
+  border-radius: 14px !important;
+  background: var(--ps-surface) !important;
+  box-shadow: var(--ps-shadow-card) !important;
+}
+html[data-theme] .settings-nav button {
+  min-height: 44px !important;
+  border-radius: 9px !important;
+  color: var(--ps-muted) !important;
+}
+html[data-theme] .settings-nav button.active {
+  border-color: #c5e4d9 !important;
+  background: var(--ps-accent-soft) !important;
+  color: var(--ps-accent-hover) !important;
+}
+html[data-theme] .pricing-grid { gap: 14px !important; }
+html[data-theme] .pricing-grid article { border-radius: 16px !important; }
+html[data-theme] .pricing-grid article.featured {
+  border-color: #b9dfd1 !important;
+  box-shadow: 0 1px 2px rgba(12,38,29,.035),0 12px 30px rgba(15,138,116,.09) !important;
+  transform: none !important;
+}
+
+/* ---------- Toast ---------- */
+html[data-theme] .toast {
+  z-index: 140 !important;
+  min-height: 42px !important;
+  padding: 10px 14px !important;
+  border: 1px solid var(--ps-line-strong) !important;
+  border-radius: 11px !important;
+  background: color-mix(in srgb,var(--ps-text-strong) 93%,transparent) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 34px rgba(10,35,27,.22) !important;
+  font-size: 12px !important;
+  font-weight: 620 !important;
+}
+
+/* ---------- Motion ---------- */
+@keyframes ps-sheet-in {
+  from { transform: translateX(18px); opacity: .78; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes ps-modal-in {
+  from { transform: translateY(10px) scale(.985); opacity: .7; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes ps-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1500px) {
+  html[data-theme] .crm-summary.five { grid-template-columns: repeat(5,minmax(150px,1fr)) !important; overflow-x:auto; }
+  html[data-theme] .record-actions { grid-template-columns: repeat(5,minmax(88px,1fr)) !important; }
+}
+
+@media (max-width: 1180px) {
+  html[data-theme] .app-shell { grid-template-columns: 194px minmax(0,1fr) !important; }
+  html[data-theme] .sidebar { width: 194px !important; }
+  html[data-theme] .workspace-sync { display: none !important; }
+  html[data-theme] .crm-summary.five { grid-template-columns: repeat(3,minmax(0,1fr)) !important; overflow:visible; }
+}
+
+@media (max-width: 920px) {
+  html[data-theme] .quote-modal-backdrop { padding: 12px !important; }
+  html[data-theme] .quote-modal-shell { width: calc(100vw - 24px) !important; max-height: 94dvh !important; border-radius: 18px !important; }
+  html[data-theme] .quote-modal-shell .lead-growth-panel { max-height: 94dvh !important; }
+  html[data-theme] .quote-workspace-scroll { max-height: calc(94dvh - 146px) !important; }
+  html[data-theme] .contact-drawer { width: min(680px,100vw) !important; max-width: 100vw !important; }
+  html[data-theme] .record-actions { grid-template-columns: repeat(5,minmax(72px,1fr)) !important; overflow-x:auto; }
+}
+
+@media (max-width: 720px) {
+  html[data-theme] .page-view,
+  html[data-theme] .dialer-view { padding: 16px 13px 24px !important; }
+  html[data-theme] .crm-summary.five { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  html[data-theme] .record-actions { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  html[data-theme] .record-actions button:last-child { grid-column: auto !important; }
+  html[data-theme] .quote-edit-grid { grid-template-columns: 1fr !important; }
+  html[data-theme] .quote-edit-grid .wide { grid-column: auto !important; }
+  html[data-theme] .quote-workspace>footer { grid-template-columns: 1fr !important; }
+  html[data-theme] .import-hint { align-items:flex-start !important; flex-direction:column !important; gap:5px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] *,
+  html[data-theme] *::before,
+  html[data-theme] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

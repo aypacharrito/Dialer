@@ -1,33 +1,22 @@
-PACIFICA CRM — STABLE DIALER + PROFESSIONAL UI V2
+PACIFICA PRODUCT SYSTEM V3
 
-UPLOAD THESE FILES TO GITHUB, KEEPING THE SAME PATHS:
+Upload these files preserving the paths:
 
-/package.json
-/app/layout.tsx
-/app/professional-v2.css
-/scripts/apply-pacifica-upgrade.mjs
+app/product-system.css
+app/layout.tsx
+scripts/apply-pacifica-ui-upgrade.mjs
+package.json
 
-WHAT CHANGES
+WHAT THIS PASS DOES
+- Fixes the overlapping Contacts drawer + Quote Workspace bug structurally.
+- Contacts opens one side sheet only.
+- A new Quote action intentionally opens one centered quote modal and closes the drawer.
+- Escape closes the active overlay.
+- Replaces the odd "LAST IMPORT" bubble with a restrained status row.
+- Unifies typography, control heights, border radii, shadows, status pills, focus rings, spacing, and motion.
+- Restyles the contact drawer from a dark conflicting panel into a clean single sheet.
+- Gives quote workspace a proper backdrop, modal boundary, close control, scroll region, and sticky actions.
+- Keeps the stable saved Dialer run behavior from the previous upgrade.
+- Leaves CRM data, Twilio calling, dispositions, messaging, and provider integrations intact.
 
-1. THE DIALER BECOMES A SAVED CALLING RUN
-- Life and Home & Auto each keep their own unfinished queue.
-- When you stop for the day, tomorrow resumes at the exact next lead.
-- New leads do not jump into the middle of an unfinished run.
-- Hot/HIGH/MEDIUM/LOW ranking stays dynamic in Today, Contacts, Pipeline, etc.
-- A NEW dialer run is created only after the previous run is finished.
-- When a new run is created, priority score still comes first. Among equal-priority leads, never-called / least-recently-called leads go first. This keeps the dialing rotation fair without changing Today or Contacts.
-- The saved run is stored in the workspace profile, so it follows the workspace instead of being only a temporary browser list.
-
-2. DIALER UI V2
-- Raises tiny 7–9px labels to a professional readable scale.
-- Makes sidebar, top bar, cards, buttons, pills and inputs use one sizing language.
-- Fixes the giant empty KPI cards under the dialer.
-- Makes keypad numbers, contact details and queue rows easier to scan.
-- Makes Comfortable / Large / Extra Large genuinely different while protecting the desktop grid.
-- Keeps light/dark mode support.
-
-HOW IT WORKS
-The upgrade script is idempotent. Vercel runs it automatically before every build through the package.json prebuild script. It patches the current CRMClient and workspace-profile in the build workspace, so you do NOT need to manually edit the giant CRMClient.tsx file.
-
-IMPORTANT
-Replace package.json and app/layout.tsx with the included versions. Add the two new files in their exact folders. Vercel should redeploy automatically after the GitHub commit.
+This patch is additive and is applied after the stable-dialer patch during dev/build/tests.
