@@ -1,6 +1,7 @@
 import React from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -92,12 +93,12 @@ export function Pill({ children, active = false }: { children: React.ReactNode; 
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 1.3 },
-  title: { fontSize: 29, lineHeight: 34, fontWeight: "800", letterSpacing: -0.8 },
+  eyebrow: { fontSize: 11, fontWeight: "800", letterSpacing: 1.4, fontFamily: Platform.select({ ios: "Avenir Next", android: "sans-serif-medium" }) },
+  title: { fontSize: 30, lineHeight: 36, fontWeight: "800", letterSpacing: -0.9, fontFamily: Platform.select({ ios: "Avenir Next", android: "sans-serif" }) },
   muted: { fontSize: 14, lineHeight: 20 },
-  card: { borderWidth: 1, borderRadius: 18, padding: 16 },
-  button: { minHeight: 48, paddingHorizontal: 18, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 3 },
-  buttonText: { fontSize: 15, fontWeight: "800" },
+  card: { borderWidth: 1, borderRadius: 20, padding: 17 },
+  button: { minHeight: 50, paddingHorizontal: 18, borderRadius: 15, alignItems: "center", justifyContent: "center", borderWidth: 1, shadowOffset: { width: 0, height: 6 }, shadowRadius: 14, elevation: 3 },
+  buttonText: { fontSize: 15, fontWeight: "800", fontFamily: Platform.select({ ios: "Avenir Next", android: "sans-serif-medium" }) },
   field: { minHeight: 48, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, fontSize: 15 },
   pill: { borderWidth: 1, borderRadius: 999, paddingVertical: 7, paddingHorizontal: 11 },
 });

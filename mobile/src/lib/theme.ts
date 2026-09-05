@@ -1,7 +1,7 @@
 export const colors = {
-  green: "#137A4A",
-  greenDark: "#0D5D38",
-  greenSoft: "#EAF5EF",
+  green: "#16866D",
+  greenDark: "#0D6B55",
+  greenSoft: "#E7F7F0",
   text: "#14201B",
   muted: "#68756F",
   border: "#DCE5E0",
@@ -10,8 +10,8 @@ export const colors = {
   danger: "#B42318",
   warning: "#A15C00",
   darkBg: "#0B1210",
-  darkCard: "#121B17",
-  darkText: "#EDF4F0",
-  darkMuted: "#98A9A0",
-  darkBorder: "#26332D",
+  darkCard: "#121D19",
+  darkText: "#F3F8F5",
+  darkMuted: "#AEC0B7",
+  darkBorder: "#31423A",
 };

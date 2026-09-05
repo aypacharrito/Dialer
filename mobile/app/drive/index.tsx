@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../src/components/Screen";
 import { Button, Card, Muted, Pill, Title, usePalette } from "../../src/components/Primitives";
 import { isHotLead } from "../../src/lib/lead";
+import { openDeviceAction, phoneCallUrl } from "../../src/lib/device-actions";
 import { useWorkspace } from "../../src/state/WorkspaceProvider";
 import {
   beginDriveCall,
@@ -39,7 +40,7 @@ export default function DriveModeScreen() {
   function call() {
     if (!lead) return;
     setSession(current => beginDriveCall(current));
-    void Linking.openURL(`tel:${lead.phone.replace(/[^+\d]/g, "")}`);
+    void openDeviceAction(phoneCallUrl(lead.phone), Linking.openURL);
   }
 
   async function disposition(value: string) {

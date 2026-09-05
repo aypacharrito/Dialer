@@ -2396,3 +2396,66 @@ html[data-theme="light"] .quick-follow-up button{background:#f4f8f6!important;bo
 html[data-theme="light"] .quick-follow-up button:hover{background:#e8f7f0!important;border-color:#8fc9b2!important;color:#0d775b!important}
 @media(max-width:1500px){html[data-theme] .record-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){html[data-theme] .record-actions{grid-template-columns:1fr 1fr;padding:13px 15px!important}html[data-theme] .record-actions button:last-child{grid-column:1/-1}html[data-theme] .quick-follow-up span{width:100%;margin:0 0 2px}html[data-theme] .quick-follow-up button{flex:1;min-width:calc(50% - 4px)!important}}
+
+/* Executive polish pass: readable typography, soft status language, and balanced health cards. */
+:root{
+  --font-ui:"Aptos","Segoe UI Variable","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-display:"Aptos Display","Segoe UI Variable Display","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+html[data-theme] body{font-family:var(--font-ui);font-feature-settings:"kern" 1,"ss01" 1;text-rendering:optimizeLegibility}
+html[data-theme] :is(h1,h2,h3,.title,.headline){font-family:var(--font-display);letter-spacing:-.025em}
+html[data-theme] :is(button,a,[role="button"]){transition:transform .16s ease,box-shadow .2s ease,border-color .2s ease,background-color .2s ease,color .2s ease}
+html[data-theme] :is(button,[role="button"]):not(:disabled):active{transform:translateY(0) scale(.985)}
+html[data-theme] .sidebar nav button{font-size:13px!important;letter-spacing:-.005em}
+html[data-theme] .topbar :is(button,.caller-id,.workspace-sync,.connection){font-size:11px}
+html[data-theme] .module-bar>.eyebrow,html[data-theme] .settings-title-bar>.eyebrow{font-size:11px!important}
+html[data-theme] :is(.crm-summary,.today-metrics,.report-metrics)>article>span{font-size:10px!important}
+html[data-theme] :is(.crm-summary,.today-metrics,.report-metrics)>article>b{font-family:var(--font-display);letter-spacing:-.035em}
+
+html[data-theme] .settings-content .system-health{border-radius:20px;box-shadow:0 18px 48px rgba(25,69,54,.08)}
+html[data-theme] .settings-content .system-health>header{padding:26px 28px;background:linear-gradient(135deg,color-mix(in srgb,var(--ui-accent-soft) 72%,var(--ui-surface)),var(--ui-surface))}
+html[data-theme] .settings-content .system-health>header>div{flex:1;max-width:720px}
+html[data-theme] .settings-content .system-health>header span{font-size:10px!important;letter-spacing:.15em}
+html[data-theme] .settings-content .system-health h2{margin:8px 0 4px;font-size:28px;line-height:1.12}
+html[data-theme] .settings-content .system-health p{font-size:13px}
+html[data-theme] .settings-content .system-health>header button{min-height:42px;padding:0 16px;border-radius:11px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 7px 20px rgba(25,69,54,.07);font-size:12px}
+.health-progress{width:min(430px,100%);height:7px;margin-top:17px;border-radius:999px;background:var(--ui-border);overflow:hidden}
+.health-progress i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#16866d,#45c8a5);box-shadow:0 0 18px rgba(69,200,165,.35);transition:width .45s ease}
+html[data-theme] .settings-content .health-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;background:var(--ui-surface-soft)}
+html[data-theme] .settings-content .health-grid article{position:relative;min-height:92px;padding:18px 18px 18px 20px;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);box-shadow:0 6px 18px rgba(25,69,54,.045);overflow:hidden}
+html[data-theme] .settings-content .health-grid article:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:#dba33a}
+html[data-theme] .settings-content .health-grid article.ready:before{background:#35bd96}
+html[data-theme] .settings-content .health-grid i{width:9px;height:9px;box-shadow:0 0 0 5px rgba(219,163,58,.1)}
+html[data-theme] .settings-content .health-grid article.ready i{box-shadow:0 0 0 5px rgba(53,189,150,.1)}
+html[data-theme] .settings-content .health-grid b{font-size:14px!important;line-height:1.25}
+html[data-theme] .settings-content .health-grid small{margin-top:5px;font-size:11px!important;line-height:1.45}
+html[data-theme] .settings-content .health-grid em{min-width:54px;padding:6px 9px;border-radius:999px;text-align:center;font-size:9px!important;letter-spacing:.07em}
+html[data-theme] .settings-content .system-health>footer{padding:14px 20px;font-size:11px!important;background:var(--ui-surface);border-top:1px solid var(--ui-border)}
+
+/* Light mode never inherits the legacy charcoal badges or buttons. */
+html[data-theme="light"] :is(.twilio-selected,.phone-workspace-setup strong.ready,.number-center>header>strong){border:1px solid #a9dbc8!important;border-radius:999px!important;background:#e9f8f1!important;color:#0d765b!important;box-shadow:none!important}
+html[data-theme="light"] :is(.phone-workspace-setup button,.number-center button,.smart-connect button,.clearvoice-test button){border-color:#a9d8c7!important;background:#edf8f3!important;color:#0d765b!important;box-shadow:none!important}
+html[data-theme="light"] :is(.phone-workspace-setup button,.number-center button,.smart-connect button,.clearvoice-test button):not(:disabled):hover{border-color:#16866d!important;background:#dff4eb!important;color:#09634d!important;box-shadow:0 8px 20px rgba(17,134,109,.1)!important}
+html[data-theme="light"] .number-center>header>strong{padding:7px 10px!important}
+html[data-theme="light"] .call-log-row .result{border:1px solid #cfded8!important;border-radius:999px!important;background:#f1f6f4!important;color:#49685d!important;box-shadow:none!important}
+html[data-theme="light"] .call-log-row .result.completed{border-color:#a9dbc8!important;background:#e9f8f1!important;color:#0d765b!important}
+html[data-theme="light"] .call-log-row .result:is(.failed,.timed-out,.rejected,.canceled){border-color:#e8bbb8!important;background:#fff1f0!important;color:#9b3d39!important}
+html[data-theme="light"] .clearvoice-card{border-color:#d4e4dd!important;background:#f8fbf9!important;box-shadow:0 8px 24px rgba(25,69,54,.05)!important}
+html[data-theme="light"] .clearvoice-head h3{color:#173b31!important}
+html[data-theme="light"] .clearvoice-head p,html[data-theme="light"] .clearvoice-head b{color:#667d74!important}
+html[data-theme="light"] .clearvoice-status{background:#f1f8f5!important;border-color:#d8e7e1!important}
+html[data-theme="light"] .clearvoice-status span{color:#667d74!important}
+html[data-theme="light"] .clearvoice-modes button{border-color:#d1e1da!important;background:#fff!important;color:#49685d!important}
+html[data-theme="light"] .clearvoice-modes button.active{border-color:#82cbb3!important;background:#e8f7f1!important;color:#0d765b!important;box-shadow:0 6px 16px rgba(17,134,109,.08)}
+html[data-theme="light"] .clearvoice-modes small{color:#71867d!important}
+html[data-theme="light"] .clearvoice-meter{border-color:#d8e5df!important;background:#fff!important}
+html[data-theme="light"] .clearvoice-compare button,html[data-theme="light"] .volume-row button{border-color:#cbded6!important;background:#f2f8f5!important;color:#315f50!important}
+html[data-theme="light"] .clearvoice-compare button.active{border-color:#79c5ad!important;background:#e3f6ee!important;color:#0b7358!important}
+html[data-theme="light"] .email-workspace-setup>header strong,html[data-theme="light"] .settings-integrations .smart-connect>strong{border:1px solid #e2c990!important;border-radius:999px!important;background:#fff8e5!important;color:#846018!important}
+
+@media(max-width:820px){
+  html[data-theme] .settings-content .health-grid{grid-template-columns:1fr}
+  html[data-theme] .settings-content .system-health>header{align-items:stretch;padding:22px}
+  html[data-theme] .settings-content .system-health>header button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.health-progress i{transition:none}}

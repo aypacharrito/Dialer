@@ -5,6 +5,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../src/components/Screen";
 import { Button, Card, Field, Muted, Pill, Title, usePalette } from "../../src/components/Primitives";
 import { displayStage, formatPhone } from "../../src/lib/lead";
+import { openDeviceAction, phoneCallUrl, textMessageUrl } from "../../src/lib/device-actions";
 import { useWorkspace } from "../../src/state/WorkspaceProvider";
 
 const outcomes = ["Contacted", "Quoted", "Appointment Set", "Sold", "Follow-up", "No answer"];
@@ -21,12 +22,9 @@ export default function LeadDetailScreen() {
     return <Screen><Title>Lead not found</Title><Button title="Back" kind="secondary" onPress={() => router.back()} /></Screen>;
   }
 
-  const phoneDigits = lead.phone.replace(/[^+\d]/g, "");
   async function openUrl(url: string) {
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) throw new Error("Not supported on this device.");
-      await Linking.openURL(url);
+      await openDeviceAction(url, Linking.openURL);
     } catch (error) {
       Alert.alert("Unable to open", error instanceof Error ? error.message : "Try again.");
     }
@@ -50,8 +48,8 @@ export default function LeadDetailScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Button title="Call" onPress={() => void openUrl(`tel:${phoneDigits}`)} disabled={!phoneDigits || lead.doNotCall} style={styles.action} />
-        <Button title="Text" kind="secondary" onPress={() => void openUrl(`sms:${phoneDigits}`)} disabled={!phoneDigits || lead.smsOptOut} style={styles.action} />
+        <Button title="Call" onPress={() => void openUrl(phoneCallUrl(lead.phone))} disabled={!lead.phone || lead.doNotCall} style={styles.action} />
+        <Button title="Text" kind="secondary" onPress={() => void openUrl(textMessageUrl(lead.phone))} disabled={!lead.phone || lead.smsOptOut} style={styles.action} />
         <Button title="Email" kind="secondary" onPress={() => void openUrl(`mailto:${lead.email}`)} disabled={!lead.email || lead.emailOptOut} style={styles.action} />
       </View>
 
