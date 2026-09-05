@@ -2459,3 +2459,68 @@ html[data-theme="light"] .email-workspace-setup>header strong,html[data-theme="l
   html[data-theme] .settings-content .system-health>header button{width:100%}
 }
 @media(prefers-reduced-motion:reduce){.health-progress i{transition:none}}
+
+/* Readability system: one saved display-size preference scales the full workspace. */
+html[data-display-size="comfortable"]{--ui-type-scale:1;--ui-control-scale:1}
+html[data-display-size="large"],html:not([data-display-size]){--ui-type-scale:1.14;--ui-control-scale:1.08}
+html[data-display-size="extra-large"]{--ui-type-scale:1.28;--ui-control-scale:1.16}
+html[data-theme] body{font-size:calc(16px * var(--ui-type-scale,1));line-height:1.5}
+html[data-theme] .sidebar nav button{min-height:calc(50px * var(--ui-control-scale,1));font-size:calc(14px * var(--ui-type-scale,1))!important;font-weight:700}
+html[data-theme] .topbar :is(button,.caller-id,.workspace-sync,.connection){font-size:calc(12px * var(--ui-type-scale,1))!important}
+html[data-theme] :is(.module-bar>.eyebrow,.settings-title-bar>.eyebrow){font-size:calc(12px * var(--ui-type-scale,1))!important;font-weight:900}
+html[data-theme] :is(.crm-summary,.today-metrics,.report-metrics)>article>span{font-size:calc(12px * var(--ui-type-scale,1))!important;font-weight:800}
+html[data-theme] .crm-view .smart-table .table-head{font-size:calc(11px * var(--ui-type-scale,1))!important}
+html[data-theme] .crm-view .smart-table .table-row{min-height:calc(78px * var(--ui-control-scale,1));font-size:calc(14px * var(--ui-type-scale,1))!important}
+html[data-theme] .crm-view .smart-table .table-row b{font-size:calc(14px * var(--ui-type-scale,1))!important;font-weight:750}
+html[data-theme] .crm-view .smart-table .table-row small{font-size:calc(12px * var(--ui-type-scale,1))!important;line-height:1.45}
+html[data-theme] :is(.priority-pill,.stage,.message-contacts>button>em){font-size:calc(10px * var(--ui-type-scale,1))!important;font-weight:850}
+html[data-theme] :is(.module-actions button,.today-actions button,.scan-action,.top-auth>button){min-height:calc(42px * var(--ui-control-scale,1));font-size:calc(12px * var(--ui-type-scale,1))!important}
+
+html[data-theme] .workspace-display-setting{margin-top:14px;padding:18px;border:1px solid var(--ui-border);border-radius:12px;background:var(--ui-surface-soft)}
+html[data-theme] .workspace-display-setting>div:first-child b{display:block;color:var(--ui-text);font-size:calc(15px * var(--ui-type-scale,1));font-weight:800}
+html[data-theme] .workspace-display-setting>div:first-child small{display:block;margin-top:4px;color:var(--ui-muted);font-size:calc(12px * var(--ui-type-scale,1));line-height:1.45}
+html[data-theme] .display-size-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+html[data-theme] .display-size-picker button{min-height:68px;padding:13px 15px;border:1px solid var(--ui-border-strong);border-radius:11px;background:var(--ui-surface);color:var(--ui-text);text-align:left;cursor:pointer;box-shadow:0 3px 10px rgba(25,69,54,.035)}
+html[data-theme] .display-size-picker button b,html[data-theme] .display-size-picker button small{display:block}
+html[data-theme] .display-size-picker button b{font-size:calc(14px * var(--ui-type-scale,1));font-weight:800}
+html[data-theme] .display-size-picker button small{margin-top:5px;color:var(--ui-muted);font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] .display-size-picker button.active{border-color:var(--ui-accent);background:var(--ui-accent-soft);color:var(--ui-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-accent) 11%,transparent)}
+html[data-theme] .settings-content .workspace-profile-settings>header span{font-size:calc(10px * var(--ui-type-scale,1))!important}
+html[data-theme] .settings-content .workspace-profile-settings>header h2{font-size:calc(22px * var(--ui-type-scale,1))}
+html[data-theme] .settings-content .workspace-mode-picker b,html[data-theme] .settings-content .appearance-picker button b{font-size:calc(13px * var(--ui-type-scale,1))}
+html[data-theme] .settings-content .workspace-mode-picker small,html[data-theme] .settings-content .appearance-picker button small{font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] .settings-content .workspace-profile-fields label{font-size:calc(12px * var(--ui-type-scale,1));font-weight:750}
+html[data-theme] .settings-content .workspace-profile-fields :is(input,select){min-height:calc(46px * var(--ui-control-scale,1));font-size:calc(14px * var(--ui-type-scale,1))}
+html[data-theme] :is(.server-automation-toggle,.workspace-safety-toggles>label) b{font-size:calc(14px * var(--ui-type-scale,1))}
+html[data-theme] :is(.server-automation-toggle,.workspace-safety-toggles>label) small{font-size:calc(12px * var(--ui-type-scale,1));line-height:1.5}
+
+/* Gmail-like hierarchy for the communication workspace. */
+html[data-theme] .channel-tabs button b{font-size:calc(14px * var(--ui-type-scale,1));font-weight:800}
+html[data-theme] .channel-tabs button small{font-size:calc(12px * var(--ui-type-scale,1))}
+html[data-theme] .message-contacts>header b{font-size:calc(15px * var(--ui-type-scale,1))}
+html[data-theme] .message-contacts>button{min-height:calc(72px * var(--ui-control-scale,1));padding:12px 14px;grid-template-columns:42px minmax(0,1fr) auto;gap:12px}
+html[data-theme] .message-contacts>button>i{width:42px;height:42px;font-size:calc(12px * var(--ui-type-scale,1))}
+html[data-theme] .message-contacts>button b{font-size:calc(14px * var(--ui-type-scale,1));font-weight:800}
+html[data-theme] .message-contacts>button small{font-size:calc(12px * var(--ui-type-scale,1));line-height:1.35}
+html[data-theme] .message-contacts>button>em{min-width:92px!important;padding:7px 10px!important}
+html[data-theme] .message-thread>header{min-height:68px;padding:14px 18px}
+html[data-theme] .message-thread>header b{font-size:calc(16px * var(--ui-type-scale,1));font-weight:800}
+html[data-theme] .message-thread>header small{font-size:calc(12px * var(--ui-type-scale,1))}
+html[data-theme] .message-history p{font-size:calc(15px * var(--ui-type-scale,1));line-height:1.55}
+html[data-theme] .message-history article small{font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] .message-thread>footer{padding:16px 18px}
+html[data-theme] .message-thread>footer :is(.email-subject-input,textarea){font-size:calc(16px * var(--ui-type-scale,1));line-height:1.55}
+html[data-theme] .message-thread>footer textarea{min-height:calc(124px * var(--ui-control-scale,1));padding:14px 16px}
+html[data-theme] .message-thread>footer button{min-height:calc(42px * var(--ui-control-scale,1));padding:0 15px;font-size:calc(13px * var(--ui-type-scale,1));border-radius:10px}
+html[data-theme] .message-thread>footer>small{font-size:calc(11px * var(--ui-type-scale,1));line-height:1.5}
+html[data-theme] .composer-permission{display:flex;align-items:center;gap:12px;margin-top:12px;padding:13px 15px;border:1px solid #e2c88f;border-radius:11px;background:#fff8e7;color:#76520a;cursor:pointer;box-shadow:0 5px 15px rgba(126,91,20,.06)}
+html[data-theme] .composer-permission.confirmed{border-color:#a9d9c7;background:#eaf8f2;color:#0d765b}
+html[data-theme] .composer-permission input{width:19px;height:19px;accent-color:var(--ui-accent)}
+html[data-theme] .composer-permission span,html[data-theme] .composer-permission b,html[data-theme] .composer-permission small{display:block}
+html[data-theme] .composer-permission b{font-size:calc(13px * var(--ui-type-scale,1));font-weight:850}
+html[data-theme] .composer-permission small{margin-top:2px;color:inherit;font-size:calc(11px * var(--ui-type-scale,1));opacity:.86}
+html[data-theme="dark"] .composer-permission.needed{border-color:#755f36;background:#302817;color:#f2cf85}
+html[data-theme="dark"] .composer-permission.confirmed{border-color:#356e5a;background:#16352a;color:#87dfbd}
+
+@media(max-width:900px){html[data-theme] .display-size-picker{grid-template-columns:1fr}html[data-theme] .message-contacts>button>em{min-width:0!important}}
+@media(prefers-reduced-motion:reduce){html[data-theme] :is(button,a,[role="button"]){transition:none!important}}

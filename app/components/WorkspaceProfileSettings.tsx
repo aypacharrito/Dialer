@@ -17,6 +17,14 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
         <button type="button" className={profile.appearance==="dark"?"active":""} aria-pressed={profile.appearance==="dark"} onClick={()=>update({appearance:"dark"})}><span aria-hidden="true">☾</span><b>Dark</b></button>
       </div>
     </div>
+    <div className="workspace-display-setting">
+      <div><b>Display size</b><small>Scale the entire workspace for clearer, more comfortable reading.</small></div>
+      <div className="display-size-picker" role="radiogroup" aria-label="Workspace display size">
+        <button type="button" role="radio" aria-checked={profile.displaySize==="comfortable"} className={profile.displaySize==="comfortable"?"active":""} onClick={()=>update({displaySize:"comfortable"})}><b>Comfortable</b><small>More information on screen</small></button>
+        <button type="button" role="radio" aria-checked={profile.displaySize==="large"} className={profile.displaySize==="large"?"active":""} onClick={()=>update({displaySize:"large"})}><b>Large</b><small>Recommended</small></button>
+        <button type="button" role="radio" aria-checked={profile.displaySize==="extra-large"} className={profile.displaySize==="extra-large"?"active":""} onClick={()=>update({displaySize:"extra-large"})}><b>Extra large</b><small>Maximum visibility</small></button>
+      </div>
+    </div>
     <div className="workspace-profile-fields">
       <label>Business name<input value={profile.businessName} onChange={event=>update({businessName:event.target.value})} placeholder="David's Car Insurance"/></label>
       <label>Representative name<input value={profile.agentName} onChange={event=>update({agentName:event.target.value})} placeholder="David"/></label>

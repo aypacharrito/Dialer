@@ -1,5 +1,6 @@
 export type WorkspaceMode="sales"|"insurance";
 export type WorkspaceAppearance="light"|"dark";
+export type WorkspaceDisplaySize="comfortable"|"large"|"extra-large";
 export type CommunicationTemplate={id:string;name:string;channel:"sms"|"email";subject:string;body:string;updatedAt:string};
 export type AutomationChannel="sms"|"email"|"task";
 export type AutomationTrigger="new-lead"|"no-answer"|"interested";
@@ -25,6 +26,7 @@ export const defaultAutomationSequences:AutomationSequence[]=[
 export type WorkspaceProfile={
   mode:WorkspaceMode;
   appearance:WorkspaceAppearance;
+  displaySize:WorkspaceDisplaySize;
   businessName:string;
   agentName:string;
   callbackNumber:string;
@@ -51,6 +53,7 @@ export type WorkspaceProfile={
 export const defaultWorkspaceProfile:WorkspaceProfile={
   mode:"sales",
   appearance:"light",
+  displaySize:"large",
   businessName:"",
   agentName:"",
   callbackNumber:"",
@@ -94,6 +97,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   return {
     mode:profile.mode==="insurance"?"insurance":"sales",
     appearance:profile.appearance==="dark"?"dark":"light",
+    displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
     businessName:String(profile.businessName||"").trim().slice(0,100),
     agentName:String(profile.agentName||"").trim().slice(0,80),
     callbackNumber:String(profile.callbackNumber||"").trim().slice(0,40),
