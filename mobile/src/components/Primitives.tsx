@@ -13,6 +13,12 @@ import {
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { colors } from "../lib/theme";
+import { useWorkspace } from "../state/WorkspaceProvider";
+
+function useDisplayScale() {
+  const { workspace } = useWorkspace();
+  return workspace.profile.displaySize === "extra-large" ? 1.22 : workspace.profile.displaySize === "comfortable" ? 1 : 1.1;
+}
 
 export function usePalette() {
   const dark = useColorScheme() === "dark";
@@ -32,15 +38,17 @@ export function usePalette() {
 
 export function Title({ children, eyebrow }: { children: React.ReactNode; eyebrow?: string }) {
   const p = usePalette();
+  const scale = useDisplayScale();
   return <View style={{ gap: 4 }}>
-    {eyebrow ? <Text style={[styles.eyebrow, { color: p.green }]}>{eyebrow}</Text> : null}
-    <Text style={[styles.title, { color: p.text }]}>{children}</Text>
+    {eyebrow ? <Text style={[styles.eyebrow, { color: p.green, fontSize: 11 * scale }]}>{eyebrow}</Text> : null}
+    <Text style={[styles.title, { color: p.text, fontSize: 30 * scale, lineHeight: 36 * scale }]}>{children}</Text>
   </View>;
 }
 
 export function Muted({ children, numberOfLines }: { children: React.ReactNode; numberOfLines?: number }) {
   const p = usePalette();
-  return <Text numberOfLines={numberOfLines} style={[styles.muted, { color: p.muted }]}>{children}</Text>;
+  const scale = useDisplayScale();
+  return <Text numberOfLines={numberOfLines} style={[styles.muted, { color: p.muted, fontSize: 14 * scale, lineHeight: 20 * scale }]}>{children}</Text>;
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: object }) {
@@ -55,6 +63,7 @@ export function Button({
   ...props
 }: PressableProps & { title: string; kind?: "primary" | "secondary" | "danger"; loading?: boolean }) {
   const p = usePalette();
+  const scale = useDisplayScale();
   const backgroundColor = kind === "primary" ? p.green : kind === "danger" ? colors.danger : p.card;
   const textColor = kind === "secondary" ? p.text : "#FFFFFF";
   return (
@@ -71,17 +80,18 @@ export function Button({
         typeof props.style === "function" ? props.style({ pressed }) : props.style,
       ]}
     >
-      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[styles.buttonText, { color: textColor }]}>{title}</Text>}
+      {loading ? <ActivityIndicator color={textColor} /> : <Text style={[styles.buttonText, { color: textColor, fontSize: 15 * scale }]}>{title}</Text>}
     </Pressable>
   );
 }
 
 export function Field(props: TextInputProps) {
   const p = usePalette();
+  const scale = useDisplayScale();
   return <TextInput
     placeholderTextColor={p.muted}
     {...props}
-    style={[styles.field, { backgroundColor: p.card, borderColor: p.border, color: p.text }, props.style]}
+    style={[styles.field, { backgroundColor: p.card, borderColor: p.border, color: p.text, fontSize: 15 * scale }, props.style]}
   />;
 }
 

@@ -12,6 +12,7 @@ export type Communication = {
   createdAt?: string;
   timestamp?: string;
   at?: string;
+  sentAt?: string;
 };
 
 export type Lead = {

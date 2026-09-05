@@ -11,7 +11,8 @@ export default function MoreScreen() {
   const p = usePalette();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { syncing, offline, refresh } = useWorkspace();
+  const { workspace, syncing, offline, refresh, updateProfile } = useWorkspace();
+  const displaySize = String(workspace.profile.displaySize || "large");
 
   return (
     <Screen>
@@ -25,6 +26,14 @@ export default function MoreScreen() {
           <Muted>{user?.primaryEmailAddress?.emailAddress || ""}</Muted>
         </View>
         <Pill active={offline}>{syncing ? "Syncing" : offline ? "Offline" : "Synced"}</Pill>
+      </Card>
+
+      <Card style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: p.text }]}>Display size</Text>
+        <Muted>Choose comfortable, large, or extra-large text across Pacifica.</Muted>
+        <View style={styles.sizeRow}>
+          {["comfortable", "large", "extra-large"].map(size => <Button key={size} title={size === "extra-large" ? "Extra large" : size[0].toUpperCase() + size.slice(1)} kind={displaySize === size ? "primary" : "secondary"} onPress={() => void updateProfile({ displaySize: size })} style={styles.sizeButton} />)}
+        </View>
       </Card>
 
       <Card style={styles.section}>
@@ -60,4 +69,6 @@ const styles = StyleSheet.create({
   name: { fontWeight: "900", fontSize: 16 },
   section: { gap: 12 },
   sectionTitle: { fontSize: 17, fontWeight: "900" },
+  sizeRow: { flexDirection: "row", gap: 8 },
+  sizeButton: { flex: 1, paddingHorizontal: 6 },
 });

@@ -2,6 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@clerk/expo";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
+import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { getWorkspace, putWorkspace } from "../lib/api";
 import type { Lead, Workspace } from "../lib/types";
 
@@ -14,12 +17,24 @@ type WorkspaceContextValue = {
   syncing: boolean;
   offline: boolean;
   error: string;
+  unreadMessages: number;
   refresh: () => Promise<void>;
+  markMessagesRead: () => Promise<void>;
   updateLead: (id: number, patch: Partial<Lead>) => Promise<void>;
+  updateProfile: (patch: Record<string, unknown>) => Promise<void>;
 };
 
 const emptyWorkspace: Workspace = { leads: [], callLogs: [], profile: {} };
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+const LAST_INBOUND_KEY = "pacifica.mobile.last-inbound-notification.v1";
+const LAST_READ_KEY = "pacifica.mobile.last-inbound-read.v1";
+
+function inboundItems(workspace: Workspace) {
+  return workspace.leads.flatMap(lead => (Array.isArray(lead.communications) ? lead.communications : [])
+    .filter(item => String(item.direction || "").toLowerCase().includes("in"))
+    .map(item => ({ lead, item, time: new Date(String(item.createdAt || item.timestamp || item.at || item.sentAt || "")).getTime() || 0 })))
+    .sort((a, b) => b.time - a.time);
+}
 
 async function saveCache(workspace: Workspace, dirty = false) {
   await AsyncStorage.multiSet([
@@ -54,6 +69,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [syncing, setSyncing] = useState(false);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!isSignedIn) {
@@ -65,18 +81,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = await getToken();
       if (!token) throw new Error("No active Pacifica session.");
-      const cached = await loadCache();
-
-      // If edits were made offline, merge them through the server before downloading fresh state.
-      if (cached?.dirty) {
-        await putWorkspace(token, cached.workspace);
-        await saveCache(cached.workspace, false);
-      }
-
       const remote = await getWorkspace(token);
       setWorkspace(remote);
       await saveCache(remote, false);
       setOffline(false);
+      const latest = inboundItems(remote)[0];
+      const lastRead = Number(await AsyncStorage.getItem(LAST_READ_KEY)) || 0;
+      setUnreadMessages(inboundItems(remote).filter(entry => entry.time > lastRead).length);
+      const seen = Number(await AsyncStorage.getItem(LAST_INBOUND_KEY)) || 0;
+      if (seen && latest?.time > seen) {
+        const permissions = await Notifications.getPermissionsAsync();
+        if (permissions.status === "granted") {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: `New message from ${latest.lead.name}`, body: String(latest.item.body || latest.item.text || latest.item.subject || "Open Pacifica to reply."), data: { leadId: latest.lead.id } },
+            trigger: null,
+          });
+        }
+      }
+      if (latest?.time) await AsyncStorage.setItem(LAST_INBOUND_KEY, String(Math.max(seen, latest.time)));
     } catch (reason) {
       const cached = await loadCache();
       if (cached) {
@@ -93,6 +115,28 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const frame = requestAnimationFrame(() => void refresh());
     return () => cancelAnimationFrame(frame);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    void (async () => {
+      try {
+        await Notifications.setNotificationChannelAsync("pacifica", { name: "Pacifica messages", importance: Notifications.AndroidImportance.HIGH });
+        const current = await Notifications.getPermissionsAsync();
+        const permission = current.status === "granted" ? current : await Notifications.requestPermissionsAsync();
+        if (permission.status === "granted" && Device.isDevice) {
+          const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+          const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+          const authToken = await getToken();
+          if (authToken && token && workspace.profile.expoPushToken !== token) {
+            const registered = { ...workspace, profile: { ...workspace.profile, expoPushToken: token } };
+            await putWorkspace(authToken, registered);
+            setWorkspace(registered);
+            await saveCache(registered, false);
+          }
+        }
+      } catch { /* Notifications remain optional on unsupported simulators. */ }
+    })();
+  }, [getToken, isSignedIn, workspace]);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -132,9 +176,34 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [getToken, workspace]);
 
+  const updateProfile = useCallback(async (patch: Record<string, unknown>) => {
+    const next = { ...workspace, profile: { ...workspace.profile, ...patch } };
+    setWorkspace(next);
+    await saveCache(next, true);
+    setSyncing(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error("No active Pacifica session.");
+      await putWorkspace(token, next);
+      const remote = await getWorkspace(token);
+      setWorkspace(remote);
+      await saveCache(remote, false);
+      setOffline(false);
+    } catch (reason) {
+      setOffline(true);
+      setError(reason instanceof Error ? reason.message : "Saved on this device. Will sync when online.");
+    } finally { setSyncing(false); }
+  }, [getToken, workspace]);
+
+  const markMessagesRead = useCallback(async () => {
+    const now = Date.now();
+    await AsyncStorage.setItem(LAST_READ_KEY, String(now));
+    setUnreadMessages(0);
+  }, []);
+
   const value = useMemo(() => ({
-    workspace, loading, syncing, offline, error, refresh, updateLead
-  }), [workspace, loading, syncing, offline, error, refresh, updateLead]);
+    workspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile
+  }), [workspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

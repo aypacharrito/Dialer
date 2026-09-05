@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Screen } from "../../src/components/Screen";
 import { Card, Muted, Title, usePalette } from "../../src/components/Primitives";
 import { useWorkspace } from "../../src/state/WorkspaceProvider";
@@ -16,7 +16,8 @@ function commTime(item: Communication) {
 
 export default function InboxScreen() {
   const p = usePalette();
-  const { workspace } = useWorkspace();
+  const { workspace, markMessagesRead } = useWorkspace();
+  useFocusEffect(React.useCallback(() => { void markMessagesRead(); }, [markMessagesRead]));
   const items = useMemo(() => {
     const collected: InboxItem[] = [];
     for (const lead of workspace.leads) {

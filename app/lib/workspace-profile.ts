@@ -48,6 +48,7 @@ export type WorkspaceProfile={
   ownerReminderSmsEnabled:boolean;
   ownerReminderPhone:string;
   liveCallSession:LiveCallSession|null;
+  expoPushToken:string;
 };
 
 export const defaultWorkspaceProfile:WorkspaceProfile={
@@ -75,6 +76,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   ownerReminderSmsEnabled:false,
   ownerReminderPhone:"",
   liveCallSession:null,
+  expoPushToken:"",
 };
 
 function cleanSequence(raw:unknown,index:number):AutomationSequence|null{
@@ -129,5 +131,6 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     ownerReminderSmsEnabled:profile.ownerReminderSmsEnabled===true,
     ownerReminderPhone:String(profile.ownerReminderPhone||"").trim().slice(0,40),
     liveCallSession:rawLiveCall&&String(rawLiveCall.phone||"").trim()?{leadId:Number.isFinite(Number(rawLiveCall.leadId))?Number(rawLiveCall.leadId):null,name:String(rawLiveCall.name||"Active call").trim().slice(0,120),phone:String(rawLiveCall.phone||"").trim().slice(0,40),line:rawLiveCall.line==="life"?"life":"home-auto",status:rawLiveCall.status==="connected"?"connected":"dialing",startedAt:String(rawLiveCall.startedAt||new Date().toISOString()),updatedAt:String(rawLiveCall.updatedAt||new Date().toISOString())}:null,
+    expoPushToken:/^ExponentPushToken\[[^\]]+\]$/.test(String(profile.expoPushToken||""))?String(profile.expoPushToken):"",
   };
 }
