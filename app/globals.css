@@ -2660,3 +2660,14 @@ html[data-theme] .call-log-row small{font-size:calc(11px * var(--ui-type-scale,1
 @media(max-width:1400px){html[data-theme] .focus-list article{grid-template-columns:32px minmax(0,1fr) auto}html[data-theme] .focus-reason{display:none}html[data-theme] .pipeline{grid-template-columns:repeat(3,minmax(238px,1fr))}}
 @media(max-width:900px){html[data-theme] .today-workspace{padding:20px}html[data-theme] .pipeline{grid-template-columns:repeat(2,minmax(230px,1fr))}html[data-theme] .record-actions{grid-template-columns:1fr 1fr!important}}
 @media(max-width:560px){html[data-theme] .pipeline{grid-template-columns:1fr}html[data-theme] .today-metrics{grid-template-columns:1fr 1fr}}
+
+html[data-theme] .sidebar nav em.message-unread{background:#d64045!important;color:#fff!important;min-width:22px;height:22px;padding:0 6px;display:grid;place-items:center;font-size:11px!important;font-weight:900;box-shadow:0 0 0 3px rgba(214,64,69,.12)}
+
+/* Apply the saved visibility preference to the remaining dense product surfaces. */
+html[data-theme] :is(.billing-card,.client-table,.client-reminder-settings,.settings-content,.email-workspace-setup,.phone-config,.team-management,.system-health){font-size:calc(14px * var(--ui-type-scale,1))}
+html[data-theme] :is(.billing-card,.client-table,.client-reminder-settings,.settings-content,.email-workspace-setup,.phone-config,.team-management,.system-health) :is(button,input,select,textarea){font-size:calc(12px * var(--ui-type-scale,1))!important}
+html[data-theme] .client-table-head span{font-size:calc(10px * var(--ui-type-scale,1))!important}
+html[data-theme] .client-row-main b{font-size:calc(13px * var(--ui-type-scale,1))!important}
+html[data-theme] .client-row-main small{font-size:calc(11px * var(--ui-type-scale,1))!important;line-height:1.4}
+html[data-theme] .client-person i{width:38px;height:38px;font-size:calc(10px * var(--ui-type-scale,1))}
+html[data-theme] .client-table-row{min-height:calc(62px * var(--ui-control-scale,1))}

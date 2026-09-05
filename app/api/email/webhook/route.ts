@@ -2,6 +2,7 @@ import {Webhook} from "standardwebhooks";
 import {appendCommunication,type StoredCommunication} from "../../../lib/communications";
 import {logError,logEvent} from "../../../lib/observability";
 import {listStoredWorkspaces,readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
+import {sendExpoPush} from "../../../lib/expo-push";
 
 export const runtime="nodejs";
 
@@ -40,7 +41,7 @@ async function saveInbound(event:ResendEvent){
       const communication:StoredCommunication={id:String(email.id||event.data.email_id||crypto.randomUUID()),channel:"email",direction:"inbound",subject:String(email.subject||event.data.subject||"").slice(0,200),body,status:"received",sentAt,provider:"resend",providerId:String(event.data.email_id||email.id)};
       return {...raw,lastInboundAt:sentAt,lastContact:"Email reply received",automationNextAt:"",automationStatus:unsub?"opted out":"replied",...(unsub?{emailOptOut:true,emailConsent:false}:{}),communications:appendCommunication(raw.communications,communication)};
     });
-    if(matched){await writeStoredWorkspace(record.workspaceId,{...record.workspace,leads});logEvent("inbound_email_saved",{workspaceId:record.workspaceId,fromDomain:from.split("@")[1],unsubscribed:unsub});return true}
+    if(matched){await writeStoredWorkspace(record.workspaceId,{...record.workspace,leads});void sendExpoPush(record.workspace.profile.expoPushToken,"New Pacifica email",email.subject||body,{channel:"email"});logEvent("inbound_email_saved",{workspaceId:record.workspaceId,fromDomain:from.split("@")[1],unsubscribed:unsub});return true}
   }
   return false;
 }

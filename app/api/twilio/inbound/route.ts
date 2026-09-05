@@ -3,6 +3,7 @@ import {phoneAssignmentForNumber} from "../../../lib/phone-assignments";
 import {logError,logEvent} from "../../../lib/observability";
 import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
 import {rejectedTwilioWebhook,validateTwilioWebhook} from "../../../lib/twilio-webhook";
+import {sendExpoPush} from "../../../lib/expo-push";
 
 export const runtime="nodejs";
 
@@ -26,6 +27,7 @@ export async function POST(request:Request){
     });
     if(!matched){const sentAt=new Date().toISOString();leads.unshift({id:Date.now(),name:`Inbound text · ${from.slice(-4)}`,phone:from,email:"",city:"",status:"Ready",stage:"New lead",outcome:"Not contacted",notes:"Created automatically from an inbound text.",followUp:"",doNotCall:stop.test(body),lastContact:"Text reply received",line:"life",source:"Inbound SMS",leadCost:0,product:"Inbound inquiry",sourceDisposition:"New",importedAt:sentAt,received:sentAt,smsConsent:!stop.test(body),smsOptOut:stop.test(body),lastInboundAt:sentAt,automationNextAt:"",automationStatus:stop.test(body)?"opted out":"replied",communications:[{id:sid,channel:"sms",direction:"inbound",body,status:"received",sentAt,provider:"twilio",providerId:sid}]})}
     await writeStoredWorkspace(assignment.workspaceId,{...workspace,leads});
+    void sendExpoPush(workspace.profile.expoPushToken,matched?"New Pacifica message":"New Pacifica lead",body,{channel:"sms"});
     logEvent("inbound_sms_saved",{workspaceId:assignment.workspaceId,matched,optedOut:stop.test(body),fromLast4:phone.slice(-4)});
     return twiml();
   }catch(error){logError("inbound_sms_failed",error);return twiml()}
