@@ -2524,3 +2524,61 @@ html[data-theme="dark"] .composer-permission.confirmed{border-color:#356e5a;back
 
 @media(max-width:900px){html[data-theme] .display-size-picker{grid-template-columns:1fr}html[data-theme] .message-contacts>button>em{min-width:0!important}}
 @media(prefers-reduced-motion:reduce){html[data-theme] :is(button,a,[role="button"]){transition:none!important}}
+
+/* Visibility follow-through: Today, Pipeline, Reports, and Messages scale as complete layouts. */
+html[data-theme] .today-workspace{max-width:1680px;margin:0 auto;padding:30px 34px}
+html[data-theme] .today-metrics>article{min-height:calc(104px * var(--ui-control-scale,1));padding:20px 22px}
+html[data-theme] .today-metrics>article>b{font-size:calc(32px * var(--ui-type-scale,1));line-height:1}
+html[data-theme] :is(.focus-list,.source-pulse)>header{min-height:58px;padding:16px 18px}
+html[data-theme] :is(.focus-list,.source-pulse)>header span{font-size:calc(11px * var(--ui-type-scale,1));font-weight:900}
+html[data-theme] .focus-list>header em{font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] .focus-list article{min-height:calc(76px * var(--ui-control-scale,1));grid-template-columns:34px minmax(210px,1fr) minmax(210px,.75fr) auto;padding:13px 16px;gap:13px}
+html[data-theme] .focus-list article>strong{font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] .focus-person i{width:40px;height:40px;font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] :is(.focus-person,.focus-reason) b{font-size:calc(14px * var(--ui-type-scale,1));line-height:1.3}
+html[data-theme] :is(.focus-person,.focus-reason) small{font-size:calc(11px * var(--ui-type-scale,1));line-height:1.4}
+html[data-theme] .focus-call{min-width:64px;min-height:40px;border-radius:9px;font-size:calc(12px * var(--ui-type-scale,1))}
+html[data-theme] .source-pulse>article{min-height:calc(70px * var(--ui-control-scale,1));padding:14px 17px}
+html[data-theme] .source-pulse>article div b,html[data-theme] .source-pulse>article>span b{font-size:calc(14px * var(--ui-type-scale,1))}
+html[data-theme] .source-pulse>article div small,html[data-theme] .source-pulse>article>span small{font-size:calc(11px * var(--ui-type-scale,1))}
+
+html[data-theme] .pipeline{grid-template-columns:repeat(5,minmax(238px,1fr));gap:16px;align-items:start;padding:2px 2px 14px}
+html[data-theme] .pipeline>section{min-height:360px;padding:12px;border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface-soft)}
+html[data-theme] .pipeline>section>header{min-height:48px;height:auto;padding:0 6px}
+html[data-theme] .pipeline>section>header b{font-size:calc(14px * var(--ui-type-scale,1));font-weight:850}
+html[data-theme] .pipeline>section>header span{min-width:28px;padding:5px 8px;text-align:center;font-size:calc(11px * var(--ui-type-scale,1))}
+html[data-theme] .pipeline-card{position:relative;min-height:150px;padding:16px!important;border-radius:13px!important;box-shadow:0 5px 15px rgba(25,69,54,.045)}
+html[data-theme] .pipeline-card>div{display:grid!important;grid-template-columns:38px minmax(0,1fr);padding-right:58px}
+html[data-theme] .pipeline-card>div>i{width:38px!important;height:38px!important;font-size:calc(10px * var(--ui-type-scale,1))!important}
+html[data-theme] .pipeline-card>div>span{min-width:0}
+html[data-theme] .pipeline-card>div>span>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:calc(14px * var(--ui-type-scale,1));line-height:1.35}
+html[data-theme] .pipeline-card>div>span>small{font-size:calc(11px * var(--ui-type-scale,1));line-height:1.35}
+html[data-theme] .pipeline-card>div>.priority-pill{position:absolute;top:16px;right:14px;margin:0!important}
+html[data-theme] .pipeline-card>p{margin:16px 0 13px;font-size:calc(12px * var(--ui-type-scale,1));line-height:1.45}
+html[data-theme] .pipeline-card>footer{gap:8px;font-size:calc(10px * var(--ui-type-scale,1));line-height:1.4}
+html[data-theme] .pipeline-card>footer em{max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+html[data-theme] .automation-studio{border-radius:16px!important;overflow:hidden}
+html[data-theme] .automation-studio>header{padding:20px 24px}
+html[data-theme] .automation-studio>header h2{font-size:calc(20px * var(--ui-type-scale,1));line-height:1.25}
+html[data-theme] .automation-safety-row{padding:16px 24px;gap:20px}
+html[data-theme] .automation-safety-row :is(b,p){font-size:calc(12px * var(--ui-type-scale,1));line-height:1.45}
+
+html[data-theme] .message-contacts>header{display:grid;gap:12px;padding:15px 14px}
+html[data-theme] .message-contact-search{position:relative;display:flex;align-items:center;gap:8px;height:44px;padding:0 10px;border:1px solid var(--ui-border-strong);border-radius:11px;background:var(--ui-surface-soft);color:var(--ui-muted)}
+html[data-theme] .message-contact-search>span{font-size:20px;line-height:1}
+html[data-theme] .message-contact-search input{min-width:0;width:100%;border:0!important;outline:0;background:transparent!important;color:var(--ui-text)!important;-webkit-text-fill-color:var(--ui-text)!important;font:inherit;font-size:calc(13px * var(--ui-type-scale,1));box-shadow:none!important}
+html[data-theme] .message-contact-search button{width:28px;height:28px;flex:none;padding:0;border:0;border-radius:50%;background:var(--ui-surface);color:var(--ui-muted);font-size:18px;cursor:pointer}
+
+html[data-theme] .record-actions{grid-template-columns:repeat(4,minmax(0,1fr))!important;padding:16px 20px!important}
+html[data-theme] .record-actions button,html[data-theme] .record-actions button:first-child{min-height:52px!important;font-size:calc(12px * var(--ui-type-scale,1))!important;font-weight:800}
+html[data-theme] .record-actions .pin-active{border-color:#d8b96c!important;background:#fff7dc!important;color:#77550c!important}
+html[data-theme="dark"] .record-actions .pin-active{border-color:#7c662d!important;background:#302817!important;color:#f1cf7d!important}
+
+html[data-theme] .call-log-head{font-size:calc(11px * var(--ui-type-scale,1))!important}
+html[data-theme] .call-log-row{min-height:calc(68px * var(--ui-control-scale,1));font-size:calc(12px * var(--ui-type-scale,1))!important}
+html[data-theme] .call-log-row b{font-size:calc(13px * var(--ui-type-scale,1))!important}
+html[data-theme] .call-log-row small{font-size:calc(11px * var(--ui-type-scale,1))!important;line-height:1.4}
+
+@media(max-width:1400px){html[data-theme] .focus-list article{grid-template-columns:32px minmax(0,1fr) auto}html[data-theme] .focus-reason{display:none}html[data-theme] .pipeline{grid-template-columns:repeat(3,minmax(238px,1fr))}}
+@media(max-width:900px){html[data-theme] .today-workspace{padding:20px}html[data-theme] .pipeline{grid-template-columns:repeat(2,minmax(230px,1fr))}html[data-theme] .record-actions{grid-template-columns:1fr 1fr!important}}
+@media(max-width:560px){html[data-theme] .pipeline{grid-template-columns:1fr}html[data-theme] .today-metrics{grid-template-columns:1fr 1fr}}
