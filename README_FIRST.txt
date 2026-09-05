@@ -1,20 +1,22 @@
-PACIFICA CRM LOCAL SCANNER + BOOK OF BUSINESS UPDATE — SEPTEMBER 4, 2026
+PACIFICA CRM — PROFESSIONAL POLISH
 
-This bundle contains the complete source changes for the professional CRM refresh, document capture, and client reminders. It is safely below GitHub's 100-file web-upload limit.
+Upload both files to the repository, preserving the paths:
 
-1. Extract Pacifica_CRM_Exact_Policy_Book_2026-09-04.zip on your computer.
-2. Open https://github.com/aypacharrito/Dialer and stay on the main branch.
-3. Choose Add file > Upload files.
-4. Drag the CONTENTS of the extracted folder into the upload area. Keep the app, tests, and mobile folders intact.
-5. Commit directly to main with this message:
-   Add local document scanner and policy book
-6. Vercel should build the new commit automatically. If it does not, open the newest deployment and choose Redeploy.
+app/professional-polish.css
+app/layout.tsx
 
-Do not upload node_modules, .next, dist, public/clearvoice, or public/scanner. They are generated during installation/build.
+The layout.tsx included here is based on the current main-branch file and only adds:
+import "./professional-polish.css";
 
-Verification completed before packaging:
-- ESLint passed
-- Vercel production build passed
-- 77 of 77 unit tests passed
+WHAT THIS FIXES
+- Balances the dialer into a deliberate 3-column desktop layout.
+- Makes the lead card and keypad visually equal instead of randomly sized.
+- Aligns CRM KPI cards and filters to one spacing rhythm.
+- Fixes contact drawer actions from 5 CSS columns to the actual 4 buttons.
+- Cleans settings navigation and phone setup proportions.
+- Standardizes card radii, shadows, borders, input heights, and typography.
+- Adds responsive layouts for 1500px, 1180px, 920px, and 760px.
+- Includes matching dark-mode tokens.
+- Does not change CRM logic, Twilio logic, lead data, or API behavior.
 
-The scanner does not require OPENAI_API_KEY. It first reads a license PDF417 barcode, then uses local OCR for photos, and reads text-based declaration PDFs locally. Always review extracted fields before saving. Policy premiums remain exactly as written on each declaration; Pacifica never annualizes them. Explicit monthly or installment payments are stored separately and never multiplied into book premium. Client and owner reminder texts still require the existing Twilio, A2P, Redis, and CRON_SECRET production setup.
+If GitHub asks whether to replace app/layout.tsx, replace it with the included file.
