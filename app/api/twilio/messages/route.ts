@@ -2,7 +2,7 @@ import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
 import {sendOutboundSms} from "../../../lib/outbound-sms";
-import {readStoredWorkspace} from "../../../lib/workspace-storage";
+import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 
@@ -91,13 +91,14 @@ export async function GET(){
 
 export async function POST(request:Request){
   try{
-    const body=await request.json() as {to?:string;body?:string};
+    const body=await request.json() as {to?:string;body?:string;permissionDocumented?:boolean};
     const to=normalized(String(body.to||""));
     const text=String(body.body||"").trim().slice(0,1400);
     if(!to)return Response.json({error:"Enter a valid US mobile number"},{status:400});
     if(!text)return Response.json({error:"Write a message first"},{status:400});
     const access=await workspaceAccess();const workspace=await readStoredWorkspace(access.userId);const digits=to.replace(/\D/g,"").slice(-10);const lead=workspace?.leads.find(raw=>{const item=raw as Record<string,unknown>;return String(item.phone||"").replace(/\D/g,"").slice(-10)===digits}) as Record<string,unknown>|undefined;
     if(!lead)return Response.json({error:"Save this phone number as a workspace contact before texting."},{status:400});
+    if(body.permissionDocumented===true&&lead.smsConsent!==true){lead.smsConsent=true;await writeStoredWorkspace(access.userId,{...workspace!,leads:workspace!.leads.map(raw=>raw===lead?lead:raw)})}
     if(lead.doNotCall||lead.smsOptOut||lead.smsConsent!==true)return Response.json({error:lead.smsOptOut?"This contact opted out of SMS.":"Document this contact’s SMS consent before sending."},{status:403});
     const result=await sendOutboundSms({workspaceId:access.userId,to,body:text});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text,status:result.status,date_created:new Date().toISOString()};
     console.log("[twilio/messages] sent",{sid:result.id,toLast4:to.slice(-4),credential:"tenant SMS adapter"});
