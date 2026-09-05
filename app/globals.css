@@ -2588,6 +2588,21 @@ html[data-theme] .send-message.error{border-color:#dba7a3!important;background:#
   html[data-theme] .top-actions{justify-self:end!important}
 }
 
+/* Desktop queue selector aligns to the physical screen center, not the content area. */
+@media(min-width:1481px){
+  html[data-theme] .topbar{position:sticky!important}
+  html[data-theme] .lead-line-switch{
+    position:fixed!important;
+    top:14px!important;
+    left:50vw!important;
+    right:auto!important;
+    z-index:14;
+    transform:translateX(-50%)!important;
+  }
+  html[data-theme] .caller-id{grid-column:1;max-width:calc(50vw - 510px)}
+  html[data-theme] .top-actions{grid-column:3;max-width:calc(50vw - 28px)}
+}
+
 /* Visibility follow-through: Today, Pipeline, Reports, and Messages scale as complete layouts. */
 html[data-theme] .today-workspace{max-width:1680px;margin:0 auto;padding:30px 34px}
 html[data-theme] .today-metrics>article{min-height:calc(104px * var(--ui-control-scale,1));padding:20px 22px}
