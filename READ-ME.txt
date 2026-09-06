@@ -1,34 +1,38 @@
-PACIFICA — COMPACT DIALER & TYPOGRAPHY UPDATE
+PACIFICA — RESIZE & MOTION FOLLOW-UP
+
+This follows the compact dialer update you already uploaded.
+Base: aypacharrito/Dialer main, commit 89d3ecf.
 
 INSTALL
 1. Extract this ZIP.
-2. Open aypacharrito/Dialer on GitHub, on the main branch.
-3. Choose Add file > Upload files at the repository root.
-4. Drag the extracted app folder into the upload area. Keep the app folder structure.
-5. Commit the replacements and wait for your Vercel deployment to finish.
-6. Reload Pacifica. Open Settings > Workspace > Display size to choose your size.
+2. Open your Dialer repository on GitHub, on main.
+3. At the repository root, choose Add file > Upload files.
+4. Drag in the extracted app folder. Preserve its folder structure.
+5. Commit and let Vercel finish deploying, then reload Pacifica.
+
+Only app/CRMClient.tsx and app/product-system.css are replaced.
+The previous compact dialer and font changes remain included in these files.
 
 CHANGES
-- Compact call strip replaces the large idle call panel and decorative waveform.
-- Full contact details appear during a connected call and post-call wrap-up.
-- Keypad opens from the toolbar; manual dialing and live touch tones remain available.
-- Lead details use separated rows instead of individual rounded cards.
-- Compact statistics and queue layout.
-- A shared sans-serif family throughout the CRM, including settings.
-- Legacy pixel text sizes now follow the saved workspace size; small text has a 12px base floor.
-- Explicit desktop/mobile grid placement prevents the call strip, record and keypad overlapping.
-- Existing prebuild-generated stable queue and UI changes are included so the shipped source stays compatible with both upgrade scripts.
+- The header wraps its controls naturally instead of reserving oversized fixed columns.
+- The queue selector stays in the header flow, preventing overlap with other controls.
+- Sidebar collapses to a 72px rail at 1280px, then 60px on narrow phones.
+- Navigation has hover labels and an accessible current-page indicator.
+- Settings stays reachable on the collapsed sidebar.
+- Header actions wrap into separate rows when needed; no action is hidden to force a fit.
+- The keypad, call controls and lead details stack based on available workspace width.
+- Long contact details and integration URLs can wrap.
+- Wide tables scroll within their own areas.
+- Panels enter with brief 180ms transitions; controls have subtle hover/press feedback.
+- Reduced-motion preferences disable the new animations.
 
 VALIDATION
-- VERCEL=1 npm run build: passed (production compilation, type checking, page generation).
-- TypeScript: passed.
-- 16 existing lead-priority, post-call and workspace-profile tests: passed.
-- ESLint: the same two react-hooks/purity errors occur in both original prebuild-generated source and this update, in openView and createDialerRun.
-- Browser visual verification blocked: browser daemon startup failed; Chromium download timed out. Responsive layouts and live call visibility still need a visual check in the deployed app. No real calls were placed.
+Production Next.js build passed, including TypeScript and all 37 static page generation steps.
+Source diff passed whitespace/error checks.
+Browser visual verification was blocked by ERR_BLOCKED_BY_CLIENT when opening the local preview. This package has not been visually verified or used for a live call.
 
-BASE
-Repository main commit eba1139. If you have uploaded other changes since that commit, merge these files rather than blindly replacing newer work.
-
-DESIGN REFERENCES
-https://developer.apple.com/design/human-interface-guidelines/typography
-https://m3.material.io/foundations/layout/layout-overview
+AFTER DEPLOYMENT
+Check full width, a restored window around 1276px, and a narrow window.
+Confirm header controls do not overlap, Settings remains reachable, and Keypad opens/closes.
+Check Settings > Workspace > Display size with Extra large and check both themes.
+Live calling behavior was not changed by this follow-up.

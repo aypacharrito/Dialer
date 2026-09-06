@@ -1250,3 +1250,156 @@ html[data-theme] .app-shell .conversation-workspace .queue-card { width:100%; bo
 @media(prefers-reduced-motion:reduce) {
  html[data-theme] .app-shell *,html[data-theme] .app-shell *::before,html[data-theme] .app-shell *::after { animation:none !important; transition:none !important; }
 }
+
+/* Adaptive workspace: keep sizing in flow, never position controls over content. */
+html[data-theme] .app-shell {
+  --navigation-width: 214px;
+  display: grid !important;
+  grid-template-columns: var(--navigation-width) minmax(0, 1fr) !important;
+  width: 100%;
+  min-width: 0;
+}
+html[data-theme] .app-shell > .sidebar {
+  width: var(--navigation-width) !important;
+  height: 100dvh;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html[data-theme] .app-shell > .workspace {
+  grid-column: 2 !important;
+  margin-left: 0 !important;
+  width: 100%;
+  min-width: 0 !important;
+  container-type: inline-size;
+  container-name: crm-workspace;
+}
+html[data-theme] .app-shell .topbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  height: auto !important;
+  min-height: 74px !important;
+  gap: 12px 20px !important;
+  padding: 14px 22px !important;
+  align-items: center;
+  justify-content: space-between;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+}
+html[data-theme] .app-shell .caller-id {
+  flex: 0 1 auto;
+  min-width: 0 !important;
+  max-width: 100%;
+  white-space: normal;
+}
+html[data-theme] .app-shell .caller-id b { overflow-wrap: anywhere; }
+html[data-theme] .app-shell .lead-line-switch {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  margin: 0 !important;
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0 !important;
+  height: auto !important;
+  display: flex !important;
+}
+html[data-theme] .app-shell .lead-line-switch button {
+  flex: 1 1 0;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 36px !important;
+  white-space: normal !important;
+  line-height: 1.35;
+  padding: 8px 14px !important;
+}
+html[data-theme] .app-shell .top-actions {
+  flex: 1 1 460px;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end;
+  min-width: 0 !important;
+  max-width: 100%;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+html[data-theme] .app-shell .top-actions > :not(input) { flex-shrink: 0; }
+html[data-theme] .app-shell .top-auth { display:flex; flex-wrap:wrap; align-items:center; gap:8px; max-width:100%; }
+html[data-theme] .app-shell :is(.page-view,.dialer-view,.settings-content,.settings-section,.phone-setup-layout,.phone-setup-side) { min-width:0 !important; max-width:100%; }
+html[data-theme] .app-shell :is(.contact-card,.contact-card>div,.lead-file-identity>div,.dialer-toolbar>div) { min-width:0; }
+html[data-theme] .app-shell :is(.contact-card h2,.contact-card a,.contact-card p,.lead-file-identity a,.lead-file-identity small,.lead-api-details dd) { overflow-wrap:anywhere; }
+html[data-theme] .app-shell .contact-card { max-width:100% !important; }
+html[data-theme] .app-shell .dialer-toolbar { flex-wrap:wrap; }
+html[data-theme] .app-shell .sidebar-foot > button { display:grid !important; place-items:center; min-width:40px; min-height:40px; }
+html[data-theme] .app-shell :is(.table-card,.client-table,.call-log-table) { max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
+
+/* Rail appears early enough to leave useful room in a restored desktop window. */
+@media (max-width: 1280px) {
+  html[data-theme] .app-shell { --navigation-width: 72px; }
+  html[data-theme] .app-shell > .sidebar { padding:16px 8px !important; }
+  html[data-theme] .app-shell .sidebar .logo { padding:0 0 18px !important; justify-content:center; min-height:62px !important; }
+  html[data-theme] .app-shell .sidebar :is(.logo>div,.agent>div,.sidebar-install,.nav-soon) { display:none !important; }
+  html[data-theme] .app-shell .sidebar nav { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; padding:3px; }
+  html[data-theme] .app-shell .sidebar nav button { position:relative; justify-content:center !important; padding:0 !important; width:100%; min-height:44px !important; height:44px !important; flex-shrink:0; }
+  html[data-theme] .app-shell .sidebar nav button>span { display:none !important; }
+  html[data-theme] .app-shell .sidebar nav button>em { display:none !important; }
+  html[data-theme] .app-shell .sidebar nav button>em.message-unread { display:grid !important; position:absolute; right:0; top:0; min-width:16px !important; height:16px !important; padding:0 3px !important; font-size:10px !important; }
+  html[data-theme] .app-shell .sidebar-foot { flex-direction:column; gap:8px; padding-top:10px !important; }
+  html[data-theme] .app-shell .agent { justify-content:center; }
+  html[data-theme] .app-shell .agent>span { width:34px; height:34px; }
+}
+@media (min-width:1281px) {
+  html[data-theme] .app-shell .sidebar :is(.logo>div,.agent>div) { display:block !important; }
+  html[data-theme] .app-shell .sidebar nav button>span { display:block !important; }
+}
+
+/* Container queries also respond to display scaling and available content width. */
+@container crm-workspace (max-width: 1100px) {
+  html[data-theme] .app-shell .top-actions { flex-basis:100%; justify-content:flex-start; }
+  html[data-theme] .app-shell .lead-line-switch { margin-left:auto !important; }
+  html[data-theme] .app-shell .topbar .workspace-sync { display:none !important; }
+  html[data-theme] .app-shell .phone-setup-layout { grid-template-columns:minmax(0,1fr) !important; }
+}
+@container crm-workspace (max-width: 760px) {
+  html[data-theme] .app-shell .topbar { padding:12px 14px !important; gap:12px !important; }
+  html[data-theme] .app-shell .top-actions { gap:8px !important; }
+  html[data-theme] .app-shell .lead-line-switch { flex-basis:100%; order:3; }
+  html[data-theme] .app-shell :is(.page-view,.dialer-view) { padding:18px 14px 24px !important; }
+  html[data-theme] .app-shell .conversation-workspace.has-keypad .dialer-main-grid { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .conversation-workspace .side-pad { grid-column:1 !important; grid-row:2 !important; width:100% !important; max-width:360px; justify-self:center; }
+  html[data-theme] .app-shell .conversation-workspace.has-keypad .lead-file { grid-row:3 !important; }
+  html[data-theme] .app-shell .conversation-workspace .call-grid { grid-template-columns:minmax(0,1fr) !important; padding:18px !important; }
+  html[data-theme] .app-shell .conversation-workspace .call-controls { justify-content:flex-start !important; }
+  html[data-theme] .app-shell .conversation-workspace .lead-file-grid { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .conversation-workspace .stats-row { flex-wrap:wrap !important; }
+  html[data-theme] .app-shell .settings-layout { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .settings-nav { position:static !important; width:100% !important; }
+}
+@media(max-width:480px) {
+  html[data-theme] .app-shell { --navigation-width:60px; }
+  html[data-theme] .app-shell > .sidebar { padding-inline:5px !important; }
+  html[data-theme] .app-shell .logo .brand-mark { width:38px !important; height:38px !important; }
+  html[data-theme] .app-shell .topbar { padding:12px 10px !important; }
+  html[data-theme] .app-shell .top-actions :is(button,.import,.inbound-availability) { min-height:40px !important; padding:8px 10px !important; }
+  html[data-theme] .app-shell .top-actions .connection { display:none !important; }
+  html[data-theme] .app-shell .conversation-workspace .contact-card { flex-wrap:wrap; gap:10px !important; }
+  html[data-theme] .app-shell .conversation-workspace .contact-card>div:not(.avatar) { flex:1 1 140px; }
+}
+
+/* Short entrances explain state changes without delaying the next action. */
+@keyframes pacifica-surface-enter {
+  from { opacity:0; transform:translateY(5px); }
+  to { opacity:1; transform:translateY(0); }
+}
+@keyframes pacifica-panel-enter {
+  from { opacity:0; transform:translateY(8px) scale(.99); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+@media(prefers-reduced-motion:no-preference) {
+  html[data-theme] .app-shell .workspace > :is(.page-view,.dialer-view) { animation:pacifica-surface-enter 180ms ease-out both; }
+  html[data-theme] .app-shell :is(.conversation-workspace .lead-file,.conversation-workspace .side-pad,.settings-section) { animation:pacifica-panel-enter 180ms ease-out both; }
+  html[data-theme] .app-shell :is(.sidebar nav button,.lead-line-switch button,.top-actions button,.queue-row,.table-row) { transition:background-color 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease !important; }
+  html[data-theme] .app-shell :is(.call-controls button,.dialer-toolbar button,.key-grid button) { transition:transform 120ms ease,background-color 140ms ease,box-shadow 140ms ease !important; }
+  html[data-theme] .app-shell :is(.call-controls button,.dialer-toolbar button,.key-grid button):active:not(:disabled) { transform:scale(.97) !important; }
+}
