@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+import { useDialogFocus } from "../hooks/use-dialog-focus";
 import type { PostCallDraft } from "../lib/post-call";
 
 type LeadSummary={name:string;phone:string;source:string};
@@ -18,10 +20,12 @@ export default function PostCallDispositionModal({lead,draft,technicalOutcome,co
   onSave:()=>void;
   onPause:()=>void;
 }){
+  const dialogRef=useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef,true);
   return <div className="post-call-modal-backdrop" role="presentation">
-    <section className="post-call-modal" role="dialog" aria-modal="true" aria-labelledby="post-call-title">
+    <section ref={dialogRef} tabIndex={-1} className="post-call-modal" role="dialog" aria-modal="true" aria-labelledby="post-call-title">
       <header><div><span>CALL COMPLETE · RESULT REQUIRED</span><h2 id="post-call-title">What happened with {lead.name}?</h2><p>{lead.phone} · {connected?"Connected conversation":technicalOutcome}</p></div><em>{lead.source||"Lead source"}</em></header>
-      <div className="post-call-outcomes" aria-label="Choose call result">{outcomes.map(outcome=><button type="button" key={outcome} className={draft.crmOutcome===outcome?"active":""} onClick={()=>onSelect(outcome)}>{outcome}</button>)}</div>
+      <div className="post-call-outcomes" aria-label="Choose call result">{outcomes.map(outcome=><button type="button" key={outcome} className={draft.crmOutcome===outcome?"active":""} aria-pressed={draft.crmOutcome===outcome} onClick={()=>onSelect(outcome)}>{outcome}</button>)}</div>
       <div className="post-call-modal-fields">
         <label><span>Next follow-up / appointment</span><input type="datetime-local" value={draft.appointmentAt} onChange={event=>onChange({appointmentAt:event.target.value})}/></label>
         <label><span>Stage</span><select value={draft.crmStage} onChange={event=>onChange({crmStage:event.target.value})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>

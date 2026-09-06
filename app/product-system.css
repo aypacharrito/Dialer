@@ -1403,3 +1403,104 @@ html[data-theme] .app-shell :is(.table-card,.client-table,.call-log-table) { max
   html[data-theme] .app-shell :is(.call-controls button,.dialer-toolbar button,.key-grid button) { transition:transform 120ms ease,background-color 140ms ease,box-shadow 140ms ease !important; }
   html[data-theme] .app-shell :is(.call-controls button,.dialer-toolbar button,.key-grid button):active:not(:disabled) { transform:scale(.97) !important; }
 }
+
+/* Final cross-screen contract: shared type scale, surfaces and focus treatment. */
+html[data-theme][data-display-size] {
+  --ui-type-scale: var(--workspace-text-scale) !important;
+  --ui-control-scale: 1 !important;
+}
+html[data-theme] { scrollbar-gutter:stable; }
+html[data-theme] .app-shell :is(.today-workspace,.messages-center,.client-portfolio) {
+  width:min(100%,1680px) !important;
+  min-width:0;
+  margin-inline:auto !important;
+  padding:24px !important;
+}
+html[data-theme] .app-shell :is(.module-bar,.module-actions,.today-actions,.crm-toolbar,.filters,.membership-actions,.composer-actions,.client-module-bar>div) { flex-wrap:wrap; min-width:0; gap:10px; }
+html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics) { grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr)) !important; }
+html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics)>article { min-height:0 !important; height:auto !important; padding:18px !important; border-radius:10px !important; box-shadow:none !important; }
+html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics)>article>span { font-size:calc(12px * var(--workspace-text-scale)) !important; font-weight:600 !important; letter-spacing:.035em !important; }
+html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics)>article>b { font-size:calc(26px * var(--workspace-text-scale)) !important; font-weight:650 !important; line-height:1.25 !important; margin-top:8px !important; }
+html[data-theme] .app-shell :is(.settings-nav,.settings-content,.focus-list,.source-pulse,.message-contacts,.message-thread,.pricing-grid>article,.pipeline-col) { min-width:0 !important; border-radius:10px !important; box-shadow:none !important; }
+html[data-theme] .app-shell :is(.settings-content,.settings-section,.phone-setup-side) { overflow-wrap:anywhere; }
+html[data-theme] .app-shell :is(.field-grid,.new-lead-fields,.post-call-modal-fields,.quote-edit-grid,.workspace-profile-fields,.client-reminder-grid) { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)) !important; }
+html[data-theme] .app-shell :is(input,select,textarea) { min-width:0; max-width:100%; }
+html[data-theme] .app-shell :is(.config-section>label,.volume-row) { min-width:0; }
+html[data-theme] .app-shell .conversation-workspace .queue-card { display:block !important; }
+html[data-theme] .app-shell :is(.table-head,.table-row)>span { min-width:0; }
+html[data-theme] .app-shell :is(.table-card,.pipeline,.client-table) { min-width:0; max-width:100%; overscroll-behavior-inline:contain; }
+html[data-theme] .app-shell .pipeline { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)) !important; }
+html[data-theme] .app-shell .pricing-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)) !important; }
+html[data-theme] .app-shell :is(button,a,input,select,textarea,[tabindex]):focus-visible {
+  outline:2px solid var(--ps-accent) !important;
+  outline-offset:3px !important;
+}
+html[data-theme="dark"] .app-shell .sidebar nav button { color:var(--ps-text) !important; }
+html[data-theme="dark"] .app-shell .sidebar nav button.active { color:var(--ps-accent) !important; }
+html[data-theme] .app-shell :is(.new-lead-modal,.post-call-modal,.contact-drawer,.quote-modal-shell) {
+  color:var(--ps-text) !important;
+  background:var(--ps-surface) !important;
+  max-height:calc(100dvh - 24px) !important;
+  max-width:calc(100vw - 24px) !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+html[data-theme] .app-shell .contact-drawer { height:100dvh !important; max-height:100dvh !important; }
+html[data-theme] .app-shell :is(.new-lead-modal,.post-call-modal,.contact-drawer)>header { min-width:0; flex-wrap:wrap; gap:12px; }
+html[data-theme] .app-shell :is(.new-lead-modal,.post-call-modal,.contact-drawer) h2 { overflow-wrap:anywhere; font-size:calc(20px * var(--workspace-text-scale)) !important; }
+html[data-theme] .app-shell :is(.new-lead-modal,.post-call-modal,.contact-drawer)>footer { display:flex; flex-wrap:wrap; gap:12px; position:static !important; }
+html[data-theme] .app-shell .post-call-modal>footer>div { min-width:0; flex-wrap:wrap; gap:10px; }
+html[data-theme] .app-shell :is(.new-lead-backdrop,.post-call-modal-backdrop,.quote-modal-backdrop) { padding:12px !important; overflow-y:auto; }
+html[data-theme] .app-shell .toast { max-width:min(480px,calc(100vw - 32px)) !important; white-space:normal; overflow-wrap:anywhere; pointer-events:none; }
+
+/* Inbox/detail navigation replaces two squeezed panes on narrow windows. */
+html[data-theme] .app-shell .messages-layout { display:grid; grid-template-columns:minmax(220px,.75fr) minmax(0,2fr) !important; align-items:stretch; min-width:0; }
+html[data-theme] .app-shell .message-back { display:none !important; }
+html[data-theme] .app-shell :is(.message-thread,.message-history,.message-thread>footer,.message-contacts) { min-width:0; max-width:100%; }
+html[data-theme] .app-shell .message-history article { max-width:88% !important; border-radius:10px !important; box-shadow:none !important; }
+html[data-theme] .app-shell .message-history :is(p,small,.message-subject) { overflow-wrap:anywhere; }
+html[data-theme] .app-shell .message-thread>header { gap:12px; flex-wrap:wrap; }
+html[data-theme] .app-shell .message-thread>header>div { min-width:0; overflow-wrap:anywhere; }
+html[data-theme] .app-shell .channel-tabs { display:flex; flex-wrap:wrap; }
+html[data-theme] .app-shell .channel-tabs button { flex:1 1 160px; min-width:0; overflow-wrap:anywhere; }
+
+@container crm-workspace (max-width:900px) {
+  html[data-theme] .app-shell .today-grid { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .messages-layout { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .messages-layout.inbox-open .message-thread,
+  html[data-theme] .app-shell .messages-layout.thread-open .message-contacts { display:none !important; }
+  html[data-theme] .app-shell .message-back { display:inline-flex !important; align-items:center; min-height:40px; padding:8px 12px; border:1px solid var(--ps-line); background:var(--ps-surface); color:var(--ps-text); border-radius:8px; }
+  html[data-theme] .app-shell .message-contacts { max-height:none !important; }
+  html[data-theme] .app-shell .message-thread { min-height:440px !important; }
+  html[data-theme] .app-shell .settings-layout { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .settings-nav { display:flex !important; flex-wrap:wrap; position:static !important; gap:6px; padding:12px !important; }
+  html[data-theme] .app-shell .settings-nav>span { flex-basis:100%; padding-bottom:8px; }
+  html[data-theme] .app-shell .settings-nav button { flex:1 1 130px; min-width:0; margin:0 !important; }
+  html[data-theme] .app-shell .settings-nav button>i { display:none; }
+}
+@container crm-workspace (max-width:600px) {
+  html[data-theme] .app-shell :is(.today-workspace,.messages-center,.client-portfolio) { padding:18px 12px !important; }
+  html[data-theme] .app-shell :is(.module-bar,.client-module-bar,.messages-module-bar) { align-items:flex-start; height:auto !important; flex-direction:column; }
+  html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics) { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:8px !important; }
+  html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics)>article { padding:12px !important; }
+  html[data-theme] .app-shell .focus-list article { display:grid !important; grid-template-columns:24px minmax(0,1fr) auto !important; gap:8px; padding:14px 10px !important; }
+  html[data-theme] .app-shell .focus-person { min-width:0; }
+  html[data-theme] .app-shell .focus-person>i { display:none; }
+  html[data-theme] .app-shell .focus-person>span { min-width:0; }
+  html[data-theme] .app-shell .focus-reason { display:block !important; grid-column:2 / -1; grid-row:2; min-width:0; }
+  html[data-theme] .app-shell .focus-reason :is(b,small) { white-space:normal; overflow-wrap:anywhere; }
+  html[data-theme] .app-shell .focus-call { grid-column:3; grid-row:1; }
+  html[data-theme] .app-shell :is(.clearvoice-modes,.clearvoice-compare) { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .config-section>label:not(.check-row) { display:flex; flex-direction:column; align-items:stretch; gap:8px; }
+  html[data-theme] .app-shell .volume-row { grid-template-columns:minmax(0,1fr) auto !important; gap:8px; flex-wrap:wrap; }
+  html[data-theme] .app-shell .volume-row>small { width:100%; grid-column:1 / -1; }
+  html[data-theme] .app-shell .composer-actions>button { flex:1 1 180px; }
+}
+@media(max-width:600px) {
+  html[data-theme] .app-shell :is(.record-actions,.post-call-outcomes) { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  html[data-theme] .app-shell :is(.field-grid,.new-lead-fields,.post-call-modal-fields,.quote-edit-grid) { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .record-actions button { min-width:0; white-space:normal; }
+  html[data-theme] .app-shell .drawer-person { min-width:0; }
+  html[data-theme] .app-shell .drawer-person>span { min-width:0; overflow-wrap:anywhere; }
+}

@@ -1,38 +1,35 @@
-PACIFICA — RESIZE & MOTION FOLLOW-UP
+PACIFICA WORKSPACE POLISH UPDATE
 
-This follows the compact dialer update you already uploaded.
-Base: aypacharrito/Dialer main, commit 89d3ecf.
+Built against GitHub main 748efc4 (your latest upload).
 
 INSTALL
-1. Extract this ZIP.
-2. Open your Dialer repository on GitHub, on main.
-3. At the repository root, choose Add file > Upload files.
-4. Drag in the extracted app folder. Preserve its folder structure.
-5. Commit and let Vercel finish deploying, then reload Pacifica.
-
-Only app/CRMClient.tsx and app/product-system.css are replaced.
-The previous compact dialer and font changes remain included in these files.
+Extract this ZIP. Upload the extracted app folder into the repository root,
+merging it with the existing app folder and replacing the matching files.
+Include both new files in app/hooks and app/lib. Do not upload the ZIP itself
+as source code. Commit the changes to trigger your normal deployment.
 
 CHANGES
-- The header wraps its controls naturally instead of reserving oversized fixed columns.
-- The queue selector stays in the header flow, preventing overlap with other controls.
-- Sidebar collapses to a 72px rail at 1280px, then 60px on narrow phones.
-- Navigation has hover labels and an accessible current-page indicator.
-- Settings stays reachable on the collapsed sidebar.
-- Header actions wrap into separate rows when needed; no action is hidden to force a fit.
-- The keypad, call controls and lead details stack based on available workspace width.
-- Long contact details and integration URLs can wrap.
-- Wide tables scroll within their own areas.
-- Panels enter with brief 180ms transitions; controls have subtle hover/press feedback.
-- Reduced-motion preferences disable the new animations.
+- Retains the compact dialer, connected-call details, responsive header/sidebar,
+  and subtle motion from your previous upload.
+- Unifies display-size scaling across legacy and current UI styles.
+- Refines spacing, surfaces, forms, metrics, settings, and small-window layouts.
+- Adds an inbox/thread navigation flow for narrow message windows.
+- Adds keyboard channel switching, dialog focus containment/restoration,
+  scroll locking, visible focus, and accessible field labels.
+- Fixes the contact drawer Call action to load the selected contact.
 
-VALIDATION
-Production Next.js build passed, including TypeScript and all 37 static page generation steps.
-Source diff passed whitespace/error checks.
-Browser visual verification was blocked by ERR_BLOCKED_BY_CLIENT when opening the local preview. This package has not been visually verified or used for a live call.
+VERIFICATION
+- Production build and TypeScript completed successfully using locked dependencies.
+- 27 interaction and domain tests passed (dialogs, messages, lead priority,
+  post-call behavior, and workspace profiles).
+- Targeted ESLint passed for the new focus helper/hook and changed MessagesCenter
+  and PostCallDispositionModal components.
+- Full CRM lint still has two pre-existing Date.now purity findings.
+- Browser preview was blocked by the environment security policy; there was no
+  visual verification. Live calling and external service delivery were not tested.
+- Local runtime was Node 24; the repository targets Node 22 on deployment.
 
-AFTER DEPLOYMENT
-Check full width, a restored window around 1276px, and a narrow window.
-Confirm header controls do not overlap, Settings remains reachable, and Keypad opens/closes.
-Check Settings > Workspace > Display size with Extra large and check both themes.
-Live calling behavior was not changed by this follow-up.
+DEPLOYED REVIEW
+Check narrow and wide windows, all display-size settings, dark/light themes,
+contact Call selection, inbox navigation, dialog keyboard behavior, and one
+controlled live call through answer and saved disposition.
