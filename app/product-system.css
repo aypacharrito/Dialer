@@ -1504,3 +1504,66 @@ html[data-theme] .app-shell .channel-tabs button { flex:1 1 160px; min-width:0; 
   html[data-theme] .app-shell .drawer-person { min-width:0; }
   html[data-theme] .app-shell .drawer-person>span { min-width:0; overflow-wrap:anywhere; }
 }
+
+/* Call continuity: normal document flow keeps every action reachable at zoom. */
+html[data-theme] .app-shell .active-call-bar {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:12px 20px; min-width:0; margin:16px 24px 0; padding:12px 16px;
+  border:1px solid var(--ps-line); border-left:3px solid var(--ps-accent);
+  border-radius:8px; background:var(--ps-surface); color:var(--ps-text);
+}
+html[data-theme] .app-shell .active-call-person { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; min-width:0; }
+html[data-theme] .app-shell .active-call-person b { overflow-wrap:anywhere; font-size:calc(14px * var(--workspace-text-scale,1)); }
+html[data-theme] .app-shell .active-call-state { display:inline-flex; align-items:center; gap:6px; color:var(--ps-accent); font-weight:600; }
+html[data-theme] .app-shell .active-call-state i { width:6px; height:6px; border-radius:50%; background:currentColor; }
+html[data-theme] .app-shell .active-call-number { color:var(--ps-muted); overflow-wrap:anywhere; }
+html[data-theme] .app-shell .active-call-person time { font-variant-numeric:tabular-nums; }
+html[data-theme] .app-shell .active-call-actions { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+html[data-theme] .app-shell .active-call-actions button {
+  min-height:40px; padding:8px 12px; border:1px solid var(--ps-line); border-radius:6px;
+  background:var(--ps-surface); color:var(--ps-text); font-weight:600; cursor:pointer;
+}
+html[data-theme] .app-shell .active-call-actions button[aria-pressed="true"] { background:var(--ps-accent-soft); color:var(--ps-accent); }
+html[data-theme] .app-shell .active-call-actions button:disabled { opacity:.5; cursor:default; }
+html[data-theme] .app-shell .active-call-actions .active-call-end { color:var(--ps-danger); background:var(--ps-danger-soft); border-color:transparent; }
+html[data-theme] .app-shell :is(.phone-config.compact,.incoming-call-card) {
+  max-width:calc(100vw - 24px) !important; max-height:calc(100dvh - 24px) !important;
+  overflow-y:auto; overscroll-behavior:contain; background:var(--ps-surface) !important;
+  color:var(--ps-text) !important; border-radius:12px !important;
+}
+html[data-theme] .app-shell :is(.phone-config-overlay,.incoming-call-backdrop) { padding:12px; overflow-y:auto; }
+html[data-theme] .app-shell .incoming-call-card h2 { overflow-wrap:anywhere; }
+html[data-theme] .app-shell .incoming-call-card>div { flex-wrap:wrap; }
+/* Detail rows use alignment and rules instead of a separate bubble for each field. */
+html[data-theme] .app-shell .conversation-workspace .lead-file-grid>label {
+  min-width:0; padding:10px 0 !important; border:0 !important;
+  border-bottom:1px solid var(--ps-line) !important; border-radius:0 !important;
+  background:transparent !important; box-shadow:none !important;
+}
+html[data-theme] .app-shell .conversation-workspace .lead-file-grid>label>b {
+  white-space:normal !important; overflow:visible !important; overflow-wrap:anywhere;
+  text-overflow:clip !important; line-height:1.5 !important;
+}
+@container crm-workspace (max-width:600px) {
+  html[data-theme] .app-shell .active-call-bar { margin:12px 12px 0; padding:12px; }
+  html[data-theme] .app-shell .active-call-actions { width:100%; }
+  html[data-theme] .app-shell .active-call-actions button { flex:1 1 auto; }
+}
+@media(prefers-reduced-motion:no-preference) {
+  html[data-theme] .app-shell .active-call-bar { animation:pacifica-surface-enter 180ms ease-out both; }
+}
+
+html[data-theme] .app-shell .integration-details { border-top:1px solid var(--ps-line); margin-top:16px; }
+html[data-theme] .app-shell .integration-details>summary {
+  cursor:pointer; padding:14px 0; color:var(--ps-text); font-weight:600;
+  font-size:calc(13px * var(--workspace-text-scale,1)); min-height:44px;
+}
+html[data-theme] .app-shell .integration-details>summary:focus-visible { outline:2px solid var(--ps-accent); outline-offset:2px; }
+html[data-theme] .app-shell .email-workspace-setup>.integration-details { padding-inline:20px; }
+html[data-theme] .app-shell .integration-detail-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:16px; padding-bottom:16px; }
+html[data-theme] .app-shell .integration-detail-grid>section { min-width:0; padding:0; }
+html[data-theme] .app-shell .integration-detail-grid code { display:block; margin-top:8px; padding:8px; background:var(--ps-accent-soft); color:var(--ps-text); overflow-wrap:anywhere; }
+html[data-theme] .app-shell .workspace-copy-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+html[data-theme] .app-shell .workspace-copy-row code { min-width:0; flex:1 1 200px; overflow-wrap:anywhere; user-select:all; }
+html[data-theme] .app-shell .workspace-copy-row button { min-height:40px; }
+html[data-theme] .app-shell .integration-details>p:empty { display:none; }

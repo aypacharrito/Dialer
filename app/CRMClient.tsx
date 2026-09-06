@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useDialogFocus } from "./hooks/use-dialog-focus";
 import type { Call, Device } from "@twilio/voice-sdk";
+import ActiveCallBar from "./components/ActiveCallBar";
+import { hasLeadDetail, supplementalLeadDetails } from "./lib/lead-presentation";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
 import AiCommandCenter, { type AiAction } from "./components/AiCommandCenter";
@@ -75,25 +77,6 @@ function mergeRecordingUpdates(local:CallLog[],remote:CallLog[]){
   return [...remote.filter(log=>!matched.has(log.id)&&Boolean(log.recordingSid)),...merged].slice(0,500);
 }
 
-const displayedLeadFieldKeys=new Set([
-  "id","leadid","vendorid","firstname","lastname","fullname","name","contactname",
-  "phone","phonenumber","cell","cellphone","mobile","mobilephone",
-  "email","emailaddress","address","street","streetaddress","address1","address2","city","state","province","zip","zipcode","postalcode",
-  "source","leadsource","provider","product","producttype","leadcost","received","receivedat","created","createdat","datecreated",
-  "status","originalstatus","disposition","sourcedisposition","lastcontact","brand","agency","brandagency","leadprofile","profilename","territory","returnstatus","employees","employeecount","searchpro",
-  "csvfilename","csvsourcefile","importedat","csvupdatedat"
-]);
-
-function normalizedLeadFieldKey(value:string){return value.toLowerCase().replace(/[^a-z0-9]/g,"")}
-function leadFieldLabel(value:string){return value.replace(/([a-z0-9])([A-Z])/g,"$1 $2").replace(/[_-]+/g," ").replace(/\s+/g," ").trim().replace(/\b\w/g,letter=>letter.toUpperCase())}
-function supplementalLeadDetails(lead:Lead){
-  const details=new Map<string,{label:string;value:string}>();
-  for(const [field,raw] of [...Object.entries(lead.importedFields||{}),...Object.entries(lead.extraFields||{})]){
-    const value=String(raw||"").trim();const key=normalizedLeadFieldKey(field);if(!value||!key||displayedLeadFieldKeys.has(key)||details.has(key))continue;
-    details.set(key,{label:leadFieldLabel(field),value});
-  }
-  return Array.from(details.values());
-}
 
 function Icon({name}:{name:string}) {
   const paths:Record<string,React.ReactNode> = {
@@ -216,6 +199,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const postCallLead=postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined;
   const loadedLead=loadedLeadId?leads.find(item=>item.id===loadedLeadId):undefined;
   const lead=(currentCallLeadId?leads.find(item=>item.id===currentCallLeadId):undefined)||postCallLead||loadedLead||queuedLead;
+  const incomingDialogRef=useRef<HTMLElement>(null);
+  useDialogFocus(incomingDialogRef,Boolean(incomingCall));
   const newLeadDialogRef=useRef<HTMLFormElement>(null);
   const contactDialogRef=useRef<HTMLElement>(null);
   const quoteDialogRef=useRef<HTMLDivElement>(null);
@@ -772,7 +757,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>{callerId}</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" aria-label="Lead queue"><button className={activeLine==="life"?"active":""} disabled={dialing} onClick={()=>switchLine("life")}>{queueLabel("life",workspaceProfile.mode)}</button><button className={activeLine==="home-auto"?"active":""} disabled={dialing} onClick={()=>switchLine("home-auto")}>{queueLabel("home-auto",workspaceProfile.mode)}</button></div><div className="top-actions"><button className={`inbound-availability ${phoneAvailable?"available":""}`} disabled={!phoneReady||dialing} title={!phoneReady?"Assign this workspace a Twilio number first":undefined} onClick={()=>void togglePhoneAvailability()}><i/>{phoneAvailable?"Calls on":"Go available"}</button><span className="workspace-sync" title="Leads, calls, and settings save automatically"><i/>{workspaceSyncStatus}</span><span className="connection" title={provider}><Icon name="wifi"/><span>{provider}</span></span><button className={`notification ${dueLeadCount?"has-alerts":""}`} aria-label={`${dueLeadCount} follow-ups due`} title={`${dueLeadCount} follow-ups due`} onClick={()=>setView("today")}><Icon name="bell"/>{dueLeadCount>0&&<em>{Math.min(99,dueLeadCount)}</em>}</button><button className="scan-action" disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/> {scanBusy?"Reading…":"Scan"}</button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={scanInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";void scanDocument(file)}}/><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/></div></header>
+      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>{callerId}</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" role="group" aria-label="Lead queue"><button className={activeLine==="life"?"active":""} aria-pressed={activeLine==="life"} disabled={dialing} onClick={()=>switchLine("life")}>{queueLabel("life",workspaceProfile.mode)}</button><button className={activeLine==="home-auto"?"active":""} aria-pressed={activeLine==="home-auto"} disabled={dialing} onClick={()=>switchLine("home-auto")}>{queueLabel("home-auto",workspaceProfile.mode)}</button></div><div className="top-actions"><button className={`inbound-availability ${phoneAvailable?"available":""}`} disabled={!phoneReady||dialing} title={!phoneReady?"Assign this workspace a Twilio number first":undefined} onClick={()=>void togglePhoneAvailability()}><i/>{phoneAvailable?"Calls on":"Go available"}</button><span className="workspace-sync" title="Leads, calls, and settings save automatically"><i/>{workspaceSyncStatus}</span><span className="connection" title={provider}><Icon name="wifi"/><span>{provider}</span></span><button className={`notification ${dueLeadCount?"has-alerts":""}`} aria-label={`${dueLeadCount} follow-ups due`} title={`${dueLeadCount} follow-ups due`} onClick={()=>setView("today")}><Icon name="bell"/>{dueLeadCount>0&&<em>{Math.min(99,dueLeadCount)}</em>}</button><button className="scan-action" disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/> {scanBusy?"Reading…":"Scan"}</button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={scanInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";void scanDocument(file)}}/><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/></div></header>
+
+      {dialing&&view!=="dialer"&&<ActiveCallBar name={manualCall?"Manual call":lead.name} number={manualCall?dialNumber:lead.phone} connected={connected} held={held} muted={muted} elapsed={fmt} queueRunning={autoDialing} onOpen={()=>setView("dialer")} onMute={toggleMute} onHold={toggleHold} onEnd={hangup} onPause={pauseQueue}/>}
 
       {view==="today"&&<TodayWorkspace leads={leads} onOpen={id=>setSelectedLead(id)} onCall={callLeadById} onImport={()=>inputRef.current?.click()} onAdd={openNewLead}/>}
 
@@ -786,9 +773,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
             {!postCallLeadId&&<>
             <div className={`call-controls ${!dialing?"idle":""}`}>
               {!dialing?<button className="start-call" onClick={start}><Icon name="play"/><span>Start calling</span></button>:<>
-                {connected&&<button className={`round ${muted?"muted":""}`} aria-label={muted?"Unmute":"Mute"} onClick={toggleMute} disabled={held}><Icon name="mute"/><small>{muted?"Unmute":"Mute"}</small></button>}
+                {connected&&<button className={`round ${muted?"muted":""}`} aria-pressed={muted} aria-label={muted?"Unmute":"Mute"} onClick={toggleMute} disabled={held}><Icon name="mute"/><small>{muted?"Unmute":"Mute"}</small></button>}
                 <button className="end-call" onClick={hangup}><Icon name="end"/><span>{connected?"End call":"Cancel"}</span></button>
-                {connected&&<button className={`round ${held?"held":""}`} aria-label={held?"Resume":"Hold"} onClick={toggleHold}><Icon name={held?"play":"pause"}/><small>{held?"Resume":"Hold"}</small></button>}
+                {connected&&<button className={`round ${held?"held":""}`} aria-pressed={held} aria-label={held?"Resume":"Hold"} onClick={toggleHold}><Icon name={held?"play":"pause"}/><small>{held?"Resume":"Hold"}</small></button>}
                 {connected&&<button className={`round recording-control ${recordingSid?"recording":""}`} aria-label={recordingSid?"Stop recording":"Start consent-based recording"} title="Confirm disclosure and record this call" onClick={()=>void toggleRecording()} disabled={recordingBusy}><span className="record-dot"/><small>{recordingBusy?"Working…":recordingSid?"Stop rec":"Record"}</small></button>}
               </>}
             </div>{autoDialing&&<button className="inline-pause" type="button" onClick={pauseQueue}><Icon name="pause"/> Pause dialing</button>}</>}
@@ -819,12 +806,12 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
               <label><span>Received</span><b>{lead.received||lead.importedAt||"—"}</b></label>
               <label><span>Original status</span><b>{lead.sourceDisposition||"New lead"}</b></label>
               <label><span>Last contact</span><b>{lead.lastContact||"Never"}</b></label>
-              {lead.brand&&<label><span>Brand / agency</span><b>{lead.brand}</b></label>}
-              {lead.profileName&&<label><span>Lead profile</span><b>{lead.profileName}</b></label>}
-              {lead.territory&&<label><span>Territory</span><b>{lead.territory}</b></label>}
-              {lead.returnStatus&&<label><span>Return status</span><b>{lead.returnStatus}</b></label>}
-              {lead.employeeCount&&<label><span>Employees</span><b>{lead.employeeCount}</b></label>}
-              {lead.searchPro&&<label><span>Search Pro</span><b>{lead.searchPro}</b></label>}
+              {hasLeadDetail(lead.brand)&&<label><span>Brand / agency</span><b>{lead.brand}</b></label>}
+              {hasLeadDetail(lead.profileName)&&<label><span>Lead profile</span><b>{lead.profileName}</b></label>}
+              {hasLeadDetail(lead.territory)&&<label><span>Territory</span><b>{lead.territory}</b></label>}
+              {hasLeadDetail(lead.returnStatus)&&<label><span>Return status</span><b>{lead.returnStatus}</b></label>}
+              {hasLeadDetail(lead.employeeCount)&&<label><span>Employees</span><b>{lead.employeeCount}</b></label>}
+              {hasLeadDetail(lead.searchPro)&&<label><span>Search Pro</span><b>{lead.searchPro}</b></label>}
             </div></section>
             {importedLeadDetails.length>0&&<section className="lead-detail-group imported-lead-details"><span>QUOTE & IMPORTED DETAILS</span><div className="lead-file-grid">{importedLeadDetails.map(detail=><label key={detail.label}><span>{detail.label}</span><b title={detail.value}>{detail.value}</b></label>)}</div></section>}
             {lead.notes&&<section className="lead-existing-notes"><span>PREVIOUS NOTES</span><p>{lead.notes}</p></section>}
@@ -891,7 +878,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       </div>}
     </section>
     {showPhoneSettings&&<div className="phone-config-overlay"><PhoneSettings compact ensureDevice={ensureDevice} onClose={()=>setShowPhoneSettings(false)}/></div>}
-    {incomingCall&&<div className="incoming-call-backdrop"><section className="incoming-call-card" role="dialog" aria-modal="true" aria-label="Incoming call"><span>INCOMING PACIFICA CALL</span><i>{incomingLead?incomingLead.name.split(" ").map(part=>part[0]).slice(0,2).join(""):"☎"}</i><h2>{incomingLead?.name||"Unknown caller"}</h2><p>{incomingNumber}</p><small>{incomingLead?`${incomingLead.product} · ${incomingLead.source}`:"New caller · create a lead after answering"}</small><div><button onClick={rejectIncoming}>Decline</button><button onClick={acceptIncoming}>Answer</button></div></section></div>}
+    {incomingCall&&<div className="incoming-call-backdrop"><section ref={incomingDialogRef} tabIndex={-1} className="incoming-call-card" role="dialog" aria-modal="true" aria-label="Incoming call"><span>INCOMING PACIFICA CALL</span><i>{incomingLead?incomingLead.name.split(" ").map(part=>part[0]).slice(0,2).join(""):"☎"}</i><h2>{incomingLead?.name||"Unknown caller"}</h2><p>{incomingNumber}</p><small>{incomingLead?`${incomingLead.product} · ${incomingLead.source}`:"New caller · create a lead after answering"}</small><div><button onClick={rejectIncoming}>Decline</button><button onClick={acceptIncoming}>Answer</button></div></section></div>}
     {showNewLead&&<div className="new-lead-backdrop" onClick={()=>setShowNewLead(false)}><form ref={newLeadDialogRef} role="dialog" aria-modal="true" aria-label="Add or review a lead" tabIndex={-1} className="new-lead-modal" aria-busy={scanBusy} onSubmit={event=>{event.preventDefault();createLead()}} onClick={event=>event.stopPropagation()}>
       <header><div><span>{newLead.documentType?"DOCUMENT CAPTURE":"NEW OPPORTUNITY"}</span><h2>{newLead.documentType?"Review scanned lead":"Add a lead"}</h2></div><button type="button" aria-label="Close" onClick={()=>setShowNewLead(false)}>×</button></header>
       <div className={`scan-lead-action ${scanBusy?"busy":""}`}><button type="button" disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/> {scanBusy?"Reading document…":newLead.documentType?"Scan another":"Scan a license or policy"}</button><span>{newLead.documentType?`${newLead.documentType} · verify before saving`:"or drag and drop an image anywhere"}</span></div>

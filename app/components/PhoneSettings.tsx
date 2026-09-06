@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useDialogFocus } from "../hooks/use-dialog-focus";
 import type { Device } from "@twilio/voice-sdk";
 import { defaultAudioPreferences, readAudioPreferences, saveAudioPreferences } from "../audio-preferences";
 import { clearVoiceEngineInfo, clearVoiceModeLabels, PacificaClearVoiceProcessor, supportsClearVoice, type ClearVoiceMetrics, type ClearVoiceMode } from "../clearvoice";
@@ -32,6 +33,8 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   compact?: boolean;
   onClose?: () => void;
 }) {
+  const dialogRef=useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef,compact,onClose);
   const [inputs, setInputs] = useState<AudioChoice[]>([]);
   const [outputs, setOutputs] = useState<AudioChoice[]>([]);
   const [input, setInput] = useState(defaultAudioPreferences.input);
@@ -271,7 +274,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   const outputOptions = outputs.length ? outputs : [{ deviceId: "default", label: "Browser default" }];
   const inputOptions = inputs.length ? inputs : [{ deviceId: "default", label: "Browser default microphone" }];
 
-  return <section className={`phone-config ${compact ? "compact" : ""}`}>
+  return <section ref={dialogRef} role={compact?"dialog":undefined} aria-modal={compact||undefined} aria-label={compact?"Communication devices":undefined} tabIndex={compact?-1:undefined} className={`phone-config ${compact ? "compact" : ""}`}>
     <header><div><span>PHONE SETTINGS</span><b>Communication devices</b></div>{onClose && <button aria-label="Close phone settings" onClick={onClose}>×</button>}</header>
     <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing ? "Testing…" : listening === "test" ? "Stop microphone playback" : "Run device, playback & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
 
