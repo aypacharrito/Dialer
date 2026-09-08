@@ -19,10 +19,18 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
     </div>
     <div className="workspace-display-setting">
       <div><b>Display size</b><small>Scale the entire workspace for clearer, more comfortable reading.</small></div>
-      <div className="display-size-picker" role="radiogroup" aria-label="Workspace display size">
-        <button type="button" role="radio" aria-checked={profile.displaySize==="comfortable"} className={profile.displaySize==="comfortable"?"active":""} onClick={()=>update({displaySize:"comfortable"})}><b>Comfortable</b><small>More information on screen</small></button>
-        <button type="button" role="radio" aria-checked={profile.displaySize==="large"} className={profile.displaySize==="large"?"active":""} onClick={()=>update({displaySize:"large"})}><b>Large</b><small>Recommended</small></button>
-        <button type="button" role="radio" aria-checked={profile.displaySize==="extra-large"} className={profile.displaySize==="extra-large"?"active":""} onClick={()=>update({displaySize:"extra-large"})}><b>Extra large</b><small>Maximum visibility</small></button>
+      <div className="display-size-picker" role="radiogroup" aria-label="Workspace display size" onKeyDown={event=>{
+        const sizes=["comfortable","large","extra-large"] as const;
+        if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].includes(event.key))return;
+        event.preventDefault();
+        const current=sizes.indexOf(profile.displaySize);
+        const index=event.key==="Home"?0:event.key==="End"?2:(current+(["ArrowRight","ArrowDown"].includes(event.key)?1:2))%sizes.length;
+        const next=sizes[index];update({displaySize:next});
+        event.currentTarget.querySelector<HTMLButtonElement>(`[data-display-choice="${next}"]`)?.focus();
+      }}>
+        <button type="button" role="radio" data-display-choice="comfortable" tabIndex={profile.displaySize==="comfortable"?0:-1} aria-checked={profile.displaySize==="comfortable"} className={profile.displaySize==="comfortable"?"active":""} onClick={()=>update({displaySize:"comfortable"})}><b>Comfortable</b><small>More information on screen</small></button>
+        <button type="button" role="radio" data-display-choice="large" tabIndex={profile.displaySize==="large"?0:-1} aria-checked={profile.displaySize==="large"} className={profile.displaySize==="large"?"active":""} onClick={()=>update({displaySize:"large"})}><b>Large</b><small>Recommended</small></button>
+        <button type="button" role="radio" data-display-choice="extra-large" tabIndex={profile.displaySize==="extra-large"?0:-1} aria-checked={profile.displaySize==="extra-large"} className={profile.displaySize==="extra-large"?"active":""} onClick={()=>update({displaySize:"extra-large"})}><b>Extra large</b><small>Maximum visibility</small></button>
       </div>
     </div>
     <div className="workspace-profile-fields">

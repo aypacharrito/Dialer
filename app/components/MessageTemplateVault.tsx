@@ -1,6 +1,8 @@
 "use client";
 
-import {useMemo,useState} from "react";
+import {useId,useMemo,useRef,useState} from "react";
+import {createPortal} from "react-dom";
+import {useDialogFocus} from "../hooks/use-dialog-focus";
 import {renderCommunicationTemplate,starterCommunicationTemplates,templatizeCommunication,type TemplateLead} from "../lib/message-templates";
 import type {CommunicationTemplate,WorkspaceProfile} from "../lib/workspace-profile";
 
@@ -8,8 +10,11 @@ type EditingTemplate={id:string;name:string;subject:string;body:string;isNew:boo
 
 const personalizationTokens=["{{first_name}}","{{product}}","{{city}}","{{agent_name}}","{{business_name}}","{{callback_number}}","{{email_signature}}"];
 
-export default function MessageTemplateVault({channel,lead,profile,subject,body,onUse,onProfileChange}:{channel:"sms"|"email";lead:TemplateLead;profile:WorkspaceProfile;subject:string;body:string;onUse:(subject:string,body:string)=>void;onProfileChange:(profile:WorkspaceProfile)=>void}){
+export default function MessageTemplateVault({channel,lead,profile,subject,body,onUse,onProfileChange,disabled=false}:{channel:"sms"|"email";lead:TemplateLead;profile:WorkspaceProfile;subject:string;body:string;onUse:(subject:string,body:string)=>void;onProfileChange:(profile:WorkspaceProfile)=>void;disabled?:boolean}){
   const [open,setOpen]=useState(false);
+  const dialogRef=useRef<HTMLElement>(null);
+  const dialogId=useId();
+  useDialogFocus(dialogRef,open,()=>setOpen(false));
   const [name,setName]=useState("");
   const [editing,setEditing]=useState<EditingTemplate|null>(null);
   const saved=useMemo(()=>profile.communicationTemplates.filter(template=>template.channel===channel),[channel,profile.communicationTemplates]);
@@ -67,15 +72,18 @@ export default function MessageTemplateVault({channel,lead,profile,subject,body,
 
   return <section className={`template-vault ${open?"open":""}`}>
     <header>
-      <button type="button" aria-expanded={open} onClick={()=>{setOpen(value=>!value);setEditing(null)}}>
-        <span><b>Template Vault</b><small>{saved.length} saved {channel} template{saved.length===1?"":"s"}</small></span>
-        <em>{open?"Close":"Browse & edit"}</em>
+      <button type="button" disabled={disabled} aria-expanded={open} aria-controls={dialogId} aria-haspopup="dialog" onClick={()=>{setOpen(value=>!value);setEditing(null)}}>
+        <span><b>Templates</b><small>{saved.length} saved {channel} template{saved.length===1?"":"s"}</small></span>
+        <em>Browse &amp; edit</em>
       </button>
       <span>{"{{first_name}} · {{product}} · {{callback_number}}"}</span>
     </header>
-    {open&&<div className="template-vault-body">
+    {open&&createPortal(<div className="template-library-backdrop" onClick={()=>setOpen(false)}>
+      <section ref={dialogRef} id={dialogId} className="template-vault template-library open" role="dialog" aria-modal="true" aria-label={`${channel==="email"?"Email":"SMS"} templates`} tabIndex={-1} onClick={event=>event.stopPropagation()}>
+      <header className="template-library-header"><div><h2>{channel==="email"?"Email":"SMS"} templates</h2><p>Personalized for {lead.name}</p></div><button type="button" onClick={()=>setOpen(false)} aria-label="Close templates">Close</button></header>
+      <div className="template-vault-body">
       <div className="template-save">
-        <input value={name} onChange={event=>setName(event.target.value)} placeholder="Name this current draft"/>
+        <input value={name} onChange={event=>setName(event.target.value)} aria-label="Name for saved draft" placeholder="Name this current draft"/>
         <button type="button" disabled={!body.trim()} onClick={saveCurrentDraft}>Save current draft</button>
       </div>
       <p>Templates stay private to this workspace. Pacifica stores reusable placeholders, then fills in the selected contact’s real details when you use one.</p>
@@ -91,6 +99,7 @@ export default function MessageTemplateVault({channel,lead,profile,subject,body,
       <div className="template-card-list">{saved.map(template=>templateCard(template))}</div>
       {starters.length>0&&<h3>Pacifica starters</h3>}
       <div className="template-card-list">{starters.map(template=>templateCard(template,true))}</div>
-    </div>}
+      </div></section>
+    </div>,document.querySelector(".app-shell")||document.body)}
   </section>;
 }

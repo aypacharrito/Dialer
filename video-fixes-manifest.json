@@ -1,0 +1,45 @@
+{
+  "base_commit": "437768c04d8ff545cfae43db64981058e996d8bd",
+  "files": [
+    {
+      "path": "app/CRMClient.tsx",
+      "sha256": "00db7b5bfcca0d64d46d1394b562908885f96678cd22dc84081fca2e07d33b8d"
+    },
+    {
+      "path": "app/layout.tsx",
+      "sha256": "e331fb45cdaf3fa56188fb44ce3cbae1cc8366cc44a88e23bdf32d687759f58f"
+    },
+    {
+      "path": "app/workspace-layout.css",
+      "sha256": "40841b6da0aa682211f67abf486a0a551e51aee687a4d41840585a78522ff12c"
+    },
+    {
+      "path": "app/components/MessagesCenter.tsx",
+      "sha256": "2bf421d784a6372b7ed819fdfb4b36a51888559535d93c16217e70235d971353"
+    },
+    {
+      "path": "app/components/MessageTemplateVault.tsx",
+      "sha256": "5681e158697827911760e1bfaac469bee64cced6214d40539882981addea0170"
+    },
+    {
+      "path": "app/components/WorkspaceProfileSettings.tsx",
+      "sha256": "d2503004e1453bd01ccdccd4091cca972b9575f24c060a6d1e460483fb3e4e01"
+    },
+    {
+      "path": "app/components/WorkspaceLoadGate.tsx",
+      "sha256": "24bf825c041e7f9a493da099426f1e9d6ed853f43d0603f172d43e1b348cf605"
+    },
+    {
+      "path": "app/hooks/use-message-composer.ts",
+      "sha256": "09ca8683ebf881cf8f60a75e646b4da1a4c02f6210dab9a480bd0ca9a1eecf95"
+    },
+    {
+      "path": "app/lib/recording-updates.ts",
+      "sha256": "b6e1aaed3811bb5299399825dda37154a2febb23afade6539ab25737220b4cf5"
+    },
+    {
+      "path": "tests/recording-updates.test.mjs",
+      "sha256": "3b41762cf493d0c52dd887b3bd1227a127237c8f600ef0cd4cd90e8683118767"
+    }
+  ]
+}

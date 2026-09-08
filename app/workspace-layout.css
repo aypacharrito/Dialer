@@ -1,0 +1,200 @@
+/* Workspace layout adjustments based on the September 7 screen recording.
+   Content scrolls inside its view; the navigation and calling controls stay put. */
+html[data-theme] .app-shell {
+  height:100dvh;
+  min-height:0 !important;
+  overflow:hidden;
+}
+html[data-theme] .app-shell>.workspace {
+  display:flex;
+  flex-direction:column;
+  height:100dvh;
+  min-height:0 !important;
+  overflow:hidden;
+}
+html[data-theme] .app-shell .workspace>.topbar,
+html[data-theme] .app-shell .workspace>.active-call-bar { flex:0 0 auto; }
+html[data-theme] .app-shell .workspace>:is(.page-view,.dialer-view,.today-workspace) {
+  flex:1 1 0;
+  min-height:0;
+  width:100% !important;
+  max-width:none !important;
+  margin:0 !important;
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  padding:24px !important;
+}
+html[data-theme] .app-shell .workspace .client-portfolio { width:100% !important; padding:0 !important; }
+html[data-theme] .app-shell .topbar { box-shadow:none !important; background:var(--ps-surface) !important; }
+@container crm-workspace (min-width:1440px) {
+  html[data-theme] .app-shell .topbar {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) !important;
+    gap:12px 24px !important;
+  }
+  html[data-theme] .app-shell .topbar>.caller-id { justify-self:start; }
+  html[data-theme] .app-shell .topbar>.lead-line-switch { justify-self:center; }
+  html[data-theme] .app-shell .topbar>.top-actions { justify-self:end; }
+}
+html[data-theme] .app-shell .topbar .lead-line-switch { min-width:0; }
+html[data-theme] .app-shell .topbar .lead-line-switch button { white-space:nowrap !important; }
+
+/* The queue belongs to the calling column, independent of keypad height. */
+html[data-theme] .app-shell .conversation-workspace .dialer-primary {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-self:start;
+  gap:16px;
+}
+html[data-theme] .app-shell .conversation-workspace .dialer-primary>.bottom-grid { margin-top:0 !important; gap:12px !important; }
+html[data-theme] .app-shell .conversation-workspace .dialer-primary>.lead-file { flex:none; }
+html[data-theme] .app-shell .conversation-workspace .side-pad { grid-row:1 !important; align-self:start; }
+html[data-theme] .app-shell .conversation-workspace .stats-row { flex-wrap:wrap; }
+html[data-theme] .app-shell .conversation-workspace .stats-row article { padding-block:8px !important; margin-right:20px; gap:10px; }
+
+/* One readable type hierarchy. Display-size choices use the same scale. */
+html[data-theme] { --font-ui:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+html[data-theme] .app-shell :is(button,input,select,textarea) {
+  font-family:var(--font-ui) !important;
+  font-size:calc(14px * var(--workspace-text-scale,1)) !important;
+}
+html[data-theme] .app-shell .workspace :is(b,strong) { font-weight:650 !important; }
+html[data-theme] .app-shell :is(.sidebar nav button,.topbar button,.module-actions button,.record-actions button) { font-weight:600 !important; }
+html[data-theme] .app-shell .workspace :is(.eyebrow,.module-bar>span) { font-size:calc(17px * var(--workspace-text-scale,1)) !important; letter-spacing:-.015em !important; font-weight:650 !important; }
+html[data-theme] .app-shell .workspace :is(.crm-summary,.today-metrics,.report-metrics)>article>span { letter-spacing:.025em !important; }
+html[data-theme] .app-shell .workspace :is(.table-row,.focus-person,.message-contacts>button,.pipeline-card,.client-row-main) b { font-size:calc(14px * var(--workspace-text-scale,1)) !important; }
+html[data-theme] .app-shell .workspace :is(.table-row,.focus-person,.message-contacts>button,.pipeline-card,.client-row-main) small { color:var(--ps-muted) !important; }
+
+/* The inbox, history and composer share the available height, without a second
+   viewport-height declaration pushing Send below the bottom of the window. */
+html[data-theme] .app-shell .workspace>.messages-view { display:flex; overflow:hidden; }
+html[data-theme] .app-shell .workspace .messages-center {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  flex:1;
+  min-height:0;
+  min-width:0;
+  width:100% !important;
+  max-width:none !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+html[data-theme] .app-shell .messages-center>.module-bar { flex:0 0 auto; margin:0 !important; padding:0 0 12px !important; min-height:44px; gap:12px; flex-wrap:wrap; }
+html[data-theme] .app-shell .messages-center>.channel-tabs { flex:0 0 auto; margin:0 !important; gap:6px; border-bottom:1px solid var(--ps-line); }
+html[data-theme] .app-shell .channel-tabs>button {
+  flex:0 1 auto !important; min-width:110px; min-height:44px;
+  padding:10px 16px; background:transparent !important; border:0 !important;
+  border-bottom:2px solid transparent !important; border-radius:0 !important; box-shadow:none !important;
+  color:var(--ps-muted) !important;
+}
+html[data-theme] .app-shell .channel-tabs>button.active { color:var(--ps-accent) !important; border-bottom-color:var(--ps-accent) !important; }
+html[data-theme] .app-shell .channel-tabs>button>small { display:none; }
+html[data-theme] .app-shell .message-connection { margin:0 0 0 auto; padding:0; border:0; background:transparent; color:var(--ps-muted); box-shadow:none; }
+html[data-theme] .app-shell .message-connection button { min-height:36px; background:var(--ps-surface); border:1px solid var(--ps-line); color:var(--ps-text); border-radius:6px; padding:6px 10px; }
+html[data-theme] .app-shell .message-automation-status { color:var(--ps-muted); font-size:calc(12px * var(--workspace-text-scale,1)); }
+html[data-theme] .app-shell .messages-center>.messages-layout {
+  flex:1 1 0;
+  height:auto !important;
+  min-height:0 !important;
+  max-height:100%;
+  overflow:hidden;
+  border:1px solid var(--ps-line);
+  border-radius:10px;
+  background:var(--ps-surface);
+  grid-template-columns:minmax(250px,.75fr) minmax(0,2fr) !important;
+}
+html[data-theme] .app-shell .messages-layout .message-contacts { min-height:0; max-height:100% !important; overflow:auto; border-radius:0 !important; }
+html[data-theme] .app-shell .message-contacts>header { position:sticky; top:0; z-index:1; background:var(--ps-surface); }
+html[data-theme] .app-shell .message-contacts>button { min-height:68px; grid-template-columns:32px minmax(0,1fr) !important; gap:3px 10px; padding:12px; }
+html[data-theme] .app-shell .message-contacts>button>i { width:32px; height:32px; grid-column:1; grid-row:1 / span 2; border-radius:8px; }
+html[data-theme] .app-shell .message-contacts>button>span { grid-column:2; grid-row:1; }
+html[data-theme] .app-shell .message-contacts>button>em {
+  grid-column:2; grid-row:2; justify-self:start; min-width:0 !important;
+  padding:0 !important; border:0 !important; background:transparent !important;
+  box-shadow:none !important; font-size:calc(11px * var(--workspace-text-scale,1)) !important;
+  color:var(--ps-muted); font-weight:500;
+}
+html[data-theme] .app-shell .message-contacts>button>em.reply { color:var(--ps-accent); }
+html[data-theme] .app-shell .messages-layout .message-thread {
+  min-height:0 !important;
+  height:100%;
+  overflow:hidden;
+  border-radius:0 !important;
+  grid-template-rows:auto minmax(56px,1fr) minmax(0,auto);
+}
+html[data-theme] .app-shell .message-thread>header { min-height:60px; padding:12px 16px; background:var(--ps-surface); }
+html[data-theme] .app-shell .message-history { min-height:0; overflow:auto; padding:16px; overscroll-behavior:contain; }
+html[data-theme] .app-shell .empty-thread { min-height:56px; color:var(--ps-muted); }
+html[data-theme] .app-shell .empty-thread>b { color:var(--ps-muted); font-weight:400 !important; }
+html[data-theme] .app-shell .message-thread>footer {
+  min-height:0; max-height:50dvh; overflow:auto; overscroll-behavior:contain;
+  padding:12px 16px; background:var(--ps-surface);
+}
+html[data-theme] .app-shell .message-thread>footer textarea { min-height:72px !important; height:88px; max-height:180px; padding:10px 12px; }
+html[data-theme] .app-shell .message-thread>footer .composer-permission { min-height:0; padding:8px 10px; margin:8px 0; gap:8px; border-radius:6px; }
+html[data-theme] .app-shell .composer-permission small { font-size:calc(12px * var(--workspace-text-scale,1)) !important; }
+html[data-theme] .app-shell .message-thread>footer>.composer-actions { margin:8px 0 0; align-items:center; }
+html[data-theme] .app-shell .message-thread>footer>.composer-actions button { min-height:40px; }
+html[data-theme] .app-shell .message-thread>footer>.template-vault { padding:0 !important; margin:0 0 8px !important; border:0 !important; box-shadow:none !important; background:transparent !important; }
+html[data-theme] .app-shell .message-thread>footer>.template-vault>header { padding:0 !important; margin:0 !important; border:0 !important; background:transparent !important; }
+html[data-theme] .app-shell .message-thread>footer>.template-vault>header>button { min-height:32px !important; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; width:auto; gap:10px; }
+html[data-theme] .app-shell .message-thread>footer>.template-vault>header>button em { padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; color:var(--ps-accent); }
+html[data-theme] .app-shell .message-thread>footer>.template-vault>header>button small,
+html[data-theme] .app-shell .message-thread>footer>.template-vault>header>span { display:none !important; }
+
+/* Template editing gets its own scrollable surface instead of expanding Send
+   out of reach. It is mounted at the shell so view animations cannot clip it. */
+html[data-theme] .app-shell>.template-library-backdrop {
+  position:fixed; inset:0; z-index:140; display:flex; align-items:center; justify-content:center;
+  background:rgba(10,25,20,.32); padding:16px; overscroll-behavior:contain;
+}
+html[data-theme] .app-shell .template-library {
+  width:min(760px,100%); max-height:calc(100dvh - 32px); min-height:0;
+  display:flex; flex-direction:column; overflow:hidden;
+  padding:0 !important; margin:0 !important; border:1px solid var(--ps-line) !important;
+  border-radius:12px !important; background:var(--ps-surface) !important; color:var(--ps-text);
+  box-shadow:var(--ps-shadow-sheet) !important;
+}
+html[data-theme] .app-shell .template-library>.template-library-header { display:flex !important; align-items:center; justify-content:space-between; flex:none; padding:18px 20px !important; border-bottom:1px solid var(--ps-line); }
+html[data-theme] .app-shell .template-library-header h2 { margin:0; font-size:calc(20px * var(--workspace-text-scale,1)); }
+html[data-theme] .app-shell .template-library-header p { margin:4px 0 0; color:var(--ps-muted); }
+html[data-theme] .app-shell .template-library-header>button { width:auto !important; min-height:40px; padding:8px 12px !important; border:1px solid var(--ps-line) !important; border-radius:6px; background:var(--ps-surface) !important; color:var(--ps-text); }
+html[data-theme] .app-shell .template-library>.template-vault-body { overflow:auto; min-height:0; padding:16px 20px; }
+html[data-theme] .app-shell .template-library :is(input,textarea) { width:100%; }
+html[data-theme] .app-shell .template-library .template-save { display:flex; flex-wrap:wrap; gap:8px; }
+html[data-theme] .app-shell .template-library .template-save>input { flex:1 1 240px; min-width:0; }
+html[data-theme] .app-shell .template-library .template-card-main { font-weight:400; }
+
+@container crm-workspace (max-width:900px) {
+  html[data-theme] .app-shell .messages-center>.messages-layout { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .messages-module-bar .message-automation-status { display:none; }
+}
+@container crm-workspace (max-width:760px) {
+  html[data-theme] .app-shell .workspace>:is(.page-view,.dialer-view,.today-workspace) { padding:16px 12px !important; }
+  html[data-theme] .app-shell .conversation-workspace .side-pad { grid-row:2 !important; grid-column:1; }
+  html[data-theme] .app-shell .message-connection { margin-left:0; }
+  html[data-theme] .app-shell .message-thread>footer { padding:10px 12px; }
+}
+/* Short windows and extreme zoom use document scrolling so every control stays
+   reachable even when the header and composer cannot both fit vertically. */
+@media(max-height:650px) {
+  html[data-theme] .app-shell { height:auto; min-height:100dvh !important; overflow:visible; }
+  html[data-theme] .app-shell>.workspace { height:auto; min-height:100dvh !important; overflow:visible; }
+  html[data-theme] .app-shell .workspace>:is(.page-view,.dialer-view,.today-workspace) { flex:1 0 auto; overflow:visible; }
+  html[data-theme] .app-shell .messages-center>.messages-layout { flex:none; height:600px !important; max-height:none; }
+  html[data-theme] .app-shell .message-thread>footer { max-height:360px; }
+}
+
+html[data-theme] .app-shell .send-feedback.has-feedback { opacity:1; transform:none; }
+html[data-theme] .app-shell .workspace-load-backdrop { position:fixed; inset:0; z-index:250; display:grid; place-items:center; padding:24px; background:var(--ps-bg); }
+html[data-theme] .app-shell .workspace-load-card { width:min(440px,100%); text-align:center; color:var(--ps-text); }
+html[data-theme] .app-shell .workspace-load-mark { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 24px; border-radius:12px; background:var(--ps-accent-soft); color:var(--ps-accent); font-size:24px; font-weight:700; }
+html[data-theme] .app-shell .workspace-load-card h1 { font-size:calc(22px * var(--workspace-text-scale,1)); margin:0 0 12px; }
+html[data-theme] .app-shell .workspace-load-card p { color:var(--ps-muted); line-height:1.6; }
+html[data-theme] .app-shell .workspace-load-card button { min-height:44px; padding:10px 24px; margin-top:12px; border:0; border-radius:8px; background:var(--ps-accent); color:var(--ps-surface); cursor:pointer; }
+html[data-theme] .app-shell .template-library :is(.template-card,.template-editor) { background:var(--ps-surface) !important; border-color:var(--ps-line) !important; color:var(--ps-text); box-shadow:none !important; }
+html[data-theme] .app-shell .template-library :is(.template-card-main,.template-card-main strong,.template-card-main b) { color:var(--ps-text) !important; background:transparent !important; }
+html[data-theme] .app-shell .template-library :is(small,p) { color:var(--ps-muted) !important; }
