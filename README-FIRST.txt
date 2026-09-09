@@ -1,34 +1,33 @@
-PACIFICA — FINAL VIDEO FINISH PACKAGE
-====================================
+PACIFICA — FINAL AI SCANNER + DESKTOP PUBLISH FIX
+=================================================
 
-DO THIS:
-1. Extract THIS ZIP.
-2. Copy/extract its CONTENTS into the ROOT of your existing ayPacharrito/Dialer repo.
-3. Choose Replace / Overwrite when asked.
-4. Push ALL changed/new files to main.
-5. Do NOT combine this with the older Pacifica ZIPs from this chat.
+USE ONLY THIS PACKAGE.
 
-WHAT THIS PACKAGE DOES
-----------------------
-- Fixes industry-specific Workspace/AI examples so Insurance no longer shows dealership prompts.
-- Adds a final professional UI polish layer for the screens shown in the 12:07 video.
-- Replaces the PWA-style sidebar installer with a real Desktop download entry.
-- Adds a Windows Electron desktop app with a SEPARATE always-on-top call controller.
-- Keeps the full CRM window full-size while the call controller floats over other software.
-- Native call controller includes mute, DTMF keypad, queue pause, Open CRM, and End Call. No Hold button.
-- Improves incoming Twilio registration: native app registers for incoming calls and brings Pacifica forward for a call.
-- Makes ClearVoice sample playback obvious directly under Record Original / Record ClearVoice.
-- Adds a subscription-protected /desktop page and download endpoint.
-- Adds a GitHub Actions Windows build/release workflow that produces Pacifica-Setup-0.2.0.exe.
+1. Extract the CONTENTS of this ZIP directly into the root of your Dialer repository.
+2. Allow overwrite/replace for matching files.
+3. Commit/push everything to main.
 
-WHAT HAPPENS AFTER THE PUSH
----------------------------
-- Vercel runs the normal Pacifica web build, including the final video-finish patch.
-- GitHub Actions sees the desktop files and builds the Windows installer.
-- The protected Pacifica Desktop page can resolve the latest published .exe release.
+WHAT THIS ADDS
+- Keeps the full video-finish upgrade: native Electron shell, separate always-on-top call controller, incoming-call improvements, ClearVoice playback, industry-aware settings, and UI polish.
+- Upgrades document/license photos to a HYBRID scan:
+  * PDF417 barcode when available (trusted for license-back fields)
+  * OpenAI vision on the actual image
+  * local OCR as an independent fallback/check
+  * merges the strongest non-empty values and still requires the user to verify before saving
+- PDFs continue using embedded PDF text extraction where available.
+- Uses the existing server-side OPENAI_API_KEY and /api/ai/document-lead route; the browser never receives the API key.
+- Fixes the Windows installer "not published" dead end:
+  * GitHub Actions builds desktop/dist/*.exe on Windows
+  * each build publishes a pacifica-desktop-* GitHub release
+  * /api/desktop/download automatically resolves the newest Pacifica desktop release
+  * PACIFICA_DESKTOP_WINDOWS_URL still works as an optional manual override, but is no longer required
+
+AFTER THE PUSH
+- Vercel builds the web CRM.
+- GitHub Actions runs "Pacifica Desktop Release" and builds/publishes the Windows .exe.
+- Once that workflow succeeds, the paid-user Download Pacifica button resolves the newest .exe automatically.
 
 IMPORTANT
----------
-The installer itself does not contain Twilio or OpenAI secrets. The desktop app loads the same protected Pacifica CRM and still requires an authorized Pacifica account.
-
-The GitHub repository is currently public. The CRM/login still blocks app use, but for stronger commercial source/binary protection, make the repo private before broad paid distribution.
+- The desktop application still requires normal Pacifica login/subscription access.
+- If the GitHub repository is later made private, add a server-side PACIFICA_DESKTOP_GITHUB_TOKEN with permission to read releases, or move release storage to a private artifact host.
+- License/document AI scanning sends the uploaded image to the configured OpenAI API with store:false for extraction. Pacifica still shows the extracted fields for human verification before saving.
