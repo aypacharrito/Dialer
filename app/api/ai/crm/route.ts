@@ -1,5 +1,8 @@
 import {aiClient,aiConfigured,aiModel,aiProviderIssue,aiReasoning} from "../../../lib/ai-provider";
-import { hasPacificaWorkspaceApiAccess } from "../../../lib/clerk-access";
+import { getPacificaAccess } from "../../../lib/clerk-access";
+import { businessAiContext, leadAiContext, workspaceContextLine } from "../../../lib/business-context";
+import { defaultWorkspaceProfile } from "../../../lib/workspace-profile";
+import { readStoredWorkspace } from "../../../lib/workspace-storage";
 
 export const runtime = "nodejs";
 
@@ -10,51 +13,62 @@ type CrmPriority = {leadId:number;leadName:string;score:number;reason:string;nex
 type CrmAction = {leadId:number;leadName:string;title:string;reason:string;patch:{stage:string|null;outcome:string|null;followUp:string|null;notesToAppend:string|null}};
 type CrmAnalysis = {summary:string;priorities:CrmPriority[];actions:CrmAction[];draft:string;mode?:"ai"|"smart-fallback";notice?:string};
 
-function localAnalysis(leads:Array<Record<string,unknown>>,notice="Pacifica Smart Fallback is active while the AI provider reconnects."):CrmAnalysis {
-  const ranked=leads.slice(0,5).map((lead,index)=>({leadId:Number(lead.id),leadName:String(lead.name||"Unknown lead"),score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"Already showed interest and should receive prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"Open opportunity with no completed next step.",nextStep:lead.followUp?`Follow up on ${String(lead.followUp)}`:"Call and confirm needs, timing, and the best next step."}));
-  return {summary:`I reviewed ${leads.length} active contact${leads.length===1?"":"s"}. Start with the highest-ranked open opportunities, then work any scheduled follow-ups before returning to untouched leads.`,priorities:ranked,actions:[],draft:"",mode:"smart-fallback",notice};
+function localAnalysis(leads:Array<Record<string,unknown>>,businessLabel:string,notice="Pacifica Smart Fallback is active while the AI provider reconnects."):CrmAnalysis {
+  const ranked=leads.slice(0,5).map((lead,index)=>({leadId:Number(lead.id),leadName:String(lead.name||"Unknown lead"),score:Math.max(55,90-index*7),reason:lead.outcome==="Interested"?"Already showed interest and should receive prompt follow-up.":lead.followUp?"A follow-up is already scheduled and needs attention.":"Open opportunity with no completed next step.",nextStep:lead.followUp?`Follow up on ${String(lead.followUp)}`:"Contact the lead and confirm needs, timing, and the best next step."}));
+  return {summary:`I reviewed ${leads.length} active contact${leads.length===1?"":"s"} for ${businessLabel}. Start with the highest-ranked open opportunities, then work scheduled follow-ups before returning to untouched leads.`,priorities:ranked,actions:[],draft:"",mode:"smart-fallback",notice};
 }
 
+async function workspaceForAccess(userId:string){
+  try{return (await readStoredWorkspace(userId))?.profile||defaultWorkspaceProfile}
+  catch{return defaultWorkspaceProfile}
+}
 
 export async function GET(){
-  if(!await hasPacificaWorkspaceApiAccess())return Response.json({ok:false,error:"Your signed-in account does not have Pacifica access."},{status:403});
-  return Response.json({ok:true,providerConfigured:aiConfigured(),verified:false,fallbackReady:true,model:aiModel()},{headers:{"Cache-Control":"no-store"}});
+  const access=await getPacificaAccess();
+  if(!access.allowed)return Response.json({ok:false,error:"Your signed-in account does not have Pacifica access."},{status:403});
+  const profile=await workspaceForAccess(access.userId);
+  return Response.json({ok:true,providerConfigured:aiConfigured(),verified:false,fallbackReady:true,model:aiModel(),industry:profile.industry,businessName:profile.businessName},{headers:{"Cache-Control":"no-store"}});
 }
 
 export async function POST(request:Request) {
-  if(!await hasPacificaWorkspaceApiAccess())return Response.json({error:"An active Pacifica subscription is required."},{status:403});
+  const access=await getPacificaAccess();
+  if(!access.allowed)return Response.json({error:"An active Pacifica subscription is required."},{status:403});
   try {
     const body=await request.json() as {prompt?:string;includeNotes?:boolean;leads?:Array<Record<string,unknown>>;recentCalls?:Array<Record<string,unknown>>};
-    const prompt=String(body.prompt||"").trim().slice(0,1000);
+    const prompt=String(body.prompt||"").trim().slice(0,1200);
     const incoming=(Array.isArray(body.leads)?body.leads:[]).filter(lead=>!lead.deletedAt&&!Boolean(lead.doNotCall)&&String(lead.stage||"")!=="Closed").slice(0,100);
     if(!prompt)return Response.json({error:"Enter a CRM question first"},{status:400});
     if(!incoming.length)return Response.json({error:"No eligible contacts were provided"},{status:400});
-    const leads=incoming.map(lead=>({id:Number(lead.id),name:String(lead.name||"Unknown lead").slice(0,100),city:String(lead.city||"").slice(0,80),stage:String(lead.stage||"New lead"),outcome:String(lead.outcome||"Not contacted"),followUp:String(lead.followUp||""),lastContact:String(lead.lastContact||"Never").slice(0,80),line:lead.line==="home-auto"?"home-auto":"life",source:String(lead.source||"Unknown").slice(0,100),product:String(lead.product||"Service inquiry").slice(0,120),leadCost:Math.max(0,Number(lead.leadCost)||0),notes:body.includeNotes?String(lead.notes||"").slice(0,1000):"[not shared]"}));
+
+    const profile=await workspaceForAccess(access.userId);
+    const business=businessAiContext(profile);
+    const leads=incoming.map(lead=>leadAiContext(lead,Boolean(body.includeNotes)));
     const recentCalls=(Array.isArray(body.recentCalls)?body.recentCalls:[]).slice(0,100).map(call=>({name:String(call.name||"Unknown").slice(0,100),startedAt:String(call.startedAt||"").slice(0,50),duration:Math.max(0,Number(call.duration)||0),outcome:String(call.outcome||"").slice(0,80),status:String(call.status||"").slice(0,100),source:String(call.source||"").slice(0,100)}));
-    if(!aiConfigured())return Response.json(localAnalysis(leads,"OpenAI is not configured yet. Pacifica kept working with its built-in prioritizer."));
+    if(!aiConfigured())return Response.json(localAnalysis(leads as unknown as Array<Record<string,unknown>>,business.businessName,"OpenAI is not configured yet. Pacifica kept working with its built-in prioritizer."));
+
     const client=aiClient();
     let result:CrmAnalysis|null=null;
     let lastProviderError="";
-    for(const model of [aiModel()]){
-      try{
-        const response=await client.responses.create({
-          model,
-          store:false,...aiReasoning(model),
-          input:[{role:"system",content:`You are Pacifica AI, the native sales operating agent inside Pacifica CRM. Today is ${new Date().toISOString().slice(0,10)}. Analyze only the provided CRM and calling activity. Prioritize speed-to-lead, explicit interest, overdue follow-ups, appointment protection, and lead-source efficiency. Never invent facts, prices, consent, eligibility, promises, or appointments. Do not recommend contacting do-not-call records. Give decisive, concise advice tied to the shown product, source, outcome, and history. When a safe record update would help, propose it for human approval. When asked for outreach, return one natural ready-to-send draft without fake personalization.`},{role:"user",content:`Request: ${prompt}\n\nCRM records:\n${JSON.stringify(leads)}\n\nRecent calling activity:\n${JSON.stringify(recentCalls)}`}],
-          text:{format:{type:"json_schema",name:"pacifica_crm_analysis",strict:true,schema:{type:"object",additionalProperties:false,properties:{summary:{type:"string"},priorities:{type:"array",items:{type:"object",additionalProperties:false,properties:{leadId:{type:"number"},leadName:{type:"string"},score:{type:"number"},reason:{type:"string"},nextStep:{type:"string"}},required:["leadId","leadName","score","reason","nextStep"]}},actions:{type:"array",items:{type:"object",additionalProperties:false,properties:{leadId:{type:"number"},leadName:{type:"string"},title:{type:"string"},reason:{type:"string"},patch:{type:"object",additionalProperties:false,properties:{stage:{type:["string","null"]},outcome:{type:["string","null"]},followUp:{type:["string","null"]},notesToAppend:{type:["string","null"]}},required:["stage","outcome","followUp","notesToAppend"]}},required:["leadId","leadName","title","reason","patch"]}},draft:{type:"string"}},required:["summary","priorities","actions","draft"]}}},
-          max_output_tokens:4000,
-        });
-        if(response.status!=="completed")throw {code:"incomplete_response"};
-        result=JSON.parse(response.output_text) as CrmAnalysis;
-        if(typeof result.summary!=="string"||!Array.isArray(result.priorities)||!Array.isArray(result.actions))throw {code:"incomplete_response"};
-        result.mode="ai";
-        break;
-      }catch(error){
-        lastProviderError=aiProviderIssue(error).notice;
-        console.error("[pacifica-ai/crm] request failed",{model,code:aiProviderIssue(error).code});
-      }
+    const model=aiModel();
+    try{
+      const response=await client.responses.create({
+        model,store:false,...aiReasoning(model),
+        input:[
+          {role:"system",content:`You are Pacifica AI, the native sales operating agent inside Pacifica CRM. Today is ${new Date().toISOString().slice(0,10)}. ${workspaceContextLine(profile)} The owner-selected outreach tone is ${profile.outreachTone}. Owner instructions: ${profile.customAiInstructions||"none"}. Analyze only the supplied workspace, CRM, imported/provider fields, and calling activity. Adapt to the actual industry instead of assuming insurance. Prioritize speed-to-lead, explicit interest, overdue follow-ups, appointment protection, and source efficiency. Never invent facts, prices, rates, discounts, inventory, eligibility, approvals, financing results, coverage, legal outcomes, medical claims, promises, or appointments. Never expose private identifiers or say that information came from a CSV. Do not recommend contacting do-not-call or closed records. Give decisive, concise advice tied to the actual product/service, source, outcome, history, and relevant custom lead fields. When a safe record update would help, propose it for human approval. When asked for outreach, return one natural ready-to-send draft that follows the business profile and does not fake personalization.`},
+          {role:"user",content:`Request: ${prompt}\n\nWorkspace business context:\n${JSON.stringify(business)}\n\nCRM records:\n${JSON.stringify(leads)}\n\nRecent calling activity:\n${JSON.stringify(recentCalls)}`}
+        ],
+        text:{format:{type:"json_schema",name:"pacifica_crm_analysis",strict:true,schema:{type:"object",additionalProperties:false,properties:{summary:{type:"string"},priorities:{type:"array",items:{type:"object",additionalProperties:false,properties:{leadId:{type:"number"},leadName:{type:"string"},score:{type:"number"},reason:{type:"string"},nextStep:{type:"string"}},required:["leadId","leadName","score","reason","nextStep"]}},actions:{type:"array",items:{type:"object",additionalProperties:false,properties:{leadId:{type:"number"},leadName:{type:"string"},title:{type:"string"},reason:{type:"string"},patch:{type:"object",additionalProperties:false,properties:{stage:{type:["string","null"]},outcome:{type:["string","null"]},followUp:{type:["string","null"]},notesToAppend:{type:["string","null"]}},required:["stage","outcome","followUp","notesToAppend"]}},required:["leadId","leadName","title","reason","patch"]}},draft:{type:"string"}},required:["summary","priorities","actions","draft"]}}},
+        max_output_tokens:4000,
+      });
+      if(response.status!=="completed")throw {code:"incomplete_response"};
+      result=JSON.parse(response.output_text) as CrmAnalysis;
+      if(typeof result.summary!=="string"||!Array.isArray(result.priorities)||!Array.isArray(result.actions))throw {code:"incomplete_response"};
+      result.mode="ai";
+    }catch(error){
+      const issue=aiProviderIssue(error);lastProviderError=issue.notice;
+      console.error("[pacifica-ai/crm] request failed",{model,code:issue.code});
     }
-    if(!result)return Response.json(localAnalysis(leads,`${lastProviderError} Pacifica used its built-in prioritizer.`));
+    if(!result)return Response.json(localAnalysis(leads as unknown as Array<Record<string,unknown>>,business.businessName,`${lastProviderError} Pacifica used its built-in prioritizer.`));
     const validIds=new Set(leads.map(lead=>lead.id));
     result.priorities=result.priorities.filter(item=>validIds.has(item.leadId)).slice(0,10).map(item=>({...item,score:Math.max(0,Math.min(100,Math.round(item.score)))}));
     result.actions=result.actions.filter(action=>validIds.has(action.leadId)).slice(0,10).map(action=>({...action,patch:{stage:action.patch.stage&&allowedStages.includes(action.patch.stage)?action.patch.stage:null,outcome:action.patch.outcome&&allowedOutcomes.includes(action.patch.outcome)?action.patch.outcome:null,followUp:action.patch.followUp&&/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2})?$/.test(action.patch.followUp)?action.patch.followUp:null,notesToAppend:action.patch.notesToAppend?.slice(0,500)||null}}));

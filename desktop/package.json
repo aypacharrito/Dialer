@@ -1,0 +1,26 @@
+{
+  "name": "pacifica-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.pacificacrm.desktop",
+    "productName": "Pacifica",
+    "asar": true,
+    "files": ["main.mjs","preload.cjs","package.json"],
+    "directories": {"output":"dist"},
+    "win": {"target":["nsis"],"artifactName":"Pacifica-Setup-${version}.${ext}"},
+    "nsis": {"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true},
+    "mac": {"target":["dmg"],"category":"public.app-category.business","artifactName":"Pacifica-${version}.${ext}"}
+  }
+}
