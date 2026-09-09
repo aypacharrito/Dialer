@@ -21,7 +21,7 @@ async function latestDesktopReleaseUrl(platform:"windows"|"mac"){
   const token=(process.env.PACIFICA_DESKTOP_GITHUB_TOKEN||"").trim();
   const response=await fetch(`https://api.github.com/repos/${repository}/releases?per_page=20`,{
     headers:{Accept:"application/vnd.github+json",...(token?{Authorization:`Bearer ${token}`}:{})},
-    next:{revalidate:120},
+    cache:"no-store",
   });
   if(!response.ok)return "";
   const releases=await response.json() as GitHubRelease[];

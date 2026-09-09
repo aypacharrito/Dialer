@@ -6,6 +6,8 @@ import "./professional-polish.css";
 import "./professional-v2.css";
 import "./product-system.css";
 import "./workspace-layout.css";
+import "./video-finish.css";
+import "./pacifica-minimal.css";
 
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",

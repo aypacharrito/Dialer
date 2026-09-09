@@ -1,4 +1,5 @@
-import {appendCommunication,type StoredCommunication} from "./communications";
+import {appendCommunication,cleanCommunications,type StoredCommunication} from "./communications";
+import {personalizeAutomationMessage} from "./ai-outreach"; // PACIFICA_DYNAMIC_OUTREACH_V1
 import {logError,logEvent} from "./observability";
 import {inboundReplyAddress,outboundEmailStatus,sendOutboundEmail} from "./outbound-email";
 import {outboundSmsStatus,sendOutboundSms} from "./outbound-sms";
@@ -10,7 +11,7 @@ import {listStoredWorkspaces,workspaceRedis,writeStoredWorkspace} from "./worksp
 import type {AutomationChannel,AutomationSequence,AutomationStep,WorkspaceProfile} from "./workspace-profile";
 
 export type FollowUpLead={
-  deletedAt?:string;id:number;name:string;phone:string;email?:string;city?:string;product:string;stage:string;outcome:string;source?:string;doNotCall:boolean;received?:string;importedAt?:string;followUp?:string;
+  deletedAt?:string;id:number;name:string;phone:string;email?:string;city?:string;product:string;stage:string;outcome:string;source?:string;doNotCall:boolean;received?:string;importedAt?:string;followUp?:string;importedFields?:Record<string,unknown>;extraFields?:Record<string,unknown>;vehicle?:string;brand?:string;state?:string;territory?:string;
   smsConsent?:boolean;smsOptOut?:boolean;lastSmsAt?:string;emailConsent?:boolean;emailOptOut?:boolean;lastEmailAt?:string;communications?:StoredCommunication[];
   automationEnabled?:boolean;automationSequenceId?:string;automationStep?:number;automationNextAt?:string;automationStatus?:string;automationDeliveryFailures?:number;automationLastError?:string;automationDeadLetterAt?:string;automationUpdatedAt?:string;lastInboundAt?:string;
 };
@@ -49,15 +50,20 @@ function compliant(lead:FollowUpLead,channel:AutomationChannel){
 }
 function bodyFor(step:AutomationStep,lead:FollowUpLead,profile:WorkspaceProfile){
   const template=templateFor(step,profile);if(!template)throw new Error(`Automation template ${step.templateId||"is missing"}`);
-  return {subject:renderCommunicationTemplate(template.subject,{name:lead.name,product:lead.product,city:lead.city||""},profile),body:renderCommunicationTemplate(template.body,{name:lead.name,product:lead.product,city:lead.city||""},profile)};
+  const templateLead={...lead,name:lead.name,product:lead.product,city:lead.city||""};
+  return {subject:renderCommunicationTemplate(template.subject,templateLead,profile),body:renderCommunicationTemplate(template.body,templateLead,profile)};
 }
 function communication(input:Partial<StoredCommunication>&Pick<StoredCommunication,"channel"|"direction"|"body"|"status"|"sentAt"|"provider">):StoredCommunication{return {id:crypto.randomUUID(),...input}}
 function providerBlocked(message:string){return /A2P|assigned|registered|configured|mailing address|consent|permission|adapter|template/i.test(message)}
+function automationDay(value:string|number|Date,timeZone:string){try{return new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(value))}catch{return new Date(value).toISOString().slice(0,10)}}
+function automatedTouchesToday(lead:FollowUpLead,timeZone:string,now=Date.now()){const today=automationDay(now,timeZone);return cleanCommunications(lead.communications).filter(item=>item.direction==="outbound"&&!/fail|blocked|error/i.test(item.status)&&automationDay(item.sentAt,timeZone)===today).length}
 
 async function deliver(workspaceId:string,lead:FollowUpLead,profile:WorkspaceProfile,channel:"sms"|"email",step:AutomationStep){
   const fallbackTemplate=channel==="email"?"starter-email-follow-up":"starter-gentle-follow-up";
   const deliveryStep=channel===step.channel?step:{...step,channel,templateId:fallbackTemplate};
-  const rendered=bodyFor(deliveryStep,lead,profile);const sentAt=new Date().toISOString();
+  const baseRendered=bodyFor(deliveryStep,lead,profile);
+  const rendered=await personalizeAutomationMessage({profile,lead:lead as unknown as Record<string,unknown>,channel,subject:baseRendered.subject,body:baseRendered.body});
+  const sentAt=new Date().toISOString();
   if(channel==="sms"){
     const result=await sendOutboundSms({workspaceId,to:lead.phone,body:rendered.body});
     return {channel,communication:communication({channel,direction:"outbound",body:rendered.body,status:result.status,sentAt,provider:result.provider,providerId:result.id})};
@@ -112,6 +118,10 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
         const taskNote=`Pacifica automation task: personally follow up with ${lead.name}.`;
         leads[index]=nextState({...lead,followUp:new Date().toISOString(),communications:appendCommunication(lead.communications,communication({channel:"email",direction:"outbound",subject:"Sales task",body:taskNote,status:"task",sentAt:new Date().toISOString(),provider:"pacifica"}))},sequence);
         tasksCreated++;workspaceChanged=true;continue;
+      }
+      const dailyLimit=Math.min(3,Math.max(1,Number(profile.maxAutomatedTouchesPerLeadPerDay)||1));
+      if(automatedTouchesToday(lead,profile.automationTimezone)>=dailyLimit){
+        leads[index]={...lead,automationStatus:"scheduled",automationNextAt:isoAfter(1440),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue;
       }
       const candidates=await availableChannels(record.workspaceId,lead,profile,step.channel);
       if(!candidates.length){blocked++;leads[index]={...lead,automationStatus:"blocked",automationLastError:"No consented, configured delivery channel is ready",automationNextAt:isoAfter(60),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue}

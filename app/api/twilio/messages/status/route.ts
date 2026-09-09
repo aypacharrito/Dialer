@@ -11,6 +11,7 @@ export async function POST(request:Request){
   const form=await request.formData();if(!await validateTwilioWebhook(request,form))return rejectedTwilioWebhook();
   const workspaceId=safeWorkspace(new URL(request.url).searchParams.get("workspace")||"");const providerId=String(form.get("MessageSid")||form.get("SmsSid")||"");const status=String(form.get("MessageStatus")||form.get("SmsStatus")||"unknown").toLowerCase();const errorCode=String(form.get("ErrorCode")||"");
   if(!workspaceId||!providerId)return Response.json({received:true,ignored:true});
+  logEvent("sms_delivery_received",{workspaceId,providerId,status,errorCode:errorCode||undefined});
   try{
     const workspace=await readStoredWorkspace(workspaceId);if(!workspace)return Response.json({received:true,ignored:true});let matched=false;
     const leads=workspace.leads.map(raw=>{const lead=raw as Record<string,unknown>;const communications=Array.isArray(lead.communications)?lead.communications as Array<Record<string,unknown>>:[];let leadMatched=false;

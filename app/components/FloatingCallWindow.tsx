@@ -13,7 +13,6 @@ function bridge(){return typeof window!=="undefined"?(window as DesktopWindow).p
 
 export default function FloatingCallWindow(props:Props){
   const [target,setTarget]=useState<Window|null>(null);
-  const [desktopMode,setDesktopMode]=useState(false);
   const [error,setError]=useState("");
   const windowRef=useRef<Window|null>(null);
   const openingRef=useRef(false);
@@ -23,7 +22,6 @@ export default function FloatingCallWindow(props:Props){
     mountedRef.current=true;
     const desktop=bridge();
     if(desktop?.isDesktop){
-      setDesktopMode(true);
       document.documentElement.dataset.pacificaDesktopCall="true";
       void desktop.enterCallOverlay().catch(()=>setError("Desktop overlay could not open. The call is still active."));
     }
@@ -39,7 +37,7 @@ export default function FloatingCallWindow(props:Props){
     const desktop=bridge();
     if(desktop?.isDesktop){
       setError("");
-      try{await desktop.enterCallOverlay();setDesktopMode(true);document.documentElement.dataset.pacificaDesktopCall="true"}
+      try{await desktop.enterCallOverlay();document.documentElement.dataset.pacificaDesktopCall="true"}
       catch{setError("The desktop overlay could not open. Keep using the call controls in Pacifica.")}
       return;
     }
@@ -61,27 +59,18 @@ export default function FloatingCallWindow(props:Props){
     finally{openingRef.current=false}
   }
 
-  async function restoreDesktop(){
-    const desktop=bridge();
-    if(!desktop)return;
-    try{await desktop.exitCallOverlay();setDesktopMode(false);delete document.documentElement.dataset.pacificaDesktopCall}
-    catch{setError("Pacifica could not restore the full window. Your call is still active.")}
-  }
-
-  function callCard(native=false){return <section className={`floating-call ${native?"desktop-native-call":""}`} aria-label="Floating call controls">
+  function callCard(){return <section className="floating-call" aria-label="Floating call controls">
     <header><span>Pacifica</span><span role="status">{props.connected?"Live call":"Connecting…"}</span></header>
-    {native&&<button type="button" onClick={()=>void restoreDesktop()} style={{position:"absolute",right:12,top:44,border:0,background:"transparent",fontWeight:700,cursor:"pointer"}}>Restore app ↗</button>}
     <h1>{props.name||props.number}</h1><p>{props.number}</p><time>{props.connected?props.elapsed:"Waiting for answer"}</time>
     <div className="floating-call-actions"><button type="button" disabled={!props.connected} aria-pressed={props.muted} onClick={props.onMute}>{props.muted?"Unmute":"Mute"}</button><button type="button" className="floating-call-end" onClick={props.onEnd}>{props.connected?"End call":"Cancel call"}</button></div>
     <div className="floating-keypad" tabIndex={0} onKeyDown={event=>{if(!props.connected||event.metaKey||event.ctrlKey||event.altKey||!isCallDigit(event.key))return;event.preventDefault();if(!event.repeat)props.onDigits(event.key)}}>
       <input type="text" aria-label="Touch tones" placeholder="Type or press keys" readOnly value={props.sentDigits} onPaste={event=>{event.preventDefault();if(props.connected)props.onDigits(event.clipboardData.getData("text").replace(/\s/g,""))}}/>
       <div>{"123456789*0#".split("").map(digit=><button key={digit} type="button" disabled={!props.connected} aria-label={`Dial ${digit}`} onClick={()=>props.onDigits(digit)}>{digit}</button>)}</div>
-    </div><small role="status">{props.feedback||(native?"Pacifica stays above your other apps during this call.":"Keep Pacifica open while you work in other apps.")}</small>
+    </div><small role="status">{props.feedback||"Keep Pacifica open while you work in other apps."}</small>
   </section>}
 
   return <>
-    {!desktopMode&&<div className="float-call-launch"><button type="button" onClick={()=>void open()}>{target?"Show floating call":"Float call ↗"}</button>{error&&<p role="status">{error}</p>}</div>}
-    {desktopMode&&<div style={{position:"fixed",inset:0,zIndex:2147483000,background:"var(--page-bg, #f7f8fa)",padding:10,overflow:"auto"}}>{callCard(true)}{error&&<p role="status" style={{padding:"0 12px"}}>{error}</p>}</div>}
-    {target&&createPortal(callCard(false),target.document.body)}
+    {<div className="float-call-launch"><button type="button" onClick={()=>void open()}>{target?"Show floating call":"Float call ↗"}</button>{error&&<p role="status">{error}</p>}</div>}
+    {target&&createPortal(callCard(),target.document.body)}
   </>;
 }

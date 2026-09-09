@@ -45,6 +45,17 @@
       ],
       "category": "public.app-category.business",
       "artifactName": "Pacifica-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "aypacharrito",
+        "repo": "Dialer",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

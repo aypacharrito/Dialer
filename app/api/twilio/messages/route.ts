@@ -85,7 +85,7 @@ export async function GET(){
     if(!inbound.response.ok)throw new Error(twilioMessage(inbound.data));
     const unique=new Map<string,TwilioMessage>();
     for(const message of [...(outbound.data.messages||[]),...(inbound.data.messages||[])])unique.set(message.sid,message);
-    const messages=Array.from(unique.values()).sort((left,right)=>String(right.date_sent||right.date_created||"").localeCompare(String(left.date_sent||left.date_created||""))).map(safe);
+    const messages=Array.from(unique.values()).sort((left,right)=>new Date(right.date_sent||right.date_created||0).getTime()-new Date(left.date_sent||left.date_created||0).getTime()).map(safe);
     return Response.json({configured:sending.configured,historyAvailable:true,sending,phone,messages,credential:outbound.credential||inbound.credential},{headers:{"Cache-Control":"no-store"}});
   }catch(error){console.error("[twilio/messages] load failed",error instanceof Error?error.message:"unknown");return Response.json({configured:false,error:error instanceof Error?error.message:"Unable to load messages"},{status:500})}
 }

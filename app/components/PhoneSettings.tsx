@@ -58,6 +58,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   const monitorProcessedStreamRef=useRef<MediaStream|null>(null);
   const monitorProcessorRef=useRef<PacificaClearVoiceProcessor|null>(null);
   const monitorAudioRef=useRef<HTMLAudioElement|null>(null);
+  const monitorGainRef=useRef<GainNode|null>(null);
   const monitorContextRef=useRef<AudioContext|null>(null);
   const monitorFrameRef=useRef<number|null>(null);
   const monitorGenerationRef=useRef(0);
@@ -74,6 +75,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     monitorStreamRef.current?.getTracks().forEach(track=>track.stop());
     monitorStreamRef.current=null;
     if(monitorAudioRef.current){monitorAudioRef.current.pause();monitorAudioRef.current.srcObject=null}
+    monitorGainRef.current=null;
     void monitorContextRef.current?.close();monitorContextRef.current=null;
     setListening(null);setMeter(0);setClearVoiceMetrics(emptyMetrics);
     if(nextMessage)setMessage(nextMessage);
@@ -89,15 +91,15 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     });
     return()=>stopMonitor();
   },[]);
-  useEffect(()=>{if(monitorAudioRef.current)monitorAudioRef.current.volume=Math.min(1,Math.max(0,speakerVolume/100))},[speakerVolume]);
+  useEffect(()=>{if(monitorGainRef.current)monitorGainRef.current.gain.value=Math.min(1,Math.max(0,speakerVolume/100));if(monitorAudioRef.current)monitorAudioRef.current.volume=Math.min(1,Math.max(0,speakerVolume/100))},[speakerVolume]);
 
-  async function requestMicrophone(processed:boolean){
+  async function requestMicrophone(processed:boolean,liveMonitor=false){
     if(!navigator.mediaDevices?.getUserMedia)throw new Error("This browser does not expose microphone controls. Use current Chrome or Edge over HTTPS.");
     const selected=inputRef.current;
     const constraints:MediaTrackConstraints={
-      echoCancellation:true,
-      noiseSuppression:!processed,
-      autoGainControl:true,
+      echoCancellation:!liveMonitor,
+      noiseSuppression:liveMonitor?false:!processed,
+      autoGainControl:!liveMonitor,
       channelCount:1,
       sampleRate:{ideal:48000},
       ...(selected==="default"?{}:{deviceId:{exact:selected}}),
@@ -107,7 +109,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       const retryDefault=selected!=="default"&&error instanceof DOMException&&["NotFoundError","DevicesNotFoundError","OverconstrainedError"].includes(error.name);
       if(!retryDefault)throw error;
       inputRef.current="default";setInput("default");saveAudioPreferences({input:"default"});
-      return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:!processed,autoGainControl:true,channelCount:1}});
+      return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!liveMonitor,noiseSuppression:liveMonitor?false:!processed,autoGainControl:!liveMonitor,channelCount:1}});
     }
   }
 
@@ -122,19 +124,29 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     setOutputs(nextOutputs.length?nextOutputs:[{deviceId:"default",label:"Browser default output"}]);
   }
 
-  async function routeMonitorToSpeaker(stream:MediaStream){
-    const audio=monitorAudioRef.current;if(!audio)throw new Error("Live monitor output is not ready");
-    audio.srcObject=stream;audio.autoplay=true;audio.playsInline=true;audio.muted=false;audio.volume=Math.min(1,Math.max(0,speakerVolume/100));
-    const sink=audio as HTMLAudioElement&{setSinkId?:(id:string)=>Promise<void>};
-    if(speakerRef.current!=="default"&&sink.setSinkId)await sink.setSinkId(speakerRef.current);
-    await audio.play();
+  async function routeMonitorToSpeaker(stream:MediaStream,context:AudioContext){
+    const source=context.createMediaStreamSource(stream);
+    const audioContext=context as AudioContext&{setSinkId?:(id:string)=>Promise<void>};
+    const selected=speakerRef.current;
+    if(selected==="default"||audioContext.setSinkId){
+      if(selected!=="default"&&audioContext.setSinkId)await audioContext.setSinkId(selected);
+      const gain=context.createGain();gain.gain.value=Math.min(1,Math.max(0,speakerVolume/100));monitorGainRef.current=gain;
+      source.connect(gain);gain.connect(context.destination);
+    }else{
+      const audio=monitorAudioRef.current;if(!audio)throw new Error("Live monitor output is not ready");
+      audio.srcObject=stream;audio.autoplay=true;audio.setAttribute("playsinline","");audio.muted=false;audio.volume=Math.min(1,Math.max(0,speakerVolume/100));
+      const sink=audio as HTMLAudioElement&{setSinkId?:(id:string)=>Promise<void>};
+      if(sink.setSinkId)await sink.setSinkId(selected);
+      await audio.play();
+    }
+    return source;
   }
 
   async function startMonitor(preferredMode?:MonitorMode,processorMode=clearVoiceMode){
     stopMonitor();
     const mode:Exclude<MonitorMode,null>=preferredMode||(clearVoiceEnabled&&clearVoiceSupported?"clearvoice":"raw");
     const generation=monitorGenerationRef.current;
-    const stream=await requestMicrophone(mode==="clearvoice");
+    const stream=await requestMicrophone(mode==="clearvoice",true);
     if(generation!==monitorGenerationRef.current){stream.getTracks().forEach(track=>track.stop());return}
     monitorStreamRef.current=stream;await loadDevices(stream);
     const track=stream.getAudioTracks()[0];if(!track)throw new Error("The microphone opened without an audio track.");
@@ -147,11 +159,11 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       if(generation!==monitorGenerationRef.current){await processor.destroyProcessedStream();return}
       monitorProcessedStreamRef.current=audible;
     }
-    await routeMonitorToSpeaker(audible);
     const context=new AudioContext({latencyHint:"interactive"});monitorContextRef.current=context;if(context.state==="suspended")await context.resume();
-    const analyser=context.createAnalyser();analyser.fftSize=256;context.createMediaStreamSource(audible).connect(analyser);const samples=new Uint8Array(analyser.frequencyBinCount);
+    const monitorSource=await routeMonitorToSpeaker(audible,context);
+    const analyser=context.createAnalyser();analyser.fftSize=256;monitorSource.connect(analyser);const samples=new Uint8Array(analyser.frequencyBinCount);
     const update=()=>{analyser.getByteTimeDomainData(samples);const peak=samples.reduce((max,sample)=>Math.max(max,Math.abs(sample-128)),0);setMeter(Math.min(100,Math.round((peak/64)*100)));monitorFrameRef.current=window.requestAnimationFrame(update)};update();
-    setListening(mode);setMessage(mode==="clearvoice"?`LIVE · ClearVoice ${clearVoiceModeLabels[processorMode]} · hearing your processed microphone now.`:"LIVE · hearing your microphone now with browser echo control.");
+    setListening(mode);setMessage(mode==="clearvoice"?`LIVE · ClearVoice ${clearVoiceModeLabels[processorMode]} · hearing your processed microphone now.`:"LIVE · hearing your microphone now.");
   }
 
   async function toggleLiveMonitor(){
@@ -203,11 +215,11 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing?"Testing…":"Run device & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
 
     <section className={`clearvoice-card ${clearVoiceEnabled?"enabled":""}`}>
-      <div className="clearvoice-head"><div><span>PACIFICA AUDIO LABS</span><h3>ClearVoice</h3><p>Live, on-device speech cleanup for calls and microphone monitoring.</p></div><label className="clearvoice-switch"><input type="checkbox" checked={clearVoiceEnabled} onChange={event=>void updateClearVoice(event.target.checked)}/><i/><b>{clearVoiceEnabled?"ON":"OFF"}</b></label></div>
+      <div className="clearvoice-head"><div><span>AUDIO</span><h3>ClearVoice</h3><p>Clean voice processing.</p></div><label className="clearvoice-switch"><input type="checkbox" checked={clearVoiceEnabled} onChange={event=>void updateClearVoice(event.target.checked)}/><i/><b>{clearVoiceEnabled?"ON":"OFF"}</b></label></div>
       <div className="clearvoice-status"><strong><i/>{clearVoiceSupported?"NEURAL ENGINE READY":"NATIVE FALLBACK"}</strong><span>{clearVoiceSupported?`${clearVoiceEngine} · audio stays on this device.`:"Update Chrome or Edge for the full engine."}</span></div>
       <div className="clearvoice-modes" aria-label="ClearVoice suppression level">{(["natural","balanced","focus"] as ClearVoiceMode[]).map(mode=><button key={mode} className={clearVoiceMode===mode?"active":""} disabled={!clearVoiceEnabled} onClick={()=>void updateClearVoice(true,mode)} title={clearVoiceEngineInfo(mode).description}><b>{clearVoiceModeLabels[mode]}</b><small>{clearVoiceEngineInfo(mode).label}</small></button>)}</div>
       <div className="clearvoice-meter"><div><span>VOICE</span><i className={clearVoiceMetrics.voiceDetected?"speaking":""}/></div><div><span>LIVE REDUCTION</span><b>{listening==="clearvoice"?`${clearVoiceMetrics.reduction}%`:listening?"BYPASS":"READY"}</b></div></div>
-      <div className={`clearvoice-live-monitor ${listening?"active":""}`}><div><span>{listening?"LIVE SIDETONE":"MIC MONITOR"}</span><b>{listening?listening==="clearvoice"?`ClearVoice ${clearVoiceModeLabels[clearVoiceMode]}`:"Native microphone":"Hear your microphone live"}</b><small>{listening?"You are hearing the mic continuously through the selected Speaker output.":"Use headphones for the cleanest, feedback-free monitoring. Nothing is recorded or saved."}</small></div><button type="button" className={listening?"stop":""} onClick={()=>void toggleLiveMonitor()}>{listening?"■ Stop live monitor":"▶ Start live monitor"}</button></div>
+      <div className={`clearvoice-live-monitor ${listening?"active":""}`}><div><span>LIVE MONITOR</span><b>{listening?listening==="clearvoice"?`ClearVoice ${clearVoiceModeLabels[clearVoiceMode]}`:"Microphone live":"Hear yourself live"}</b><small>{listening?"Live through your selected output.":"Headphones recommended. Nothing is recorded."}</small></div><button type="button" className={listening?"stop":""} onClick={()=>void toggleLiveMonitor()}>{listening?"■ Stop live monitor":"▶ Start live monitor"}</button></div>
       <audio ref={monitorAudioRef} className="live-microphone-output" autoPlay playsInline aria-label="Live microphone monitor"/>
     </section>
 
@@ -220,6 +232,6 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       <div className="volume-row"><small>Ring volume</small><input aria-label="Ring test volume" type="range" min="0" max="100" value={ringVolume} onChange={event=>{const value=Number(event.target.value);setRingVolume(value);saveAudioPreferences({ringVolume:value})}}/><em>{ringVolume}%</em><button onClick={()=>void testOutput("ring")}>Test</button></div>
       <label className="check-row"><input type="checkbox" checked={beep} onChange={event=>{setBeep(event.target.checked);saveAudioPreferences({beep:event.target.checked})}}/> Beep when auto-answering</label>
     </div>
-    <footer>Live Monitor is continuous sidetone only. Pacifica does not record or save the monitor audio.</footer>
+
   </section>;
 }

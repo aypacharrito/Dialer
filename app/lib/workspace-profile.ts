@@ -1,5 +1,9 @@
+// PACIFICA_VERTICAL_PLATFORM_V1
 export type WorkspaceMode="sales"|"insurance";
+export type WorkspaceIndustry="general"|"insurance"|"automotive"|"home-services"|"legal"|"real-estate"|"financial-services"|"health-beauty"|"custom";
+export type OutreachTone="professional-friendly"|"casual"|"concise"|"consultative"|"luxury";
 export type WorkspaceAppearance="light"|"dark";
+const workspaceIndustries=new Set<WorkspaceIndustry>(["general","insurance","automotive","home-services","legal","real-estate","financial-services","health-beauty","custom"]);
 export type WorkspaceDisplaySize="comfortable"|"large"|"extra-large";
 export type CommunicationTemplate={id:string;name:string;channel:"sms"|"email";subject:string;body:string;updatedAt:string};
 export type AutomationChannel="sms"|"email"|"task";
@@ -26,6 +30,16 @@ export const defaultAutomationSequences:AutomationSequence[]=[
 
 export type WorkspaceProfile={
   mode:WorkspaceMode;
+  industry:WorkspaceIndustry;
+  businessDescription:string;
+  productsServices:string[];
+  idealCustomer:string;
+  valueProposition:string;
+  salesObjective:string;
+  outreachTone:OutreachTone;
+  customAiInstructions:string;
+  aiPersonalizationEnabled:boolean;
+  maxAutomatedTouchesPerLeadPerDay:number;
   appearance:WorkspaceAppearance;
   displaySize:WorkspaceDisplaySize;
   quietDialing:boolean;
@@ -56,6 +70,16 @@ export type WorkspaceProfile={
 
 export const defaultWorkspaceProfile:WorkspaceProfile={
   mode:"sales",
+  industry:"general",
+  businessDescription:"",
+  productsServices:[],
+  idealCustomer:"",
+  valueProposition:"",
+  salesObjective:"",
+  outreachTone:"professional-friendly",
+  customAiInstructions:"",
+  aiPersonalizationEnabled:true,
+  maxAutomatedTouchesPerLeadPerDay:1,
   appearance:"light",
   displaySize:"large",
   quietDialing:true,
@@ -114,6 +138,16 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   const rawDialerRuns=profile.dialerRuns&&typeof profile.dialerRuns==="object"?profile.dialerRuns as Partial<Record<"life"|"home-auto",DialerRunState>>:{};
   return {
     mode:profile.mode==="insurance"?"insurance":"sales",
+    industry:workspaceIndustries.has(profile.industry as WorkspaceIndustry)?profile.industry as WorkspaceIndustry:profile.mode==="insurance"?"insurance":"general",
+    businessDescription:String(profile.businessDescription||"").trim().slice(0,1200),
+    productsServices:Array.isArray(profile.productsServices)?Array.from(new Set(profile.productsServices.map(value=>String(value).trim().slice(0,120)).filter(Boolean))).slice(0,30):[],
+    idealCustomer:String(profile.idealCustomer||"").trim().slice(0,800),
+    valueProposition:String(profile.valueProposition||"").trim().slice(0,800),
+    salesObjective:String(profile.salesObjective||"").trim().slice(0,1200),
+    outreachTone:profile.outreachTone==="casual"||profile.outreachTone==="concise"||profile.outreachTone==="consultative"||profile.outreachTone==="luxury"?profile.outreachTone:"professional-friendly",
+    customAiInstructions:String(profile.customAiInstructions||"").trim().slice(0,2000),
+    aiPersonalizationEnabled:profile.aiPersonalizationEnabled!==false,
+    maxAutomatedTouchesPerLeadPerDay:Math.min(3,Math.max(1,Math.round(Number(profile.maxAutomatedTouchesPerLeadPerDay)||1))),
     appearance:profile.appearance==="dark"?"dark":"light",
     displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
     quietDialing:profile.quietDialing!==false,

@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, session, shell, screen } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell, screen, nativeTheme } from "electron";
+import electronUpdater from "electron-updater";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +9,8 @@ const appOrigin=new URL(appUrl).origin;
 let mainWindow=null;
 let overlayWindow=null;
 let lastCallState={active:false};
+const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
+let updateTimer=null;
 
 function host(url){
   try{return new URL(url).hostname.toLowerCase()}catch{return ""}
@@ -58,7 +61,7 @@ body[data-theme="dark"] .actions button,body[data-theme="dark"] .keypad button{b
 <div class="actions"><button id="mute">Mute</button><button class="primary" data-action="open">Open CRM</button></div>
 <div class="keypad" id="keypad"></div>
 <div class="actions"><button id="pause" data-action="pause">Pause queue</button><button class="danger" data-action="end">End call</button></div>
-<div class="footer"><span>Always on top</span><span>No hold button · keypad sends DTMF</span></div>
+<div class="footer"><span>Always on top</span><span>Keypad</span></div>
 </div></div>
 <script>
 const api=window.pacificaOverlay;
@@ -86,7 +89,7 @@ function positionOverlay(){
   if(!overlayWindow)return;
   const display=mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
   const area=display.workArea;
-  const [width,height]=overlayWindow.getSize();
+  const [width]=overlayWindow.getSize();
   overlayWindow.setPosition(area.x+area.width-width-18,area.y+18,false);
 }
 
@@ -111,34 +114,49 @@ function createWindow(){
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
     backgroundColor:"#f7f8fa",title:"Pacifica",
     autoHideMenuBar:true,
+    titleBarStyle:"hidden",
+    titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#111614":"#f7f8fa",symbolColor:nativeTheme.shouldUseDarkColors?"#f4f7f5":"#17211d",height:36},
     webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true}
   });
   mainWindow.once("ready-to-show",()=>mainWindow?.show());
   mainWindow.webContents.setWindowOpenHandler(({url})=>{
     if(isTrustedNavigation(url))return {action:"allow"};
-    void shell.openExternal(url);return {action:"deny"};
+    if(/^https?:\/\//i.test(url))void shell.openExternal(url);return {action:"deny"};
   });
-  mainWindow.webContents.on("will-navigate",(event,url)=>{if(!isTrustedNavigation(url)){event.preventDefault();void shell.openExternal(url)}});
+  mainWindow.webContents.on("will-navigate",(event,url)=>{if(!isTrustedNavigation(url)){event.preventDefault();if(/^https?:\/\//i.test(url))void shell.openExternal(url)}});
   void mainWindow.loadURL(appUrl);
   mainWindow.on("closed",()=>{overlayWindow?.close();overlayWindow=null;mainWindow=null});
 }
 
+function startDesktopUpdater(){
+  if(!app.isPackaged||process.platform!=="win32")return;
+  autoUpdater.autoDownload=true;
+  autoUpdater.autoInstallOnAppQuit=true;
+  autoUpdater.allowPrerelease=false;
+  autoUpdater.on("error",error=>console.warn("[Pacifica updater]",error?.message||error));
+  const check=()=>void autoUpdater.checkForUpdatesAndNotify().catch(error=>console.warn("[Pacifica updater check]",error?.message||error));
+  check();
+  updateTimer=setInterval(check,4*60*60*1000);
+}
+
 app.whenReady().then(()=>{
   session.defaultSession.setPermissionRequestHandler((webContents,permission,callback,details)=>{
-    const trusted=isTrustedNavigation(details.requestingUrl||webContents.getURL());
+    const trusted=isAppUrl(details.requestingUrl||webContents.getURL());
     callback(Boolean(trusted&&["media","notifications","clipboard-sanitized-write"].includes(permission)));
   });
   createWindow();
+  setTimeout(startDesktopUpdater,6000);
   app.on("activate",()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()});
 });
-app.on("window-all-closed",()=>{if(process.platform!=="darwin")app.quit()});
+app.on("window-all-closed",()=>{if(updateTimer){clearInterval(updateTimer);updateTimer=null}if(process.platform!=="darwin")app.quit()});
 
 ipcMain.on("pacifica:call-state",(event,state)=>{
-  if(!mainWindow||event.sender!==mainWindow.webContents||!state||typeof state!=="object")return;
+  if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||"")||!state||typeof state!=="object")return;
   lastCallState={...state,active:Boolean(state.active)};
   if(!lastCallState.active){overlayWindow?.hide();return}
   const overlay=createOverlay();
-  positionOverlay();
+  if(!overlay.isVisible())positionOverlay();
+  mainWindow.setTitleBarOverlay({color:state.theme==="dark"?"#111614":"#f7f8fa",symbolColor:state.theme==="dark"?"#f4f7f5":"#17211d"});
   overlay.webContents.send("pacifica:call-state",lastCallState);
   overlay.showInactive();
 });
@@ -149,6 +167,15 @@ ipcMain.on("pacifica:call-action",(event,action)=>{
   mainWindow?.webContents.send("pacifica:call-action",action);
 });
 
-ipcMain.handle("pacifica:enter-call-overlay",()=>{if(!lastCallState.active)return false;const overlay=createOverlay();positionOverlay();overlay.showInactive();return true});
-ipcMain.handle("pacifica:exit-call-overlay",()=>{overlayWindow?.hide();return true});
-ipcMain.handle("pacifica:show-main-window",()=>{mainWindow?.show();mainWindow?.focus();return true});
+function trustedMain(event){return mainWindow&&event.sender===mainWindow.webContents&&isAppUrl(event.senderFrame?.url||"")}
+
+ipcMain.handle("pacifica:enter-call-overlay",(event)=>{if(!trustedMain(event)||!lastCallState.active)return false;const overlay=createOverlay();positionOverlay();overlay.showInactive();return true});
+ipcMain.handle("pacifica:exit-call-overlay",(event)=>{if(!trustedMain(event))return false;overlayWindow?.hide();return true});
+ipcMain.handle("pacifica:show-main-window",(event)=>{if(!trustedMain(event))return false;mainWindow?.show();mainWindow?.focus();return true});
+
+ipcMain.on("pacifica:theme",(event,theme)=>{
+  if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||""))return;
+  mainWindow.setTitleBarOverlay({color:theme==="dark"?"#111614":"#f7f8fa",symbolColor:theme==="dark"?"#f4f7f5":"#17211d"});
+  lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
+  overlayWindow?.webContents.send("pacifica:call-state",lastCallState);
+});

@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "desktop/**"
+      - ".github/workflows/pacifica-desktop-release.yml"
   workflow_dispatch:
 
 permissions:
@@ -24,19 +27,27 @@ jobs:
 
       - name: Install desktop dependencies
         working-directory: desktop
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+
+      - name: Set release version
+        working-directory: desktop
+        shell: pwsh
+        run: npm version "0.2.${{ github.run_number }}" --no-git-tag-version
 
       - name: Build Pacifica Windows installer
         working-directory: desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npm run dist:win
+        run: npm run dist:win -- --publish never
 
       - name: Save installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: Pacifica-Windows-Installer
-          path: desktop/dist/*.exe
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/latest*.yml
+            desktop/dist/*.blockmap
           if-no-files-found: error
 
       - name: Publish Pacifica Desktop release
@@ -45,4 +56,7 @@ jobs:
           tag_name: pacifica-desktop-${{ github.run_number }}
           name: Pacifica Desktop ${{ github.run_number }}
           make_latest: true
-          files: desktop/dist/*.exe
+          files: |
+            desktop/dist/*.exe
+            desktop/dist/latest*.yml
+            desktop/dist/*.blockmap

@@ -15,7 +15,7 @@ import { attachQuietCallAudio } from "./lib/quiet-call-audio";
 import { hasLeadDetail, supplementalLeadDetails } from "./lib/lead-presentation";
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
-import AiCommandCenter, { type AiAction } from "./components/AiCommandCenter";
+import AiCommandCenter, { type AiAction, type AiCreateLead } from "./components/AiCommandCenter";
 import MessagesCenter from "./components/MessagesCenter";
 import TodayWorkspace from "./components/TodayWorkspace";
 import LeadGrowthPanel from "./components/LeadGrowthPanel";
@@ -43,7 +43,7 @@ import { createCallStartGate, dialDigits, findDialedContact } from "./lib/call-s
 import { readAudioPreferences } from "./audio-preferences";
 import { PacificaClearVoiceProcessor, supportsClearVoice, warmClearVoice } from "./clearvoice";
 import { playDialTone } from "./lib/dtmf-tone";
-import {documentLeadImportedFields,documentLeadName,type DocumentLeadExtraction} from "./lib/document-lead";
+import {documentLeadCompletenessScore,documentLeadImportedFields,documentLeadName,type DocumentLeadExtraction} from "./lib/document-lead";
 import {scanDocumentLocally} from "./lib/local-document-scanner";
 
 type LeadLine = "life" | "home-auto";
@@ -70,6 +70,52 @@ function queueLabel(line:LeadLine,mode:WorkspaceMode){
 }
 function followUpInDays(days:number){const date=new Date();date.setDate(date.getDate()+days);date.setHours(9,0,0,0);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}T${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}`}
 function isDocumentFile(file:File){return ["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type)||/\.(jpe?g|png|webp|pdf)$/i.test(file.name)}
+
+// PACIFICA_HYBRID_AI_DOCUMENT_SCAN_V1
+const documentScalarFields=["documentType","firstName","middleName","lastName","fullName","dateOfBirth","address","city","state","zip","licenseNumber","licenseState","licenseExpiration","policyNumber","carrier","policyEffectiveDate","policyExpirationDate","vin","vehicleYear","vehicleMake","vehicleModel","email","phone","product","policyPremium","policyTermMonths","billingFrequency","installmentAmount"] as const;
+
+function cleanDocumentValue(value:unknown){return String(value??"").trim()}
+
+function mergeDocumentExtractions(local:DocumentLeadExtraction,ai:DocumentLeadExtraction,localMethod:string){
+  const localPreferred=localMethod==="PDF417 barcode";
+  const primary=localPreferred?local:ai;
+  const secondary=localPreferred?ai:local;
+  const merged={...secondary,...primary} as DocumentLeadExtraction;
+  const target=merged as unknown as Record<string,unknown>;
+  const first=primary as unknown as Record<string,unknown>;
+  const second=secondary as unknown as Record<string,unknown>;
+  for(const key of documentScalarFields){target[key]=cleanDocumentValue(first[key])||cleanDocumentValue(second[key])}
+  const extras=new Map<string,{label:string;value:string}>();
+  for(const item of [...(primary.otherFields||[]),...(secondary.otherFields||[])]){
+    const label=cleanDocumentValue(item?.label);const value=cleanDocumentValue(item?.value);if(!label||!value)continue;
+    const identity=label.toLowerCase().replace(/\s+/g," ");if(!extras.has(identity))extras.set(identity,{label,value});
+  }
+  merged.otherFields=Array.from(extras.values()).slice(0,80);
+  return merged;
+}
+
+async function documentImageForAi(file:File){
+  const bitmap=await createImageBitmap(file);
+  try{
+    const largest=Math.max(bitmap.width,bitmap.height);const scale=Math.min(1,2000/largest);
+    const width=Math.max(1,Math.round(bitmap.width*scale));const height=Math.max(1,Math.round(bitmap.height*scale));
+    const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+    const context=canvas.getContext("2d");if(!context)throw new Error("AI image preparation failed");
+    context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";context.drawImage(bitmap,0,0,width,height);
+    let quality=.9;let image=canvas.toDataURL("image/jpeg",quality);
+    while(image.length>2_450_000&&quality>.55){quality-=.08;image=canvas.toDataURL("image/jpeg",quality)}
+    if(image.length>2_550_000)throw new Error("The photo is too detailed to send safely. Crop closer to the document and retry.");
+    return image;
+  }finally{bitmap.close()}
+}
+
+async function scanDocumentWithAi(file:File){
+  const image=await documentImageForAi(file);
+  const response=await fetch("/api/ai/document-lead",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({image,fileName:file.name})});
+  const data=await response.json() as {extraction?:DocumentLeadExtraction;error?:string;detail?:string};
+  if(!response.ok||!data.extraction)throw new Error(data.error||data.detail||"AI vision could not read this document");
+  return data.extraction;
+}
 
 function normalizeSavedLeads(value:unknown):Lead[]{
   if(!Array.isArray(value))return [];
@@ -283,7 +329,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         device.on("error",error=>{const code="code" in error?` ${String(error.code)}`:"";setPhoneStatus(`Twilio${code}: ${error.message}`);setToast(`Twilio${code}: ${error.message}`)});
         device.on("registered",()=>{setPhoneAvailable(true);setPhoneStatus("Secure line available")});
         device.on("unregistered",()=>{setPhoneAvailable(false);setPhoneStatus("Inbound calls paused · outbound still ready")});
-        device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
+        device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";/* PACIFICA_NATIVE_INCOMING_FOCUS_V1 */const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;showMainWindow?:()=>Promise<boolean>}}).pacificaDesktop;if(desktop?.isDesktop)void desktop.showMainWindow?.();setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
         device.audio?.outgoing(false);
         device.audio?.disconnect(false);
         device.audio?.on("deviceChange",()=>setPhoneStatus("Audio device changed — run the phone test"));
@@ -296,8 +342,18 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     finally{if(deviceInitPromiseRef.current===initialization)deviceInitPromiseRef.current=null}
   },[configureClearVoice,fetchToken]);
   const refreshPhoneStatus=useCallback(async()=>{
-    try{const response=await fetch("/api/twilio/status",{cache:"no-store"});const data=await response.json();setPhoneReady(Boolean(data.configured));if(data.phoneNumber)setCallerId(String(data.phoneNumber));setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:data.phoneNumber==="No number assigned"?"Assign this workspace a number in Phone Number Center":"Secure API key still needed");if(data.configured&&!deviceRef.current)void ensureDevice().then(()=>setPhoneStatus(`${data.phoneNumber} ready · one-click dialing enabled`)).catch(error=>setPhoneStatus(error instanceof Error?error.message:"Phone setup needs attention"))}
-    catch{setPhoneStatus("Unable to check Twilio setup")}
+    try{
+      const response=await fetch("/api/twilio/status",{cache:"no-store"});const data=await response.json();
+      setPhoneReady(Boolean(data.configured));if(data.phoneNumber)setCallerId(String(data.phoneNumber));
+      setPhoneStatus(data.configured?`${data.phoneNumber} ready over Wi-Fi`:data.phoneNumber==="No number assigned"?"Assign this workspace a number in Phone Number Center":"Secure API key still needed");
+      if(data.configured&&!deviceRef.current)void ensureDevice().then(async device=>{
+        const nativeDesktop=Boolean((window as unknown as {pacificaDesktop?:{isDesktop?:boolean}}).pacificaDesktop?.isDesktop);
+        if(nativeDesktop){
+          try{await device.register();setPhoneAvailable(true);setPhoneStatus(`${data.phoneNumber} ready · incoming calls on`)}
+          catch(error){setPhoneAvailable(false);setPhoneStatus(error instanceof Error?error.message:"Incoming-call registration needs attention")}
+        }else setPhoneStatus(`${data.phoneNumber} ready · one-click dialing enabled`);
+      }).catch(error=>setPhoneStatus(error instanceof Error?error.message:"Phone setup needs attention"));
+    }catch{setPhoneStatus("Unable to check Twilio setup")}
   },[ensureDevice]);
   useEffect(()=>{const timer=window.setTimeout(()=>void refreshPhoneStatus(),0);return()=>{window.clearTimeout(timer);if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy();deviceRef.current=null;deviceInitPromiseRef.current=null;clearVoiceProcessorRef.current=null}},[refreshPhoneStatus]);
   function finalizeLog(outcome:string,status:string,errorCode?:string){
@@ -508,8 +564,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     void placeCall(dialNumber,true);
   }
   async function togglePhoneAvailability(){
-    try{const device=await ensureDevice();if(phoneAvailable){await device.unregister();return}await device.register()}
-    catch(error){const message=error instanceof Error?error.message:"Unable to start inbound calling";setPhoneStatus(message);setToast(message)}
+    try{
+      const device=await ensureDevice();
+      if(phoneAvailable){setPhoneStatus("Pausing incoming calls…");await device.unregister();setPhoneAvailable(false);setPhoneStatus("Inbound calls paused · outbound still ready");return}
+      setPhoneStatus("Going available for incoming calls…");await device.register();setPhoneAvailable(true);setPhoneStatus("Secure line available · incoming calls on");
+    }catch(error){const message=error instanceof Error?error.message:"Unable to start inbound calling";setPhoneAvailable(false);setPhoneStatus(message);setToast(message)}
   }
   function rejectIncoming(){incomingCall?.reject();setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Incoming call declined")}
   function acceptIncoming(){
@@ -713,6 +772,23 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     reader.readAsText(file);
   }
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
+  // PACIFICA_NATIVE_CALL_OVERLAY_V2
+  useEffect(()=>{
+    const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;setCallState?:(state:Record<string,unknown>)=>void}}).pacificaDesktop;
+    if(!desktop?.isDesktop||!desktop.setCallState)return;
+    desktop.setCallState({active:dialing,name:manualCall?"Manual call":lead.name,number:manualCall?dialNumber:lead.phone,connected,muted,elapsed:fmt,queueRunning:autoDialing,theme:document.documentElement.dataset.theme==="dark"?"dark":"light"});
+  },[dialing,manualCall,lead.name,lead.phone,dialNumber,connected,muted,fmt,autoDialing]);
+  useEffect(()=>{
+    const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;onCallAction?:(callback:(action:string)=>void)=>(()=>void);showMainWindow?:()=>Promise<boolean>}}).pacificaDesktop;
+    if(!desktop?.isDesktop||!desktop.onCallAction)return;
+    return desktop.onCallAction(action=>{
+      if(action==="mute"){toggleMute();return}
+      if(action==="end"){hangup();return}
+      if(action==="pause"){pauseQueue();return}
+      if(action==="open"){setView("dialer");void desktop.showMainWindow?.();return}
+      if(action.startsWith("digit:")){const digit=action.slice(6);if(/^[0-9*#]$/.test(digit))pressKey(digit)}
+    });
+  });
   const nav:[View,string,string][]=[["today","Today","spark"],["dialer","Dialer","dial"],["leads","Contacts","users"],["messages","Messages","chat"],["campaigns","Pipeline","list"],["clients","Clients","shield"],["activity","Reports","chart"],["ai","Pacifica AI","spark"],["quotes","Industry Tools","shield"],["billing","Plans & Billing","list"]];
   const activeLead=leads.find(l=>l.id===selectedLead);
   const growthLead=leads.find(l=>l.id===growthLeadId);
@@ -744,8 +820,30 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   async function scanDocument(file?:File){
     if(!file)return;if(!isDocumentFile(file)){setToast("Use a JPEG, PNG, WebP, or PDF document");return}if(file.size>20*1024*1024){setToast("Use a document smaller than 20 MB");return}
     setScanBusy(true);setToast("Reading document…");
-    try{const result=await scanDocumentLocally(file,label=>setToast(label));const extraction:DocumentLeadExtraction=result.extraction;setNewLead({...emptyNewLead,name:documentLeadName(extraction),phone:extraction.phone,email:extraction.email,city:extraction.city,address:extraction.address,state:extraction.state,zip:extraction.zip,product:extraction.product||(/insurance|policy/i.test(extraction.documentType)?"Insurance quote":"Service inquiry"),source:/declaration|policy/i.test(extraction.documentType)?"Policy declaration":"Document scan",dateOfBirth:extraction.dateOfBirth,licenseNumber:extraction.licenseNumber,licenseState:extraction.licenseState,licenseExpiration:extraction.licenseExpiration,policyNumber:extraction.policyNumber,policyEffectiveDate:extraction.policyEffectiveDate,policyExpirationDate:extraction.policyExpirationDate,policyPremium:extraction.policyPremium,policyTermMonths:extraction.policyTermMonths,vin:extraction.vin,vehicle:[extraction.vehicleYear,extraction.vehicleMake,extraction.vehicleModel].filter(Boolean).join(" "),documentType:extraction.documentType,documentFields:documentLeadImportedFields(extraction)});setShowNewLead(true);setToast(`${result.method} complete · verify every field`)}
-    catch(error){setToast(error instanceof Error?error.message:"Document scan failed")}finally{setScanBusy(false)}
+    try{
+      const isPdf=file.type==="application/pdf"||/\.pdf$/i.test(file.name);
+      let localResult:Awaited<ReturnType<typeof scanDocumentLocally>>|null=null;let aiExtraction:DocumentLeadExtraction|null=null;let localError="";let aiError="";
+      if(isPdf){
+        localResult=await scanDocumentLocally(file,label=>setToast(label));
+      }else{
+        const [localAttempt,aiAttempt]=await Promise.allSettled([
+          scanDocumentLocally(file,label=>setToast(label)),
+          (async()=>{setToast("AI Enhanced Scan · reading photo…");return scanDocumentWithAi(file)})(),
+        ]);
+        if(localAttempt.status==="fulfilled")localResult=localAttempt.value;else localError=localAttempt.reason instanceof Error?localAttempt.reason.message:"Local scan failed";
+        if(aiAttempt.status==="fulfilled")aiExtraction=aiAttempt.value;else aiError=aiAttempt.reason instanceof Error?aiAttempt.reason.message:"AI vision failed";
+      }
+      if(!localResult&&!aiExtraction)throw new Error(aiError||localError||"The document could not be read. Try a brighter, straighter photo.");
+      let extraction:DocumentLeadExtraction;let method:string;
+      if(localResult&&aiExtraction){
+        extraction=mergeDocumentExtractions(localResult.extraction,aiExtraction,localResult.method);
+        const localScore=documentLeadCompletenessScore(localResult.extraction);const aiScore=documentLeadCompletenessScore(aiExtraction);
+        method=localResult.method==="PDF417 barcode"?"AI + PDF417 barcode":`AI + ${localResult.method}`;
+        if(aiScore>localScore&&localResult.method!=="PDF417 barcode")method="AI Enhanced Scan + local verification";
+      }else if(aiExtraction){extraction=aiExtraction;method="AI Enhanced Scan"}
+      else{extraction=localResult!.extraction;method=localResult!.method}
+      setNewLead({...emptyNewLead,name:documentLeadName(extraction),phone:extraction.phone,email:extraction.email,city:extraction.city,address:extraction.address,state:extraction.state,zip:extraction.zip,product:extraction.product||(/insurance|policy/i.test(extraction.documentType)?"Insurance quote":"Service inquiry"),source:/declaration|policy/i.test(extraction.documentType)?"Policy declaration":"Document scan",dateOfBirth:extraction.dateOfBirth,licenseNumber:extraction.licenseNumber,licenseState:extraction.licenseState,licenseExpiration:extraction.licenseExpiration,policyNumber:extraction.policyNumber,policyEffectiveDate:extraction.policyEffectiveDate,policyExpirationDate:extraction.policyExpirationDate,policyPremium:extraction.policyPremium,policyTermMonths:extraction.policyTermMonths,vin:extraction.vin,vehicle:[extraction.vehicleYear,extraction.vehicleMake,extraction.vehicleModel].filter(Boolean).join(" "),documentType:extraction.documentType,documentFields:documentLeadImportedFields(extraction)});setShowNewLead(true);setToast(`${method} complete · verify every field`);
+    }catch(error){setToast(error instanceof Error?error.message:"Document scan failed")}finally{setScanBusy(false)}
   }
   function handleDroppedFile(file?:File){if(!file)return;if(isDocumentFile(file)){void scanDocument(file);return}if(/\.(csv|tsv|txt)$/i.test(file.name)||["text/csv","text/tab-separated-values","text/plain"].includes(file.type)){importFile(file);return}setToast("Drop a license photo, declaration PDF, CSV, TSV, or TXT file")}
   function openDocumentPicker(){const picker=document.createElement("input");picker.type="file";picker.accept="image/jpeg,image/png,image/webp,application/pdf,.pdf";picker.onchange=()=>void scanDocument(picker.files?.[0]);picker.click()}
@@ -755,6 +853,23 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function onFileDragLeave(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();fileDragDepthRef.current=Math.max(0,fileDragDepthRef.current-1);if(!fileDragDepthRef.current)setFileDragActive(false)}
   function onFileDrop(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();fileDragDepthRef.current=0;setFileDragActive(false);handleDroppedFile(event.dataTransfer.files?.[0])}
   function addManualCallContact(){setNewLead({...emptyNewLead,phone:dialNumber,source:"Manual phone call"});setShowNewLead(true)}
+  // PACIFICA_AI_IMAGE_TO_CONTACT_V1
+  function createAiLead(input:AiCreateLead){
+    const phone=input.phone.trim();const email=input.email.trim();const name=input.name.trim()||phone||email||"AI image lead";const now=new Date().toISOString();const line:LeadLine=input.line==="home-auto"?"home-auto":"life";
+    const fields=Object.fromEntries((input.otherFields||[]).filter(item=>item.label&&item.value).map(item=>[item.label,item.value]));
+    const existing=leadsRef.current.find(item=>(normalizedCsvPhone(phone)&&normalizedCsvPhone(item.phone)===normalizedCsvPhone(phone))||(email&&normalizedCsvEmail(item.email)===normalizedCsvEmail(email)));
+    if(existing){
+      const notes=[existing.notes,input.notes].filter(Boolean).filter((value,index,list)=>list.indexOf(value)===index).join("\n");
+      const patch:Partial<Lead>={
+        ...(input.name.trim()?{name:input.name.trim()}:{}),...(phone?{phone}:{}),...(email?{email}:{}),...(input.city.trim()?{city:input.city.trim()}:{}),...(input.state.trim()?{state:input.state.trim()}:{}),
+        ...(input.product.trim()?{product:input.product.trim()}:{}),line,queueOverride:true,source:input.source.trim()||existing.source,notes,importedFields:{...(existing.importedFields||{}),...fields},
+        ...(existing.deletedAt?{deletedAt:"",deletionUpdatedAt:now}:{}),
+      };
+      setLeads(list=>list.map(item=>item.id===existing.id?{...item,...patch}:item));setSelectedLead(existing.id);activeLineRef.current=line;setActiveLine(line);setIndex(0);setView("leads");setToast(`${existing.name} enriched from Pacifica AI image · duplicate avoided`);return;
+    }
+    const item:Lead={id:Date.now(),name,phone,email,city:input.city.trim()||"Imported",state:input.state.trim(),status:"Ready",stage:"New lead",outcome:"Not contacted",notes:input.notes.trim(),followUp:"",doNotCall:false,lastContact:"Never",line,queueOverride:true,source:input.source.trim()||"Pacifica AI image",leadCost:0,product:input.product.trim()||"Service inquiry",sourceDisposition:"New",importedAt:now,received:now,smsConsent:false,smsOptOut:false,emailConsent:false,emailOptOut:false,communications:[],automationEnabled:true,importedFields:fields};
+    setLeads(list=>[item,...list]);setSelectedLead(item.id);activeLineRef.current=line;setActiveLine(line);setIndex(0);setView("leads");setToast(`${name} added to ${queueLabel(line,workspaceProfile.mode)} from Pacifica AI`);
+  }
   function applyAiAction(action:AiAction){
     const current=leads.find(item=>item.id===action.leadId);if(!current)return;
     const patch:Partial<Lead>={};
@@ -890,7 +1005,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
 
       {view==="messages"&&<div className="page-view messages-view"><MessagesCenter key={`${workspaceId}:${activeLine}:${messageTarget?.leadId||"inbox"}:${messageTarget?.channel||"sms"}`} workspaceId={workspaceId} profile={workspaceProfile} leads={lineLeads} initialLeadId={messageTarget?.leadId} initialChannel={messageTarget?.channel} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile}/></div>}
 
-      {view==="ai"&&<AiCommandCenter leads={lineLeads} recentCalls={callLogs} onApply={applyAiAction} onOpen={id=>setSelectedLead(id)} onCall={callLeadById}/>}
+      {view==="ai"&&<AiCommandCenter leads={lineLeads} recentCalls={callLogs} onApply={applyAiAction} onCreateLead={createAiLead} onOpen={id=>setSelectedLead(id)} onCall={callLeadById}/>}
 
       {view==="campaigns"&&<div className="page-view"><header className="module-bar"><span className="eyebrow">{queueLabel(activeLine,workspaceProfile.mode).toUpperCase()} PIPELINE</span><div className="module-actions"><div className="pipeline-scope" role="group" aria-label="Pipeline view"><button type="button" aria-pressed={pipelineScope==="open"} onClick={()=>setPipelineScope("open")}>Open</button><button type="button" aria-pressed={pipelineScope==="closed"} onClick={()=>setPipelineScope("closed")}>Closed</button></div><button className="primary" onClick={openNewLead}>+ Add lead</button></div></header>{isOwner&&<AutomationStudio profile={workspaceProfile} onChange={setWorkspaceProfile} dueFollowUps={dueFollowUps} onOpenFollowUp={setSelectedLead}/>}<div className={`pipeline pipeline-${pipelineScope}`}>{(pipelineScope==="closed"?["Closed"]:["New lead","Follow-up","Appointment","Quoted"]).map(stage=><section className="pipeline-col" key={stage} onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault();const id=Number(event.dataTransfer.getData("text"));if(id)updateLead(id,{stage,status:stage==="Closed"?"Closed":"Ready"})}}><header><b>{stage}</b><span>{lineLeads.filter(l=>l.stage===stage).length}</span></header>{rankLeads(lineLeads.filter(l=>l.stage===stage),priorityNow).map(l=>{const priority=leadPriority(l,priorityNow);return <button className="pipeline-card" key={l.id} draggable onDragStart={event=>event.dataTransfer.setData("text",String(l.id))} onClick={()=>setSelectedLead(l.id)}><div><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><b>{l.name}</b><small>{l.assignedTo||l.city}</small></span><em className={`priority-pill ${priority.level.toLowerCase()}`}>{priority.level}</em></div><p>{l.notes||priority.reason}</p><footer><span>{l.outcome}</span><em>{l.followUp||l.automationNextAt||"No follow-up"}</em></footer></button>})}</section>)}</div></div>}
 

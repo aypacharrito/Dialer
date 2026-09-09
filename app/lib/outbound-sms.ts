@@ -1,3 +1,4 @@
+import {logEvent} from "./observability";
 import {smsReadiness} from "./sms-readiness";
 import {phoneAssignmentForWorkspace} from "./phone-assignments";
 import {twilioAccountConfig,twilioApiErrorMessage,twilioApiRequest,type TwilioApiError} from "./twilio-rest";
@@ -15,19 +16,22 @@ export async function outboundSmsStatus(workspaceId:string,email=""){
   const assignment=await phoneAssignmentForWorkspace(workspaceId,email);
   let credentialError="";
   try{twilioAccountConfig()}catch(error){credentialError=error instanceof Error?error.message:"Twilio credentials are incomplete"}
-  return smsReadiness(assignment,process.env.TWILIO_A2P_APPROVED==="true",credentialError);
+  const sendingEnabled=process.env.PACIFICA_SMS_SENDING_ENABLED!=="false";
+  return smsReadiness(assignment,sendingEnabled,credentialError);
 }
 
 export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string}){
+  const requestedAt=Date.now();
   const status=await outboundSmsStatus(input.workspaceId,input.workspaceEmail);
   if(!status.configured)throw new Error(status.message);
   const to=normalized(input.to);if(!to)throw new Error("Lead has an invalid phone number");
   const body=input.body.trim().slice(0,1500);if(!body)throw new Error("Write a message first");
   const {accountSid,credentials}=twilioAccountConfig();
   const callbackBase=(process.env.TWILIO_WEBHOOK_BASE_URL||"https://pacificacrm.com").trim().replace(/\/$/,"");
-  const assignment=await phoneAssignmentForWorkspace(input.workspaceId);const form=new URLSearchParams({To:to,From:status.from,Body:body,StatusCallback:`${callbackBase}/api/twilio/messages/status?workspace=${encodeURIComponent(input.workspaceId)}`});
+  const assignment=await phoneAssignmentForWorkspace(input.workspaceId,input.workspaceEmail);const form=new URLSearchParams({To:to,From:status.from,Body:body,StatusCallback:`${callbackBase}/api/twilio/messages/status?workspace=${encodeURIComponent(input.workspaceId)}`});
   if(assignment?.messagingServiceSid)form.set("MessagingServiceSid",assignment.messagingServiceSid);
   const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
   if(!response.ok||!data.sid)throw new Error(twilioApiErrorMessage(data,"Twilio rejected the automated follow-up"));
+  logEvent("sms_provider_accepted",{providerId:data.sid,workspaceId:input.workspaceId,status:data.status||"queued",requestedAt:new Date(requestedAt).toISOString(),elapsedMs:Date.now()-requestedAt});
   return {id:data.sid,provider:"twilio" as const,status:data.status||"queued",from:status.from};
 }
