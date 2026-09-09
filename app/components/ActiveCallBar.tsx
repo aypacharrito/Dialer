@@ -9,6 +9,7 @@ type Props = {
   elapsed: string;
   queueRunning: boolean;
   onOpen: () => void;
+  onKeypad: () => void;
   onMute: () => void;
   onHold: () => void;
   onEnd: () => void;
@@ -28,6 +29,7 @@ export default function ActiveCallBar(props: Props) {
     <div className="active-call-actions">
       <button type="button" onClick={props.onOpen}>Open dialer</button>
       {props.connected && <>
+        <button type="button" onClick={props.onKeypad}>Keypad</button>
         <button type="button" aria-pressed={props.muted} disabled={props.held} onClick={props.onMute}>{props.muted ? "Unmute" : "Mute"}</button>
         <button type="button" aria-pressed={props.held} onClick={props.onHold}>{props.held ? "Resume" : "Hold"}</button>
       </>}

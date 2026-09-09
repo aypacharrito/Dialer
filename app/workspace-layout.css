@@ -198,3 +198,88 @@ html[data-theme] .app-shell .workspace-load-card button { min-height:44px; paddi
 html[data-theme] .app-shell .template-library :is(.template-card,.template-editor) { background:var(--ps-surface) !important; border-color:var(--ps-line) !important; color:var(--ps-text); box-shadow:none !important; }
 html[data-theme] .app-shell .template-library :is(.template-card-main,.template-card-main strong,.template-card-main b) { color:var(--ps-text) !important; background:transparent !important; }
 html[data-theme] .app-shell .template-library :is(small,p) { color:var(--ps-muted) !important; }
+
+/* Calling refinements: controls keep their labels inside their own hit areas. */
+html[data-theme] .app-shell .dialer-toolbar>.dialer-toolbar-actions { align-items:center; gap:12px; }
+html[data-theme] .app-shell .quiet-dialing-toggle { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--ps-muted); font-size:calc(13px * var(--workspace-text-scale)); cursor:pointer; }
+html[data-theme] .app-shell .quiet-dialing-toggle input { width:16px; height:16px; margin:0; accent-color:var(--ps-accent); }
+html[data-theme] .app-shell .conversation-workspace .call-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px !important; }
+html[data-theme] .app-shell .conversation-workspace .call-controls .round {
+  position:relative; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  width:auto !important; min-width:84px; height:auto; min-height:44px;
+  padding:10px 12px !important; border:1px solid var(--ps-line) !important; border-radius:8px !important;
+  background:var(--ps-surface) !important; color:var(--ps-text) !important; box-shadow:none !important;
+}
+html[data-theme] .app-shell .conversation-workspace .call-controls .round small { position:static !important; top:auto !important; font:inherit !important; white-space:nowrap; color:inherit !important; }
+html[data-theme] .app-shell .conversation-workspace .call-controls .round svg { width:18px; height:18px; flex:none; }
+html[data-theme] .app-shell .conversation-workspace .call-controls .round:is(.muted,.held,.recording) { border-color:var(--ps-accent) !important; color:var(--ps-accent) !important; background:var(--ps-accent-soft) !important; }
+html[data-theme] .app-shell .conversation-workspace :is(.start-call,.end-call) { min-height:44px; min-width:128px; padding:10px 18px !important; border-radius:8px !important; box-shadow:none !important; }
+html[data-theme] .app-shell .conversation-workspace .inline-pause { justify-self:center; min-height:40px; margin-top:4px; padding:8px 12px; border:0 !important; border-radius:6px !important; background:transparent !important; color:var(--ps-muted) !important; box-shadow:none !important; }
+html[data-theme] .app-shell .conversation-workspace .call-status-line>em { padding:0; border:0; border-radius:0; background:transparent !important; color:var(--ps-muted); box-shadow:none; font-weight:500; letter-spacing:.02em; }
+html[data-theme] .app-shell .caller-id .idle-badge { min-width:0; padding:0 0 0 8px; background:transparent !important; border:0 !important; border-radius:0; box-shadow:none; font-weight:600; letter-spacing:.025em; }
+html[data-theme] .app-shell .keypad-feedback { min-height:2.7em; margin:12px 0 0; color:var(--ps-muted); font-size:calc(12px * var(--workspace-text-scale)); line-height:1.4; }
+html[data-theme] .app-shell .keypad-feedback.error { color:var(--ps-danger,#b42318); }
+html[data-theme] .app-shell .phone-pad .number-input-shell input:read-only { cursor:text; }
+html[data-theme] .app-shell .top-actions .scan-action { display:inline-flex !important; align-items:center; justify-content:center; flex:0 0 40px; width:40px; min-width:40px; min-height:40px; padding:0 !important; gap:0; }
+html[data-theme] .app-shell .top-actions .scan-action svg { display:block; width:19px; height:19px; margin:0; }
+
+/* One focus indicator around the search field, with quiet supporting surfaces. */
+html[data-theme] .app-shell .message-contact-search { border-radius:6px; background:var(--ps-surface) !important; border:1px solid var(--ps-line); box-shadow:none !important; }
+html[data-theme] .app-shell .message-contact-search:focus-within { outline:2px solid var(--ps-accent); outline-offset:2px; }
+html[data-theme] .app-shell .message-contact-search input:focus,
+html[data-theme] .app-shell .message-contact-search input:focus-visible { outline:none !important; box-shadow:none !important; border:0 !important; }
+html[data-theme] .app-shell .message-thread>footer .composer-permission { padding:8px 0; border:0 !important; border-radius:0; background:transparent !important; color:var(--ps-muted) !important; box-shadow:none !important; }
+html[data-theme] .app-shell .composer-permission b { color:var(--ps-text); }
+html[data-theme] .app-shell .composer-permission input { width:16px; height:16px; flex:none; }
+html[data-theme] .app-shell>.toast { max-width:min(440px,calc(100vw - 32px)); right:16px; bottom:16px; background:var(--ps-surface) !important; color:var(--ps-text) !important; border:1px solid var(--ps-line) !important; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,.12) !important; line-height:1.5; }
+
+/* Selected outcomes use an explicit check; hover does not look like selection. */
+html[data-theme] .app-shell .post-call-outcomes { gap:8px; }
+html[data-theme] .app-shell .post-call-outcomes>button { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; padding:10px 12px; border:1px solid var(--ps-line) !important; border-radius:6px !important; background:var(--ps-surface) !important; color:var(--ps-text) !important; box-shadow:none !important; text-align:left; }
+html[data-theme] .app-shell .post-call-outcomes>button:hover { border-color:var(--ps-muted) !important; }
+html[data-theme] .app-shell .post-call-outcomes>button[aria-pressed="true"] { border-color:var(--ps-accent) !important; color:var(--ps-accent) !important; background:var(--ps-accent-soft) !important; }
+html[data-theme] .app-shell .post-call-context { padding:0 22px; margin:0 0 12px; color:var(--ps-muted); font-size:calc(13px * var(--workspace-text-scale)); }
+html[data-theme] .app-shell .post-call-modal>footer { align-items:flex-end; flex-wrap:wrap; background:var(--ps-surface) !important; gap:16px; }
+html[data-theme] .app-shell .post-call-modal>footer .post-call-secondary-actions { flex-direction:row; align-items:center; flex-wrap:wrap; gap:8px; }
+html[data-theme] .app-shell .post-call-modal>footer>div:last-child { flex:1 1 220px; justify-content:flex-end; }
+html[data-theme] .app-shell .post-call-modal>footer small { flex:1 1 180px; line-height:1.4; color:var(--ps-muted); }
+html[data-theme] .app-shell .post-call-modal>footer button { min-height:44px; border-radius:6px !important; }
+html[data-theme] .app-shell .post-call-again { border:1px solid var(--ps-line); background:var(--ps-surface); color:var(--ps-text); white-space:nowrap; }
+html[data-theme] .app-shell .post-call-pause { border:0 !important; background:transparent !important; color:var(--ps-muted) !important; }
+
+/* Compact automation summary. Editors expand only when they are needed. */
+html[data-theme] .app-shell .automation-studio { border-radius:8px !important; box-shadow:none !important; background:var(--ps-surface) !important; }
+html[data-theme] .app-shell .automation-studio>header { padding:16px 20px; gap:16px; background:var(--ps-surface) !important; }
+html[data-theme] .app-shell .automation-studio>header h2 { margin:4px 0 0; font-size:calc(18px * var(--workspace-text-scale)); }
+html[data-theme] .app-shell .automation-safety-row { padding:12px 20px; flex-wrap:wrap; gap:12px 24px; background:var(--ps-surface) !important; }
+html[data-theme] .app-shell .automation-safety-row p { color:var(--ps-muted); font-weight:400 !important; }
+html[data-theme] .app-shell .automation-sequence-editor>summary { padding:12px 20px; min-height:44px; cursor:pointer; color:var(--ps-text); }
+html[data-theme] .app-shell .automation-sequence-editor>summary>span { margin-left:8px; color:var(--ps-muted); }
+html[data-theme] .app-shell .automation-empty { padding:0 20px 16px; color:var(--ps-muted); }
+html[data-theme] .app-shell .automation-sequences:empty { display:none; }
+html[data-theme] .app-shell .automation-sequences { grid-template-columns:minmax(0,1fr); padding:0 20px 20px; }
+html[data-theme] .app-shell .automation-sequences>article { background:var(--ps-surface) !important; border-radius:6px !important; opacity:1; }
+html[data-theme] .app-shell .pipeline-scope { display:inline-flex; border-bottom:1px solid var(--ps-line); gap:4px; }
+html[data-theme] .app-shell .pipeline-scope button { border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--ps-muted); min-height:40px; padding:8px 14px; cursor:pointer; }
+html[data-theme] .app-shell .pipeline-scope button[aria-pressed="true"] { border-bottom-color:var(--ps-accent); color:var(--ps-text); }
+html[data-theme] .app-shell .pipeline-open { grid-template-columns:repeat(4,minmax(0,1fr)) !important; }
+html[data-theme] .app-shell .pipeline-closed { grid-template-columns:minmax(0,1fr) !important; }
+html[data-theme] .app-shell .pipeline-closed>.pipeline-col { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr)); gap:12px; }
+html[data-theme] .app-shell .pipeline-closed>.pipeline-col>header { grid-column:1 / -1; }
+
+html[data-theme][data-display-size="comfortable"] { --workspace-text-scale:.94; }
+html[data-theme][data-display-size="large"] { --workspace-text-scale:1.07; }
+html[data-theme][data-display-size="extra-large"] { --workspace-text-scale:1.2; }
+html[data-theme] .app-shell .display-size-picker { display:flex; flex-wrap:wrap; gap:0; width:fit-content; max-width:100%; border:1px solid var(--ps-line); border-radius:8px; padding:3px; background:var(--ps-bg); }
+html[data-theme] .app-shell .display-size-picker>button { flex:1 1 auto; min-height:44px; padding:10px 16px; border:0 !important; border-radius:5px !important; background:transparent !important; color:var(--ps-muted) !important; box-shadow:none !important; text-align:center; }
+html[data-theme] .app-shell .display-size-picker>button.active { background:var(--ps-surface) !important; color:var(--ps-text) !important; box-shadow:0 1px 3px rgba(0,0,0,.1) !important; }
+html[data-theme] .app-shell .display-size-picker>button small { display:none; }
+@container crm-workspace (max-width:1100px) {
+  html[data-theme] .app-shell .pipeline-open { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}
+@container crm-workspace (max-width:650px) {
+  html[data-theme] .app-shell .pipeline-open { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .dialer-toolbar>.dialer-toolbar-actions { width:100%; justify-content:space-between; }
+  html[data-theme] .app-shell .automation-studio>header { flex-wrap:wrap; }
+  html[data-theme] .app-shell .automation-safety-row { align-items:flex-start; flex-direction:column; }
+}

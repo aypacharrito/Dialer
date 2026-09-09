@@ -1,0 +1,96 @@
+{
+  "repository": "aypacharrito/Dialer",
+  "base_commit": "fd6e7d56e952d261cfa176b674ca5b6eabc9343d",
+  "local_commit": "5701796bb1f183b23a36562117250797a61f6432",
+  "created_utc": "2026-09-09",
+  "files": [
+    {
+      "path": "app/CRMClient.tsx",
+      "sha256": "cf09f3c23f8e9b2677f1b58a1b524907c866fd1f973c148627b11dc572d4da77"
+    },
+    {
+      "path": "app/components/ActiveCallBar.tsx",
+      "sha256": "5afbd376946a448d6a149b9127b9340bebc43fb503f9d4e9b81714c569b68b0e"
+    },
+    {
+      "path": "app/components/AutomationStudio.tsx",
+      "sha256": "8b3f01c085932bd8ec37adb16f8a74d1f754c6cd6514f9d41004af70543bc550"
+    },
+    {
+      "path": "app/components/DialerKeypad.tsx",
+      "sha256": "10137749428d14a5d901b5bec6330ee0b721045053b04d068ec025028f954d61"
+    },
+    {
+      "path": "app/components/PostCallDispositionModal.tsx",
+      "sha256": "b699e3199b9431bdbc06e208660e1794f5a85d1f8596b6d5e37fda44830ab252"
+    },
+    {
+      "path": "app/lib/automation-feedback.ts",
+      "sha256": "3d603c27f664b5ac3d1db9ce034157533054cf0122e1bd798d56ee3d4a9ed9a5"
+    },
+    {
+      "path": "app/lib/call-digits.ts",
+      "sha256": "07996c17ac59948bc7c98c197ef7a2a248561795241bd073f7030f413fd50dc2"
+    },
+    {
+      "path": "app/lib/follow-up-engine.ts",
+      "sha256": "a076bc12e1abfd46cd2dba7f8f2ab60066173ef9c4bbd0a9dbabd79956e308f4"
+    },
+    {
+      "path": "app/lib/lead-automation.ts",
+      "sha256": "e42b59ee664c65c794556104984f59b0e9e27602e7684434c1a125f15785f4b7"
+    },
+    {
+      "path": "app/lib/lead-priority.ts",
+      "sha256": "45c922711f41d5f2707520390f65f5828a5ae65c48a68a1a01a149e9c3fdd9fe"
+    },
+    {
+      "path": "app/lib/post-call.ts",
+      "sha256": "6b78410906803bded82ac264fc1e024dbf164cd83470851dcd8d0097609ca646"
+    },
+    {
+      "path": "app/lib/quiet-call-audio.ts",
+      "sha256": "73d10424ed9c7ad272e6c1903d7da1654ac6c14dbae6ea0a45b74f9397b1fd37"
+    },
+    {
+      "path": "app/lib/workspace-profile.ts",
+      "sha256": "64c4ac2bc3424564621b5dc7d506c0e34dd53d0b2676fc7944cd307380a80ae9"
+    },
+    {
+      "path": "app/workspace-layout.css",
+      "sha256": "43586eac0e7fcf427580ab792f22d780b7d1c16e475dcc4f909dd4bf17a82e7f"
+    },
+    {
+      "path": "tests/call-digits.test.mjs",
+      "sha256": "f5e67bfa97134cbdcc2c199c1dd655eac0b76e64ef009edd28db57086a3099a5"
+    },
+    {
+      "path": "tests/calling-refinements.test.mjs",
+      "sha256": "68252f2fbc8bdba8ca049682de6794852b66def2315d18e126b8a7809298449c"
+    },
+    {
+      "path": "tests/production-automation.test.mjs",
+      "sha256": "a836c678f5a79bbc1e5f024f112651fcce2ecc2b62b53b96b31c5ec8a1e16e2e"
+    },
+    {
+      "path": "tests/quiet-call-audio.test.mjs",
+      "sha256": "058c090015b510594d9901ae9a5f1a97044c5fe40b7b813e821766720c0c5ce2"
+    },
+    {
+      "path": "tests/register-typescript.mjs",
+      "sha256": "8845f359c527ddce0982e21e101c47b4ec2dc7f84c8cd01ceb917712f8fe3ba1"
+    },
+    {
+      "path": "tests/review/calling-ui.test.mjs",
+      "sha256": "005239c65393ec377cbad7b66af5dde75541f5adad3d410878646f5a689bc083"
+    },
+    {
+      "path": "tests/review/crm-loader.mjs",
+      "sha256": "77f32573055314c7edcc50f1964f842f32b565365ec4bcea8558ff961de784e4"
+    },
+    {
+      "path": "tests/review/workspace-ui.test.mjs",
+      "sha256": "0a3547549b1ec56392f60a95dcbaa76888dd7be2b6737385e147bdc16983481b"
+    }
+  ]
+}

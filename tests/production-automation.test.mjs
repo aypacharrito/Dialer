@@ -48,3 +48,9 @@ test("server reminder receipts survive a stale browser save",()=>{
   const merged=mergeStoredWorkspace({leads:[serverLead],callLogs:[],profile},{leads:[clientLead],callLogs:[],profile});
   assert.deepEqual(merged.leads[0].clientReminderKeys,["renewal:2026-10-02:owner:30"]);
 });
+
+test("a neutral callback cannot restart messaging sequences on the server",()=>{
+  const result=prepareAutomationLead(lead({outcome:"Call back later",stage:"Follow-up",followUp:"2026-09-09T12:00",automationEnabled:true}),profile);
+  assert.equal(result.automationNextAt,"");
+  assert.notEqual(result.automationStatus,"action due");
+});

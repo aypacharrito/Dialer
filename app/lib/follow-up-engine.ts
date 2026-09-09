@@ -19,7 +19,7 @@ export type AutomationRun={ok:true;startedAt:string;completedAt:string;workspace
 
 const retryDelays=[5,15,60,240,720];
 const closedOutcomes=new Set(["not interested","wrong number","sold / won"]);
-const humanHandoffOutcomes=new Set(["interested","appointment set","completed"]);
+const humanHandoffOutcomes=new Set(["interested","appointment set","completed","call back later"]);
 const finalAutomationStatuses=new Set(["complete","needs attention","replied","opted out","waiting for salesperson"]);
 
 function timestamp(value?:string){const result=new Date(value||"").getTime();return Number.isFinite(result)?result:Number.NaN}

@@ -28,15 +28,16 @@ export function sourceDispositionForPostCall(source:string,outcome:string,curren
   if(outcome==="Appointment set")return smart?"Interested - Working":"Appointment Set";
   if(outcome==="Sold / Won")return smart?"Sold - 1 Policy":"Sold";
   if(outcome==="Not interested"||outcome==="Wrong number")return "Lost - Not Interested";
-  if(outcome==="Completed")return "Contacted";
+  if(outcome==="Completed"||outcome==="Call back later")return "Contacted";
   return current;
 }
 
 export function postCallDraftForEnd(lead:PostCallLead,technicalOutcome:string,connected:boolean,now=new Date()):PostCallDraft{
+  if(lead.stage==="Closed")return {crmStage:"Closed",crmOutcome:lead.outcome,sourceDisposition:lead.sourceDisposition,appointmentAt:"",notes:lead.notes||""};
   const missed=!connected;
   const outcome=missed?"No answer":"Completed";
   return {
-    crmStage:missed?"Follow-up":lead.stage==="Closed"?"Follow-up":lead.stage==="New lead"?"Follow-up":lead.stage,
+    crmStage:missed?"Follow-up":lead.stage==="New lead"?"Follow-up":lead.stage,
     crmOutcome:outcome,
     sourceDisposition:sourceDispositionForPostCall(lead.source,outcome,lead.sourceDisposition),
     appointmentAt:missed?(lead.followUp||retryAt(now)):lead.followUp||"",
@@ -44,15 +45,15 @@ export function postCallDraftForEnd(lead:PostCallLead,technicalOutcome:string,co
   };
 }
 
-export function selectPostCallOutcome(draft:PostCallDraft,source:string,outcome:string,now=new Date()):PostCallDraft{
-  const closed=outcome==="Not interested"||outcome==="Wrong number"||outcome==="Sold / Won";
+export function selectPostCallOutcome(draft:PostCallDraft,source:string,outcome:string,now=new Date(),keepClosed=false):PostCallDraft{
+  const closed=keepClosed||outcome==="Not interested"||outcome==="Wrong number"||outcome==="Sold / Won";
   const appointment=outcome==="Appointment set";
-  const retry=outcome==="No answer"||outcome==="Voicemail";
+  const retry=outcome==="No answer"||outcome==="Voicemail"||outcome==="Call back later";
   return {
     ...draft,
     crmOutcome:outcome,
     crmStage:closed?"Closed":appointment?"Appointment":"Follow-up",
-    sourceDisposition:sourceDispositionForPostCall(source,outcome,draft.sourceDisposition),
+    sourceDisposition:keepClosed?draft.sourceDisposition:sourceDispositionForPostCall(source,outcome,draft.sourceDisposition),
     appointmentAt:closed?"":retry?(draft.appointmentAt||retryAt(now)):draft.appointmentAt,
   };
 }

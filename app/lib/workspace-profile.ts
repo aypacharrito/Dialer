@@ -28,6 +28,7 @@ export type WorkspaceProfile={
   mode:WorkspaceMode;
   appearance:WorkspaceAppearance;
   displaySize:WorkspaceDisplaySize;
+  quietDialing:boolean;
   businessName:string;
   agentName:string;
   callbackNumber:string;
@@ -57,6 +58,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   mode:"sales",
   appearance:"light",
   displaySize:"large",
+  quietDialing:true,
   businessName:"",
   agentName:"",
   callbackNumber:"",
@@ -114,6 +116,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     mode:profile.mode==="insurance"?"insurance":"sales",
     appearance:profile.appearance==="dark"?"dark":"light",
     displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
+    quietDialing:profile.quietDialing!==false,
     businessName:String(profile.businessName||"").trim().slice(0,100),
     agentName:String(profile.agentName||"").trim().slice(0,80),
     callbackNumber:String(profile.callbackNumber||"").trim().slice(0,40),

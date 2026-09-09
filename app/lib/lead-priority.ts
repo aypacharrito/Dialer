@@ -25,12 +25,13 @@ export type LeadPriority={
   fresh:boolean;
 };
 
-export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall">;
+export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & {followUp?:string};
 
-export function isDialerEligibleLead(lead:DialerEligibilityInput){
+export function isDialerEligibleLead(lead:DialerEligibilityInput,now=Date.now()){
   if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||lead.stage==="Quoted")return false;
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
+  if(outcome==="call back later"&&(!Number.isFinite(dateValue(lead.followUp))||dateValue(lead.followUp)>now))return false;
   if(new Set(["interested","appointment set","not interested","wrong number","sold / won","sold","won"]).has(outcome))return false;
   if(/interested|working|quoted|appointment|sold|closed|lost|wrong number/.test(disposition))return false;
   return true;
@@ -150,6 +151,7 @@ export function sourceDispositionForOutcome(source:string,outcome:string,current
   const smart=/smart\s*financial/i.test(source);
   if(outcome==="Not contacted")return smart?"Received - not worked yet":"New";
   if(outcome==="No answer"||outcome==="Voicemail")return "Attempted Contact";
+  if(outcome==="Call back later")return "Contacted";
   if(outcome==="Interested")return smart?"Interested - Working":"Follow-up";
   if(outcome==="Appointment set")return smart?"Interested - Working":"Appointment Set";
   if(outcome==="Sold / Won")return smart?"Sold - 1 Policy":"Sold";
