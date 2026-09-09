@@ -1,5 +1,6 @@
 import { getPacificaAccess, isPacificaOwnerApi } from "../../../lib/clerk-access";
-import { leadLineForProduct } from "../../../lib/lead-priority";
+import { crmFieldsForDisposition, leadLineForProduct } from "../../../lib/lead-priority";
+import { readStoredWorkspace, writeStoredWorkspace } from "../../../lib/workspace-storage";
 
 type IncomingRecord = Record<string, unknown>;
 
@@ -88,9 +89,13 @@ function suppliedSecret(request:Request) {
 }
 
 function authorize(request:Request) {
-  const expected=process.env.LEAD_WEBHOOK_SECRET||process.env.SMARTFINANCIAL_WEBHOOK_SECRET;
-  if (!expected) return {ok:false,status:503,error:"LEAD_WEBHOOK_SECRET is not configured"};
-  if (suppliedSecret(request)!==expected) return {ok:false,status:401,error:"Invalid integration key"};
+  const expected=[
+    process.env.LEAD_WEBHOOK_SECRET,
+    process.env.SMARTFINANCIAL_WEBHOOK_SECRET,
+  ].map(value=>String(value||"").trim()).filter(Boolean);
+
+  if (!expected.length) return {ok:false,status:503,error:"No lead webhook secret is configured"};
+  if (!expected.includes(suppliedSecret(request).trim())) return {ok:false,status:401,error:"Invalid integration key"};
   return {ok:true,status:200,error:""};
 }
 
@@ -119,16 +124,152 @@ async function saveLead(workspaceId:string,lead:NormalizedLead) {
   const added=await redisCommand(["SADD",`${prefix}:phones`,lead.phoneDigits]);
   if (added!==null) {
     let savedLead=lead;
-    if(Number(added)===0&&!lead.receivedProvided){const recent=await redisCommand(["LRANGE",`${prefix}:leads`,0,499]);const prior=Array.isArray(recent)?recent.map(value=>JSON.parse(String(value)) as NormalizedLead).find(item=>item.phoneDigits===lead.phoneDigits):undefined;if(prior)savedLead={...lead,createdAt:prior.createdAt,received:prior.received}}
+    if(Number(added)===0&&!lead.receivedProvided){
+      const recent=await redisCommand(["LRANGE",`${prefix}:leads`,0,499]);
+      const prior=Array.isArray(recent)?recent.map(value=>JSON.parse(String(value)) as NormalizedLead).find(item=>item.phoneDigits===lead.phoneDigits):undefined;
+      if(prior)savedLead={...lead,createdAt:prior.createdAt,received:prior.received}
+    }
     await redisCommand(["LPUSH",`${prefix}:leads`,JSON.stringify(savedLead)]);
     await redisCommand(["LTRIM",`${prefix}:leads`,0,1999]);
     return Number(added)>0?"created" as const:"updated" as const;
   }
   const db=await ensureInboundTable();
   const existing=await db.prepare("SELECT id,created_at AS createdAt,extra_json AS extraJson FROM inbound_leads_v2 WHERE workspace_id=? AND phone_digits=? LIMIT 1").bind(workspaceId,lead.phoneDigits).first() as {id?:string;createdAt?:string;extraJson?:string}|null;
-  let savedLead=lead;if(existing&&!lead.receivedProvided){let priorReceived="";try{priorReceived=String((JSON.parse(existing.extraJson||"{}") as {received?:string}).received||"")}catch{}savedLead={...lead,createdAt:existing.createdAt||lead.createdAt,received:priorReceived||existing.createdAt||lead.received}}
-  await db.prepare("INSERT INTO inbound_leads_v2 (id,workspace_id,vendor_id,source,name,phone,phone_digits,email,city,product,line,disposition,notes,cost,created_at,extra_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0) ON CONFLICT(workspace_id,phone_digits) DO UPDATE SET vendor_id=excluded.vendor_id, source=excluded.source, name=excluded.name, phone=excluded.phone, email=excluded.email, city=excluded.city, product=excluded.product, line=excluded.line, disposition=excluded.disposition, notes=excluded.notes, cost=excluded.cost, created_at=excluded.created_at, extra_json=excluded.extra_json, synced_at=0").bind(savedLead.id,workspaceId,savedLead.vendorId,savedLead.source,savedLead.name,savedLead.phone,savedLead.phoneDigits,savedLead.email,savedLead.city,savedLead.product,savedLead.line,savedLead.disposition,savedLead.notes,savedLead.cost,savedLead.createdAt,JSON.stringify({address:savedLead.address,state:savedLead.state,zip:savedLead.zip,territory:savedLead.territory,brand:savedLead.brand,profileName:savedLead.profileName,received:savedLead.received,returnStatus:savedLead.returnStatus,employeeCount:savedLead.employeeCount,searchPro:savedLead.searchPro,extraFields:savedLead.extraFields})).run();
+  let savedLead=lead;
+  if(existing&&!lead.receivedProvided){
+    let priorReceived="";
+    try{priorReceived=String((JSON.parse(existing.extraJson||"{}") as {received?:string}).received||"")}catch{}
+    savedLead={...lead,createdAt:existing.createdAt||lead.createdAt,received:priorReceived||existing.createdAt||lead.received}
+  }
+  await db.prepare("INSERT INTO inbound_leads_v2 (id,workspace_id,vendor_id,source,name,phone,phone_digits,email,city,product,line,disposition,notes,cost,created_at,extra_json,synced_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0) ON CONFLICT(workspace_id,phone_digits) DO UPDATE SET vendor_id=excluded.vendor_id, source=excluded.source, name=excluded.name, phone=excluded.phone, email=excluded.email, city=excluded.city, product=excluded.product, line=excluded.line, disposition=excluded.disposition, notes=excluded.notes, cost=excluded.cost, created_at=excluded.created_at, extra_json=excluded.extra_json, synced_at=0")
+    .bind(savedLead.id,workspaceId,savedLead.vendorId,savedLead.source,savedLead.name,savedLead.phone,savedLead.phoneDigits,savedLead.email,savedLead.city,savedLead.product,savedLead.line,savedLead.disposition,savedLead.notes,savedLead.cost,savedLead.createdAt,JSON.stringify({address:savedLead.address,state:savedLead.state,zip:savedLead.zip,territory:savedLead.territory,brand:savedLead.brand,profileName:savedLead.profileName,received:savedLead.received,returnStatus:savedLead.returnStatus,employeeCount:savedLead.employeeCount,searchPro:savedLead.searchPro,extraFields:savedLead.extraFields})).run();
   return existing?"updated" as const:"created" as const;
+}
+
+function phoneKey(value:unknown){
+  const digits=String(value||"").replace(/\D/g,"");
+  return digits.length>=10?digits.slice(-10):digits;
+}
+
+function extraValue(lead:NormalizedLead,key:string){
+  const wanted=canonical(key);
+  for(const [raw,value] of Object.entries(lead.extraFields||{})){
+    if(canonical(raw)===wanted)return String(value||"").trim();
+  }
+  return "";
+}
+
+async function syncLeadDirectlyToWorkspace(workspaceId:string,lead:NormalizedLead){
+  const workspace=await readStoredWorkspace(workspaceId);
+  if(!workspace)return false;
+
+  const currentLeads=(workspace.leads||[]) as Array<Record<string,unknown>>;
+  const wantedPhone=phoneKey(lead.phone);
+  const wantedVendor=lead.vendorId?`${lead.source.toLowerCase()}:${lead.vendorId.toLowerCase()}`:"";
+  const existingIndex=currentLeads.findIndex(item=>{
+    const itemVendor=item.vendorId?`${String(item.source||"").toLowerCase()}:${String(item.vendorId).toLowerCase()}`:"";
+    return Boolean((wantedVendor&&itemVendor===wantedVendor)||(wantedPhone&&phoneKey(item.phone)===wantedPhone));
+  });
+
+  const mapped=crmFieldsForDisposition(lead.disposition);
+  const now=new Date().toISOString();
+  const dob=extraValue(lead,"date-of-birth");
+  const vin=extraValue(lead,"vehicle-vin");
+  const vehicleYear=extraValue(lead,"vehicle-year");
+  const vehicleName=extraValue(lead,"vehicle");
+  const smsConsent=/^(yes|true|1)$/i.test(extraValue(lead,"sms-consent"));
+
+  const incoming:Record<string,unknown>={
+    id:Date.now()+Math.floor(Math.random()*1000),
+    vendorId:lead.vendorId||"",
+    name:lead.name,
+    phone:lead.phone,
+    city:lead.city||"Imported",
+    status:mapped.stage==="Closed"?"Closed":"Ready",
+    email:lead.email||"",
+    stage:mapped.stage,
+    outcome:mapped.outcome,
+    notes:lead.notes||"",
+    followUp:"",
+    doNotCall:false,
+    lastContact:"Never",
+    line:lead.line,
+    source:lead.source||"Lead provider",
+    leadCost:Number(lead.cost)||0,
+    product:lead.product||"Service inquiry",
+    sourceDisposition:lead.disposition||"Received - not worked yet",
+    importedAt:lead.createdAt||now,
+    providerUpdatedAt:now,
+    address:lead.address||"",
+    state:lead.state||"",
+    zip:lead.zip||"",
+    territory:lead.territory||"",
+    brand:lead.brand||"",
+    profileName:lead.profileName||"",
+    received:lead.received||lead.createdAt||now,
+    returnStatus:lead.returnStatus||"",
+    employeeCount:lead.employeeCount||"",
+    searchPro:lead.searchPro||"",
+    extraFields:lead.extraFields||{},
+    dateOfBirth:dob,
+    vin,
+    vehicle:[vehicleYear,vehicleName].filter(Boolean).join(" ").trim(),
+    smsConsent,
+  };
+
+  let nextLeads:Array<Record<string,unknown>>;
+
+  if(existingIndex<0){
+    nextLeads=[incoming,...currentLeads];
+  }else{
+    const current=currentLeads[existingIndex];
+    const untouched=
+      String(current.stage||"")==="New lead" &&
+      String(current.outcome||"")==="Not contacted";
+
+    const merged:Record<string,unknown>={
+      ...current,
+      vendorId:lead.vendorId||current.vendorId||"",
+      name:lead.name&&lead.name!=="Inbound lead"?lead.name:current.name,
+      phone:lead.phone||current.phone,
+      email:lead.email||current.email,
+      city:lead.city&&lead.city!=="Imported"?lead.city:current.city,
+      source:lead.source||current.source,
+      leadCost:Number(lead.cost)>0?Number(lead.cost):Number(current.leadCost)||0,
+      product:lead.product&&lead.product!=="Service inquiry"?lead.product:current.product,
+      line:current.queueOverride?current.line:lead.line||current.line,
+      sourceDisposition:untouched?lead.disposition||current.sourceDisposition:current.sourceDisposition,
+      providerUpdatedAt:now,
+      address:lead.address||current.address,
+      state:lead.state||current.state,
+      zip:lead.zip||current.zip,
+      territory:lead.territory||current.territory,
+      brand:lead.brand||current.brand,
+      profileName:lead.profileName||current.profileName,
+      received:lead.received||current.received,
+      returnStatus:lead.returnStatus||current.returnStatus,
+      employeeCount:lead.employeeCount||current.employeeCount,
+      searchPro:lead.searchPro||current.searchPro,
+      extraFields:{...((current.extraFields&&typeof current.extraFields==="object")?current.extraFields as Record<string,string>:{}),...(lead.extraFields||{})},
+      dateOfBirth:dob||current.dateOfBirth||"",
+      vin:vin||current.vin||"",
+      vehicle:[vehicleYear,vehicleName].filter(Boolean).join(" ").trim()||current.vehicle||"",
+      smsConsent:Boolean(current.smsConsent||smsConsent),
+      ...(untouched?{
+        status:mapped.stage==="Closed"?"Closed":"Ready",
+        stage:mapped.stage,
+        outcome:mapped.outcome,
+      }:{})
+    };
+
+    nextLeads=currentLeads.map((item,index)=>index===existingIndex?merged:item);
+  }
+
+  await writeStoredWorkspace(workspaceId,{
+    ...workspace,
+    leads:nextLeads.slice(0,5000),
+  });
+  return true;
 }
 
 async function listLeads(workspaceId:string) {
@@ -152,21 +293,44 @@ async function bodyFrom(request:Request) {
 }
 
 export async function POST(request:Request) {
-  const auth=authorize(request);if(!auth.ok)return Response.json({error:auth.error},{status:auth.status});
+  const auth=authorize(request);
+  if(!auth.ok)return Response.json({error:auth.error},{status:auth.status});
+
   try {
-    const url=new URL(request.url);const source=url.searchParams.get("source")?.trim()||"";
+    const url=new URL(request.url);
+    const source=url.searchParams.get("source")?.trim()||"";
     const workspaceId=safeWorkspace(url.searchParams.get("workspace")||"");
+
     if(!workspaceId)return Response.json({error:"A workspace ID is required"},{status:400});
+
     const lead=normalize(await bodyFrom(request),source);
+
+    // Keep the provider inbound feed for compatibility/auditing.
     const result=await saveLead(workspaceId,lead);
-    return Response.json({ok:true,created:result==="created",updated:result==="updated",id:lead.id},{status:result==="created"?201:200});
-  } catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to receive lead"},{status:400})}
+
+    // NEW: immediately write/update the real CRM workspace.
+    // This no longer depends on the CRM browser being open and polling every 20 seconds.
+    const workspaceSynced=await syncLeadDirectlyToWorkspace(workspaceId,lead);
+
+    return Response.json({
+      ok:true,
+      created:result==="created",
+      updated:result==="updated",
+      workspaceSynced,
+      id:lead.id,
+    },{status:result==="created"?201:200});
+  } catch(error){
+    return Response.json({error:error instanceof Error?error.message:"Unable to receive lead"},{status:400})
+  }
 }
 
 export async function GET() {
   if(!await isPacificaOwnerApi())return Response.json({error:"Owner access required"},{status:403});
   const userId=safeWorkspace((await getPacificaAccess()).userId||"");
   if(!userId)return Response.json({error:"Sign in required"},{status:401});
-  try{return Response.json({configured:true,leads:await listLeads(userId)},{headers:{"Cache-Control":"no-store"}})}
-  catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load leads"},{status:500})}
+  try{
+    return Response.json({configured:true,leads:await listLeads(userId)},{headers:{"Cache-Control":"no-store"}})
+  }catch(error){
+    return Response.json({error:error instanceof Error?error.message:"Unable to load leads"},{status:500})
+  }
 }
