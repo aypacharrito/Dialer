@@ -62,7 +62,7 @@ function upgradeFollowUpEngine(){
 
   source=replaceRequired(source,
 `      const candidates=await availableChannels(record.workspaceId,lead,profile,step.channel);`,
-`      const dailyLimit=Math.min(3,Math.max(1,Number(profile.maxAutomatedTouchesPerLeadPerDay)||1));\n      if(step.channel!=="task"&&automatedTouchesToday(lead,profile.automationTimezone)>=dailyLimit){\n        leads[index]={...lead,automationStatus:"scheduled",automationNextAt:isoAfter(1440),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue;\n      }\n      const candidates=await availableChannels(record.workspaceId,lead,profile,step.channel);`,"per-lead daily touch limit");
+`      const dailyLimit=Math.min(3,Math.max(1,Number(profile.maxAutomatedTouchesPerLeadPerDay)||1));\n      if(automatedTouchesToday(lead,profile.automationTimezone)>=dailyLimit){\n        leads[index]={...lead,automationStatus:"scheduled",automationNextAt:isoAfter(1440),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue;\n      }\n      const candidates=await availableChannels(record.workspaceId,lead,profile,step.channel);`,"per-lead daily touch limit");
 
   write(file,source);
 }
