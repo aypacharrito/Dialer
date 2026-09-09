@@ -1,4 +1,5 @@
 export type LeadPriorityInput={
+  deletedAt?:string;
   id:number;
   stage:string;
   outcome:string;
@@ -25,10 +26,10 @@ export type LeadPriority={
   fresh:boolean;
 };
 
-export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & {followUp?:string};
+export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & {followUp?:string;deletedAt?:string};
 
 export function isDialerEligibleLead(lead:DialerEligibilityInput,now=Date.now()){
-  if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||lead.stage==="Quoted")return false;
+  if(lead.deletedAt||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||lead.stage==="Quoted")return false;
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
   if(outcome==="call back later"&&(!Number.isFinite(dateValue(lead.followUp))||dateValue(lead.followUp)>now))return false;
@@ -54,7 +55,7 @@ export function leadCreatedAt(lead:Pick<LeadPriorityInput,"importedAt"|"received
 }
 
 export function leadPriority(lead:LeadPriorityInput,now=Date.now()):LeadPriority{
-  if(lead.doNotCall||lead.stage==="Closed"||lead.stage==="Quoted")return {score:-1000,level:"LOW",reason:lead.doNotCall?"Do not call":lead.stage==="Quoted"?"Quote prepared":"Closed",detail:"Excluded from active calling",due:false,fresh:false};
+  if(lead.deletedAt||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Quoted")return {score:-1000,level:"LOW",reason:lead.doNotCall?"Do not call":lead.stage==="Quoted"?"Quote prepared":"Closed",detail:"Excluded from active calling",due:false,fresh:false};
   const outcome=lead.outcome.toLowerCase();
   const disposition=lead.sourceDisposition.toLowerCase();
   const created=leadCreatedAt(lead);

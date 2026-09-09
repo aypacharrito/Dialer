@@ -59,10 +59,18 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   const monitorContextRef = useRef<AudioContext | null>(null);
   const monitorFrameRef = useRef<number | null>(null);
   const monitorTimerRef = useRef<number | null>(null);
+  const sampleRecorderRef=useRef<MediaRecorder|null>(null);
+  const sampleUrlRef=useRef("");
+  const monitorGenerationRef=useRef(0);
   const inputRef = useRef(defaultAudioPreferences.input);
   const speakerRef = useRef(defaultAudioPreferences.speaker);
 
   function stopMonitor(nextMessage?: string) {
+    monitorGenerationRef.current++;
+    const recorder=sampleRecorderRef.current;sampleRecorderRef.current=null;
+    if(recorder){recorder.onstop=null;recorder.ondataavailable=null;recorder.onerror=null;if(recorder.state!=="inactive")recorder.stop()}
+    if(sampleUrlRef.current){URL.revokeObjectURL(sampleUrlRef.current);sampleUrlRef.current=""}
+
     if (monitorTimerRef.current !== null) window.clearTimeout(monitorTimerRef.current);
     if (monitorFrameRef.current !== null) window.cancelAnimationFrame(monitorFrameRef.current);
     monitorTimerRef.current = null;
@@ -72,7 +80,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     monitorProcessedStreamRef.current = null;
     monitorStreamRef.current?.getTracks().forEach(track => track.stop());
     monitorStreamRef.current = null;
-    if (monitorAudioRef.current) { monitorAudioRef.current.pause(); monitorAudioRef.current.srcObject = null; }
+    if (monitorAudioRef.current) { monitorAudioRef.current.pause(); monitorAudioRef.current.srcObject = null; monitorAudioRef.current.removeAttribute("src"); }
     void monitorContextRef.current?.close();
     monitorContextRef.current = null;
     setListening(null);
@@ -144,9 +152,11 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     if (selectedInput !== "default" && !nextInputs.some(item => item.deviceId === selectedInput)) throw new Error("Your saved microphone is not connected. Reconnect it or choose another microphone.");
   }
 
-  async function startMonitor(mode: MonitorMode, autoStop = false) {
+  async function startMonitor(mode: MonitorMode) {
     stopMonitor();
+    const generation=monitorGenerationRef.current;
     const stream = await requestMicrophone(mode);
+    if(generation!==monitorGenerationRef.current){stream.getTracks().forEach(track=>track.stop());return}
     monitorStreamRef.current = stream;
     await loadDevices(stream);
     const track = stream.getAudioTracks()[0];
@@ -158,6 +168,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       const processor = new PacificaClearVoiceProcessor(clearVoiceMode, setClearVoiceMetrics, info => setClearVoiceEngine(info.label));
       monitorProcessorRef.current = processor;
       audibleStream = await processor.createProcessedStream(stream);
+      if(generation!==monitorGenerationRef.current){await processor.destroyProcessedStream();return}
       monitorProcessedStreamRef.current = audibleStream;
     }
 
@@ -178,18 +189,27 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     updateMeter();
 
     if (mode && monitorAudioRef.current) {
-      monitorAudioRef.current.srcObject = audibleStream;
-      monitorAudioRef.current.volume = mode === "test" ? Math.min(speakerVolume, 65) / 100 : speakerVolume / 100;
-      const sinkAudio = monitorAudioRef.current as HTMLAudioElement & { setSinkId?: (deviceId: string) => Promise<void> };
-      if (speakerRef.current !== "default" && sinkAudio.setSinkId) await sinkAudio.setSinkId(speakerRef.current);
-      try {
-        await monitorAudioRef.current.play();
-      } catch {
-        throw new Error("Edge blocked speaker playback. Make sure this tab is not muted, then click the test again.");
-      }
-      setListening(mode);
-      setMessage(mode === "test" ? "Live microphone playback is on. Speak now — headphones prevent feedback." : mode === "clearvoice" ? "ClearVoice monitor is live. Speak, type, or make background noise to compare it." : "Original microphone monitor is live with suppression bypassed.");
-      if (autoStop) monitorTimerRef.current = window.setTimeout(() => stopMonitor("Microphone and speaker playback passed. Your selected devices are ready."), 6500);
+      if(typeof MediaRecorder==="undefined")throw new Error("This browser cannot record a microphone sample.");
+      const mimeType=["audio/webm;codecs=opus","audio/webm","audio/mp4"].find(type=>MediaRecorder.isTypeSupported(type));
+      const recorder=new MediaRecorder(audibleStream,mimeType?{mimeType}:undefined);
+      sampleRecorderRef.current=recorder;
+      const chunks:BlobPart[]=[];
+      recorder.ondataavailable=event=>{if(event.data.size)chunks.push(event.data)};
+      recorder.onerror=()=>{if(generation===monitorGenerationRef.current)stopMonitor("The sample could not be recorded. Check your microphone and try again.")};
+      recorder.onstop=()=>{
+        if(generation!==monitorGenerationRef.current)return;
+        const blob=new Blob(chunks,{type:recorder.mimeType||mimeType||"audio/webm"});
+        stopMonitor();
+        if(!blob.size){setMessage("The microphone returned an empty sample. Try again.");return}
+        const audio=monitorAudioRef.current;if(!audio)return;
+        sampleUrlRef.current=URL.createObjectURL(blob);audio.src=sampleUrlRef.current;audio.volume=speakerVolume/100;
+        const playbackGeneration=monitorGenerationRef.current;
+        const sink=audio as HTMLAudioElement&{setSinkId?:(id:string)=>Promise<void>};
+        void (async()=>{try{if(speakerRef.current!=="default"&&sink.setSinkId)await sink.setSinkId(speakerRef.current);if(playbackGeneration!==monitorGenerationRef.current)return;await audio.play();if(playbackGeneration!==monitorGenerationRef.current)return;setMessage("Playing your six-second sample. The microphone is off during playback.")}catch{setMessage("Playback was blocked. Use the sample’s Play button below.")}})();
+      };
+      recorder.start();setListening(mode);
+      setMessage(`Recording six seconds ${mode==="clearvoice"?"with ClearVoice":"from your microphone"}. Speak now; playback follows automatically.`);
+      monitorTimerRef.current=window.setTimeout(()=>{if(recorder.state!=="inactive")recorder.stop()},6000);
     }
   }
 
@@ -199,10 +219,10 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       return;
     }
     setTesting(true);
-    setMessage("Starting live microphone playback, then checking Twilio and connection latency…");
+    setMessage("Recording a short microphone sample and checking the phone connection…");
     try {
       const started = performance.now();
-      await startMonitor("test", true);
+      await startMonitor("test");
       const [device, response] = await Promise.all([ensureDevice(), fetch("/api/twilio/token", { cache: "no-store" })]);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -211,7 +231,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       // Keep Twilio from opening a second capture stream while the Edge meter
       // owns the microphone. The selected device is applied when a call starts.
       void device;
-      setMessage(`Phone ready · API ${Math.round(performance.now() - started)} ms · ${clearVoiceEnabled && clearVoiceSupported ? "ClearVoice armed" : "native audio fallback"} · live playback on for 6 seconds`);
+      setMessage(`Phone ready · API ${Math.round(performance.now() - started)} ms · ${clearVoiceEnabled && clearVoiceSupported ? "ClearVoice armed" : "native audio fallback"} · six-second sample recording`);
     } catch (error) {
       stopMonitor();
       setMessage(`Test failed: ${microphoneError(error)}`);
@@ -276,14 +296,14 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
 
   return <section ref={dialogRef} role={compact?"dialog":undefined} aria-modal={compact||undefined} aria-label={compact?"Communication devices":undefined} tabIndex={compact?-1:undefined} className={`phone-config ${compact ? "compact" : ""}`}>
     <header><div><span>PHONE SETTINGS</span><b>Communication devices</b></div>{onClose && <button aria-label="Close phone settings" onClick={onClose}>×</button>}</header>
-    <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing ? "Testing…" : listening === "test" ? "Stop microphone playback" : "Run device, playback & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
+    <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing ? "Testing…" : listening === "test" ? "Cancel microphone sample" : "Run device, playback & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
 
     <section className={`clearvoice-card ${clearVoiceEnabled ? "enabled" : ""}`}>
       <div className="clearvoice-head"><div><span>PACIFICA AUDIO LABS</span><h3>ClearVoice</h3><p>Multi-engine, on-device speech enhancement for every browser call.</p></div><label className="clearvoice-switch"><input type="checkbox" checked={clearVoiceEnabled} onChange={event => void updateClearVoice(event.target.checked)}/><i/><b>{clearVoiceEnabled ? "ON" : "OFF"}</b></label></div>
       <div className="clearvoice-status"><strong><i/>{clearVoiceSupported ? "NEURAL ENGINE READY" : "NATIVE FALLBACK"}</strong><span>{clearVoiceSupported ? `${clearVoiceEngine} · audio stays on this device.` : "Update Chrome or Edge for the full engine."}</span></div>
       <div className="clearvoice-modes" aria-label="ClearVoice suppression level">{(["natural", "balanced", "focus"] as ClearVoiceMode[]).map(mode => <button key={mode} className={clearVoiceMode === mode ? "active" : ""} disabled={!clearVoiceEnabled} onClick={() => void updateClearVoice(true, mode)} title={clearVoiceEngineInfo(mode).description}><b>{clearVoiceModeLabels[mode]}</b><small>{clearVoiceEngineInfo(mode).label}</small></button>)}</div>
       <div className="clearvoice-meter"><div><span>VOICE</span><i className={clearVoiceMetrics.voiceDetected ? "speaking" : ""}/></div><div><span>LIVE REDUCTION</span><b>{listening === "clearvoice" ? `${clearVoiceMetrics.reduction}%` : "READY"}</b></div></div>
-      <div className="clearvoice-compare"><button className={listening === "raw" ? "active raw" : ""} onClick={() => void toggleMonitor("raw")}>{listening === "raw" ? "Stop original" : "Hear original"}</button><button className={listening === "clearvoice" ? "active" : ""} disabled={!clearVoiceEnabled || !clearVoiceSupported} onClick={() => void toggleMonitor("clearvoice")}>{listening === "clearvoice" ? "Stop ClearVoice" : "Hear ClearVoice"}</button><small>Use headphones, then make the same background noise during both tests.</small></div>
+      <div className="clearvoice-compare"><button className={listening === "raw" ? "active raw" : ""} onClick={() => void toggleMonitor("raw")}>{listening === "raw" ? "Cancel sample" : "Record original"}</button><button className={listening === "clearvoice" ? "active" : ""} disabled={!clearVoiceEnabled || !clearVoiceSupported} onClick={() => void toggleMonitor("clearvoice")}>{listening === "clearvoice" ? "Cancel sample" : "Record ClearVoice"}</button><small>Speak for six seconds. Listen after recording, so speaker playback cannot interrupt your microphone.</small></div>
     </section>
 
     <div className="config-section"><span>HEADSET SETTINGS</span>
@@ -295,7 +315,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
       <div className="volume-row"><small>Ring volume</small><input aria-label="Ring test volume" type="range" min="0" max="100" value={ringVolume} onChange={event => { const value=Number(event.target.value); setRingVolume(value); saveAudioPreferences({ ringVolume:value }); }}/><em>{ringVolume}%</em><button onClick={() => void testOutput("ring")}>Test</button></div>
       <label className="check-row"><input type="checkbox" checked={beep} onChange={event => { setBeep(event.target.checked); saveAudioPreferences({ beep:event.target.checked }); }}/> Beep when auto-answering</label>
     </div>
-    <audio ref={monitorAudioRef} playsInline hidden/>
+    <audio ref={monitorAudioRef} className="microphone-sample-player" aria-label="Microphone sample playback" controls playsInline onError={()=>setMessage("The sample could not play. Record a new sample to try again.")}/>
     <footer>ClearVoice combines browser echo control, neural suppression, a gentle speech gate, and voice leveling locally on this device.</footer>
   </section>;
 }

@@ -10,7 +10,7 @@ import {listStoredWorkspaces,workspaceRedis,writeStoredWorkspace} from "./worksp
 import type {AutomationChannel,AutomationSequence,AutomationStep,WorkspaceProfile} from "./workspace-profile";
 
 export type FollowUpLead={
-  id:number;name:string;phone:string;email?:string;city?:string;product:string;stage:string;outcome:string;source?:string;doNotCall:boolean;received?:string;importedAt?:string;followUp?:string;
+  deletedAt?:string;id:number;name:string;phone:string;email?:string;city?:string;product:string;stage:string;outcome:string;source?:string;doNotCall:boolean;received?:string;importedAt?:string;followUp?:string;
   smsConsent?:boolean;smsOptOut?:boolean;lastSmsAt?:string;emailConsent?:boolean;emailOptOut?:boolean;lastEmailAt?:string;communications?:StoredCommunication[];
   automationEnabled?:boolean;automationSequenceId?:string;automationStep?:number;automationNextAt?:string;automationStatus?:string;automationDeliveryFailures?:number;automationLastError?:string;automationDeadLetterAt?:string;automationUpdatedAt?:string;lastInboundAt?:string;
 };
@@ -28,7 +28,7 @@ function leadArrival(lead:FollowUpLead){const received=timestamp(lead.received);
 function triggerFor(lead:FollowUpLead){const outcome=lead.outcome.toLowerCase();return outcome==="no answer"||outcome==="voicemail"?"no-answer":outcome==="interested"?"interested":"new-lead"}
 function sequenceFor(lead:FollowUpLead,profile:WorkspaceProfile){return profile.automationSequences.find(sequence=>sequence.id===lead.automationSequenceId&&sequence.active)||profile.automationSequences.find(sequence=>sequence.trigger===triggerFor(lead)&&sequence.active)}
 function enabledSteps(sequence:AutomationSequence){return sequence.steps.filter(step=>step.enabled)}
-function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return !sequence||lead.automationEnabled===false||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||closedOutcomes.has(lead.outcome.toLowerCase())||humanHandoffOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
+function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return Boolean(lead.deletedAt)||!sequence||lead.automationEnabled===false||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||closedOutcomes.has(lead.outcome.toLowerCase())||humanHandoffOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
 
 export function prepareAutomationLead(lead:FollowUpLead,profile:WorkspaceProfile,now=Date.now()):FollowUpLead{
   if(finalAutomationStatuses.has(String(lead.automationStatus||"").toLowerCase()))return {...lead,automationNextAt:""};

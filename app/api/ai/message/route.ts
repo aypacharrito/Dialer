@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import {aiClient,aiConfigured,aiModel,aiProviderIssue,aiReasoning} from "../../../lib/ai-provider";
 import { hasPacificaWorkspaceApiAccess } from "../../../lib/clerk-access";
 import { cleanWorkspaceProfile } from "../../../lib/workspace-profile";
 
@@ -6,7 +6,7 @@ export const runtime="nodejs";
 
 function firstName(name:string){return name.trim().split(/\s+/)[0]||"there"}
 
-function modelCandidates(){return Array.from(new Set([process.env.OPENAI_MODEL?.trim(),"gpt-5-mini","gpt-4.1-mini"].filter(Boolean) as string[]))}
+
 
 function stableIndex(value:string,length:number){let hash=0;for(const char of value)hash=(hash*31+char.charCodeAt(0))>>>0;return hash%length}
 
@@ -47,18 +47,20 @@ export async function POST(request:Request){
     const emailFallback=localEmailDraft(name,product,city,profile.agentName,profile.businessName,profile.callbackNumber);
     const fallback=channel==="email"?emailFallback.draft:localDraft(name,product,city,profile.agentName,profile.businessName,profile.callbackNumber,String(lead.id||name));
     const subject=channel==="email"?emailFallback.subject:"";
-    if(!process.env.OPENAI_API_KEY)return Response.json({draft:fallback,subject,mode:"smart-fallback",notice:"OpenAI is not configured, so Pacifica wrote a safe personalized draft locally."});
-    const client=new OpenAI({apiKey:process.env.OPENAI_API_KEY});
-    for(const model of modelCandidates()){
+    if(!aiConfigured())return Response.json({draft:fallback,subject,mode:"smart-fallback",notice:"OpenAI is not configured, so Pacifica wrote a safe personalized draft locally."});
+    const client=aiClient();let providerNotice="";let providerCode="";
+    for(const model of [aiModel()]){
       try{
         const response=await client.responses.create({
-          model,store:false,max_output_tokens:220,
+          model,store:false,...aiReasoning(model),max_output_tokens:2000,
           input:[{role:"system",content:channel==="email"?`Write one concise, friendly business-casual sales follow-up email body. Sound human, not corporate or pushy. Use only supplied facts and never invent a price, promise, approval, consent, or appointment. Mention the requested product naturally. ${profile.callbackNumber?`You may include this exact callback number: ${profile.callbackNumber}.`:"Invite an email reply."} Include a greeting and natural signature, but no subject line or compliance footer. Return only the body, under 2,500 characters.`:`Write one friendly business-casual sales follow-up SMS. It must sound human, not corporate or pushy. Identify the sender only from the supplied representative and business names. Use only supplied facts, never invent a price, promise, approval, consent, or appointment. Mention the requested product or service naturally. ${profile.callbackNumber?`Include this exact callback number: ${profile.callbackNumber}.`:"Do not invent a callback number; invite a reply instead."} End with: Reply STOP to opt out. Return only the message, under 480 characters.`},{role:"user",content:JSON.stringify({name,product,city,outcome,notes,representative:profile.agentName,business:profile.businessName})}],
         });
+        if(response.status!=="completed")throw {code:"incomplete_response"};
         const draft=response.output_text.trim().replace(/^['"]|['"]$/g,"");
-        if(draft)return Response.json({draft:draft.slice(0,channel==="email"?3000:500),subject,mode:"ai"});
-      }catch(error){console.error("[pacifica-ai/message] model failed",{model,error:error instanceof Error?error.message:"unknown"})}
+        if(draft){const optOut="Reply STOP to opt out.";const complete=channel==="sms"?`${draft.replace(/Reply STOP to opt out\.?/gi,"").trim().slice(0,477)} ${optOut}`:draft.slice(0,3000);return Response.json({draft:complete,subject,mode:"ai"})}
+        throw {code:"incomplete_response"};
+      }catch(error){const issue=aiProviderIssue(error);providerNotice=issue.notice;providerCode=issue.code;console.error("[pacifica-ai/message] request failed",{model,code:issue.code})}
     }
-    return Response.json({draft:fallback,subject,mode:"smart-fallback",notice:"The AI provider did not answer, so Pacifica prepared a safe personalized draft locally."});
+    return Response.json({draft:fallback,subject,mode:"smart-fallback",notice:`${providerNotice} Pacifica prepared a local template instead.`,providerCode});
   }catch(error){console.error("[pacifica-ai/message] request failed",error instanceof Error?error.message:"unknown");return Response.json({error:"Pacifica could not read this contact record"},{status:400})}
 }

@@ -8,9 +8,9 @@ export function automationRunFeedback(data: unknown) {
     throw new Error("The run returned an incomplete status. Refresh before trying again.");
   }
   const counts = run as RunCounts;
-  if (!counts.due && !counts.sent && !counts.tasksCreated && !counts.failed && !counts.deadLettered && !counts.blocked && !counts.fallbacks) return "Checked just now · no follow-ups are due.";
+  if (!counts.due && !counts.sent && !counts.tasksCreated && !counts.failed && !counts.deadLettered && !counts.blocked && !counts.fallbacks) return "Checked just now · no automated sequence steps are due.";
   return [
-    `Checked ${counts.due} due`,
+    `Checked ${counts.due} automated steps`,
     `${counts.sent} sent`,
     `${counts.tasksCreated} task${counts.tasksCreated === 1 ? "" : "s"} created`,
     counts.fallbacks ? `${counts.fallbacks} channel fallback${counts.fallbacks === 1 ? "" : "s"}` : "",

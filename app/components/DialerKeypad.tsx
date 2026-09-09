@@ -3,6 +3,8 @@
 import { isCallDigit } from "../lib/call-digits";
 
 type Props = {
+  muted?:boolean;
+  onMute?:()=>void;
   connected: boolean;
   dialing: boolean;
   phoneReady: boolean;
@@ -22,7 +24,7 @@ export default function DialerKeypad(props: Props) {
       event.preventDefault();
       if (!event.repeat) props.onDigits(event.key);
     }}>
-    <header><span><i/> {props.connected ? "CALL KEYPAD" : "KEYPAD"}</span><span className="pad-tools"><small>{props.connected ? "LIVE" : props.dialing ? "CONNECTING" : props.phoneReady ? "READY" : "SETUP"}</small></span></header>
+    <header><span><i/> {props.connected ? "CALL KEYPAD" : "KEYPAD"}</span><span className="pad-tools">{props.connected&&props.onMute&&<button type="button" aria-pressed={Boolean(props.muted)} onClick={props.onMute}>{props.muted?"Unmute":"Mute"}</button>}<small>{props.connected ? "LIVE" : props.dialing ? "CONNECTING" : props.phoneReady ? "READY" : "SETUP"}</small></span></header>
     <div className="number-display">
       <label htmlFor="manual-dial-number">{props.dialing ? "TOUCH TONES" : "NUMBER TO CALL"}</label>
       <div className="number-input-shell"><input id="manual-dial-number" type="tel" inputMode="tel" autoComplete="off"

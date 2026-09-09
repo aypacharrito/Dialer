@@ -1,3 +1,4 @@
+import {recordingPlaybackPath} from "../../../lib/recording-playback";
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {isClerkConfigured} from "../../../lib/clerk-config";
 import {phoneAssignmentForWorkspace} from "../../../lib/phone-assignments";
@@ -56,7 +57,7 @@ export async function GET(request:Request){
   const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
   try{
     const sid=recordingSid(new URL(request.url).searchParams.get("sid")||"");if(!sid)return Response.json({error:"Recording SID is invalid"},{status:400});
-    const stored=await readStoredWorkspace(workspace.userId);const allowed=stored?.callLogs.some(raw=>(raw as {recordingUrl?:string}).recordingUrl?.includes(sid));if(!allowed)return Response.json({error:"Recording not found in this workspace"},{status:404});
+    const stored=await readStoredWorkspace(workspace.userId);const allowed=stored?.callLogs.some(raw=>recordingPlaybackPath((raw as {recordingSid?:string}).recordingSid,(raw as {recordingUrl?:string}).recordingUrl)===`/api/twilio/recordings?sid=${sid}`);if(!allowed)return Response.json({error:"Recording not found in this workspace"},{status:404});
     const {accountSid,credentials}=twilioAccountConfig();let response:Response|null=null;for(const credential of credentials){response=await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${sid}.mp3`,{headers:{Authorization:credential.authorization},cache:"no-store"});if(response.ok)break;if(response.status!==401&&response.status!==403)break}
     if(!response?.ok)return Response.json({error:"Twilio recording audio is unavailable"},{status:502});return new Response(response.body,{headers:{"Content-Type":"audio/mpeg","Cache-Control":"private, max-age=300","Content-Disposition":`inline; filename="${sid}.mp3"`}});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Recording unavailable"},{status:500})}

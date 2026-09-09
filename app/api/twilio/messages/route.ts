@@ -1,7 +1,7 @@
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
-import {sendOutboundSms} from "../../../lib/outbound-sms";
+import {outboundSmsStatus,sendOutboundSms} from "../../../lib/outbound-sms";
 import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
@@ -34,7 +34,7 @@ async function workspacePhone(){
   if(assignment&&assignment.provider!=="twilio")throw new Error(`This workspace uses ${assignment.provider}. Its messaging adapter is not connected yet.`);
   const phone=assignment?.phoneNumber||"";
   if(!phone)throw new Error("This Pacifica workspace does not have a Twilio number assigned yet.");
-  return phone;
+  return {phone,workspaceId:access.userId,email:access.email};
 }
 
 async function twilioRequest(url:string,init:RequestInit,credentials:Credential[]){
@@ -74,7 +74,8 @@ function safe(message:TwilioMessage){
 
 export async function GET(){
   try{
-    const phone=await workspacePhone();const {accountSid,credentials}=config(phone);
+    const {phone,workspaceId,email}=await workspacePhone();const {accountSid,credentials}=config(phone);
+    const sending=await outboundSmsStatus(workspaceId,email);
     const endpoint=`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
     const [outbound,inbound]=await Promise.all([
       twilioRequest(`${endpoint}?${new URLSearchParams({From:phone,PageSize:"250"})}`,{cache:"no-store"},credentials),
@@ -85,7 +86,7 @@ export async function GET(){
     const unique=new Map<string,TwilioMessage>();
     for(const message of [...(outbound.data.messages||[]),...(inbound.data.messages||[])])unique.set(message.sid,message);
     const messages=Array.from(unique.values()).sort((left,right)=>String(right.date_sent||right.date_created||"").localeCompare(String(left.date_sent||left.date_created||""))).map(safe);
-    return Response.json({configured:true,phone,messages,credential:outbound.credential||inbound.credential},{headers:{"Cache-Control":"no-store"}});
+    return Response.json({configured:sending.configured,historyAvailable:true,sending,phone,messages,credential:outbound.credential||inbound.credential},{headers:{"Cache-Control":"no-store"}});
   }catch(error){console.error("[twilio/messages] load failed",error instanceof Error?error.message:"unknown");return Response.json({configured:false,error:error instanceof Error?error.message:"Unable to load messages"},{status:500})}
 }
 
@@ -97,10 +98,10 @@ export async function POST(request:Request){
     if(!to)return Response.json({error:"Enter a valid US mobile number"},{status:400});
     if(!text)return Response.json({error:"Write a message first"},{status:400});
     const access=await workspaceAccess();const workspace=await readStoredWorkspace(access.userId);const digits=to.replace(/\D/g,"").slice(-10);const lead=workspace?.leads.find(raw=>{const item=raw as Record<string,unknown>;return String(item.phone||"").replace(/\D/g,"").slice(-10)===digits}) as Record<string,unknown>|undefined;
-    if(!lead)return Response.json({error:"Save this phone number as a workspace contact before texting."},{status:400});
+    if(!lead||lead.deletedAt)return Response.json({error:"Save this phone number as a workspace contact before texting."},{status:400});
     if(body.permissionDocumented===true&&lead.smsConsent!==true){lead.smsConsent=true;await writeStoredWorkspace(access.userId,{...workspace!,leads:workspace!.leads.map(raw=>raw===lead?lead:raw)})}
     if(lead.doNotCall||lead.smsOptOut||lead.smsConsent!==true)return Response.json({error:lead.smsOptOut?"This contact opted out of SMS.":"Document this contact’s SMS consent before sending."},{status:403});
-    const result=await sendOutboundSms({workspaceId:access.userId,to,body:text});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text,status:result.status,date_created:new Date().toISOString()};
+    const result=await sendOutboundSms({workspaceId:access.userId,workspaceEmail:access.email,to,body:text});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text,status:result.status,date_created:new Date().toISOString()};
     console.log("[twilio/messages] sent",{sid:result.id,toLast4:to.slice(-4),credential:"tenant SMS adapter"});
     return Response.json({ok:true,message:safe(message)});
   }catch(error){console.error("[twilio/messages] send failed",error instanceof Error?error.message:"unknown");return Response.json({error:error instanceof Error?error.message:"Unable to send message"},{status:500})}

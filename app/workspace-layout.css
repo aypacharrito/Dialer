@@ -283,3 +283,108 @@ html[data-theme] .app-shell .display-size-picker>button small { display:none; }
   html[data-theme] .app-shell .automation-studio>header { flex-wrap:wrap; }
   html[data-theme] .app-shell .automation-safety-row { align-items:flex-start; flex-direction:column; }
 }
+
+/* September 8 review: restrained controls, consistent surfaces, and call tools. */
+html[data-theme] .app-shell .topbar .lead-line-switch {
+  display:flex !important; align-items:stretch; flex-wrap:nowrap !important;
+  padding:0 !important; gap:22px !important; border:0 !important;
+  border-radius:0 !important; box-shadow:none !important; background:transparent !important;
+}
+html[data-theme] .app-shell .topbar .lead-line-switch button {
+  flex:none !important; min-width:0 !important; min-height:42px !important;
+  padding:10px 0 !important; border:0 !important; border-bottom:2px solid transparent !important;
+  border-radius:0 !important; background:transparent !important; box-shadow:none !important;
+  color:var(--ps-muted) !important; line-height:1.35 !important;
+}
+html[data-theme] .app-shell .topbar .lead-line-switch button.active {
+  color:var(--ps-text-strong) !important; border-bottom-color:var(--ps-accent) !important;
+}
+html[data-theme] .app-shell .phone-pad .number-input-shell {
+  background:var(--ps-surface) !important; border:1px solid var(--ps-line-strong) !important;
+  border-radius:6px !important; box-shadow:none !important; padding:0 !important;
+}
+html[data-theme] .app-shell .phone-pad .number-input-shell:focus-within {
+  border-color:var(--ps-accent) !important; outline:1px solid var(--ps-accent); outline-offset:0;
+}
+html[data-theme] .app-shell .phone-pad .number-input-shell input {
+  border:0 !important; outline:none !important; box-shadow:none !important; background:transparent !important;
+  border-radius:6px !important; padding:12px !important;
+}
+html[data-theme] .app-shell .settings-content :is(.workspace-mode-picker,.appearance-picker) button,
+html[data-theme] .app-shell .settings-content :is(.clearvoice-card,.network-test,.clearvoice-status,.clearvoice-modes button,.clearvoice-compare button) {
+  background:var(--ps-surface) !important; color:var(--ps-text) !important;
+  border-color:var(--ps-line) !important; box-shadow:none !important;
+}
+html[data-theme] .app-shell .settings-content :is(.workspace-mode-picker,.appearance-picker) button.active,
+html[data-theme] .app-shell .settings-content :is(.clearvoice-modes,.clearvoice-compare) button.active {
+  background:var(--ps-accent-soft) !important; border-color:var(--ps-accent) !important; color:var(--ps-accent) !important;
+}
+html[data-theme] .app-shell .settings-content :is(.phone-settings,.phone-settings-card,.phone-config)>header,
+html[data-theme] .app-shell .settings-content .phone-settings>h2 {
+  background:var(--ps-surface) !important; color:var(--ps-text) !important;
+  border-bottom:1px solid var(--ps-line) !important; padding:18px 20px !important;
+}
+html[data-theme] .app-shell .settings-content :is(.phone-settings,.phone-settings-card,.phone-config)>header :is(b,span,h2,small),
+html[data-theme] .app-shell .settings-content :is(.clearvoice-card,.network-test) :is(b,strong,h2,h3,span) {color:var(--ps-text) !important;}
+html[data-theme] .app-shell .settings-content :is(.clearvoice-card,.network-test) :is(small,p) {color:var(--ps-muted) !important;}
+html[data-theme] .app-shell .settings-content .network-test>span {background:var(--ps-surface-3) !important;color:var(--ps-accent) !important;}
+html[data-theme] .app-shell .settings-content :is(input[type="range"],input[type="checkbox"]) {accent-color:var(--ps-accent);}
+html[data-theme] .app-shell .microphone-sample-player {display:block;width:100%;height:40px;margin-top:14px;color-scheme:inherit;}
+html[data-theme] .app-shell .microphone-sample-player:not([src]) {display:none;}
+html[data-theme] .app-shell .recording-player {display:flex;flex-direction:column;align-items:start;gap:6px;min-width:0;}
+html[data-theme] .app-shell .recording-player audio {width:100% !important;min-width:170px;height:36px;max-width:270px;color-scheme:inherit;}
+html[data-theme] .app-shell .recording-player button {border:1px solid var(--ps-line);background:var(--ps-surface);color:var(--ps-text);border-radius:6px;padding:8px 10px;}
+html[data-theme] .app-shell .recording-player>small {color:var(--ps-danger) !important;white-space:normal;}
+html[data-theme] .app-shell :is(.call-log-head,.call-log-row) {grid-template-columns:minmax(120px,1.1fr) minmax(130px,.9fr) minmax(130px,1.1fr) minmax(200px,1.1fr) 80px minmax(100px,.7fr) !important;}
+html[data-theme] .app-shell .contact-drawer>footer {display:flex;gap:12px;justify-content:space-between;}
+html[data-theme] .app-shell .contact-drawer>footer .delete-contact {background:transparent !important;color:var(--ps-danger) !important;border:1px solid var(--ps-line) !important;}
+html[data-theme] .app-shell .contact-deleted-notice {position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:1800;display:flex;align-items:center;gap:16px;max-width:calc(100vw - 32px);padding:12px 16px;border:1px solid var(--ps-line);border-radius:8px;background:var(--ps-surface);color:var(--ps-text);box-shadow:var(--ps-shadow-sheet);}
+html[data-theme] .app-shell .contact-deleted-notice button {background:transparent;color:var(--ps-accent);border:0;white-space:nowrap;}
+html[data-theme] .app-shell :is(.sms-setup-notice,.sms-owner-setup) {margin:0;padding:10px 14px;border-left:2px solid var(--ps-warning);background:var(--ps-warning-soft);color:var(--ps-text);font-size:calc(13px * var(--workspace-text-scale,1));line-height:1.5;}
+html[data-theme] .app-shell .sms-owner-setup {margin-block:14px;}
+html[data-theme] .app-shell .scheduled-follow-ups {border-top:1px solid var(--ps-line);padding:14px 0;margin-top:12px;}
+html[data-theme] .app-shell .scheduled-follow-ups header {display:flex;gap:10px 24px;flex-wrap:wrap;margin-bottom:8px;}
+html[data-theme] .app-shell .scheduled-follow-ups header span {color:var(--ps-muted);font-size:13px;}
+html[data-theme] .app-shell .scheduled-follow-ups>button {display:flex;gap:16px;align-items:center;text-align:left;width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--ps-line);background:transparent;color:var(--ps-text);}
+html[data-theme] .app-shell .scheduled-follow-ups>button span:last-child {margin-left:auto;color:var(--ps-accent);}
+html[data-theme] .app-shell .ai-workspace {flex:1;min-height:0;overflow:auto;}
+html[data-theme] .app-shell .ai-connection-panel {display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;border:1px solid var(--ps-line);padding:16px 20px;margin:16px 24px;background:var(--ps-surface);border-radius:8px;}
+html[data-theme] .app-shell .ai-connection-panel p {margin:4px 0;font-size:14px;color:var(--ps-muted);}
+html[data-theme] .app-shell .ai-connection-actions {margin-left:auto;display:flex;flex-direction:column;gap:5px;}
+html[data-theme] .app-shell .ai-connection-actions button {background:var(--ps-surface);border:1px solid var(--ps-line-strong);border-radius:6px;color:var(--ps-text);padding:9px 12px;}
+html[data-theme] .app-shell .ai-connection-actions small {color:var(--ps-muted);font-size:11px;}
+html[data-theme] .app-shell .ai-connection-panel details {width:100%;font-size:13px;line-height:1.7;}
+html[data-theme] .app-shell .ai-connection-panel summary {cursor:pointer;color:var(--ps-accent);}
+html[data-theme] .app-shell .ai-connection-panel code {overflow-wrap:anywhere;}
+html[data-theme] .app-shell .float-call-launch {position:fixed;bottom:20px;right:24px;z-index:1100;}
+html[data-theme] .app-shell .float-call-launch>button {padding:10px 14px;background:var(--ps-surface);border:1px solid var(--ps-line-strong);color:var(--ps-text);border-radius:7px;box-shadow:var(--ps-shadow-card);}
+html[data-theme] .app-shell .float-call-launch p {max-width:310px;padding:12px;margin:8px 0 0;background:var(--ps-surface);border:1px solid var(--ps-line);border-radius:7px;font-size:13px;}
+html[data-theme] .floating-call {box-sizing:border-box;min-height:100dvh;margin:0;padding:18px;background:var(--ps-surface);color:var(--ps-text);font:14px/1.5 var(--font-ui);}
+html[data-theme] .floating-call header {display:flex;justify-content:space-between;color:var(--ps-muted);font-size:12px;}
+html[data-theme] .floating-call h1 {margin:18px 0 0;font:650 21px/1.3 var(--font-ui);}
+html[data-theme] .floating-call p {margin:4px 0;color:var(--ps-muted);}
+html[data-theme] .floating-call time {display:block;margin:12px 0;font-variant-numeric:tabular-nums;}
+html[data-theme] .floating-call button {font:600 14px var(--font-ui);min-height:40px;border:1px solid var(--ps-line);border-radius:6px;background:var(--ps-surface-2);color:var(--ps-text);cursor:pointer;}
+html[data-theme] .floating-call button:disabled {opacity:.45;cursor:default;}
+html[data-theme] .floating-call button[aria-pressed="true"] {background:var(--ps-accent-soft);border-color:var(--ps-accent);}
+html[data-theme] .floating-call .floating-call-end {color:var(--ps-danger);background:var(--ps-danger-soft);}
+html[data-theme] .floating-call-actions {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+html[data-theme] .floating-keypad {margin-top:14px;}
+html[data-theme] .floating-keypad input {box-sizing:border-box;width:100%;padding:8px;margin:0 0 8px;border:1px solid var(--ps-line);background:var(--ps-surface);border-radius:4px;color:var(--ps-text);font:14px var(--font-ui);}
+html[data-theme] .floating-keypad>div {display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+html[data-theme] .floating-call>small {display:block;margin-top:10px;color:var(--ps-muted);font-size:11px;}
+@container crm-workspace (max-width:720px) {
+  html[data-theme] .app-shell .topbar .lead-line-switch {gap:18px !important;flex-basis:100%;}
+  html[data-theme] .app-shell .ai-connection-panel {margin:12px;}
+  html[data-theme] .app-shell .scheduled-follow-ups>button {flex-wrap:wrap;}
+}
+@container crm-workspace (max-width:900px) {
+  html[data-theme] .app-shell .call-log-head {display:none;}
+  html[data-theme] .app-shell :is(.call-log-body,.call-log-row) {min-width:0 !important;width:100% !important;}
+  html[data-theme] .app-shell .call-log-row {grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;gap:12px;padding:16px !important;}
+  html[data-theme] .app-shell .call-log-row>span {min-width:0;overflow-wrap:anywhere;}
+  html[data-theme] .app-shell .call-log-row>.recording-cell {grid-column:1/-1;}
+  html[data-theme] .app-shell .call-log-row>span:nth-child(5)::before {content:"Duration · ";color:var(--ps-muted);}
+}
+html[data-theme] .app-shell .phone-pad .pad-tools>button {padding:5px 8px;min-height:30px;border:1px solid var(--ps-line);background:var(--ps-surface);color:var(--ps-text);border-radius:5px;}
+html[data-theme] .app-shell .phone-pad .pad-tools>button[aria-pressed="true"] {border-color:var(--ps-accent);background:var(--ps-accent-soft);color:var(--ps-accent);}

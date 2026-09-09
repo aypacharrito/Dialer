@@ -123,3 +123,28 @@ test('neutral callback saves notes and time without marking interest or reopenin
   assert.equal(FakeDevice.calls.length,1);
  }finally{await h.cleanup()}
 });
+
+test('deleting a test lead removes it from contacts and dialing, survives save, and supports Undo',async()=>{
+ const h=await setup();try{
+  h.dom.window.confirm=()=>true;
+  await h.nav('Contacts');await click(document.querySelector('.table-row'));
+  await click(byText('.contact-drawer button','Delete contact'));
+  assert.equal(document.querySelectorAll('.table-row').length,0);
+  assert.ok(h.saved()[0].deletedAt);
+  await h.nav('Dialer');assert.match(document.querySelector('.dialer-toolbar').textContent,/0 remaining/);
+  await click(byText('.contact-deleted-notice button','Undo'));
+  assert.equal(h.saved()[0].deletedAt,'');
+  await h.nav('Contacts');assert.equal(document.querySelectorAll('.table-row').length,1);
+ }finally{await h.cleanup()}
+});
+
+test('Hold is removed from both live call surfaces while Mute stays available',async()=>{
+ const h=await setup();try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));
+  await act(async()=>FakeDevice.calls[0].answer());
+  assert.ok(document.querySelector('[aria-label="Mute"]'));
+  assert.equal(byText('.call-controls button','Hold'),undefined);
+  await h.nav('Contacts');assert.ok(byText('.active-call-actions button','Mute'));
+  assert.equal(byText('.active-call-actions button','Hold'),undefined);
+ }finally{await h.cleanup()}
+});

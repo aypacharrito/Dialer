@@ -1,6 +1,7 @@
 import { dateValue, leadCreatedAt } from "./lead-priority";
 
 export type AutomationLead={
+  deletedAt?:string;
   id:number;stage:string;outcome:string;doNotCall:boolean;importedAt:string;received?:string;attempts?:number;lastAttemptAt?:string;lastSmsAt?:string;
   email?:string;smsConsent?:boolean;smsOptOut?:boolean;emailConsent?:boolean;emailOptOut?:boolean;lastEmailAt?:string;
   automationEnabled?:boolean;automationStep?:number;automationNextAt?:string;automationStatus?:string;
@@ -35,13 +36,14 @@ export function recommendedAutomationChannel(lead:AutomationLead,step=lead.autom
 }
 
 export function initializeAutomation<T extends AutomationLead>(lead:T,now=Date.now()):T{
-  if(lead.automationEnabled===false||lead.automationNextAt||lead.stage==="Closed"||lead.doNotCall||["Interested","Appointment set","Completed","Call back later"].includes(lead.outcome))return lead;
+  if(lead.deletedAt||lead.automationEnabled===false||lead.automationNextAt||lead.stage==="Closed"||lead.doNotCall||["Interested","Appointment set","Completed","Call back later"].includes(lead.outcome))return lead;
   const arrived=leadCreatedAt(lead);
   const next=lead.outcome==="No answer"||lead.outcome==="Voicemail"?nextAutomationAfterAttempt(Math.max(1,lead.attempts||1),Number.isFinite(dateValue(lead.lastAttemptAt))?dateValue(lead.lastAttemptAt):now):new Date(Math.max(now,arrived+5*60*1000)).toISOString();
   return {...lead,automationEnabled:true,automationStep:lead.attempts||0,automationNextAt:next,automationStatus:"scheduled"};
 }
 
 export function refreshAutomation<T extends AutomationLead>(lead:T,now=Date.now()):T{
+  if(lead.deletedAt)return lead;
   if(lead.stage==="Closed"||lead.doNotCall)return lead.automationStatus==="paused"?lead:{...lead,automationStatus:"paused",automationNextAt:""};
   if(lead.stage==="Appointment"||["Appointment set","Interested","Completed","Call back later"].includes(lead.outcome))return lead.automationStatus==="waiting for salesperson"&&!lead.automationNextAt?lead:{...lead,automationStatus:"waiting for salesperson",automationNextAt:""};
   if(lead.automationEnabled===false)return lead;

@@ -34,10 +34,10 @@ test('changing a mistaken closed result on an open contact still permits a corre
 });
 test('automation feedback reads nested counts, including task creation and failures',()=>{
  const followUps={due:5,sent:2,tasksCreated:1,fallbacks:1,blocked:1,failed:1,deadLettered:0};
- const result=automationRunFeedback({ok:true,followUps});assert.match(result,/Checked 5 due/);assert.match(result,/2 sent/);assert.match(result,/1 task created/);assert.match(result,/1 failed/);assert.doesNotMatch(result,/undefined/);
+ const result=automationRunFeedback({ok:true,followUps});assert.match(result,/Checked 5 automated steps/);assert.match(result,/2 sent/);assert.match(result,/1 task created/);assert.match(result,/1 failed/);assert.doesNotMatch(result,/undefined/);
 });
 test('an empty successful run is explicit and an incomplete payload never implies success',()=>{
- assert.match(automationRunFeedback({ok:true,followUps:{due:0,sent:0,tasksCreated:0,fallbacks:0,blocked:0,failed:0,deadLettered:0}}),/no follow-ups are due/);
+ assert.match(automationRunFeedback({ok:true,followUps:{due:0,sent:0,tasksCreated:0,fallbacks:0,blocked:0,failed:0,deadLettered:0}}),/no automated sequence steps are due/);
  for(const bad of [{},{ok:true},{ok:true,followUps:{due:1}},null])assert.throws(()=>automationRunFeedback(bad),/incomplete status/);
 });
 test('quiet dialing defaults on for legacy profiles and persists an explicit opt-out',()=>{

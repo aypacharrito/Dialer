@@ -1,3 +1,4 @@
+import {smsReadiness} from "./sms-readiness";
 import {phoneAssignmentForWorkspace} from "./phone-assignments";
 import {twilioAccountConfig,twilioApiErrorMessage,twilioApiRequest,type TwilioApiError} from "./twilio-rest";
 
@@ -10,17 +11,15 @@ function normalized(value:string){
   return /^\+[1-9]\d{7,14}$/.test(value.trim())?value.trim():"";
 }
 
-export async function outboundSmsStatus(workspaceId:string){
-  const assignment=await phoneAssignmentForWorkspace(workspaceId);
-  if(process.env.TWILIO_A2P_APPROVED!=="true")return {configured:false,provider:"twilio" as const,from:assignment?.phoneNumber||"",message:"A2P approval gate is closed"};
-  if(!assignment||assignment.provider!=="twilio")return {configured:false,provider:"twilio" as const,from:"",message:"No Twilio number is assigned"};
-  if(assignment.smsStatus!=="registered")return {configured:false,provider:"twilio" as const,from:assignment.phoneNumber,message:"Assigned number is not marked A2P registered"};
-  try{twilioAccountConfig()}catch(error){return {configured:false,provider:"twilio" as const,from:assignment.phoneNumber,message:error instanceof Error?error.message:"Twilio credentials are incomplete"}}
-  return {configured:true,provider:"twilio" as const,from:assignment.phoneNumber,message:"Twilio SMS ready"};
+export async function outboundSmsStatus(workspaceId:string,email=""){
+  const assignment=await phoneAssignmentForWorkspace(workspaceId,email);
+  let credentialError="";
+  try{twilioAccountConfig()}catch(error){credentialError=error instanceof Error?error.message:"Twilio credentials are incomplete"}
+  return smsReadiness(assignment,process.env.TWILIO_A2P_APPROVED==="true",credentialError);
 }
 
-export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string}){
-  const status=await outboundSmsStatus(input.workspaceId);
+export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string}){
+  const status=await outboundSmsStatus(input.workspaceId,input.workspaceEmail);
   if(!status.configured)throw new Error(status.message);
   const to=normalized(input.to);if(!to)throw new Error("Lead has an invalid phone number");
   const body=input.body.trim().slice(0,1500);if(!body)throw new Error("Write a message first");

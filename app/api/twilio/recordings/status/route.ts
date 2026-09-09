@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import {aiClient,aiModel,aiReasoning} from "../../../../lib/ai-provider";
 import {after} from "next/server";
 import {logError,logEvent} from "../../../../lib/observability";
 import {twilioAccountConfig} from "../../../../lib/twilio-rest";
@@ -15,8 +15,8 @@ async function audio(sid:string){const {accountSid,credentials}=twilioAccountCon
 
 async function addIntelligence(workspaceId:string,leadId:number,callSid:string,sid:string){
   if(!process.env.OPENAI_API_KEY)return;const workspace=await readStoredWorkspace(workspaceId);if(!workspace?.profile.callAiSummaryEnabled)return;
-  const client=new OpenAI({apiKey:process.env.OPENAI_API_KEY});const bytes=await audio(sid);const transcript=await client.audio.transcriptions.create({file:new File([bytes],`${sid}.mp3`,{type:"audio/mpeg"}),model:process.env.OPENAI_TRANSCRIBE_MODEL||"gpt-4o-mini-transcribe"});const text=transcript.text.trim().slice(0,30000);if(!text)return;
-  const summaryResponse=await client.responses.create({model:process.env.OPENAI_MODEL?.trim()||"gpt-5-mini",store:false,input:[{role:"system",content:"Summarize this sales call using only the transcript. Return concise JSON with summary, customerNeeds, objections, commitments, and nextStep. Never invent facts."},{role:"user",content:text}],text:{format:{type:"json_schema",name:"call_summary",strict:true,schema:{type:"object",additionalProperties:false,properties:{summary:{type:"string"},customerNeeds:{type:"array",items:{type:"string"}},objections:{type:"array",items:{type:"string"}},commitments:{type:"array",items:{type:"string"}},nextStep:{type:"string"}},required:["summary","customerNeeds","objections","commitments","nextStep"]}}},max_output_tokens:900});
+  const client=aiClient();const bytes=await audio(sid);const transcript=await client.audio.transcriptions.create({file:new File([bytes],`${sid}.mp3`,{type:"audio/mpeg"}),model:process.env.OPENAI_TRANSCRIBE_MODEL||"gpt-4o-mini-transcribe"});const text=transcript.text.trim().slice(0,30000);if(!text)return;
+  const summaryResponse=await client.responses.create({model:aiModel(),...aiReasoning(aiModel()),store:false,input:[{role:"system",content:"Summarize this sales call using only the transcript. Return concise JSON with summary, customerNeeds, objections, commitments, and nextStep. Never invent facts."},{role:"user",content:text}],text:{format:{type:"json_schema",name:"call_summary",strict:true,schema:{type:"object",additionalProperties:false,properties:{summary:{type:"string"},customerNeeds:{type:"array",items:{type:"string"}},objections:{type:"array",items:{type:"string"}},commitments:{type:"array",items:{type:"string"}},nextStep:{type:"string"}},required:["summary","customerNeeds","objections","commitments","nextStep"]}}},max_output_tokens:2000});
   const summary=summaryResponse.output_text.slice(0,10000);const current=await readStoredWorkspace(workspaceId);if(!current)return;
   const callLogs=current.callLogs.map(raw=>{const log=raw as Record<string,unknown>;return log.callSid===callSid?{...log,transcript:text,aiSummary:summary}:log});
   const leads=current.leads.map(raw=>{const lead=raw as Record<string,unknown>;return Number(lead.id)===leadId?{...lead,lastCallTranscript:text,lastCallSummary:summary}:lead});

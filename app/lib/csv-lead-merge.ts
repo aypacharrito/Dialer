@@ -1,6 +1,8 @@
+import {deletionState} from "./lead-deletion";
 import {crmFieldsForDisposition} from "./lead-priority";
 
 export type CsvManagedLead={
+  deletedAt?:string;deletionUpdatedAt?:string;
   id:number;vendorId?:string;source:string;name:string;phone:string;email:string;city:string;product:string;line:"life"|"home-auto";queueOverride?:boolean;sourceDisposition:string;stage:string;outcome:string;status:string;leadCost:number;importedAt?:string;
   providerUpdatedAt?:string;address?:string;state?:string;zip?:string;territory?:string;brand?:string;profileName?:string;received?:string;returnStatus?:string;employeeCount?:string;searchPro?:string;extraFields?:Record<string,string>;
   csvFileName?:string;csvUpdatedAt?:string;importedFields?:Record<string,string>;priorityOverride?:"auto"|"high"|"low";assignedTo?:string;estimatedValue?:number;closedRevenue?:number;
@@ -56,6 +58,7 @@ function workflowScore(lead:CsvManagedLead){
 }
 
 function mergeMatchedLead<T extends CsvManagedLead>(current:T,item:T,nowIso:string){
+  if(current.deletedAt)return current;
   const phone=normalizedCsvPhone(item.phone);const email=normalizedCsvEmail(item.email);
   const importedFields=recordWithUsefulValues(current.importedFields,item.importedFields);const extraFields=recordWithUsefulValues(current.extraFields,item.extraFields);
   const currentWorkflowIsUntouched=current.stage==="New lead"&&current.outcome==="Not contacted";
@@ -101,7 +104,7 @@ function mergeDuplicateLead<T extends CsvManagedLead>(current:T,duplicate:T,nowI
   const merged=mergeMatchedLead(current,duplicate,nowIso);
   const preferred=workflowScore(duplicate)>workflowScore(current)?duplicate:current;
   return {
-    ...merged,
+    ...merged,...deletionState(current,duplicate),
     stage:preferred.stage,outcome:preferred.outcome,status:preferred.status,sourceDisposition:preferred.sourceDisposition,
     notes:[current.notes,duplicate.notes].filter(Boolean).toSorted((left,right)=>String(right).length-String(left).length)[0]||"",
     followUp:latestIso(current.followUp,duplicate.followUp)||current.followUp||duplicate.followUp||"",

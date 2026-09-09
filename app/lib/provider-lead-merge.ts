@@ -7,7 +7,7 @@ export type ProviderLeadRecord={
 
 export type ProviderManagedLead={
   id:number;vendorId?:string;source:string;name:string;phone:string;email:string;city:string;product:string;line:"life"|"home-auto";queueOverride?:boolean;sourceDisposition:string;stage:string;outcome:string;status:string;leadCost:number;
-  providerUpdatedAt?:string;address?:string;state?:string;zip?:string;territory?:string;brand?:string;profileName?:string;received?:string;returnStatus?:string;employeeCount?:string;searchPro?:string;extraFields?:Record<string,string>;
+  deletedAt?:string;providerUpdatedAt?:string;address?:string;state?:string;zip?:string;territory?:string;brand?:string;profileName?:string;received?:string;returnStatus?:string;employeeCount?:string;searchPro?:string;extraFields?:Record<string,string>;
 };
 
 const phoneDigits=(value:string)=>value.replace(/\D/g,"").slice(-10);
@@ -23,7 +23,7 @@ export function mergeProviderLeads<T extends ProviderManagedLead>(existing:T[],i
     const existingPosition=vendorKey&&byVendor.has(vendorKey)?byVendor.get(vendorKey):byPhone.get(digits);
     if(existingPosition===undefined){newItems.push(create(item,position));added++;continue}
 
-    const current=next[existingPosition];const mapped=crmFieldsForDisposition(item.disposition);
+    const current=next[existingPosition];if(current.deletedAt)continue;const mapped=crmFieldsForDisposition(item.disposition);
     const providerStatus=(item.disposition||"").toLowerCase();
     const meaningfulStatus=Boolean(providerStatus&&!providerStatus.includes("not worked")&&providerStatus!=="new"&&providerStatus!=="received");
     const currentStatus=current.sourceDisposition.toLowerCase();const currentIsInitial=!currentStatus||currentStatus==="new"||currentStatus==="received"||currentStatus.includes("not worked");

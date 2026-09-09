@@ -1,6 +1,7 @@
 import type {WorkspaceProfile} from "./workspace-profile";
 
 export type ClientRecord={
+  deletedAt?:string;
   id:number;name:string;phone:string;email?:string;product?:string;source?:string;city?:string;stage?:string;outcome?:string;closedRevenue?:number;smsConsent?:boolean;smsOptOut?:boolean;
   clientStatus?:"active"|"inactive";dateOfBirth?:string;policyNumber?:string;policyEffectiveDate?:string;policyExpirationDate?:string;renewalDate?:string;policyPremium?:number;policyTermMonths?:number;clientReminderKeys?:string[];
   importedFields?:Record<string,string>;extraFields?:Record<string,string>;
@@ -36,6 +37,7 @@ export function clientPolicyMetrics(lead:ClientRecord){
 }
 
 export function isActiveClient(lead:ClientRecord){
+  if(lead.deletedAt)return false;
   if(lead.clientStatus==="inactive")return false;
   if(lead.clientStatus==="active")return true;
   const outcome=String(lead.outcome||"").trim().toLowerCase();
