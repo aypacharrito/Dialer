@@ -1,13 +1,15 @@
-PACIFICA — VIDEO CLEANUP + EXE RELEASE REFRESH
+PACIFICA ONE-TIME CONSOLIDATION
 
-Extract into the ROOT of aypacharrito/Dialer, overwrite matching files, and push to main.
-Do not delete or replace the GitHub desktop workflow you already created.
+1. Extract this ZIP into the ROOT of aypacharrito/Dialer.
+2. Overwrite/merge folders.
+3. Push all files to main.
 
-Fixes from the 13:36 video:
-- EXE release lookup stops caching a stale "publishing" result.
-- SMS uses the registered workspace number as the approval source; the redundant TWILIO_A2P_APPROVED flag is removed. Optional emergency pause: PACIFICA_SMS_SENDING_ENABLED=false.
-- Removes the large yellow SMS setup banner and extra header clutter.
-- Pacifica AI keeps image drag/drop/paste and contact creation but removes connection-panel clutter and makes the chat more minimal.
-- Live mic uses low-latency Web Audio when available and turns off browser echo/auto-gain processing during sidetone to reduce choppiness. ClearVoice still works.
-- System Health becomes a compact summary with detailed diagnostics collapsed.
-- Calling/Messages/AI spacing is tightened for a cleaner "less is better" look.
+GitHub Actions will run "Pacifica One-Time Consolidation" once. It will:
+- run all legacy apply-pacifica-* patches one final time so the final behavior is baked into source;
+- remove those obsolete patch scripts and their package.json prebuild hooks;
+- add truthful SMS delivery labels and fast post-send status refreshes;
+- add Windows desktop auto-update support;
+- update the desktop release workflow so it publishes latest.yml + a unique version;
+- delete the one-time migration script and workflow after it commits the cleanup.
+
+IMPORTANT: the currently installed Pacifica 0.2.0 EXE does not contain updater code. After the new desktop release is published, install that new EXE one final time. Future native desktop updates can then update automatically. Web/CRM updates continue to load without reinstalling.
