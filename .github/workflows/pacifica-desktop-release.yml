@@ -1,1 +1,48 @@
+name: Pacifica Desktop Release
 
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Pacifica
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Build Pacifica Windows installer
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run dist:win
+
+      - name: Save installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pacifica-Windows-Installer
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+
+      - name: Publish Pacifica Desktop release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pacifica-desktop-${{ github.run_number }}
+          name: Pacifica Desktop ${{ github.run_number }}
+          make_latest: true
+          files: desktop/dist/*.exe
