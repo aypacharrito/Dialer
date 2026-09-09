@@ -1,6 +1,6 @@
 {
   "name": "pacifica-desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "main": "main.mjs",
@@ -17,10 +17,34 @@
     "appId": "com.pacificacrm.desktop",
     "productName": "Pacifica",
     "asar": true,
-    "files": ["main.mjs","preload.cjs","package.json"],
-    "directories": {"output":"dist"},
-    "win": {"target":["nsis"],"artifactName":"Pacifica-Setup-${version}.${ext}"},
-    "nsis": {"oneClick":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"createStartMenuShortcut":true},
-    "mac": {"target":["dmg"],"category":"public.app-category.business","artifactName":"Pacifica-${version}.${ext}"}
+    "files": [
+      "main.mjs",
+      "preload.cjs",
+      "overlay-preload.cjs",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Pacifica-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Pacifica"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business",
+      "artifactName": "Pacifica-${version}.${ext}"
+    }
   }
 }
