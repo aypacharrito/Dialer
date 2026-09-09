@@ -57,7 +57,16 @@ jobs:
           ! grep -q "apply-pacifica-" package.json
 
       - name: Verify production build
-        run: npm run build
+        shell: bash
+        run: |
+          mkdir -p .openai
+          printf '{"d1":"","r2":""}\n' > .openai/hosting.json
+          cleanup() {
+            rm -f .openai/hosting.json
+            rmdir .openai 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          npm run build
 
       - name: Commit consolidated source
         shell: bash
