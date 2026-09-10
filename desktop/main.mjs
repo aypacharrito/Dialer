@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, session, shell, screen, nativeTheme } from "electron";
 import electronUpdater from "electron-updater";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
@@ -9,6 +10,8 @@ const appOrigin=new URL(appUrl).origin;
 let mainWindow=null;
 let overlayWindow=null;
 let overlayPhase="";
+let overlayLayout="horizontal";
+let overlayGeometry="";
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
@@ -32,6 +35,15 @@ function isAuthUrl(url){
 }
 function isTrustedNavigation(url){return isAppUrl(url)||isAuthUrl(url)}
 
+function loadOverlayLayout(){
+  try{const value=JSON.parse(fs.readFileSync(path.join(app.getPath("userData"),"overlay-settings.json"),"utf8"));if(value.layout==="vertical")overlayLayout="vertical"}catch{/* First launch or invalid preferences: use the compact horizontal bar. */}
+}
+function saveOverlayLayout(){
+  try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({layout:overlayLayout}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
+}
+function overlayState(){return {...lastCallState,layout:overlayLayout}}
+function overlayDimensions(phase){return phase==="wrap"?(overlayLayout==="vertical"?[360,580]:[640,400]):(overlayLayout==="vertical"?[280,180]:[480,88])}
+
 function positionOverlay(){
   if(!overlayWindow)return;
   const display=mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
@@ -43,7 +55,7 @@ function positionOverlay(){
 function createOverlay(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
   overlayWindow=new BrowserWindow({
-    width:480,height:88,minWidth:480,minHeight:88,maxWidth:480,maxHeight:520,
+    width:480,height:88,minWidth:280,minHeight:88,maxWidth:640,maxHeight:580,
     frame:false,resizable:false,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
     backgroundColor:"#ffffff",title:"Pacifica Call",icon:path.join(__dirname,"assets/pacifica.ico"),
     webPreferences:{preload:path.join(__dirname,"overlay-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}
@@ -53,8 +65,8 @@ function createOverlay(){
   void overlayWindow.loadFile(path.join(__dirname,"overlay.html"));
   positionOverlay();
   overlayWindow.on("restore",()=>overlayWindow?.setSkipTaskbar(true));
-  overlayWindow.on("closed",()=>{overlayWindow=null;overlayPhase=""});
-  overlayWindow.webContents.once("did-finish-load",()=>overlayWindow?.webContents.send("pacifica:call-state",lastCallState));
+  overlayWindow.on("closed",()=>{overlayWindow=null;overlayPhase="";overlayGeometry=""});
+  overlayWindow.webContents.once("did-finish-load",()=>overlayWindow?.webContents.send("pacifica:call-state",overlayState()));
   return overlayWindow;
 }
 
@@ -94,6 +106,7 @@ app.whenReady().then(()=>{
     const trusted=isAppUrl(details.requestingUrl||webContents.getURL());
     callback(Boolean(trusted&&["media","notifications","clipboard-sanitized-write"].includes(permission)));
   });
+  loadOverlayLayout();
   createWindow();
   setTimeout(startDesktopUpdater,6000);
   app.on("activate",()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()});
@@ -105,14 +118,16 @@ function showCallOverlay(){
   if(!nextPhase){overlayWindow?.hide();overlayPhase="";return}
   const overlay=createOverlay();
   const phaseChanged=overlayPhase!==nextPhase;
-  if(phaseChanged){
-    const height=nextPhase==="wrap"?500:88;
-    overlay.setSize(480,height,false);
+  const geometry=`${nextPhase}:${overlayLayout}`;
+  if(overlayGeometry!==geometry){
+    const [width,height]=overlayDimensions(nextPhase);
+    overlay.setSize(width,height,false);
     const bounds=overlay.getBounds(),area=screen.getDisplayMatching(bounds).workArea;
-    overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-480)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
-    overlayPhase=nextPhase;
+    overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-width)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
+    overlayGeometry=geometry;
   }
-  overlay.webContents.send("pacifica:call-state",lastCallState);
+  overlayPhase=nextPhase;
+  overlay.webContents.send("pacifica:call-state",overlayState());
   // Timer updates must not restore a minimized window or move a dragged window.
   // A new result is shown so wrap-up is available outside the CRM as requested.
   if(overlay.isMinimized()){
@@ -131,6 +146,7 @@ ipcMain.on("pacifica:call-state",(event,state)=>{
 
 ipcMain.on("pacifica:call-action",(event,action)=>{
   if(!overlayWindow||event.sender!==overlayWindow.webContents||typeof action!=="string")return;
+  if(action==="toggle-layout"){overlayLayout=overlayLayout==="horizontal"?"vertical":"horizontal";saveOverlayLayout();showCallOverlay();return}
   if(action==="minimize"){overlayWindow.setSkipTaskbar(false);overlayWindow.minimize();return}
   if(!["open","mute","end","pause"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
   if(action==="open"){mainWindow?.show();mainWindow?.focus()}
@@ -153,5 +169,5 @@ ipcMain.on("pacifica:theme",(event,theme)=>{
   if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||""))return;
   mainWindow.setTitleBarOverlay({color:theme==="dark"?"#111614":"#f7f8fa",symbolColor:theme==="dark"?"#f4f7f5":"#17211d"});
   lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
-  overlayWindow?.webContents.send("pacifica:call-state",lastCallState);
+  overlayWindow?.webContents.send("pacifica:call-state",overlayState());
 });
