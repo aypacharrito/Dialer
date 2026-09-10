@@ -590,8 +590,7 @@ html[data-theme] .settings-nav button {
 html[data-theme] .settings-nav button b { font-size: calc(12px * var(--workspace-text-scale, 1)) !important; }
 
 html[data-theme] .workspace-profile-settings > header h2,
-html[data-theme] .team-management h2,
-html[data-theme] .system-health h2 {
+html[data-theme] .team-management h2 {
   font-size: calc(21px * var(--workspace-text-scale, 1)) !important;
   letter-spacing: -.02em !important;
 }

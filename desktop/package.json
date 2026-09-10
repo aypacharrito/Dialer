@@ -21,7 +21,9 @@
       "main.mjs",
       "preload.cjs",
       "overlay-preload.cjs",
-      "package.json"
+      "package.json",
+      "assets/**",
+      "overlay.html"
     ],
     "directories": {
       "output": "dist"
@@ -30,14 +32,17 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "Pacifica-Setup-${version}.${ext}"
+      "artifactName": "Pacifica-Setup-${version}.${ext}",
+      "icon": "assets/pacifica.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Pacifica"
+      "shortcutName": "Pacifica",
+      "installerIcon": "assets/pacifica.ico",
+      "uninstallerIcon": "assets/pacifica.ico"
     },
     "mac": {
       "target": [

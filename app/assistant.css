@@ -2,7 +2,7 @@
 html[data-theme] .app-shell .ai-workspace {
   --ai-surface:var(--ui-surface); --ai-text:var(--ui-text); --ai-muted:var(--ui-muted);
   flex:1; min-height:0; overflow:auto; width:100%; max-width:1440px;
-  margin:0 auto; padding:20px 28px 32px; position:relative; color:var(--ai-text);
+  margin:0 auto; padding:20px 28px 32px; position:relative; color:var(--ai-text); background:var(--ai-surface);
 }
 .ai-workspace *{box-sizing:border-box}
 .ai-workspace button{cursor:pointer;font:inherit}

@@ -1,6 +1,6 @@
 "use client";
 
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 
 type Check={ready:boolean;detail:string};
 type Health={status:string;ready:number;total:number;checks:Record<string,Check>;lastAutomationRun?:{completedAt?:string;sent?:number;blocked?:number;failed?:number};release?:string};
@@ -8,21 +8,27 @@ const labels:Record<string,string>={storage:"Storage",voice:"Calling",sms:"Texti
 
 export default function SystemHealthPanel(){
   const [health,setHealth]=useState<Health|null>(null);
-  const [message,setMessage]=useState("Checking…");
+  const [error,setError]=useState("");
+  const [loading,setLoading]=useState(false);
+  const request=useRef<AbortController|null>(null);
   const load=useCallback(async()=>{
+    request.current?.abort();
+    const controller=new AbortController();request.current=controller;
+    setLoading(true);setError("");
     try{
-      const response=await fetch("/api/diagnostics/system",{cache:"no-store"});
+      const response=await fetch("/api/diagnostics/system",{cache:"no-store",signal:controller.signal});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Health check failed");
-      setHealth(data);
-      setMessage(data.status==="launch ready"?"Everything important is connected":"Some setup still needs attention");
-    }catch(error){setMessage(error instanceof Error?error.message:"Health check failed")}
+      if(!controller.signal.aborted)setHealth(data);
+    }catch(error){if(!controller.signal.aborted)setError(error instanceof Error?error.message:"Health check failed")}
+    finally{if(!controller.signal.aborted)setLoading(false)}
   },[]);
-  useEffect(()=>{const initial=window.setTimeout(()=>void load(),0);const timer=window.setInterval(()=>void load(),60000);return()=>{window.clearTimeout(initial);window.clearInterval(timer)}},[load]);
-  const needsAttention=health?Object.entries(health.checks).filter(([,check])=>!check.ready):[];
-  return <section className="system-health system-health-minimal">
-    <header><div><span>SYSTEM STATUS</span><h2>{!health?"Checking workspace…":needsAttention.length?`${needsAttention.length} item${needsAttention.length===1?"":"s"} need attention`:"All systems ready"}</h2><p>{message}</p></div><button onClick={()=>void load()}>Refresh</button></header>
-    {health&&<div className="health-service-strip">{Object.entries(health.checks).map(([key,check])=><span key={key} className={check.ready?"ready":"setup"}><i/>{labels[key]||key}</span>)}</div>}
-    {health&&<details className="health-diagnostics"><summary>Diagnostics</summary><div>{Object.entries(health.checks).map(([key,check])=><article key={key}><span><b>{labels[key]||key}</b><small>{check.detail}</small></span><em>{check.ready?"Ready":"Setup"}</em></article>)}</div>{health.lastAutomationRun&&<footer>{health.lastAutomationRun.completedAt?`Last automation ${new Date(health.lastAutomationRun.completedAt).toLocaleString()}`:"Automation history unavailable"}{health.release?` · Release ${health.release}`:""}</footer>}</details>}
+  useEffect(()=>{const initial=window.setTimeout(()=>void load(),0);const timer=window.setInterval(()=>void load(),60000);return()=>{window.clearTimeout(initial);window.clearInterval(timer);request.current?.abort()}},[load]);
+  const needsAttention=health?Object.values(health.checks).filter(check=>!check.ready).length:0;
+  return <section className="workspace-health" aria-label="System health" aria-busy={loading}>
+    <header><div><h2>System health</h2><p role="status">{error?"Could not refresh status":!health?"Checking connections…":needsAttention?`${needsAttention} connection${needsAttention===1?" needs":"s need"} attention`:"All connections ready"}</p></div><button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Checking…":"Refresh"}</button></header>
+    {error&&<p className="workspace-health-error" role="alert">{error}</p>}
+    {health&&<div className="workspace-health-list">{Object.entries(health.checks).map(([key,check])=><details key={key} className={check.ready?"ready":"attention"}><summary><b>{labels[key]||key}</b><span>{check.ready?"Connected":"Needs attention"}</span></summary><p>{check.detail}</p></details>)}</div>}
+    {health?.lastAutomationRun?.completedAt&&<footer>Last automation run: {new Date(health.lastAutomationRun.completedAt).toLocaleString()}</footer>}
   </section>;
 }

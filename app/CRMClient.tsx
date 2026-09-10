@@ -6,6 +6,7 @@ import { useDialogFocus } from "./hooks/use-dialog-focus";
 import type { Call, Device } from "@twilio/voice-sdk";
 import WorkspaceLoadGate from "./components/WorkspaceLoadGate";
 import {mergeRecordingUpdates} from "./lib/recording-updates";
+import {desktopOutcomes,desktopWrapDraft} from "./lib/desktop-wrap-up";
 import FloatingCallWindow from "./components/FloatingCallWindow";
 import {mergeLeadDeletions,scheduledFollowUps} from "./lib/lead-deletion";
 import ActiveCallBar from "./components/ActiveCallBar";
@@ -227,6 +228,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const voiceRouteTokenRef=useRef("");
   const watchdogRef=useRef<number|undefined>(undefined);
   const elapsedRef=useRef(0);
+  const savedPostCallRef=useRef("");
+  const [desktopWrapError,setDesktopWrapError]=useState("");
   const currentLogRef=useRef<(CallLog & { connectedAt?:number; finalized?:boolean })|null>(null);
   const callLogsRef=useRef<CallLog[]>([]);
   const leadsRef=useRef<Lead[]>(starterLeads);
@@ -418,6 +421,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function openPostCall(leadId:number,resumeQueue:boolean,technicalOutcome:string,wasConnected:boolean){
     const completedLead=leadsRef.current.find(item=>item.id===leadId);if(!completedLead)return;
     resumeAfterWrapRef.current=resumeQueue;setResumeAfterWrap(resumeQueue);autoDialRef.current=false;setAutoDialing(false);
+    setDesktopWrapError("");
     setPostCallTechnicalOutcome(technicalOutcome);setPostCallConnected(wasConnected);
     setPostCallDraft(postCallDraftForEnd(completedLead,technicalOutcome,wasConnected));
     setPostCallLeadId(leadId);setPhoneStatus(`Wrap up ${completedLead.name}, then continue`);
@@ -436,17 +440,20 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       updateLead(completedLead.id,{sourceSyncStatus:message});return message;
     }catch(error){const message=`Saved in Pacifica · ${error instanceof Error?error.message:"source update failed"}`;updateLead(completedLead.id,{sourceSyncStatus:message});return message}
   }
-  async function savePostCall(next:"queue"|"again"="queue"){
+  async function savePostCall(next:"queue"|"again"="queue",desktopDraft?:typeof postCallDraft){
     if(!postCallLeadId||sourceSyncing)return;
     const completedLead=leadsRef.current.find(item=>item.id===postCallLeadId);if(!completedLead)return;
+    const saveId=`${callAttemptRef.current}:${postCallLeadId}`;if(savedPostCallRef.current===saveId)return;
+    savedPostCallRef.current=saveId;
+    const resultDraft=desktopDraft||postCallDraft;
     setSourceSyncing(true);
-    const won=postCallDraft.crmOutcome==="Sold / Won";const now=new Date();
-    const missed=["No answer","Voicemail"].includes(postCallDraft.crmOutcome);const terminal=postCallDraft.crmStage==="Closed"||["Not interested","Wrong number","Sold / Won"].includes(postCallDraft.crmOutcome);const humanFollowUp=["Interested","Appointment set","Completed","Call back later"].includes(postCallDraft.crmOutcome);
+    const won=resultDraft.crmOutcome==="Sold / Won";const now=new Date();
+    const missed=["No answer","Voicemail"].includes(resultDraft.crmOutcome);const terminal=resultDraft.crmStage==="Closed"||["Not interested","Wrong number","Sold / Won"].includes(resultDraft.crmOutcome);const humanFollowUp=["Interested","Appointment set","Completed","Call back later"].includes(resultDraft.crmOutcome);
     const automation:Partial<Lead>=missed&&!terminal?{automationEnabled:true,automationSequenceId:"missed-call",automationStep:0,automationNextAt:new Date(now.getTime()+120*60_000).toISOString(),automationStatus:"scheduled",automationDeliveryFailures:0,automationLastError:"",automationUpdatedAt:now.toISOString()}:terminal||humanFollowUp?{automationEnabled:!terminal,automationStatus:terminal?"complete":"waiting for salesperson",automationNextAt:"",automationUpdatedAt:now.toISOString()}:{};
-    const patch:Partial<Lead>={stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,sourceDisposition:postCallDraft.sourceDisposition,followUp:postCallDraft.crmStage==="Closed"?"":postCallDraft.appointmentAt,notes:postCallDraft.notes,status:postCallDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:now.toLocaleString(),closedAt:won?now.toISOString():completedLead.closedAt,...automation};
+    const patch:Partial<Lead>={stage:resultDraft.crmStage,outcome:resultDraft.crmOutcome,sourceDisposition:resultDraft.sourceDisposition,followUp:resultDraft.crmStage==="Closed"?"":resultDraft.appointmentAt,notes:resultDraft.notes,status:resultDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:now.toLocaleString(),closedAt:won?now.toISOString():completedLead.closedAt,...automation};
     updateLead(completedLead.id,patch);
     completeDialerRunLead(completedLead.id,completedLead.line);
-    const sourcePatch={sourceDisposition:postCallDraft.sourceDisposition,stage:postCallDraft.crmStage,outcome:postCallDraft.crmOutcome,followUp:patch.followUp||"",notes:postCallDraft.notes};
+    const sourcePatch={sourceDisposition:resultDraft.sourceDisposition,stage:resultDraft.crmStage,outcome:resultDraft.crmOutcome,followUp:patch.followUp||"",notes:resultDraft.notes};
     const resume=resumeAfterWrapRef.current&&next!=="again";
     resumeAfterWrapRef.current=false;setResumeAfterWrap(false);setPostCallLeadId(null);setSourceSyncing(false);
     if(next==="again"){
@@ -772,12 +779,33 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     reader.readAsText(file);
   }
   const fmt=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
-  // PACIFICA_NATIVE_CALL_OVERLAY_V2
+  // The desktop view sends decisions back to the same CRM state and save path.
   useEffect(()=>{
-    const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;setCallState?:(state:Record<string,unknown>)=>void}}).pacificaDesktop;
+    const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;supportsDesktopWrapUp?:boolean;setCallState?:(state:Record<string,unknown>)=>void}}).pacificaDesktop;
     if(!desktop?.isDesktop||!desktop.setCallState)return;
-    desktop.setCallState({active:dialing,name:manualCall?"Manual call":lead.name,number:manualCall?dialNumber:lead.phone,connected,muted,elapsed:fmt,queueRunning:autoDialing,theme:document.documentElement.dataset.theme==="dark"?"dark":"light"});
-  },[dialing,manualCall,lead.name,lead.phone,dialNumber,connected,muted,fmt,autoDialing]);
+    const wrapUp=desktop.supportsDesktopWrapUp&&postCallLead?{
+      id:`${callAttemptRef.current}:${postCallLead.id}`,name:postCallLead.name,number:postCallLead.phone,
+      category:postCallLead.product||queueLabel(postCallLead.line,workspaceProfile.mode),draft:postCallDraft,
+      outcomes:desktopOutcomes,resume:resumeAfterWrap,saving:sourceSyncing,doNotCall:postCallLead.doNotCall,
+      wasClosed:postCallLead.stage==="Closed",error:desktopWrapError,
+    }:null;
+    desktop.setCallState({active:dialing,name:manualCall?"Manual call":lead.name,number:manualCall?dialNumber:lead.phone,
+      category:manualCall?"Manual call":lead.product||queueLabel(lead.line,workspaceProfile.mode),connected,muted,elapsed:fmt,
+      queueRunning:autoDialing,theme:workspaceProfile.appearance,wrapUp});
+  },[dialing,manualCall,lead.name,lead.phone,lead.product,lead.line,dialNumber,connected,muted,fmt,autoDialing,workspaceProfile.mode,workspaceProfile.appearance,postCallLead,postCallDraft,resumeAfterWrap,sourceSyncing,desktopWrapError]);
+  useEffect(()=>{
+    const desktop=(window as unknown as {pacificaDesktop?:{onWrapAction?:(callback:(action:unknown)=>void)=>(()=>void)}}).pacificaDesktop;
+    if(!desktop?.onWrapAction)return;
+    return desktop.onWrapAction(action=>{
+      if(!postCallLead)return;
+      const result=desktopWrapDraft(action,`${callAttemptRef.current}:${postCallLead.id}`,postCallDraft,postCallLead.source,postCallLead.stage==="Closed");
+      if(!result){setDesktopWrapError("Choose a valid result and try again.");return}
+      setDesktopWrapError("");
+      if(result.kind==="pause"){setPostCallDraft(result.draft);resumeAfterWrapRef.current=false;setResumeAfterWrap(false);stopAutoDial("Queue paused");return}
+      if(result.kind==="again"&&(postCallLead.doNotCall||!postCallLead.phone)){setDesktopWrapError("This contact cannot be called again.");return}
+      void savePostCall(result.kind==="again"?"again":"queue",result.draft);
+    });
+  });
   useEffect(()=>{
     const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;onCallAction?:(callback:(action:string)=>void)=>(()=>void);showMainWindow?:()=>Promise<boolean>}}).pacificaDesktop;
     if(!desktop?.isDesktop||!desktop.onCallAction)return;

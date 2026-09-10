@@ -8,6 +8,7 @@ const appUrl=(process.env.PACIFICA_APP_URL||"https://pacificacrm.com/dashboard?d
 const appOrigin=new URL(appUrl).origin;
 let mainWindow=null;
 let overlayWindow=null;
+let overlayPhase="";
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
@@ -31,80 +32,28 @@ function isAuthUrl(url){
 }
 function isTrustedNavigation(url){return isAppUrl(url)||isAuthUrl(url)}
 
-function overlayHtml(){
-  return `<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-<title>Pacifica Call</title>
-<style>
-:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17211d;background:#f7f9f8}
-*{box-sizing:border-box}body{margin:0;background:#f7f9f8;color:#17211d;user-select:none}
-body[data-theme="dark"]{background:#111614;color:#f4f7f5}
-.shell{min-height:100vh;border:1px solid rgba(22,34,28,.12);border-radius:18px;overflow:hidden;background:inherit}
-.drag{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 15px;border-bottom:1px solid rgba(22,34,28,.1);-webkit-app-region:drag}
-.brand{font-size:12px;font-weight:800;letter-spacing:.08em}.state{font-size:11px;font-weight:700;opacity:.62}
-.content{padding:18px}.contact{display:flex;gap:12px;align-items:center}.avatar{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:#dff6e9;color:#0b7041;font-weight:900;font-size:16px}
-.contact b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:235px}.contact small{display:block;margin-top:3px;opacity:.62;font-size:12px}
-.timer{margin:18px 0 14px;font-size:34px;font-weight:800;letter-spacing:-.04em}.status{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;opacity:.75}.dot{width:8px;height:8px;border-radius:50%;background:#dfa62b}.connected .dot{background:#12a15b}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:18px}.actions button,.keypad button{border:1px solid rgba(22,34,28,.12);background:rgba(255,255,255,.68);color:inherit;border-radius:12px;font:inherit;font-weight:750;cursor:pointer;-webkit-app-region:no-drag}
-body[data-theme="dark"] .actions button,body[data-theme="dark"] .keypad button{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
-.actions button{height:44px}.actions .danger{background:#d93838;color:#fff;border-color:#d93838}.actions .primary{background:#168451;color:#fff;border-color:#168451}
-.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.keypad button{height:42px;font-size:15px}.footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:10px;opacity:.5}
-.hidden{display:none!important}
-</style></head>
-<body><div class="shell">
-<div class="drag"><span class="brand">PACIFICA</span><span id="topState" class="state">CALL</span></div>
-<div class="content">
-<div class="contact"><div id="avatar" class="avatar">P</div><div><b id="name">Active call</b><small id="number"></small></div></div>
-<div id="timer" class="timer">00:00</div>
-<div id="status" class="status"><i class="dot"></i><span id="statusText">Connecting…</span></div>
-<div class="actions"><button id="mute">Mute</button><button class="primary" data-action="open">Open CRM</button></div>
-<div class="keypad" id="keypad"></div>
-<div class="actions"><button id="pause" data-action="pause">Pause queue</button><button class="danger" data-action="end">End call</button></div>
-<div class="footer"><span>Always on top</span><span>Keypad</span></div>
-</div></div>
-<script>
-const api=window.pacificaOverlay;
-const keypad=document.getElementById("keypad");
-["1","2","3","4","5","6","7","8","9","*","0","#"].forEach(d=>{const b=document.createElement("button");b.textContent=d;b.onclick=()=>api.send("digit:"+d);keypad.appendChild(b)});
-document.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click",()=>api.send(b.dataset.action)));
-document.getElementById("mute").onclick=()=>api.send("mute");
-api.onState(s=>{
-  document.body.dataset.theme=s.theme==="dark"?"dark":"light";
-  document.getElementById("name").textContent=s.name||"Active call";
-  document.getElementById("number").textContent=s.number||"";
-  document.getElementById("timer").textContent=s.elapsed||"00:00";
-  document.getElementById("statusText").textContent=s.connected?"Connected":"Connecting…";
-  document.getElementById("status").className="status "+(s.connected?"connected":"");
-  document.getElementById("topState").textContent=s.connected?"LIVE":"CALLING";
-  document.getElementById("mute").textContent=s.muted?"Unmute":"Mute";
-  document.getElementById("pause").classList.toggle("hidden",!s.queueRunning);
-  const n=(s.name||"P").trim().split(/\\s+/).map(v=>v[0]).slice(0,2).join("").toUpperCase();
-  document.getElementById("avatar").textContent=n||"P";
-});
-</script></body></html>`;
-}
-
 function positionOverlay(){
   if(!overlayWindow)return;
   const display=mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
   const area=display.workArea;
   const [width]=overlayWindow.getSize();
-  overlayWindow.setPosition(area.x+area.width-width-18,area.y+18,false);
+  overlayWindow.setPosition(area.x+Math.max(0,Math.round((area.width-width)/2)),area.y+16,false);
 }
 
 function createOverlay(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
   overlayWindow=new BrowserWindow({
-    width:350,height:510,minWidth:350,minHeight:510,maxWidth:350,maxHeight:510,
-    frame:false,resizable:false,show:false,alwaysOnTop:true,skipTaskbar:true,
-    backgroundColor:"#f7f9f8",title:"Pacifica Call",
+    width:480,height:88,minWidth:480,minHeight:88,maxWidth:480,maxHeight:520,
+    frame:false,resizable:false,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
+    backgroundColor:"#ffffff",title:"Pacifica Call",icon:path.join(__dirname,"assets/pacifica.ico"),
     webPreferences:{preload:path.join(__dirname,"overlay-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}
   });
   overlayWindow.setAlwaysOnTop(true,"floating");
   overlayWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
-  void overlayWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(overlayHtml())}`);
-  overlayWindow.on("closed",()=>{overlayWindow=null});
+  void overlayWindow.loadFile(path.join(__dirname,"overlay.html"));
+  positionOverlay();
+  overlayWindow.on("restore",()=>overlayWindow?.setSkipTaskbar(true));
+  overlayWindow.on("closed",()=>{overlayWindow=null;overlayPhase=""});
   overlayWindow.webContents.once("did-finish-load",()=>overlayWindow?.webContents.send("pacifica:call-state",lastCallState));
   return overlayWindow;
 }
@@ -112,7 +61,7 @@ function createOverlay(){
 function createWindow(){
   mainWindow=new BrowserWindow({
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
-    backgroundColor:"#f7f8fa",title:"Pacifica",
+    backgroundColor:"#f7f8fa",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
     autoHideMenuBar:true,
     titleBarStyle:"hidden",
     titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#111614":"#f7f8fa",symbolColor:nativeTheme.shouldUseDarkColors?"#f4f7f5":"#17211d",height:36},
@@ -140,6 +89,7 @@ function startDesktopUpdater(){
 }
 
 app.whenReady().then(()=>{
+  if(process.platform==="win32")app.setAppUserModelId("com.pacificacrm.desktop");
   session.defaultSession.setPermissionRequestHandler((webContents,permission,callback,details)=>{
     const trusted=isAppUrl(details.requestingUrl||webContents.getURL());
     callback(Boolean(trusted&&["media","notifications","clipboard-sanitized-write"].includes(permission)));
@@ -150,27 +100,53 @@ app.whenReady().then(()=>{
 });
 app.on("window-all-closed",()=>{if(updateTimer){clearInterval(updateTimer);updateTimer=null}if(process.platform!=="darwin")app.quit()});
 
+function showCallOverlay(){
+  const nextPhase=lastCallState.active?"call":lastCallState.wrapUp?"wrap":"";
+  if(!nextPhase){overlayWindow?.hide();overlayPhase="";return}
+  const overlay=createOverlay();
+  const phaseChanged=overlayPhase!==nextPhase;
+  if(phaseChanged){
+    const height=nextPhase==="wrap"?500:88;
+    overlay.setSize(480,height,false);
+    const bounds=overlay.getBounds(),area=screen.getDisplayMatching(bounds).workArea;
+    overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-480)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
+    overlayPhase=nextPhase;
+  }
+  overlay.webContents.send("pacifica:call-state",lastCallState);
+  // Timer updates must not restore a minimized window or move a dragged window.
+  // A new result is shown so wrap-up is available outside the CRM as requested.
+  if(overlay.isMinimized()){
+    if(nextPhase!=="wrap"||!phaseChanged)return;
+    overlay.restore();
+  }
+  if(!overlay.isVisible())overlay.showInactive();
+}
+
 ipcMain.on("pacifica:call-state",(event,state)=>{
   if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||"")||!state||typeof state!=="object")return;
   lastCallState={...state,active:Boolean(state.active)};
-  if(!lastCallState.active){overlayWindow?.hide();return}
-  const overlay=createOverlay();
-  if(!overlay.isVisible())positionOverlay();
   mainWindow.setTitleBarOverlay({color:state.theme==="dark"?"#111614":"#f7f8fa",symbolColor:state.theme==="dark"?"#f4f7f5":"#17211d"});
-  overlay.webContents.send("pacifica:call-state",lastCallState);
-  overlay.showInactive();
+  showCallOverlay();
 });
 
 ipcMain.on("pacifica:call-action",(event,action)=>{
   if(!overlayWindow||event.sender!==overlayWindow.webContents||typeof action!=="string")return;
+  if(action==="minimize"){overlayWindow.setSkipTaskbar(false);overlayWindow.minimize();return}
+  if(!["open","mute","end","pause"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
   if(action==="open"){mainWindow?.show();mainWindow?.focus()}
   mainWindow?.webContents.send("pacifica:call-action",action);
 });
 
+ipcMain.on("pacifica:wrap-action",(event,action)=>{
+  if(!overlayWindow||event.sender!==overlayWindow.webContents||lastCallState.active||!lastCallState.wrapUp||!action||typeof action!=="object")return;
+  if(action.id!==lastCallState.wrapUp.id||!["save","again","pause"].includes(action.kind))return;
+  mainWindow?.webContents.send("pacifica:wrap-action",action);
+});
+
 function trustedMain(event){return mainWindow&&event.sender===mainWindow.webContents&&isAppUrl(event.senderFrame?.url||"")}
 
-ipcMain.handle("pacifica:enter-call-overlay",(event)=>{if(!trustedMain(event)||!lastCallState.active)return false;const overlay=createOverlay();positionOverlay();overlay.showInactive();return true});
-ipcMain.handle("pacifica:exit-call-overlay",(event)=>{if(!trustedMain(event))return false;overlayWindow?.hide();return true});
+ipcMain.handle("pacifica:enter-call-overlay",(event)=>{if(!trustedMain(event)||(!lastCallState.active&&!lastCallState.wrapUp))return false;const overlay=createOverlay();if(overlay.isMinimized())overlay.restore();showCallOverlay();return true});
+ipcMain.handle("pacifica:exit-call-overlay",(event)=>{if(!trustedMain(event))return false;if(!lastCallState.wrapUp)overlayWindow?.hide();return true});
 ipcMain.handle("pacifica:show-main-window",(event)=>{if(!trustedMain(event))return false;mainWindow?.show();mainWindow?.focus();return true});
 
 ipcMain.on("pacifica:theme",(event,theme)=>{

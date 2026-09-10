@@ -11,8 +11,7 @@ export default function PhoneWorkspaceSetup({phoneNumber,workspaceId}:{phoneNumb
   }
   return <section className="phone-workspace-setup">
     <header><div><span>WORKSPACE NUMBER</span><h2>{assigned?phoneNumber:"Assign a phone number"}</h2></div><strong className={assigned?"ready":"waiting"}>{assigned?"ASSIGNED":"SETUP NEEDED"}</strong></header>
-    <p>{assigned?"Your number for caller ID, incoming calls, and messages.":"Choose a number in the Phone Number Center to enable calling."}</p>
-    <small>Keep Pacifica open and turn on “Go available” to receive calls. Text messaging requires approved registration.</small>
+    {!assigned&&<p>Choose a number in the Phone Number Center to enable calling.</p>}
     <details className="integration-details"><summary>Workspace details</summary><div className="workspace-copy-row"><code>{workspaceId}</code><button type="button" onClick={()=>void copyWorkspace()}>Copy workspace ID</button></div><p role="status">{copyStatus}</p></details>
   </section>;
 }

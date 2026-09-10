@@ -37,3 +37,15 @@ test("closed outcomes clear follow-ups and stop active queueing",()=>{
     assert.equal(result.appointmentAt,"");
   }
 });
+
+import {desktopWrapDraft} from '../app/lib/desktop-wrap-up.ts';
+test('desktop wrap-up uses CRM outcome mapping and preserves typed notes',()=>{
+ const draft=postCallDraftForEnd(lead,'Completed',true,now);
+ const result=desktopWrapDraft({id:'1:20',kind:'save',outcome:'Not interested',stage:'Closed',notes:'Customer declined',appointmentAt:'2026-09-11T10:00'},'1:20',draft,lead.source,false,now);
+ assert.equal(result.draft.crmOutcome,'Not interested');assert.equal(result.draft.crmStage,'Closed');assert.equal(result.draft.appointmentAt,'');assert.equal(result.draft.notes,'Customer declined');
+ assert.equal(result.draft.sourceDisposition,selectPostCallOutcome(draft,lead.source,'Not interested',now).sourceDisposition);
+});
+test('desktop wrap-up rejects stale calls, unknown outcomes and invalid fields',()=>{
+ const draft=postCallDraftForEnd(lead,'Completed',true,now),action={id:'1:20',kind:'save',outcome:'Interested',stage:'Follow-up',notes:'',appointmentAt:''};
+ for(const patch of [{id:'old'},{outcome:'unknown'},{stage:'unknown'},{notes:null},{appointmentAt:'tomorrow'},{kind:'dial'}])assert.equal(desktopWrapDraft({...action,...patch},'1:20',draft,lead.source,false,now),null);
+});

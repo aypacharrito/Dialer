@@ -762,9 +762,6 @@ html[data-theme] .record-section textarea {
     grid-column: 1 / -1;
     min-height: auto;
   }
-  html[data-theme] .side-pad .key-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
   html[data-theme] .crm-tools {
     grid-template-columns: minmax(280px, 1fr) repeat(2, minmax(140px, 1fr));
   }
