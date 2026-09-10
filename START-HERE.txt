@@ -1,0 +1,34 @@
+PACIFICA VIDEO CLEANUP
+
+This update contains 12 source files based on your "Clean up Pacifica" commit (21d53d4).
+It does not require a patch command or manual source-file deletions.
+
+INSTALL
+1. Extract this ZIP.
+2. In GitHub Desktop, select Dialer and the main branch. Click Fetch origin and Pull origin if offered. Finish or back up any unrelated local edits first.
+3. Choose Repository > Show in Explorer.
+4. Open the extracted UPDATE folder. Copy its app folder into your Dialer repository folder, alongside the existing app folder. Allow Windows to merge folders and replace matching files. Do not delete the existing app folder.
+5. Return to GitHub Desktop. Review the 12 changed files. Enter "Clean up Pacifica UI", click Commit to main, then Push origin.
+6. Wait for the deployment for that new commit to show Ready in Vercel, then reload Pacifica or reopen the desktop app. The existing GitHub integration should trigger deployment automatically.
+
+Do not copy START-HERE.txt or this ZIP into the repository.
+If main contains newer work after 21d53d4, or you have edits in these same files, reconcile them before replacing files.
+
+CHANGES FROM YOUR RECORDING
+- AI uses readable theme colors and one clean composer.
+- CRM suggestions appear beside the chat on wide screens and stack on smaller screens.
+- Previous AI requests remain unchanged while you type a new request.
+- Insurance badge and voice-processing switch follow the selected theme.
+- Live monitor has a simple Start/Stop button without the unwanted caption.
+- Assigned workspace number has less explanatory text; Workspace details remain.
+- System health uses clear connection rows and expandable details.
+- Scheduled follow-up rows stay within their panel; empty sections are hidden.
+- Superseded AI and health styles were removed.
+
+VALIDATION
+Production build, TypeScript check, lint, and all 99 existing unit tests passed.
+The signed-in interface and Windows desktop app were not interactively tested.
+This is a web UI update; it does not change the desktop installer.
+
+Base: 21d53d48552ea4b39de635b991b27e2b03e59e97
+Update: d1975b9

@@ -1,0 +1,46 @@
+/* PACIFICA_MINIMAL_V3 — video-driven subtraction pass */
+.messages-module-bar{min-height:48px!important;padding:8px 12px!important;background:transparent!important;box-shadow:none!important}
+.messages-module-bar .message-connection{margin-left:auto!important;border:0!important;background:transparent!important;padding:5px 7px!important;gap:6px!important;font-size:12px!important}
+.messages-module-bar .message-connection button{width:26px!important;height:26px!important;padding:0!important;border-radius:8px!important}
+.message-automation-status,.sms-setup-notice{display:none!important}
+.channel-tabs{margin:0 0 10px!important;padding:3px!important;max-width:320px!important;border-radius:10px!important}
+.channel-tabs button{min-height:38px!important;padding:6px 12px!important}
+.channel-tabs button small{font-size:12px!important;opacity:.62!important}
+.messages-layout{border-radius:14px!important;box-shadow:none!important;overflow:hidden!important}
+.message-contacts header{padding:12px!important}.message-contacts>button{min-height:58px!important;padding:9px 11px!important}
+.message-thread>header{min-height:58px!important;padding:10px 14px!important}.message-thread footer{padding:12px 14px!important}
+.message-ai-mode span{display:none!important}.composer-permission{padding:8px 10px!important;border-radius:10px!important}.composer-permission small{font-size:12px!important;opacity:.65!important}
+
+.phone-config{box-shadow:none!important}.phone-config>header{min-height:48px!important;padding:9px 14px!important}.phone-config .network-test{min-height:48px!important;margin:8px 12px!important;border-radius:10px!important;box-shadow:none!important}
+.clearvoice-card{margin:10px 12px!important;padding:12px!important;border-radius:14px!important;box-shadow:none!important}.clearvoice-head p{margin-top:2px!important;font-size:12px!important;opacity:.62!important}.clearvoice-status{display:none!important}.clearvoice-modes{gap:6px!important;margin-top:10px!important}.clearvoice-modes button{min-height:44px!important;padding:7px 9px!important;border-radius:10px!important}.clearvoice-modes button small{display:none!important}.clearvoice-meter{margin:8px 0!important;padding:0!important;border:0!important;background:transparent!important}.clearvoice-live-monitor{margin-top:8px!important;padding:10px 11px!important;border-radius:11px!important}.clearvoice-live-monitor small{font-size:12px!important;opacity:.62!important}.clearvoice-live-monitor button{min-width:128px!important;height:38px!important;border-radius:10px!important}.config-section{margin:10px 12px!important;padding:12px!important;border-radius:14px!important;box-shadow:none!important}.config-section>span{font-size:12px!important;letter-spacing:.1em!important}.volume-row{min-height:34px!important}
+
+/* Shared readable controls and responsive work areas. */
+.messages-center button,.messages-center input,.messages-center textarea{font-size:.875rem}
+.message-thread textarea{font-size:1rem!important;line-height:1.5!important}
+.message-history{overscroll-behavior:contain}
+.message-history article{overflow-wrap:anywhere}
+.messages-center :focus-visible{outline:2px solid #168451;outline-offset:3px}
+@media(max-width:700px){
+ .composer-actions{flex-wrap:wrap}.composer-actions .send-feedback{flex-basis:100%}
+ .messages-module-bar{gap:8px}.message-thread footer{padding:10px!important}
+}
+@media(prefers-reduced-motion:reduce){.messages-center *{animation:none!important;transition:none!important}}
+
+/* Connection status stays readable instead of becoming a row of tiny pills. */
+html[data-theme] .app-shell .workspace-health{padding:22px;border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface);color:var(--ui-text);min-width:0}
+.workspace-health>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.workspace-health h2{margin:0;font-size:20px;color:var(--ui-text)}
+.workspace-health>header p{margin:6px 0 0;font-size:14px;color:var(--ui-muted)}
+.workspace-health>header button{padding:10px 14px;border:1px solid var(--ui-border);border-radius:10px;background:var(--ui-surface);color:var(--ui-text);font:inherit;cursor:pointer}
+.workspace-health>header button:disabled{opacity:.6;cursor:wait}
+.workspace-health-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.workspace-health-list details{border-top:1px solid var(--ui-border);min-width:0}
+.workspace-health-list summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;cursor:pointer;font-size:14px;list-style:none}
+.workspace-health-list summary::-webkit-details-marker{display:none}
+.workspace-health-list summary:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px}
+.workspace-health-list summary span{font-size:12px;color:var(--ui-accent);white-space:nowrap}
+.workspace-health-list .attention summary span{color:var(--ui-text);font-weight:650}
+.workspace-health-list details p{margin:0 0 16px;font-size:14px;line-height:1.6;overflow-wrap:anywhere;color:var(--ui-muted)}
+.workspace-health>footer{margin-top:18px;color:var(--ui-muted);font-size:12px}
+.workspace-health-error{font-size:14px;line-height:1.5;color:var(--ui-text)}
+@media(max-width:700px){.workspace-health-list{grid-template-columns:1fr}html[data-theme] .app-shell .workspace-health{padding:16px}.workspace-health>header{align-items:flex-start}.workspace-health-list summary{flex-wrap:wrap}}
