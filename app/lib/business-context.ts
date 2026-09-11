@@ -71,6 +71,9 @@ export function leadAiContext(lead:Record<string,unknown>,includeNotes=false){
   return {
     id:Number(lead.id)||0,
     name:String(lead.name||"Unknown lead").trim().slice(0,100),
+    phone:String(lead.phone||"").trim().slice(0,40),
+    smsConsent:lead.smsConsent===true,
+    smsOptOut:lead.smsOptOut===true,
     city:String(lead.city||"").trim().slice(0,80),
     state:String(lead.state||"").trim().slice(0,40),
     product,

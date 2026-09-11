@@ -2,11 +2,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {smsRecipients} from "../lib/ai-sms-recipients";
 import { leadPriority, rankLeads } from "../lib/lead-priority";
 
 type Lead = {
   id:number;name:string;phone?:string;email?:string;city:string;stage:string;outcome:string;notes:string;followUp:string;lastContact:string;
   line:"life"|"home-auto";doNotCall:boolean;source:string;product:string;leadCost:number;importedAt:string;sourceDisposition:string;
+  smsConsent?:boolean;smsOptOut?:boolean;deletedAt?:string;
   received?:string;attempts?:number;lastAttemptAt?:string;priorityOverride?:"auto"|"high"|"low";
 };
 type RecentCall={name:string;startedAt:string;duration:number;outcome:string;status:string;source:string};
@@ -45,6 +47,8 @@ async function imageForAi(file:File){
 export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,onOpen,onCall}:{leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
   const [prompt,setPrompt]=useState("");const [submittedPrompt,setSubmittedPrompt]=useState("");const [submittedImages,setSubmittedImages]=useState<AiImage[]>([]);const [includeNotes,setIncludeNotes]=useState(false);const [loading,setLoading]=useState(false);const [result,setResult]=useState<AiResult|null>(null);const [error,setError]=useState("");const [applied,setApplied]=useState<number[]>([]);const [service,setService]=useState("Checking AI connection…");
   const [images,setImages]=useState<AiImage[]>([]);const [dragging,setDragging]=useState(false);const [created,setCreated]=useState(false);const imageInputRef=useRef<HTMLInputElement>(null);const cameraInputRef=useRef<HTMLInputElement>(null);
+  const [sending,setSending]=useState(false);const [sendReport,setSendReport]=useState("");const submittedSms=useRef(new Set<string>());
+  const recipients=useMemo(()=>smsRecipients(leads),[leads]);
   const eligible=useMemo(()=>leads.filter(lead=>!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
 
   useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"AI enabled":"Local suggestions")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
@@ -56,14 +60,31 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
   }
 
   async function run(nextPrompt=prompt){
-    const typed=nextPrompt.trim();const question=typed||images.length?typed||"Read the attached image and take the appropriate CRM action based only on what is visible.":"";if(!question||loading)return;
-    const requestImages=[...images];setPrompt(typed);setLoading(true);setError("");setApplied([]);setCreated(false);
+    const typed=nextPrompt.trim();const question=typed||images.length?typed||"Read the attached image and take the appropriate CRM action based only on what is visible.":"";if(!question||loading||sending)return;
+    const requestImages=[...images];setPrompt(typed);setLoading(true);setError("");setApplied([]);setCreated(false);setSendReport("");submittedSms.current.clear();
     try{
       const response=await fetch("/api/ai/crm",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,images:images.map(image=>image.dataUrl),leads:eligible.slice(0,100),recentCalls:recentCalls.slice(0,100)})});
       const data=await response.json().catch(()=>({})) as AiResult&{error?:string};if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");setSubmittedPrompt(question);setSubmittedImages(requestImages);setResult(data);setPrompt("");setImages([]);
 
     }catch(err){const message=err instanceof Error?err.message:"Pacifica could not complete that request";setError(`Server connection: ${message}.`);if(eligible.length){setSubmittedPrompt(question);setSubmittedImages(requestImages);setResult(browserAnalysis(eligible.slice(0,100),"Pacifica used local suggestions because the AI service did not answer."))}}
     finally{setLoading(false)}
+  }
+
+  async function sendDraft(){
+    if(sending||!result?.draft.trim())return;
+    setSending(true);let submitted=0,failed=0;const body=result.draft.trim();let failure="";
+    try{
+      for(const contact of recipients){
+        const key=`${contact.phone}:${body}`;if(submittedSms.current.has(key))continue;
+        try{
+          const response=await fetch("/api/twilio/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:contact.phone,body,permissionDocumented:true})});
+          const data=await response.json();if(!response.ok)throw new Error(data.error||"Send failed");
+          submittedSms.current.add(key);submitted++;
+        }catch(reason){failed++;failure=reason instanceof Error?reason.message:"Send failed";}
+        setSendReport(`${submitted} submitted · ${failed} failed${failure?` · ${failure}`:""}`);
+      }
+      if(!submitted&&!failed)setSendReport("These messages were already submitted. No duplicates sent.");
+    }finally{setSending(false)}
   }
 
   function reset(){setSubmittedPrompt("");setSubmittedImages([]);setResult(null);setPrompt("");setError("");setImages([]);setCreated(false)}
@@ -81,7 +102,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
       <input ref={cameraInputRef} hidden type="file" accept="image/*" capture="environment" onChange={event=>{if(event.currentTarget.files){setPrompt("Create a contact draft from the visible name, phone number and contact details. Leave unreadable fields blank.");void addFiles(event.currentTarget.files)}event.currentTarget.value=""}}/>
       <section aria-label="Message composer" className={`ai-chat-composer ${images.length?"has-images":""}`} onPaste={event=>{const files=Array.from(event.clipboardData.files).filter(file=>file.type.startsWith("image/"));if(files.length)void addFiles(files)}}>
         {images.length>0&&<div className="ai-attachments">{images.map(image=><figure key={image.id}><img src={image.dataUrl} alt={image.name}/><button type="button" aria-label={`Remove ${image.name}`} onClick={()=>setImages(current=>current.filter(item=>item.id!==image.id))}>×</button><figcaption>{image.name}</figcaption></figure>)}{images.length<4&&<button type="button" className="ai-add-image" onClick={()=>imageInputRef.current?.click()}>＋ Add image</button>}</div>}
-        <div className="ai-composer-row"><button type="button" className="ai-attach-button" title="Attach image" aria-label="Attach image" onClick={()=>imageInputRef.current?.click()}>+</button><textarea aria-label="Message Pacifica AI" value={prompt} onChange={event=>setPrompt(event.target.value)} onKeyDown={event=>{if(event.key==="Enter"&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void run()}}} disabled={loading} placeholder="Message Pacifica…" rows={2}/><button onClick={()=>void run()} disabled={loading||(!prompt.trim()&&!images.length)} aria-label="Send to Pacifica AI">{loading?<span className="ai-thinking"/>:"↑"}</button></div>
+        <div className="ai-composer-row"><button type="button" className="ai-attach-button" title="Attach image" aria-label="Attach image" onClick={()=>imageInputRef.current?.click()}>+</button><textarea aria-label="Message Pacifica AI" value={prompt} onChange={event=>setPrompt(event.target.value)} onKeyDown={event=>{if(event.key==="Enter"&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void run()}}} disabled={loading||sending} placeholder="Message Pacifica…" rows={2}/><button onClick={()=>void run()} disabled={loading||(!prompt.trim()&&!images.length)} aria-label="Send to Pacifica AI">{loading?<span className="ai-thinking"/>:"↑"}</button></div>
         <input ref={imageInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={event=>{if(event.currentTarget.files)void addFiles(event.currentTarget.files);event.currentTarget.value=""}}/>
 
       </section>
@@ -89,13 +110,13 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
     </main>
 
     {hasDetails&&result&&<aside className="ai-results" aria-label="CRM suggestions">
-      {result.createLead&&<section className={`ai-create-lead-card ${created?"created":""}`}><header><div><span>{created?"ADDED TO CONTACTS":"NEW CONTACT FROM IMAGE"}</span><h2>{result.createLead.name||"New lead"}</h2></div><em>{result.createLead.line==="home-auto"?"HOME & AUTO":"LIFE / PRIORITY"}</em></header><div className="ai-contact-review">{(["name","phone","email","city","state","product","notes"] as const).map(key=><label key={key}>{key.charAt(0).toUpperCase()+key.slice(1)}<input aria-label={`Contact ${key}`} disabled={created||loading} value={result.createLead![key]} onChange={event=>{const value=event.target.value;setResult(current=>current?.createLead?{...current,createLead:{...current.createLead,[key]:value}}:current)}}/></label>)}<label>Queue<select disabled={created||loading} value={result.createLead.line} onChange={event=>{const line=event.target.value==="home-auto"?"home-auto":"life";setResult(current=>current?.createLead?{...current,createLead:{...current.createLead,line}}:current)}}><option value="home-auto">Home &amp; Auto</option><option value="life">Life / Priority</option></select></label></div><p>{created?"Contact added to Pacifica.":"Check the extracted details before adding this contact."}</p>{!created&&<button type="button" disabled={loading} onClick={()=>{const contact=result.createLead!;if(!contact.phone.trim()&&!contact.email.trim()){setError("Add a phone number or email before saving.");return;}onCreateLead(contact);setCreated(true)}}>Add to Contacts</button>}</section>}
+      {result.createLead&&<section className={`ai-create-lead-card ${created?"created":""}`}><header><div><span>{created?"ADDED TO CONTACTS":"NEW CONTACT FROM IMAGE"}</span><h2>{result.createLead.name||"New lead"}</h2></div><em>{result.createLead.line==="home-auto"?"HOME & AUTO":"LIFE / PRIORITY"}</em></header><div className="ai-contact-review">{(["name","phone","email","city","state","product","notes"] as const).map(key=><label key={key}>{key.charAt(0).toUpperCase()+key.slice(1)}<input aria-label={`Contact ${key}`} disabled={created||loading} value={result.createLead![key]} onChange={event=>{const value=event.target.value;setResult(current=>current?.createLead?{...current,createLead:{...current.createLead,[key]:value}}:current)}}/></label>)}<label>Queue<select disabled={created||loading} value={result.createLead.line} onChange={event=>{const line=event.target.value==="home-auto"?"home-auto":"life";setResult(current=>current?.createLead?{...current,createLead:{...current.createLead,line}}:current)}}><option value="home-auto">Home &amp; Auto</option><option value="life">Life / Priority</option></select></label></div><p>{created?"Contact added to Pacifica.":"Check the extracted details before adding this contact."}</p>{!created&&<button type="button" disabled={loading||sending} onClick={()=>{const contact=result.createLead!;if(!contact.phone.trim()&&!contact.email.trim()){setError("Add a phone number or email before saving.");return;}onCreateLead(contact);setCreated(true)}}>Add to Contacts</button>}</section>}
       {result.priorities.length>0&&<section className="ai-priority-panel"><header><div><h2>Priority contacts</h2></div><em>{result.priorities.length} leads</em></header>{result.priorities.map(item=><article key={`${item.leadId}-${item.score}`}><strong>{item.score}</strong><div><b>{item.leadName}</b><p>{item.reason}</p><small>{item.nextStep}</small></div><footer><button onClick={()=>onOpen(item.leadId)}>Open</button><button onClick={()=>onCall(item.leadId)}>Call now</button></footer></article>)}</section>}
       {result.actions.length>0&&<section className="ai-actions-panel"><header><div><h2>Suggested updates</h2></div></header>{result.actions.map((action,index)=><article key={`${action.leadId}-${index}`}><div><b>{action.title}</b><span>{action.leadName}</span><p>{action.reason}</p></div><button disabled={applied.includes(index)} onClick={()=>{onApply(action);setApplied(items=>[...items,index])}}>{applied.includes(index)?"Applied":"Apply"}</button></article>)}</section>}
-      {result.draft&&<section className="ai-draft-card"><header><span>MESSAGE DRAFT</span><button onClick={()=>void navigator.clipboard.writeText(result.draft)}>Copy</button></header><p>{result.draft}</p></section>}
+      {result.draft&&<section className="ai-draft-card"><header><span>MESSAGE DRAFT</span><button onClick={()=>void navigator.clipboard.writeText(result.draft)}>Copy</button></header><textarea aria-label="Review text message" value={result.draft} disabled={sending} onChange={event=>{const draft=event.target.value;setResult(current=>current?{...current,draft}:current)}}/><p>{recipients.length} unique contacts in this view. Sending records your confirmation that they gave SMS permission. Opted-out, DNC and deleted contacts are excluded.</p><button type="button" disabled={sending||!result.draft.trim()||!recipients.length} onClick={()=>void sendDraft()}>{sending?"Sending…":`Send text to ${recipients.length} contacts`}</button><p role="status">{sendReport}</p></section>}
     </aside>}
     </div>
-    {result&&<button type="button" className="ai-new-chat" onClick={reset} disabled={loading}>New request</button>}
+    {result&&<button type="button" className="ai-new-chat" onClick={reset} disabled={loading||sending}>New request</button>}
   </div>;
 }
 

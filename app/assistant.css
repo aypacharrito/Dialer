@@ -76,3 +76,5 @@ html[data-theme] .app-shell .ai-composer-row button:last-child{background:var(--
 .ai-contact-review label{display:grid;gap:5px;min-width:0;font-size:13px}
 .ai-contact-review input,.ai-contact-review select{width:100%;min-width:0;min-height:44px;font-size:16px;padding:8px;border:1px solid var(--ui-border-strong);border-radius:8px;background:var(--ai-surface);color:var(--ai-text)}
 @media(max-width:420px){.ai-contact-review{grid-template-columns:1fr}}
+.ai-draft-card>textarea{display:block;width:calc(100% - 32px);min-height:110px;margin:16px;padding:12px;font:inherit;background:var(--ai-surface);color:var(--ai-text);border:1px solid var(--ui-border-strong);border-radius:10px}
+.ai-draft-card>button{margin:0 16px;padding:12px;border:0;border-radius:10px;background:var(--ui-accent);color:white}
