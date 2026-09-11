@@ -14,7 +14,7 @@ export default function EntryScreen() {
   if (!isLoaded) {
     return <View style={[styles.loading, { backgroundColor: p.bg }]}><ActivityIndicator size="large" color={p.green} /></View>;
   }
-  if (isSignedIn) return <Redirect href="/(tabs)" />;
+  if (isSignedIn) return <Redirect href="/(tabs)/ai" />;
 
   return (
     <Screen contentContainerStyle={styles.screen}>

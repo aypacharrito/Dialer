@@ -268,7 +268,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const contactDialogRef=useRef<HTMLElement>(null);
   const quoteDialogRef=useRef<HTMLDivElement>(null);
   useDialogFocus(newLeadDialogRef,showNewLead,()=>setShowNewLead(false));
-  useDialogFocus(contactDialogRef,selectedLead!==null,()=>setSelectedLead(null));
+  useDialogFocus(contactDialogRef,leads.some(item=>item.id===selectedLead),()=>setSelectedLead(null));
   useDialogFocus(quoteDialogRef,growthLeadId!==null,()=>setGrowthLeadId(null));
   const importedLeadDetails=useMemo(()=>supplementalLeadDetails(lead),[lead]);
   const upNextLeads=callableLeads.filter(item=>item.id!==lead.id).slice(0,3);
@@ -565,7 +565,6 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function deleteLead(item:Lead){
     if(postCallLeadId===item.id){setToast("Save the call result before deleting this contact.");return}
     if(dialing&&item.id===currentCallLeadId){setToast("Finish the current call before deleting this contact.");return}
-    if(!window.confirm(`Delete ${item.name} from your contacts and daily calling queue? Call history stays in Reports.`))return;
     const now=new Date().toISOString();
     updateLead(item.id,{deletedAt:now,deletionUpdatedAt:now,automationEnabled:false,automationNextAt:"",automationStatus:"deleted"});
     if(loadedLeadId===item.id)setLoadedLeadId(null);

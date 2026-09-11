@@ -107,3 +107,26 @@ This package currently uses the device dialer for outbound calls. The repository
 The mobile client sends the Clerk session token as a Bearer token to the existing Pacifica API. It reads and writes the same workspace payload (`leads`, `callLogs`, `profile`) used by the web CRM.
 
 Offline edits are cached locally and retried against the existing workspace endpoint. The server's workspace merge logic remains authoritative.
+
+## Pacifica AI photo capture
+
+Signing in opens the AI tab. Take a photo or choose an existing image, tap
+Read photo, review the extracted name/phone/email and queue, then Save contact.
+AI questions use the existing authenticated /api/ai/crm endpoint; API keys stay
+on the server. Provider outages are shown as notices rather than invented
+contact details. Photos are resized and converted to JPEG before upload.
+Contacts are saved to the same workspace; matching phone/email records are
+reported rather than recreated. A failed save leaves the draft available.
+
+Camera permissions require a new native build:
+- npm ci
+- npx eas-cli build --platform android --profile preview
+- Use the resulting install link on Android.
+Use the existing EAS project and EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY configuration.
+iOS requires the corresponding EAS build/signing/distribution setup.
+
+The responsive web CRM also has Take photo / Choose photo in Pacifica AI.
+That version updates through Vercel and does not require an Expo build.
+
+Verification: mobile TypeScript and Expo web export pass. Physical camera
+permissions, signed-in AI extraction and saving still require a device check.

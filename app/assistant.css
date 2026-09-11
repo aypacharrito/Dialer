@@ -69,3 +69,10 @@ html[data-theme] .app-shell .ai-composer-row button:last-child{background:var(--
 @media(max-width:1100px){.ai-workspace.has-details .ai-content-layout{grid-template-columns:minmax(0,1fr)}.ai-results{width:100%;max-width:800px;margin:0 auto}}
 @media(max-width:650px){html[data-theme] .app-shell .ai-workspace{padding:16px}.ai-shell-header{align-items:flex-start}.ai-shell-brand small{max-width:160px}.ai-notes-control{font-size:12px}.ai-welcome{padding-top:24px}.ai-welcome h1{font-size:28px}.ai-starters{gap:6px}.ai-starters button{padding:8px 10px}.ai-composer-row{gap:4px}.ai-assistant-message{gap:8px}.ai-user-message{max-width:95%}}
 @media(prefers-reduced-motion:reduce){.ai-thinking{animation:none}}
+.ai-capture-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0}
+.ai-capture-actions button{min-height:44px;padding:10px 16px;border:1px solid var(--ui-border-strong);border-radius:12px;background:var(--ai-surface);color:var(--ai-text);font:inherit}
+.ai-capture-actions span{flex-basis:100%;font-size:13px;color:var(--ai-muted)}
+.ai-contact-review{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
+.ai-contact-review label{display:grid;gap:5px;min-width:0;font-size:13px}
+.ai-contact-review input,.ai-contact-review select{width:100%;min-width:0;min-height:44px;font-size:16px;padding:8px;border:1px solid var(--ui-border-strong);border-radius:8px;background:var(--ai-surface);color:var(--ai-text)}
+@media(max-width:420px){.ai-contact-review{grid-template-columns:1fr}}

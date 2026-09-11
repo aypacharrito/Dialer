@@ -32,7 +32,7 @@ export default function MoreScreen() {
         <Text style={[styles.sectionTitle, { color: p.text }]}>Display size</Text>
         <Muted>Choose comfortable, large, or extra-large text across Pacifica.</Muted>
         <View style={styles.sizeRow}>
-          {["comfortable", "large", "extra-large"].map(size => <Button key={size} title={size === "extra-large" ? "Extra large" : size[0].toUpperCase() + size.slice(1)} kind={displaySize === size ? "primary" : "secondary"} onPress={() => void updateProfile({ displaySize: size })} style={styles.sizeButton} />)}
+          {["comfortable", "large", "extra-large"].map(size => <Button key={size} title={size === "extra-large" ? "Extra large" : size.charAt(0).toUpperCase() + size.slice(1)} kind={displaySize === size ? "primary" : "secondary"} onPress={() => void updateProfile({ displaySize: size })} style={styles.sizeButton} />)}
         </View>
       </Card>
 

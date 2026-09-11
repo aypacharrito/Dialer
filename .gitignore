@@ -8,3 +8,4 @@ dist/
 *.tsbuildinfo
 desktop/dist/
 .sites-runtime/
+mobile/.expo/

@@ -33,6 +33,8 @@ export default function TodayScreen() {
 
       {error ? <Card><Text style={{ color: offline ? p.warning : p.danger, fontWeight: "700" }}>{error}</Text></Card> : null}
 
+      <Card><Title eyebrow="PHOTO TO CONTACT">Capture it on the go</Title><Muted>Photograph a number, business card, or contact details. Pacifica AI prepares a contact for you to review.</Muted><Button title="Open Pacifica AI" onPress={() => router.push("/ai")} /></Card>
+
       <View style={styles.metrics}>
         <Metric label="Leads" value={workspace.leads.length} />
         <Metric label="Priority" value={hot.length} />

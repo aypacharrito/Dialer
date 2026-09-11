@@ -89,7 +89,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const lastRead = Number(await AsyncStorage.getItem(LAST_READ_KEY)) || 0;
       setUnreadMessages(inboundItems(remote).filter(entry => entry.time > lastRead).length);
       const seen = Number(await AsyncStorage.getItem(LAST_INBOUND_KEY)) || 0;
-      if (seen && latest?.time > seen) {
+      if (seen && latest && latest.time > seen) {
         const permissions = await Notifications.getPermissionsAsync();
         if (permissions.status === "granted") {
           await Notifications.scheduleNotificationAsync({

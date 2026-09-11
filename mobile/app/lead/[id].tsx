@@ -32,7 +32,7 @@ export default function LeadDetailScreen() {
 
   async function saveNote() {
     const cleaned = note.trim();
-    if (!cleaned) return;
+    if (!cleaned || !lead) return;
     const timestamp = new Date().toLocaleString();
     const combined = [lead.notes?.trim(), `[Mobile ${timestamp}] ${cleaned}`].filter(Boolean).join("\n");
     await updateLead(lead.id, { notes: combined, lastContact: new Date().toISOString() });

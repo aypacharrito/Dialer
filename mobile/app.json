@@ -58,6 +58,14 @@
             "backgroundColor": "#0B1210"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Take photos of contact details for Pacifica AI.",
+          "photosPermission": "Choose a photo to read contact details with Pacifica AI.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

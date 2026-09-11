@@ -74,10 +74,10 @@ export function Button({
         props.onPress?.(event);
       }}
       disabled={props.disabled || loading}
-      style={({ pressed }) => [
+      style={state => [
         styles.button,
-        { backgroundColor, borderColor: kind === "secondary" ? p.border : backgroundColor, opacity: props.disabled ? .5 : 1, transform: [{ scale: pressed ? .975 : 1 }], shadowColor: p.dark ? "#000000" : "#123E2D", shadowOpacity: pressed ? .08 : .14 },
-        typeof props.style === "function" ? props.style({ pressed }) : props.style,
+        { backgroundColor, borderColor: kind === "secondary" ? p.border : backgroundColor, opacity: props.disabled ? .5 : 1, transform: [{ scale: state.pressed ? .975 : 1 }], shadowColor: p.dark ? "#000000" : "#123E2D", shadowOpacity: state.pressed ? .08 : .14 },
+        typeof props.style === "function" ? props.style(state) : props.style,
       ]}
     >
       {loading ? <ActivityIndicator color={textColor} /> : <Text style={[styles.buttonText, { color: textColor, fontSize: 15 * scale }]}>{title}</Text>}

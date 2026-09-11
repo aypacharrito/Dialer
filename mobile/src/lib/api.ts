@@ -58,3 +58,16 @@ export async function putWorkspace(token: string, workspace: Workspace) {
   });
   return parseResponse(response);
 }
+
+export type MobileAiResult={
+  summary:string;draft?:string;notice?:string;mode?:string;
+  createLead?:import("./contact-capture").ContactDraft|null;
+  priorities?:Array<{leadId:number;leadName:string;reason:string;nextStep:string}>;
+};
+export async function askPacifica(token:string,prompt:string,image:string|undefined,workspace:Workspace):Promise<MobileAiResult>{
+  const response=await fetch(`${API_URL}/api/ai/crm`,{
+    method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+    body:JSON.stringify({prompt,images:image?[image]:[],includeNotes:false,leads:workspace.leads.slice(0,100),recentCalls:workspace.callLogs.slice(0,30)}),
+  });
+  return await parseResponse(response) as MobileAiResult;
+}
