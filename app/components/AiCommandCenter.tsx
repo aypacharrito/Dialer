@@ -30,6 +30,32 @@ function browserAnalysis(leads:Lead[],notice:string):AiResult{
   return {summary:`I reviewed ${leads.length} active contact${leads.length===1?"":"s"}. Start with the first contacts below, then work scheduled follow-ups before untouched leads.`,priorities,actions:[],draft:"",createLead:null,mode:"smart-fallback",notice};
 }
 
+// PACIFICA_AI_TARGETED_SMS_HELPERS_V2
+const smsPhoneDigits=(value:string)=>String(value||"").replace(/\D/g,"").slice(-10);
+function bulkSmsRequested(value:string){
+  if(/\b(?:do\s+not|don['â€™]?t|never|not)\b[^.!?]{0,35}\b(?:everyone|everybody|all\s+(?:my\s+)?(?:leads|contacts|people|clients)|bulk|mass)\b/i.test(value))return false;
+  return /\b(?:everyone|everybody|all\s+(?:my\s+)?(?:leads|contacts|people|clients)|bulk\s+(?:text|sms)|mass\s+(?:text|sms))\b/i.test(value);
+}
+function explicitSmsTargets(prompt:string,contacts:Lead[]){
+  const lower=prompt.toLowerCase();
+  const phoneSet=new Set(Array.from(prompt.matchAll(/(?:\+?1[\s().-]*)?(?:\(?\d{3}\)?[\s.-]*)\d{3}[\s.-]*\d{4}/g)).map(match=>smsPhoneDigits(match[0])).filter(Boolean));
+  const combined=[
+    ...contacts.filter(contact=>phoneSet.has(smsPhoneDigits(contact.phone||""))),
+    ...contacts.filter(contact=>{const name=String(contact.name||"").trim().toLowerCase();return name.length>=3&&lower.includes(name)}),
+  ];
+  const seen=new Set<number>();
+  return combined.filter(contact=>{if(seen.has(contact.id))return false;seen.add(contact.id);return true});
+}
+function cleanSmsDraft(value:string){
+  let text=value.trim();
+  text=text.replace(/^subject:\s*[^\r\n]*(?:\r?\n)+/i,"");
+  if(/^subject:/i.test(text)){
+    const greeting=text.search(/\b(?:hi|hello|hey)\b[\s,]/i);
+    text=greeting>0?text.slice(greeting):text.replace(/^subject:\s*/i,"");
+  }
+  return text.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim().slice(0,1600);
+}
+
 async function imageForAi(file:File){
   if(!/^image\/(jpeg|png|webp)$/i.test(file.type)&&!/\.(jpe?g|png|webp)$/i.test(file.name))throw new Error("Use a JPG, PNG, or WebP image.");
   if(file.size>12*1024*1024)throw new Error("That image is too large. Use a photo under 12 MB.");
@@ -48,8 +74,14 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
   const [prompt,setPrompt]=useState("");const [submittedPrompt,setSubmittedPrompt]=useState("");const [submittedImages,setSubmittedImages]=useState<AiImage[]>([]);const [includeNotes,setIncludeNotes]=useState(false);const [loading,setLoading]=useState(false);const [result,setResult]=useState<AiResult|null>(null);const [error,setError]=useState("");const [applied,setApplied]=useState<number[]>([]);const [service,setService]=useState("Checking AI connection…");
   const [images,setImages]=useState<AiImage[]>([]);const [dragging,setDragging]=useState(false);const [created,setCreated]=useState(false);const imageInputRef=useRef<HTMLInputElement>(null);const cameraInputRef=useRef<HTMLInputElement>(null);
   const [sending,setSending]=useState(false);const [sendReport,setSendReport]=useState("");const submittedSms=useRef(new Set<string>());
-  const recipients=useMemo(()=>smsRecipients(leads),[leads]);
+  const recipients=useMemo(()=>smsRecipients(leads.filter(lead=>lead.stage!=="Closed")),[leads]);
   const eligible=useMemo(()=>leads.filter(lead=>!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
+  // PACIFICA_AI_TARGETED_SMS_PLAN_V2
+  const smsSendPlan=useMemo(()=>{
+    const explicitBulk=bulkSmsRequested(submittedPrompt);
+    const targets=explicitBulk?recipients:explicitSmsTargets(submittedPrompt,recipients);
+    return {explicitBulk,targets};
+  },[recipients,submittedPrompt]);
 
   useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"AI enabled":"Local suggestions")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
 
