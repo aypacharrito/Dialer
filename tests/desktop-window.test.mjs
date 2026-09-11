@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import ts from 'typescript';
 
 function desktop(settings={}){
  const windows=[],handlers=new Map();
@@ -12,7 +13,7 @@ function desktop(settings={}){
   setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){}
  }
  const source=fs.readFileSync(new URL('../desktop/main.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('const __dirname=path.dirname(fileURLToPath(import.meta.url));','const __dirname="/desktop";');
- vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(){}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(){},setInterval(){},clearInterval(){},console});
+ vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(){}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(){},setInterval(){},clearInterval(){},console});
  return {windows,handlers,event:{sender:windows[0].webContents,senderFrame:{url:'https://pacificacrm.com/dashboard'}}};
 }
 test('floating call window keeps a dragged position across timer updates and calls',()=>{
@@ -66,4 +67,24 @@ test('native overlay resizes and remembers separate sizes and screen position',(
  first.handlers.get('pacifica:call-action')({sender:overlay.webContents},'toggle-layout');assert.deepEqual(overlay.getSize(),[280,180]);
  first.handlers.get('pacifica:call-action')({sender:overlay.webContents},'toggle-layout');assert.deepEqual(overlay.getSize(),[720,140]);
  const second=desktop(settings);second.handlers.get('pacifica:call-state')(second.event,{active:true});assert.deepEqual(second.windows[1].getSize(),[720,140]);assert.equal(second.windows[1].bounds.x,200);assert.equal(second.windows[1].bounds.y,250);
+});
+
+test('installed desktop version is available only to trusted app frames',()=>{
+ const {handlers,event}=desktop();const version=handlers.get('pacifica:desktop-version');assert.equal(version(event),'0.2.11');assert.equal(version({...event,senderFrame:{url:'https://example.com'}}),null);
+});
+
+function downloadRoute({configured='',allowed=true,releases=[],ok=true}={}){
+ const source=fs.readFileSync(new URL('../app/api/desktop/download/route.ts',import.meta.url),'utf8');
+ const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText.replace(/^import .*;$/gm,'').replace(/^export /gm,'');
+ const context=vm.createContext({Response,URL,console,getPacificaAccess:async()=>({allowed}),process:{env:{PACIFICA_DESKTOP_WINDOWS_URL:configured}},fetch:async()=>({ok,json:async()=>releases})});vm.runInContext(compiled,context);return ()=>context.GET(new Request('https://pacificacrm.com/api/desktop/download'));
+}
+test('an older pinned GitHub installer redirects to the latest release without caching',async()=>{
+ const url='https://github.com/aypacharrito/Dialer/releases/download/pacifica-desktop-11/Pacifica-Setup-0.2.11.exe';
+ const response=await downloadRoute({configured:'https://github.com/aypacharrito/Dialer/releases/download/pacifica-desktop-2/old.exe',releases:[{tag_name:'pacifica-desktop-11',assets:[{name:'Pacifica-Setup-0.2.11.exe',browser_download_url:url}]}]})();assert.equal(response.status,302);assert.equal(response.headers.get('location'),url);assert.equal(response.headers.get('cache-control'),'no-store');
+});
+test('failed latest release lookup does not silently hand out an obsolete installer',async()=>{
+ const response=await downloadRoute({configured:'https://github.com/aypacharrito/Dialer/releases/download/pacifica-desktop-2/old.exe',ok:false})();assert.equal(response.status,503);
+});
+test('custom external installers and subscription checks remain supported',async()=>{
+ assert.equal((await downloadRoute({configured:'https://downloads.example.com/Pacifica.exe'})()).headers.get('location'),'https://downloads.example.com/Pacifica.exe');assert.equal((await downloadRoute({allowed:false})()).status,403);
 });

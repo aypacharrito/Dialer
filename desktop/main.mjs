@@ -180,3 +180,5 @@ ipcMain.on("pacifica:theme",(event,theme)=>{
   lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
   overlayWindow?.webContents.send("pacifica:call-state",overlayState());
 });
+
+ipcMain.handle("pacifica:desktop-version",event=>trustedMain(event)?app.getVersion():null);

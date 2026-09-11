@@ -39,7 +39,8 @@ export async function GET(request:Request){
   if(!access.allowed)return Response.json({error:"An active Pacifica subscription is required to download the desktop app."},{status:403});
   const platform=new URL(request.url).searchParams.get("platform")==="mac"?"mac":"windows";
   const configured=configuredReleaseUrl(platform);
-  let target=configured;
+  const legacyGitHubPin=configured.startsWith(`https://github.com/${releaseRepository()}/releases/download/`);
+  let target=legacyGitHubPin?"":configured;
   if(!target){
     try{target=await latestDesktopReleaseUrl(platform)}catch(error){console.error("[desktop/download] release lookup failed",error instanceof Error?error.message:"unknown error")}
   }
@@ -51,7 +52,7 @@ export async function GET(request:Request){
   }
   try{
     const url=new URL(target);if(url.protocol!=="https:")throw new Error("invalid protocol");
-    return Response.redirect(url,302);
+    return new Response(null,{status:302,headers:{Location:url.toString(),"Cache-Control":"no-store"}});
   }catch{
     return Response.json({error:"The desktop release URL is invalid."},{status:500});
   }

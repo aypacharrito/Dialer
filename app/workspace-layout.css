@@ -358,20 +358,6 @@ html[data-theme] .app-shell .ai-connection-panel code {overflow-wrap:anywhere;}
 html[data-theme] .app-shell .float-call-launch {position:fixed;bottom:20px;right:24px;z-index:1100;}
 html[data-theme] .app-shell .float-call-launch>button {padding:10px 14px;background:var(--ps-surface);border:1px solid var(--ps-line-strong);color:var(--ps-text);border-radius:7px;box-shadow:var(--ps-shadow-card);}
 html[data-theme] .app-shell .float-call-launch p {max-width:310px;padding:12px;margin:8px 0 0;background:var(--ps-surface);border:1px solid var(--ps-line);border-radius:7px;font-size:13px;}
-html[data-theme] .floating-call {box-sizing:border-box;min-height:100dvh;margin:0;padding:18px;background:var(--ps-surface);color:var(--ps-text);font:14px/1.5 var(--font-ui);}
-html[data-theme] .floating-call header {display:flex;justify-content:space-between;color:var(--ps-muted);font-size:12px;}
-html[data-theme] .floating-call h1 {margin:18px 0 0;font:650 21px/1.3 var(--font-ui);}
-html[data-theme] .floating-call p {margin:4px 0;color:var(--ps-muted);}
-html[data-theme] .floating-call time {display:block;margin:12px 0;font-variant-numeric:tabular-nums;}
-html[data-theme] .floating-call button {font:600 14px var(--font-ui);min-height:40px;border:1px solid var(--ps-line);border-radius:6px;background:var(--ps-surface-2);color:var(--ps-text);cursor:pointer;}
-html[data-theme] .floating-call button:disabled {opacity:.45;cursor:default;}
-html[data-theme] .floating-call button[aria-pressed="true"] {background:var(--ps-accent-soft);border-color:var(--ps-accent);}
-html[data-theme] .floating-call .floating-call-end {color:var(--ps-danger);background:var(--ps-danger-soft);}
-html[data-theme] .floating-call-actions {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-html[data-theme] .floating-keypad {margin-top:14px;}
-html[data-theme] .floating-keypad input {box-sizing:border-box;width:100%;padding:8px;margin:0 0 8px;border:1px solid var(--ps-line);background:var(--ps-surface);border-radius:4px;color:var(--ps-text);font:14px var(--font-ui);}
-html[data-theme] .floating-keypad>div {display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
-html[data-theme] .floating-call>small {display:block;margin-top:10px;color:var(--ps-muted);font-size:11px;}
 @container crm-workspace (max-width:720px) {
   html[data-theme] .app-shell .topbar .lead-line-switch {gap:18px !important;flex-basis:100%;}
   html[data-theme] .app-shell .ai-connection-panel {margin:12px;}

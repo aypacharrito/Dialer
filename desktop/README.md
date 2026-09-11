@@ -20,7 +20,7 @@ npm run dist:win
 npm run dist:mac
 ```
 
-The official download page is `/desktop`. The server route `/api/desktop/download` verifies Pacifica access before redirecting to the configured installer URL.
+The official download page is `/desktop`. The server route `/api/desktop/download` verifies Pacifica access and resolves the latest GitHub installer. A configured URL for an older release in this repository no longer takes priority over the latest release; custom external installer URLs remain supported. Redirects are not cached.
 
 Production environment variables:
 
@@ -30,3 +30,5 @@ PACIFICA_DESKTOP_MAC_URL=https://YOUR-PRIVATE-RELEASE-LOCATION/Pacifica.dmg
 ```
 
 The desktop app itself still requires the user's normal Clerk/Pacifica sign-in and subscription access.
+
+The desktop title bar shows the installed version. Native overlay changes require a new EXE; a Vercel web deployment cannot replace files already packaged inside an older EXE. Browser picture-in-picture uses compact controls with horizontal/vertical layouts and an optional keypad.

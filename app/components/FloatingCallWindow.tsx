@@ -14,6 +14,8 @@ function bridge(){return typeof window!=="undefined"?(window as DesktopWindow).p
 export default function FloatingCallWindow(props:Props){
   const [target,setTarget]=useState<Window|null>(null);
   const [error,setError]=useState("");
+  const [layout,setLayout]=useState<"horizontal"|"vertical">("horizontal");
+  const [keypad,setKeypad]=useState(false);
   const windowRef=useRef<Window|null>(null);
   const openingRef=useRef(false);
   const mountedRef=useRef(false);
@@ -47,26 +49,31 @@ export default function FloatingCallWindow(props:Props){
     if(!pip){setError("Floating calls need the Pacifica desktop app or a browser with picture-in-picture windows. You can keep using the call controls in Pacifica.");return}
     openingRef.current=true;setError("");
     try{
-      const next=await pip.requestWindow({width:360,height:480});
+      let preferred:"horizontal"|"vertical"="horizontal";try{if(localStorage.getItem("pacifica:browser-overlay-layout")==="vertical")preferred="vertical"}catch{}
+      setLayout(preferred);setKeypad(false);
+      const next=await pip.requestWindow({width:preferred==="vertical"?300:540,height:preferred==="vertical"?200:110});
       if(!mountedRef.current){next.close();return}
       next.document.title="Pacifica · Current call";
-      for(const sheet of document.querySelectorAll('link[rel="stylesheet"],style'))next.document.head.appendChild(sheet.cloneNode(true));
+      const style=next.document.createElement("style");
+      style.textContent=`*{box-sizing:border-box}html,body{margin:0;min-width:260px;min-height:100%;font:14px system-ui;color:#17211d;background:#fff}html[data-theme="dark"]{color-scheme:dark}html[data-theme="dark"] body{color:#f4f7f5;background:#17211b}.compact-call{min-height:100vh;padding:12px;display:flex;flex-direction:column;justify-content:center;gap:10px}.compact-bar{display:flex;align-items:center;gap:12px}.compact-person{flex:1;min-width:0}.compact-person b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.compact-person small{display:block;font-size:11px;opacity:.75;margin-top:4px}.compact-controls{display:flex;gap:5px;flex-wrap:wrap}button{font:600 12px system-ui;padding:8px;border:1px solid #b8c8bf;border-radius:7px;background:transparent;color:inherit;cursor:pointer}button:disabled{opacity:.45}.compact-end{background:#b9303d;color:#fff;border-color:#b9303d}.compact-call[data-layout="vertical"] .compact-bar{flex-direction:column;align-items:stretch}.compact-call[data-layout="vertical"] .compact-controls{justify-content:center}.compact-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.compact-tones{width:100%;padding:8px;background:transparent;color:inherit;border:1px solid #b8c8bf;border-radius:7px}.compact-feedback{font-size:11px;margin:0;opacity:.8}@media(max-width:440px){.compact-bar{flex-direction:column;align-items:stretch}.compact-controls{justify-content:center}}`;
+      next.document.head.appendChild(style);
       next.document.documentElement.dataset.theme=document.documentElement.dataset.theme||"light";
-      next.document.body.style.margin="0";
       windowRef.current=next;setTarget(next);
       next.addEventListener("pagehide",()=>{if(windowRef.current===next){windowRef.current=null;if(mountedRef.current)setTarget(null)}},{once:true});
     }catch{setError("The floating window could not open. Try Float call again from this window.")}
     finally{openingRef.current=false}
   }
 
-  function callCard(){return <section className="floating-call" aria-label="Floating call controls">
-    <header><span>Pacifica</span><span role="status">{props.connected?"Live call":"Connecting…"}</span></header>
-    <h1>{props.name||props.number}</h1><p>{props.number}</p><time>{props.connected?props.elapsed:"Waiting for answer"}</time>
-    <div className="floating-call-actions"><button type="button" disabled={!props.connected} aria-pressed={props.muted} onClick={props.onMute}>{props.muted?"Unmute":"Mute"}</button><button type="button" className="floating-call-end" onClick={props.onEnd}>{props.connected?"End call":"Cancel call"}</button></div>
-    <div className="floating-keypad" tabIndex={0} onKeyDown={event=>{if(!props.connected||event.metaKey||event.ctrlKey||event.altKey||!isCallDigit(event.key))return;event.preventDefault();if(!event.repeat)props.onDigits(event.key)}}>
-      <input type="text" aria-label="Touch tones" placeholder="Type or press keys" readOnly value={props.sentDigits} onPaste={event=>{event.preventDefault();if(props.connected)props.onDigits(event.clipboardData.getData("text").replace(/\s/g,""))}}/>
-      <div>{"123456789*0#".split("").map(digit=><button key={digit} type="button" disabled={!props.connected} aria-label={`Dial ${digit}`} onClick={()=>props.onDigits(digit)}>{digit}</button>)}</div>
-    </div><small role="status">{props.feedback||"Keep Pacifica open while you work in other apps."}</small>
+  function changeLayout(){
+    const next=layout==="horizontal"?"vertical":"horizontal";setLayout(next);
+    try{localStorage.setItem("pacifica:browser-overlay-layout",next)}catch{}
+    try{target?.resizeTo(next==="vertical"?300:540,keypad?460:next==="vertical"?200:110)}catch{}
+  }
+  function callCard(){return <section className="compact-call" data-layout={layout} aria-label="Floating call controls">
+    <div className="compact-bar"><div className="compact-person"><b>{props.name||props.number}</b><small>{props.number}</small><small role="status">{props.connected?`Live · ${props.elapsed}`:"Connecting…"}</small></div>
+    <div className="compact-controls"><button type="button" disabled={!props.connected} aria-pressed={props.muted} onClick={props.onMute}>{props.muted?"Unmute":"Mute"}</button><button type="button" aria-label="Open CRM" onClick={()=>window.focus()}>↗</button><button type="button" className="compact-end" onClick={props.onEnd}>{props.connected?"End call":"Cancel"}</button><button type="button" aria-label={`Switch to ${layout==="horizontal"?"vertical":"horizontal"} layout`} onClick={changeLayout}>{layout==="horizontal"?"▥":"▤"}</button><button type="button" aria-label="Toggle keypad" aria-expanded={keypad} onClick={()=>{setKeypad(!keypad);try{target?.resizeTo(layout==="vertical"?300:540,!keypad?460:layout==="vertical"?200:110)}catch{}}}>⌨</button></div></div>
+    {keypad&&<><input className="compact-tones" aria-label="Touch tones" placeholder="Type or press keys" readOnly value={props.sentDigits} onKeyDown={event=>{if(!props.connected||event.metaKey||event.ctrlKey||event.altKey||!isCallDigit(event.key))return;event.preventDefault();if(!event.repeat)props.onDigits(event.key)}} onPaste={event=>{event.preventDefault();if(props.connected)props.onDigits(event.clipboardData.getData("text").replace(/\s/g,""))}}/><div className="compact-keypad">{"123456789*0#".split("").map(digit=><button key={digit} type="button" disabled={!props.connected} aria-label={`Dial ${digit}`} onClick={()=>props.onDigits(digit)}>{digit}</button>)}</div></>}
+    {props.feedback&&<p className="compact-feedback" role="status">{props.feedback}</p>}
   </section>}
 
   return <>
