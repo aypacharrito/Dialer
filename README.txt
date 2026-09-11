@@ -1,19 +1,19 @@
-PACIFICA CRM A2P SITE FIXES
+PACIFICA CRM — LEAD PERSISTENCE FIX ONLY
 
-Drop these files into the ROOT of your GitHub repo and allow them to replace the matching existing files.
+There are NO scrolling changes in this Pacifica package.
 
-Included:
-- app/sms/page.tsx                 NEW
-- app/terms/page.tsx               REPLACE
-- app/privacy/page.tsx             REPLACE
-- app/landing/LandingClient.tsx    REPLACE
+Included fixes:
+1. Fresh David's Insurance website leads stay merged correctly.
+2. A new received timestamp counts as a real provider update.
+3. The newest website submission can refresh the contact instead of appearing briefly and seeming to disappear.
+4. Duplicate handling still protects important CRM history.
 
-IMPORTANT:
-Before deploying, open app/sms/page.tsx and replace:
-+1 (XXX) XXX-XXXX
-with the actual Pacifica CRM Twilio number used for this messaging campaign.
+Files included:
+app/lib/provider-lead-merge.ts
+app/lib/csv-lead-merge.ts
 
-After deployment verify:
-https://pacificacrm.com/sms
-https://pacificacrm.com/terms
-https://pacificacrm.com/privacy
+Replace those two files in the Dialer repo, then commit and push.
+
+git add app/lib/provider-lead-merge.ts app/lib/csv-lead-merge.ts
+git commit -m "Fix website lead persistence"
+git push

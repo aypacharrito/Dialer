@@ -45,6 +45,10 @@ function meaningfulDisposition(value:string){
 function time(value?:string){const parsed=Date.parse(value||"");return Number.isFinite(parsed)?parsed:Number.NaN}
 function latestIso(...values:Array<string|undefined>){return values.filter(value=>Number.isFinite(time(value))).toSorted((left,right)=>time(right)-time(left))[0]}
 function earliestIso(...values:Array<string|undefined>){return values.filter(value=>Number.isFinite(time(value))).toSorted((left,right)=>time(left)-time(right))[0]}
+function arrivalTime(lead:CsvManagedLead){
+  const received=time(lead.received);if(Number.isFinite(received))return received;
+  const imported=time(lead.importedAt);return Number.isFinite(imported)?imported:0;
+}
 function mergeCommunications(left:CsvManagedLead["communications"],right:CsvManagedLead["communications"]){
   const seen=new Set<string>();
   return [...(left||[]),...(right||[])].filter(item=>{const key=String(item.id||`${item.sentAt||""}:${JSON.stringify(item)}`);if(seen.has(key))return false;seen.add(key);return true});
@@ -79,7 +83,7 @@ function mergeMatchedLead<T extends CsvManagedLead>(current:T,item:T,nowIso:stri
     product:useful(item.product)&&item.product!=="Service inquiry"?item.product:current.product,
     line:current.queueOverride?current.line:useful(item.product)&&item.product!=="Service inquiry"?item.line:current.line,
     sourceDisposition:nextDisposition,
-    address:item.address||current.address,state:item.state||current.state,zip:item.zip||current.zip,territory:item.territory||current.territory,brand:item.brand||current.brand,profileName:item.profileName||current.profileName,received:item.received||current.received,returnStatus:item.returnStatus||current.returnStatus,employeeCount:item.employeeCount||current.employeeCount,searchPro:item.searchPro||current.searchPro,
+    address:item.address||current.address,state:item.state||current.state,zip:item.zip||current.zip,territory:item.territory||current.territory,brand:item.brand||current.brand,profileName:item.profileName||current.profileName,received:latestIso(current.received,item.received)||item.received||current.received,returnStatus:item.returnStatus||current.returnStatus,employeeCount:item.employeeCount||current.employeeCount,searchPro:item.searchPro||current.searchPro,
     extraFields,importedFields,csvFileName:item.csvFileName||current.csvFileName,
     importedAt:earliestIso(current.importedAt,item.importedAt)||current.importedAt||item.importedAt,
     assignedTo:current.assignedTo||item.assignedTo,
@@ -103,8 +107,22 @@ function sameLead(left:CsvManagedLead,right:CsvManagedLead){
 function mergeDuplicateLead<T extends CsvManagedLead>(current:T,duplicate:T,nowIso:string){
   const merged=mergeMatchedLead(current,duplicate,nowIso);
   const preferred=workflowScore(duplicate)>workflowScore(current)?duplicate:current;
+  const freshest=arrivalTime(duplicate)>arrivalTime(current)?duplicate:current;
+  const freshName=useful(freshest.name)&&!/^lead \d+$/i.test(freshest.name)?freshest.name:merged.name;
+  const freshPhone=normalizedCsvPhone(freshest.phone).length>=7?freshest.phone:merged.phone;
+  const freshEmail=normalizedCsvEmail(freshest.email).includes("@")?freshest.email:merged.email;
+  const freshCity=useful(freshest.city)&&freshest.city!=="Imported"?freshest.city:merged.city;
+  const freshProduct=useful(freshest.product)&&freshest.product!=="Service inquiry"?freshest.product:merged.product;
   return {
     ...merged,...deletionState(current,duplicate),
+    name:freshName,phone:freshPhone,email:freshEmail,city:freshCity,
+    source:useful(freshest.source)&&!generic(freshest.source)?freshest.source:merged.source,
+    product:freshProduct,
+    line:merged.queueOverride?merged.line:freshProduct?freshest.line:merged.line,
+    address:freshest.address||merged.address,state:freshest.state||merged.state,zip:freshest.zip||merged.zip,
+    territory:freshest.territory||merged.territory,brand:freshest.brand||merged.brand,profileName:freshest.profileName||merged.profileName,
+    received:latestIso(current.received,duplicate.received,current.importedAt,duplicate.importedAt)||merged.received,
+    providerUpdatedAt:latestIso(current.providerUpdatedAt,duplicate.providerUpdatedAt)||merged.providerUpdatedAt||nowIso,
     stage:preferred.stage,outcome:preferred.outcome,status:preferred.status,sourceDisposition:preferred.sourceDisposition,
     notes:[current.notes,duplicate.notes].filter(Boolean).toSorted((left,right)=>String(right).length-String(left).length)[0]||"",
     followUp:latestIso(current.followUp,duplicate.followUp)||current.followUp||duplicate.followUp||"",
