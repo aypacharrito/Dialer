@@ -21,7 +21,7 @@ test("a stale received status cannot demote active local work",()=>{
 });
 
 test("unchanged provider records keep the same array and do not trigger cloud writes",()=>{
-  const current={...baseLead,sourceDisposition:"Interested - Working",stage:"Follow-up",outcome:"Interested",extraFields:{campaign:"A",tier:"Gold"}};
+  const current={...baseLead,received:provider.createdAt,importedAt:provider.createdAt,sourceDisposition:"Interested - Working",stage:"Follow-up",outcome:"Interested",extraFields:{campaign:"A",tier:"Gold"}};
   const result=mergeProviderLeads([current],[provider],()=>{throw new Error("should not create")});
   assert.equal(result.updated,0);assert.equal(result.leads[0],current);assert.equal(result.leads.length,1);
 });
@@ -32,4 +32,10 @@ test("provider sync cannot undo a manual queue change",()=>{
   const result=mergeProviderLeads([moved],[changedProduct],()=>{throw new Error("should not create")});
   assert.equal(result.leads[0].line,"life");
   assert.equal(result.leads[0].queueOverride,true);
+});
+
+test("arrival metadata is refreshed once, then repeated polls are unchanged",()=>{
+ const incoming={...provider,disposition:baseLead.sourceDisposition,extraFields:baseLead.extraFields};
+ const first=mergeProviderLeads([baseLead],[incoming],()=>{throw new Error("should not create")});assert.equal(first.updated,1);assert.equal(first.leads[0].received,provider.createdAt);
+ const second=mergeProviderLeads(first.leads,[incoming],()=>{throw new Error("should not create")});assert.equal(second.updated,0);assert.equal(second.leads,first.leads);
 });

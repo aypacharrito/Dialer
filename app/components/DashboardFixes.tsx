@@ -14,6 +14,7 @@ type InboundLead={
   product?:string;
   createdAt?:string;
   received?:string;
+  deletedAt?:string;
 };
 
 function leadKey(lead:InboundLead){
@@ -58,7 +59,8 @@ export default function DashboardFixes({workspaceId}:{workspaceId:string}){
         const recent=Number.isFinite(when)&&Date.now()-when<15*60*1000;
 
         if(recent&&key&&key!==storedKey&&key!==dismissedRef.current){
-          setLatestLead(newest);
+          const match=(workspace.leads as InboundLead[]|undefined)?.find(item=>String(item.phone||" ").replace(/\D/g,"").slice(-10)===String(newest.phone||"").replace(/\D/g,"").slice(-10));
+          setLatestLead({...newest,deletedAt:match?.deletedAt});
         }
       }
 
@@ -91,7 +93,7 @@ export default function DashboardFixes({workspaceId}:{workspaceId:string}){
   }
 
   function viewLead(lead:InboundLead){
-    window.dispatchEvent(new CustomEvent("pacifica:open-contact",{detail:{workspaceId,phone:lead.phone}}));
+    window.dispatchEvent(new CustomEvent("pacifica:open-contact",{detail:{workspaceId,phone:lead.phone,restore:Boolean(lead.deletedAt)}}));
     markSeen(lead);
   }
 
@@ -103,10 +105,10 @@ export default function DashboardFixes({workspaceId}:{workspaceId:string}){
       <span>NEW INBOUND LEAD</span>
       <strong>{latestLead.name||"New lead received"}</strong>
       <small>{[latestLead.phone,latestLead.product||latestLead.source].filter(Boolean).join(" · ")}</small>
-      <em>{syncState==="ok"?"Saved to Pacifica CRM":"Syncing with Pacifica CRM…"}</em>
+      <em>{latestLead.deletedAt?"Matches a previously deleted contact":syncState==="ok"?"Saved to Pacifica CRM":"Syncing with Pacifica CRM…"}</em>
     </div>
     <div className={styles.actions}>
-      <button type="button" onClick={()=>viewLead(latestLead)}>View lead</button>
+      <button type="button" onClick={()=>viewLead(latestLead)}>{latestLead.deletedAt?"Restore contact":"View lead"}</button>
       <button type="button" className={styles.dismiss} aria-label="Dismiss" onClick={()=>markSeen(latestLead)}>×</button>
     </div>
   </aside>;

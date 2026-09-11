@@ -78,3 +78,17 @@ test('source permission is channel-specific and opt-outs always win',()=>{
  assert.equal(hasContactPermission({source:'Unknown'},profile,'sms'),false);assert.equal(hasContactPermission({source:'SmartFinancial'},cleanWorkspaceProfile({}),'sms'),false);
  for(const blocked of [{smsOptOut:true},{doNotCall:true},{deletedAt:'2026-09-10'}])assert.equal(hasContactPermission({source:'SmartFinancial',smsConsent:true,...blocked},profile,'sms'),false);
 });
+
+test('provider refresh updates existing details without losing local workflow or reviving deleted contacts',()=>{
+ const local={id:20,phone:'8185550120',name:'Old name',notes:'Local note',stage:'Quoted',providerUpdatedAt:'2026-09-09T00:00:00Z',deletedAt:'2026-09-10T00:00:00Z',deletionUpdatedAt:'2026-09-10T00:00:00Z'};
+ const remote={...local,name:'Fresh website name',notes:'Old note',stage:'New lead',providerUpdatedAt:'2026-09-11T00:00:00Z',deletedAt:'',deletionUpdatedAt:''};
+ const merged=mergeIncomingContacts([local],[remote])[0];assert.equal(merged.name,'Fresh website name');assert.equal(merged.notes,'Local note');assert.equal(merged.stage,'Quoted');assert.equal(merged.deletedAt,local.deletedAt);
+ const restored=mergeIncomingContacts([merged],[{...remote,deletionUpdatedAt:'2026-09-11T01:00:00Z'}])[0];assert.equal(restored.deletedAt,'');
+});
+
+test('a stale browser save cannot overwrite newer inbound contact details',async()=>{
+ const {mergeStoredWorkspace}=await import('../app/lib/workspace-storage.ts');
+ const profile=cleanWorkspaceProfile({}),old={id:30,phone:'8185550130',name:'Previous name',providerUpdatedAt:'2026-09-09T00:00:00Z',notes:'Previous note'};
+ const server={leads:[{...old,name:'New inquiry',providerUpdatedAt:'2026-09-11T00:00:00Z'}],callLogs:[],profile};
+ const saved=mergeStoredWorkspace(server,{...server,leads:[{...old,notes:'Unsaved browser note'}]});assert.equal(saved.leads[0].name,'New inquiry');assert.equal(saved.leads[0].notes,'Unsaved browser note');
+});

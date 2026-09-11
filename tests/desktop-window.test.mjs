@@ -9,7 +9,7 @@ function desktop(settings={}){
   constructor(options){this.options=options;this.visible=false;this.minimized=false;this.positions=0;this.bounds={x:100,y:100,width:options.width,height:options.height};this.events=new Map();this.sent=[];this.webContents={send:(...args)=>this.sent.push(args),once(){},on(){},setWindowOpenHandler(){}};windows.push(this)}
   once(){} on(name,fn){this.events.set(name,fn)} loadURL(){} loadFile(file){this.file=file} show(){this.visible=true} showInactive(){this.visible=true} hide(){this.visible=false} isVisible(){return this.visible} isDestroyed(){return false}
   isMinimized(){return this.minimized} minimize(){this.minimized=true;this.visible=false} restore(){this.minimized=false;this.visible=true;this.events.get('restore')?.()} setSkipTaskbar(value){this.skipTaskbar=value}
-  setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){}
+  setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){}
  }
  const source=fs.readFileSync(new URL('../desktop/main.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('const __dirname=path.dirname(fileURLToPath(import.meta.url));','const __dirname="/desktop";');
  vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(){}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(){},setInterval(){},clearInterval(){},console});
@@ -58,4 +58,12 @@ test('layout changes preserve position, clamp to screen and persist across launc
 test('only the overlay can change layout and invalid saved preferences use horizontal',()=>{
  const {windows,handlers,event}=desktop({value:'not-json'});handlers.get('pacifica:call-state')(event,{active:true});
  handlers.get('pacifica:call-action')(event,'toggle-layout');assert.deepEqual(windows[1].getSize(),[480,88]);
+});
+
+test('native overlay resizes and remembers separate sizes and screen position',()=>{
+ const settings={},first=desktop(settings),update=first.handlers.get('pacifica:call-state');update(first.event,{active:true});const overlay=first.windows[1];assert.equal(overlay.options.resizable,true);
+ overlay.setSize(720,140);overlay.events.get('resized')();overlay.setPosition(200,250);overlay.events.get('moved')();update(first.event,{active:true,elapsed:'00:03'});assert.deepEqual(overlay.getSize(),[720,140]);
+ first.handlers.get('pacifica:call-action')({sender:overlay.webContents},'toggle-layout');assert.deepEqual(overlay.getSize(),[280,180]);
+ first.handlers.get('pacifica:call-action')({sender:overlay.webContents},'toggle-layout');assert.deepEqual(overlay.getSize(),[720,140]);
+ const second=desktop(settings);second.handlers.get('pacifica:call-state')(second.event,{active:true});assert.deepEqual(second.windows[1].getSize(),[720,140]);assert.equal(second.windows[1].bounds.x,200);assert.equal(second.windows[1].bounds.y,250);
 });

@@ -176,7 +176,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [ownerFilter,setOwnerFilter]=useState("All owners");
   const [leadSort,setLeadSort]=useState("Next best");
   const [phoneReady,setPhoneReady]=useState(false);
-  const [,setPhoneStatus]=useState("Checking Twilio setup…");
+  const [phoneStatus,setPhoneStatus]=useState("Checking Twilio setup…");
   const [muted,setMuted]=useState(false);
 
   const [dtmfDisplay,setDtmfDisplay]=useState("");
@@ -486,14 +486,16 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     quietCallAudioRef.current?.dispose();quietCallAudioRef.current=null;
     callDigits.clear();setDtmfDisplay("");setDtmfFeedback({message:"",error:false});
     advancingRef.current=false;
-    setManualCall(wasManual);setCurrentCallLeadId(wasManual?null:queuedLead.id);setDialing(true);setConnected(false);setSeconds(0);elapsedRef.current=0;setPhoneStatus("Connecting securely…");const callStartedAt=new Date().toISOString();setWorkspaceProfile(profile=>({...profile,liveCallSession:{leadId:wasManual?null:queuedLead.id,name:wasManual?"Manual call":queuedLead.name,phone:number,line:queuedLead.line,status:"dialing",startedAt:callStartedAt,updatedAt:callStartedAt}}));
+    setManualCall(wasManual);setCurrentCallLeadId(wasManual?null:queuedLead.id);setDialing(true);setConnected(false);setSeconds(0);elapsedRef.current=0;setPhoneStatus("Checking microphone…");const callStartedAt=new Date().toISOString();setWorkspaceProfile(profile=>({...profile,liveCallSession:{leadId:wasManual?null:queuedLead.id,name:wasManual?"Manual call":queuedLead.name,phone:number,line:queuedLead.line,status:"dialing",startedAt:callStartedAt,updatedAt:callStartedAt}}));
     const currentLeadId=wasManual?undefined:queuedLead.id;
     currentLogRef.current={id:crypto.randomUUID(),name:wasManual?"Manual call":queuedLead.name,phone:number,startedAt:new Date().toISOString(),duration:0,outcome:"Dialing",status:"Connecting",campaign:queueLabel(queuedLead.line,workspaceProfile.mode),source:wasManual?"Manual keypad":autoDialRef.current?"CRM auto dial":"CRM manual call"};
+    watchdogRef.current=window.setTimeout(()=>finishCall(wasManual,currentLeadId,"Call setup timed out. Check microphone access and Calling settings, then retry.","Failed",undefined,attemptId),30000);
     try{
       const audioPreferences=readAudioPreferences();
       const microphone=await openCallMicrophone(audioPreferences,constraints=>navigator.mediaDevices.getUserMedia(constraints));
       microphone.stream.getTracks().forEach(track=>track.stop());
       if(attemptId!==callAttemptRef.current||advancingRef.current)return;
+      setPhoneStatus("Connecting to phone service…");
       const device=await ensureDevice();
       const recovered=await configureCallAudio(device.audio,{...audioPreferences,input:microphone.input});
       if(microphone.input!==audioPreferences.input)recovered.input=microphone.input;
@@ -511,7 +513,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         establishedAttemptRef.current=attemptId;
         if(currentLeadId){sessionAttemptedLeadIdsRef.current.add(currentLeadId);const attemptAt=new Date();setLeads(list=>list.map(item=>{if(item.id!==currentLeadId)return item;const attempts=(item.attempts||0)+1;return {...item,attempts,lastAttemptAt:attemptAt.toISOString(),lastContact:`Attempted ${attemptAt.toLocaleString()}`,...(isDialerEligibleLead(item)?{automationEnabled:true,automationSequenceId:"missed-call",automationStep:0,automationNextAt:nextAutomationAfterAttempt(1,attemptAt.getTime()),automationStatus:"scheduled"}:{})}}))}
       };
-      call.on("ringing",markAttempt);
+      call.on("ringing",()=>{markAttempt();setPhoneStatus(quietDialingRef.current?"Ringing · quiet until answered":"Ringing…")});
+      if(watchdogRef.current)window.clearTimeout(watchdogRef.current);
       watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out",undefined,attemptId);call.disconnect()},25000);
       call.on("accept",()=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
       call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed",undefined,attemptId));
@@ -643,7 +646,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const sync=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.workspaceId!==workspaceId||!Array.isArray(detail.leads))return;const incoming=normalizeSavedLeads(detail.leads);setLeads(current=>mergeIncomingContacts(current,incoming))};
     const open=(event:Event)=>{
       const detail=(event as CustomEvent).detail;if(detail?.workspaceId!==workspaceId||typeof detail.phone!=="string")return;
-      const reveal=(item:Lead)=>{activeLineRef.current=item.line;setActiveLine(item.line);setSearch("");setSourceFilter("All sources");setOwnerFilter("All owners");setStageFilter("All stages");setView("leads");setSelectedLead(item.id)};
+      const reveal=(item:Lead)=>{if(item.deletedAt){if(!detail.restore){setToast("This contact was deleted. Use Restore contact on the inbound notification.");return}setLeads(current=>current.map(lead=>lead.id===item.id?{...lead,deletedAt:"",deletionUpdatedAt:new Date().toISOString()}:lead))}activeLineRef.current=item.line;setActiveLine(item.line);setSearch("");setSourceFilter("All sources");setOwnerFilter("All owners");setStageFilter("All stages");setView("leads");setSelectedLead(item.id)};
       const item=findDialedContact(leadsRef.current,detail.phone);
       if(item){reveal(item);return}
       void fetch("/api/crm/workspace",{cache:"no-store"}).then(async response=>{if(!response.ok)throw new Error("Workspace refresh failed");const data=await response.json();const incoming=normalizeSavedLeads(data.leads);const saved=findDialedContact(incoming,detail.phone);if(!saved)throw new Error("The contact is still syncing. Refresh Contacts in a moment.");setLeads(current=>mergeIncomingContacts(current,incoming));reveal(saved)}).catch(error=>setToast(error instanceof Error?error.message:"Could not open contact"));
@@ -813,8 +816,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     }:null;
     desktop.setCallState({active:dialing,name:manualCall?"Manual call":lead.name,number:manualCall?dialNumber:lead.phone,
       category:manualCall?"Manual call":lead.product||queueLabel(lead.line,workspaceProfile.mode),connected,muted,elapsed:fmt,
-      queueRunning:autoDialing,theme:workspaceProfile.appearance,wrapUp});
-  },[dialing,manualCall,lead.name,lead.phone,lead.product,lead.line,dialNumber,connected,muted,fmt,autoDialing,workspaceProfile.mode,workspaceProfile.appearance,postCallLead,postCallDraft,resumeAfterWrap,sourceSyncing,desktopWrapError]);
+      queueRunning:autoDialing,statusText:phoneStatus,theme:workspaceProfile.appearance,wrapUp});
+  },[phoneStatus,dialing,manualCall,lead.name,lead.phone,lead.product,lead.line,dialNumber,connected,muted,fmt,autoDialing,workspaceProfile.mode,workspaceProfile.appearance,postCallLead,postCallDraft,resumeAfterWrap,sourceSyncing,desktopWrapError]);
   useEffect(()=>{
     const desktop=(window as unknown as {pacificaDesktop?:{onWrapAction?:(callback:(action:unknown)=>void)=>(()=>void)}}).pacificaDesktop;
     if(!desktop?.onWrapAction)return;
@@ -1043,7 +1046,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
 
 
         <section className="bottom-grid">
-          <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b></article><article><span>PHONE</span><b className="phone-stat">{phoneReady?"Ready":"Setup"}</b></article></div>
+          <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b></article><article><span>PHONE</span><b className="phone-stat" role="status">{phoneStatus}</b></article></div>
           <article className="queue-card"><header><div><span>{activeDialerRun?"SAVED CALLING RUN":"PRIORITY FLOW"} · {queueLabel(activeLine,workspaceProfile.mode).toUpperCase()}</span><b>{callableLeads.length?`${Math.max(0,leadQueueRemaining-(dialing?1:0))} ${activeDialerRun?"REMAINING":"READY"}`:"QUEUE CLEAR"}</b></div><button onClick={()=>setView("leads")}>Contacts</button></header>{upNextLeads.map((l,i)=><div className="queue-row" key={l.id}><em>{String(i+1).padStart(2,"0")}</em><span className="mini-avatar">{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><div><b>{l.name}</b><small>{l.phone} · {l.city}</small></div></div>)}{!callableLeads.length&&<div className="empty-queue"><b>{lineLeads.length?"Queue clear":"No contacts"}</b>{!lineLeads.length&&<button onClick={()=>inputRef.current?.click()}>Import</button>}</div>}</article>
         </section>
         </div>

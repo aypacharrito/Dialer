@@ -12,6 +12,8 @@ let overlayWindow=null;
 let overlayPhase="";
 let overlayLayout="horizontal";
 let overlayGeometry="";
+let overlaySizes={};
+let overlayPosition=null;
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
@@ -36,27 +38,31 @@ function isAuthUrl(url){
 function isTrustedNavigation(url){return isAppUrl(url)||isAuthUrl(url)}
 
 function loadOverlayLayout(){
-  try{const value=JSON.parse(fs.readFileSync(path.join(app.getPath("userData"),"overlay-settings.json"),"utf8"));if(value.layout==="vertical")overlayLayout="vertical"}catch{/* First launch or invalid preferences: use the compact horizontal bar. */}
+  try{const value=JSON.parse(fs.readFileSync(path.join(app.getPath("userData"),"overlay-settings.json"),"utf8"));if(value.layout==="vertical")overlayLayout="vertical";if(value.sizes&&typeof value.sizes==="object")overlaySizes=value.sizes;if(Number.isFinite(value.position?.x)&&Number.isFinite(value.position?.y))overlayPosition=value.position}catch{/* First launch or invalid preferences: use the compact horizontal bar. */}
 }
 function saveOverlayLayout(){
-  try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({layout:overlayLayout}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
+  try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({layout:overlayLayout,sizes:overlaySizes,position:overlayPosition}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
 }
 function overlayState(){return {...lastCallState,layout:overlayLayout}}
-function overlayDimensions(phase){return phase==="wrap"?(overlayLayout==="vertical"?[360,580]:[640,400]):(overlayLayout==="vertical"?[280,180]:[480,88])}
+function overlayDimensions(phase){
+  const minimum=phase==="wrap"?(overlayLayout==="vertical"?[360,580]:[640,400]):(overlayLayout==="vertical"?[280,180]:[480,88]);
+  const saved=overlaySizes[`${phase}:${overlayLayout}`];
+  return minimum.map((size,index)=>Math.max(size,Math.min(index?900:1200,Number(saved?.[index])||size)));
+}
 
 function positionOverlay(){
   if(!overlayWindow)return;
-  const display=mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
+  const display=overlayPosition?screen.getDisplayMatching({...overlayPosition,width:480,height:88}):mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
   const area=display.workArea;
   const [width]=overlayWindow.getSize();
-  overlayWindow.setPosition(area.x+Math.max(0,Math.round((area.width-width)/2)),area.y+16,false);
+  overlayWindow.setPosition(overlayPosition?Math.max(area.x,Math.min(overlayPosition.x,area.x+area.width-width)):area.x+Math.max(0,Math.round((area.width-width)/2)),overlayPosition?Math.max(area.y,Math.min(overlayPosition.y,area.y+area.height-88)):area.y+16,false);
 }
 
 function createOverlay(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
   overlayWindow=new BrowserWindow({
-    width:480,height:88,minWidth:280,minHeight:88,maxWidth:640,maxHeight:580,
-    frame:false,resizable:false,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
+    width:480,height:88,minWidth:280,minHeight:88,maxWidth:1200,maxHeight:900,
+    frame:false,resizable:true,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
     backgroundColor:"#ffffff",title:"Pacifica Call",icon:path.join(__dirname,"assets/pacifica.ico"),
     webPreferences:{preload:path.join(__dirname,"overlay-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}
   });
@@ -64,6 +70,8 @@ function createOverlay(){
   overlayWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   void overlayWindow.loadFile(path.join(__dirname,"overlay.html"));
   positionOverlay();
+  overlayWindow.on("resized",()=>{if(!overlayGeometry)return;overlaySizes[overlayGeometry]=overlayWindow.getSize();saveOverlayLayout()});
+  overlayWindow.on("moved",()=>{const {x,y}=overlayWindow.getBounds();overlayPosition={x,y};saveOverlayLayout()});
   overlayWindow.on("restore",()=>overlayWindow?.setSkipTaskbar(true));
   overlayWindow.on("closed",()=>{overlayWindow=null;overlayPhase="";overlayGeometry=""});
   overlayWindow.webContents.once("did-finish-load",()=>overlayWindow?.webContents.send("pacifica:call-state",overlayState()));
@@ -121,6 +129,7 @@ function showCallOverlay(){
   const geometry=`${nextPhase}:${overlayLayout}`;
   if(overlayGeometry!==geometry){
     const [width,height]=overlayDimensions(nextPhase);
+    overlay.setMinimumSize(nextPhase==="wrap"?(overlayLayout==="vertical"?360:640):(overlayLayout==="vertical"?280:480),nextPhase==="wrap"?(overlayLayout==="vertical"?580:400):(overlayLayout==="vertical"?180:88));
     overlay.setSize(width,height,false);
     const bounds=overlay.getBounds(),area=screen.getDisplayMatching(bounds).workArea;
     overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-width)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
