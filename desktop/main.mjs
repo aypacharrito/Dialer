@@ -43,10 +43,10 @@ function loadOverlayLayout(){
 function saveOverlayLayout(){
   try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({layout:overlayLayout,sizes:overlaySizes,position:overlayPosition}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
 }
-function overlayState(){return {...lastCallState,layout:overlayLayout}}
+function overlayState(){return {...lastCallState,layout:lastCallState.active?overlayLayout:"vertical"}}
 function overlayDimensions(phase){
-  const minimum=phase==="wrap"?(overlayLayout==="vertical"?[360,580]:[640,400]):(overlayLayout==="vertical"?[280,180]:[480,88]);
-  const saved=overlaySizes[`${phase}:${overlayLayout}`];
+  const minimum=phase==="wrap"?[480,560]:(overlayLayout==="vertical"?[280,180]:[480,88]);
+  const saved=overlaySizes[phase==="wrap"?"wrap:result":`${phase}:${overlayLayout}`];
   return minimum.map((size,index)=>Math.max(size,Math.min(index?900:1200,Number(saved?.[index])||size)));
 }
 
@@ -126,10 +126,10 @@ function showCallOverlay(){
   if(!nextPhase){overlayWindow?.hide();overlayPhase="";return}
   const overlay=createOverlay();
   const phaseChanged=overlayPhase!==nextPhase;
-  const geometry=`${nextPhase}:${overlayLayout}`;
+  const geometry=nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}`;
   if(overlayGeometry!==geometry){
     const [width,height]=overlayDimensions(nextPhase);
-    overlay.setMinimumSize(nextPhase==="wrap"?(overlayLayout==="vertical"?360:640):(overlayLayout==="vertical"?280:480),nextPhase==="wrap"?(overlayLayout==="vertical"?580:400):(overlayLayout==="vertical"?180:88));
+    overlay.setMinimumSize(nextPhase==="wrap"?480:(overlayLayout==="vertical"?280:480),nextPhase==="wrap"?560:(overlayLayout==="vertical"?180:88));
     overlay.setSize(width,height,false);
     const bounds=overlay.getBounds(),area=screen.getDisplayMatching(bounds).workArea;
     overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-width)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
@@ -155,7 +155,7 @@ ipcMain.on("pacifica:call-state",(event,state)=>{
 
 ipcMain.on("pacifica:call-action",(event,action)=>{
   if(!overlayWindow||event.sender!==overlayWindow.webContents||typeof action!=="string")return;
-  if(action==="toggle-layout"){overlayLayout=overlayLayout==="horizontal"?"vertical":"horizontal";saveOverlayLayout();showCallOverlay();return}
+  if(action==="toggle-layout"&&lastCallState.active){overlayLayout=overlayLayout==="horizontal"?"vertical":"horizontal";saveOverlayLayout();showCallOverlay();return}
   if(action==="minimize"){overlayWindow.setSkipTaskbar(false);overlayWindow.minimize();return}
   if(!["open","mute","end","pause"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
   if(action==="open"){mainWindow?.show();mainWindow?.focus()}

@@ -28,7 +28,7 @@ test('minimize survives call timer updates; call results appear outside the CRM'
  const {windows,handlers,event}=desktop(),update=handlers.get('pacifica:call-state');
  update(event,{active:true});const overlay=windows[1];handlers.get('pacifica:call-action')({sender:overlay.webContents},'minimize');
  update(event,{active:true,elapsed:'00:02'});assert.equal(overlay.minimized,true);assert.equal(overlay.visible,false);assert.equal(overlay.skipTaskbar,false);
- update(event,{active:false,wrapUp:{id:'1:10'}});assert.equal(overlay.minimized,false);assert.equal(overlay.visible,true);assert.equal(overlay.bounds.height,400);
+ update(event,{active:false,wrapUp:{id:'1:10'}});assert.equal(overlay.minimized,false);assert.equal(overlay.visible,true);assert.equal(overlay.bounds.height,560);
  handlers.get('pacifica:exit-call-overlay')(event);assert.equal(overlay.visible,true);
  update(event,{active:false,wrapUp:null});assert.equal(overlay.visible,false);
 });
@@ -52,8 +52,9 @@ test('layout changes preserve position, clamp to screen and persist across launc
  const toggle=()=>first.handlers.get('pacifica:call-action')({sender:overlay.webContents},'toggle-layout');
  toggle();assert.deepEqual(overlay.getSize(),[280,180]);assert.equal(overlay.bounds.x,100);assert.equal(overlay.bounds.y,150);
  assert.equal(JSON.parse(settings.value).layout,'vertical');assert.equal(overlay.sent.at(-1)[1].layout,'vertical');
- update(first.event,{active:false,wrapUp:{id:'1:10'}});assert.deepEqual(overlay.getSize(),[360,580]);
- overlay.setPosition(1100,800);toggle();assert.deepEqual(overlay.getSize(),[640,400]);assert.equal(overlay.bounds.x,760);assert.equal(overlay.bounds.y,600);
+ update(first.event,{active:false,wrapUp:{id:'1:10'}});assert.deepEqual(overlay.getSize(),[480,560]);
+ toggle();assert.deepEqual(overlay.getSize(),[480,560]);
+ update(first.event,{active:true});overlay.setPosition(1100,800);toggle();assert.deepEqual(overlay.getSize(),[480,88]);assert.equal(overlay.bounds.x,920);assert.equal(overlay.bounds.y,800);
  toggle();const second=desktop(settings);second.handlers.get('pacifica:call-state')(second.event,{active:true});assert.deepEqual(second.windows[1].getSize(),[280,180]);
 });
 test('only the overlay can change layout and invalid saved preferences use horizontal',()=>{
@@ -87,4 +88,10 @@ test('failed latest release lookup does not silently hand out an obsolete instal
 });
 test('custom external installers and subscription checks remain supported',async()=>{
  assert.equal((await downloadRoute({configured:'https://downloads.example.com/Pacifica.exe'})()).headers.get('location'),'https://downloads.example.com/Pacifica.exe');assert.equal((await downloadRoute({allowed:false})()).status,403);
+});
+
+test('ending a call replaces the rectangle with a separate result view and restores call size on retry',()=>{
+ const {windows,handlers,event}=desktop(),update=handlers.get('pacifica:call-state');update(event,{active:true});const overlay=windows[1];overlay.setSize(700,110);overlay.events.get('resized')();
+ update(event,{active:false,wrapUp:{id:'manual:1'}});assert.deepEqual(overlay.getSize(),[480,560]);assert.equal(overlay.sent.at(-1)[1].active,false);assert.equal(overlay.sent.at(-1)[1].wrapUp.id,'manual:1');
+ update(event,{active:true,wrapUp:null});assert.deepEqual(overlay.getSize(),[700,110]);assert.equal(overlay.sent.at(-1)[1].wrapUp,null);
 });
