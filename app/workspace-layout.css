@@ -382,3 +382,128 @@ html[data-theme] .app-shell .scheduled-follow-ups>button{box-sizing:border-box;b
 /* The loading container receives focus for accessibility, without a box around it. */
 html[data-theme] .app-shell .workspace-load-card:focus,
 html[data-theme] .app-shell .workspace-load-card:focus-visible{outline:none!important}
+
+/* Keep brand, navigation and message actions usable when the window is resized
+   or the operating system increases display/text scaling. */
+html[data-theme] .app-shell > .sidebar {
+  overflow:hidden;
+  padding-top:max(12px,env(safe-area-inset-top)) !important;
+  padding-bottom:max(12px,env(safe-area-inset-bottom)) !important;
+}
+html[data-theme] .app-shell .sidebar .logo {
+  flex:0 0 auto;
+  min-height:68px !important;
+  height:auto;
+  padding:8px 6px 16px !important;
+  align-items:center;
+}
+html[data-theme] .app-shell .logo .brand-mark {
+  flex:0 0 44px;
+  width:44px !important;
+  height:44px !important;
+  min-width:44px;
+  min-height:44px;
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+}
+html[data-theme] .app-shell .logo .brand-mark img {
+  display:block;
+  flex:none;
+  width:34px !important;
+  height:34px !important;
+  max-width:100%;
+  object-fit:contain;
+  object-position:center;
+}
+html[data-theme] .app-shell .sidebar nav {
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+}
+html[data-theme] .app-shell .sidebar nav button { flex-shrink:0; }
+html[data-theme] .app-shell :is(.sidebar-foot,.sidebar-install) { flex:0 0 auto; }
+html[data-theme] .app-shell .sidebar-foot { margin-top:12px; }
+
+html[data-theme] .app-shell .message-thread>footer>.composer-actions {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:stretch;
+  justify-content:flex-end;
+  gap:10px;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+html[data-theme] .app-shell .composer-actions>.send-feedback {
+  order:2;
+  flex:1 0 100%;
+  min-width:0;
+  max-width:none;
+  margin:0;
+  overflow-wrap:anywhere;
+  font-size:.875rem;
+  line-height:1.5;
+}
+html[data-theme] .app-shell .composer-actions>.send-feedback:empty { display:none; }
+html[data-theme] .app-shell .message-thread>footer>.composer-actions>button {
+  flex:0 1 auto;
+  min-width:0;
+  max-width:100%;
+  min-height:44px;
+  height:auto;
+  padding:10px 16px;
+  font-size:.875rem;
+  line-height:1.4;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+html[data-theme] .app-shell .message-contacts>button>time {
+  grid-column:2;
+  grid-row:2;
+  justify-self:end;
+  padding-top:2px;
+}
+/* Place the optional call launcher in the page flow, not over Send. */
+html[data-theme] .app-shell .float-call-launch {
+  position:static;
+  grid-column:2;
+  justify-self:end;
+  align-self:flex-end;
+  width:fit-content;
+  flex:0 0 auto;
+  margin:8px 16px max(8px,env(safe-area-inset-bottom));
+  max-width:calc(100% - 32px);
+  z-index:auto;
+}
+html[data-theme] .app-shell .float-call-launch>button { max-width:100%; white-space:normal; }
+html[data-theme] .app-shell .workspace>.ai-view { display:flex; }
+html[data-theme] .app-shell .ai-view>.ai-workspace { flex:1; min-width:0; width:100%; }
+
+@container crm-workspace (max-width:900px) {
+  html[data-theme] .app-shell .messages-center>.messages-layout { grid-template-columns:minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .messages-layout.inbox-open .message-thread,
+  html[data-theme] .app-shell .messages-layout.thread-open .message-contacts { display:none; }
+  html[data-theme] .app-shell .messages-layout.thread-open .message-thread { display:grid; }
+  html[data-theme] .app-shell .message-back { display:inline-flex; flex:none; }
+}
+@container crm-workspace (min-width:901px) {
+  html[data-theme] .app-shell .messages-center>.messages-layout { grid-template-columns:minmax(260px,340px) minmax(0,1fr) !important; }
+  html[data-theme] .app-shell .message-back { display:none; }
+}
+@container crm-workspace (max-width:460px) {
+  html[data-theme] .app-shell .message-thread>footer>.composer-actions>button { flex:1 1 100%; }
+  html[data-theme] .app-shell .thread-contact-actions { width:100%; }
+  html[data-theme] .app-shell .thread-contact-actions>button { flex:1 1 8rem; white-space:normal; }
+  html[data-theme] .app-shell .message-history article { max-width:94%; }
+}
+/* On short landscape windows or with an on-screen keyboard, scroll the view
+   instead of compressing the composer or clipping its buttons. */
+@media(max-height:650px) {
+  html[data-theme] .app-shell .workspace>.messages-view { overflow:auto; display:block; }
+  html[data-theme] .app-shell .workspace .messages-center { min-height:560px; }
+  html[data-theme] .app-shell .messages-center>.messages-layout { flex:none; min-height:450px !important; max-height:none; }
+  html[data-theme] .app-shell .messages-layout .message-thread { height:auto; grid-template-rows:auto minmax(120px,1fr) auto; }
+  html[data-theme] .app-shell .message-history { max-height:45dvh; }
+  html[data-theme] .app-shell .message-thread>footer { max-height:none; overflow:visible; }
+}

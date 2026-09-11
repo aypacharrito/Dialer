@@ -1,3 +1,5 @@
+import {assertAutomatedContact} from "./automated-contact";
+import {requiresPersonalText} from "./ai-sms-recipients";
 import {hasContactPermission} from "./contact-permission";
 import {appendCommunication,cleanCommunications,type StoredCommunication} from "./communications";
 import {personalizeAutomationMessage} from "./ai-outreach"; // PACIFICA_DYNAMIC_OUTREACH_V1
@@ -30,7 +32,7 @@ function leadArrival(lead:FollowUpLead){const received=timestamp(lead.received);
 function triggerFor(lead:FollowUpLead){const outcome=lead.outcome.toLowerCase();return outcome==="no answer"||outcome==="voicemail"?"no-answer":outcome==="interested"?"interested":"new-lead"}
 function sequenceFor(lead:FollowUpLead,profile:WorkspaceProfile){return profile.automationSequences.find(sequence=>sequence.id===lead.automationSequenceId&&sequence.active)||profile.automationSequences.find(sequence=>sequence.trigger===triggerFor(lead)&&sequence.active)}
 function enabledSteps(sequence:AutomationSequence){return sequence.steps.filter(step=>step.enabled)}
-function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return Boolean(lead.deletedAt)||!sequence||lead.automationEnabled===false||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||closedOutcomes.has(lead.outcome.toLowerCase())||humanHandoffOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
+function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return requiresPersonalText(lead)||Boolean(lead.deletedAt)||!sequence||lead.automationEnabled===false||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||closedOutcomes.has(lead.outcome.toLowerCase())||humanHandoffOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
 
 export function prepareAutomationLead(lead:FollowUpLead,profile:WorkspaceProfile,now=Date.now()):FollowUpLead{
   if(finalAutomationStatuses.has(String(lead.automationStatus||"").toLowerCase()))return {...lead,automationNextAt:""};
@@ -66,12 +68,13 @@ async function deliver(workspaceId:string,lead:FollowUpLead,profile:WorkspacePro
   const rendered=await personalizeAutomationMessage({profile,lead:lead as unknown as Record<string,unknown>,channel,subject:baseRendered.subject,body:baseRendered.body});
   const sentAt=new Date().toISOString();
   if(channel==="sms"){
-    const result=await sendOutboundSms({workspaceId,to:lead.phone,body:rendered.body});
+    const result=await sendOutboundSms({workspaceId,to:lead.phone,body:rendered.body,automated:true});
     return {channel,communication:communication({channel,direction:"outbound",body:rendered.body,status:result.status,sentAt,provider:result.provider,providerId:result.id})};
   }
   if(!profile.businessAddress)throw new Error("Business mailing address is required for automated email");
   const requiredFooter=`\n\n${profile.businessAddress}\nReply UNSUBSCRIBE to stop these emails.`;
   const text=`${rendered.body}${rendered.body.includes(profile.businessAddress)?"":requiredFooter}`.slice(0,10000);
+  await assertAutomatedContact(workspaceId,lead.email||"","email");
   const result=await sendOutboundEmail({to:lead.email||"",subject:rendered.subject||`Following up about your ${lead.product||"request"}`,text,fromName:profile.businessName||profile.agentName,replyTo:inboundReplyAddress(workspaceId)||profile.replyToEmail,idempotencyKey:`auto:${workspaceId}:${lead.id}:${lead.automationSequenceId}:${lead.automationStep}`});
   return {channel,communication:communication({channel,direction:"outbound",subject:rendered.subject,body:text,status:"sent",sentAt,provider:result.provider,providerId:result.id})};
 }

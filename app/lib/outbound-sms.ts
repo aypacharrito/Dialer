@@ -1,3 +1,4 @@
+import {assertAutomatedContact} from "./automated-contact";
 import {logEvent} from "./observability";
 import {smsReadiness} from "./sms-readiness";
 import {phoneAssignmentForWorkspace} from "./phone-assignments";
@@ -20,7 +21,7 @@ export async function outboundSmsStatus(workspaceId:string,email=""){
   return smsReadiness(assignment,sendingEnabled,credentialError);
 }
 
-export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string}){
+export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean}){
   const requestedAt=Date.now();
   const status=await outboundSmsStatus(input.workspaceId,input.workspaceEmail);
   if(!status.configured)throw new Error(status.message);
@@ -30,6 +31,7 @@ export async function sendOutboundSms(input:{workspaceId:string;to:string;body:s
   const callbackBase=(process.env.TWILIO_WEBHOOK_BASE_URL||"https://pacificacrm.com").trim().replace(/\/$/,"");
   const assignment=await phoneAssignmentForWorkspace(input.workspaceId,input.workspaceEmail);const form=new URLSearchParams({To:to,From:status.from,Body:body,StatusCallback:`${callbackBase}/api/twilio/messages/status?workspace=${encodeURIComponent(input.workspaceId)}`});
   if(assignment?.messagingServiceSid)form.set("MessagingServiceSid",assignment.messagingServiceSid);
+  if(input.automated)await assertAutomatedContact(input.workspaceId,to,"sms");
   const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
   if(!response.ok||!data.sid)throw new Error(twilioApiErrorMessage(data,"Twilio rejected the automated follow-up"));
   logEvent("sms_provider_accepted",{providerId:data.sid,workspaceId:input.workspaceId,status:data.status||"queued",requestedAt:new Date(requestedAt).toISOString(),elapsedMs:Date.now()-requestedAt});

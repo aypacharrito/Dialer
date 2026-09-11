@@ -7,12 +7,12 @@ import {refreshAutomation} from '../app/lib/lead-automation.ts';
 import {cleanWorkspaceProfile} from '../app/lib/workspace-profile.ts';
 const now=new Date('2026-09-08T12:00:00');
 const lead={id:1,stage:'New lead',outcome:'Not contacted',source:'SmartFinancial',sourceDisposition:'New',followUp:'',notes:'Existing notes',doNotCall:false,importedAt:now.toISOString()};
-test('callback stays neutral and becomes eligible only at its scheduled time',()=>{
+test('personal callbacks stay out of automatic retry dialing even when due',()=>{
  const draft=selectPostCallOutcome(postCallDraftForEnd(lead,'Completed',true,now),lead.source,'Call back later',now);
  assert.equal(draft.crmStage,'Follow-up');assert.equal(draft.sourceDisposition,'Contacted');assert.equal(draft.appointmentAt,'2026-09-08T14:00');
  const callback={...lead,stage:draft.crmStage,outcome:draft.crmOutcome,sourceDisposition:draft.sourceDisposition,followUp:draft.appointmentAt};
  assert.equal(isDialerEligibleLead(callback,now.getTime()),false);
- assert.equal(isDialerEligibleLead(callback,new Date('2026-09-08T14:00').getTime()),true);
+ assert.equal(isDialerEligibleLead(callback,new Date('2026-09-08T14:00').getTime()),false);
  assert.equal(isDialerEligibleLead({...callback,followUp:''},now.getTime()),false);
  const refreshed=refreshAutomation({...callback,automationEnabled:true},now.getTime());
  assert.equal(refreshed.automationNextAt,'');assert.equal(refreshed.automationStatus,'waiting for salesperson');
@@ -72,10 +72,13 @@ test('cloud inbound contacts appear without dropping local edits or duplicating 
  assert.equal(mergeIncomingContacts(merged,[fresh]),merged);assert.equal(mergeIncomingContacts(local,[{id:3,phone:'+1 (818) 555-0100'}]),local);
  assert.equal(contactMatches(fresh,'website 818-555'),true);assert.equal(contactMatches(fresh,'other'),false);
 });
-test('source permission is channel-specific and opt-outs always win',()=>{
+test('existing SMS permission policy and email source permissions still honor opt-outs',()=>{
  const profile=cleanWorkspaceProfile({smsConsentSources:['SmartFinancial'],emailConsentSources:['Website']});
  assert.equal(hasContactPermission({source:'smartfinancial'},profile,'sms'),true);assert.equal(hasContactPermission({source:'SmartFinancial'},profile,'email'),false);
- assert.equal(hasContactPermission({source:'Unknown'},profile,'sms'),false);assert.equal(hasContactPermission({source:'SmartFinancial'},cleanWorkspaceProfile({}),'sms'),false);
+ // The existing workspace policy accepts imported SMS permission; email remains source-specific.
+ assert.equal(hasContactPermission({source:'Unknown'},profile,'sms'),true);assert.equal(hasContactPermission({source:'SmartFinancial'},cleanWorkspaceProfile({}),'sms'),true);
+ assert.equal(hasContactPermission({source:'Website'},profile,'email'),true);
+ assert.equal(hasContactPermission({source:'Website',emailOptOut:true},profile,'email'),false);
  for(const blocked of [{smsOptOut:true},{doNotCall:true},{deletedAt:'2026-09-10'}])assert.equal(hasContactPermission({source:'SmartFinancial',smsConsent:true,...blocked},profile,'sms'),false);
 });
 

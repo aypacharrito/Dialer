@@ -75,3 +75,17 @@ test("automatic dialing skips active policy work while retaining retryable leads
 test("SmartFinancial interest maps back to its working disposition",()=>{
   assert.equal(sourceDispositionForOutcome("SmartFinancial","Interested","Received - not worked yet"),"Interested - Working");
 });
+
+ test("auto-dialer only retries open unanswered calls and respects every follow-up date",()=>{
+  const now=Date.parse("2026-09-11T12:00:00Z");
+  for(const outcome of ["No answer","Voicemail"]){
+    const item=lead({stage:"Follow-up",outcome,sourceDisposition:"Attempted Contact",followUp:""});
+    assert.equal(isDialerEligibleLead(item,now),true);
+    assert.equal(isDialerEligibleLead({...item,followUp:"2026-09-28T12:00:00Z"},now),false);
+    assert.equal(isDialerEligibleLead({...item,followUp:"2026-09-11T12:00:01Z"},now),false);
+    assert.equal(isDialerEligibleLead({...item,followUp:"2026-09-11T12:00:00Z"},now),true);
+    assert.equal(isDialerEligibleLead({...item,followUp:"bad date"},now),false);
+  }
+  for(const outcome of ["Not contacted","Interested","Call back later","Appointment set","Completed"])
+    assert.equal(isDialerEligibleLead(lead({outcome,followUp:""}),now),false);
+ });

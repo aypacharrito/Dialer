@@ -1,0 +1,12 @@
+import {test,beforeEach} from 'node:test';
+import assert from 'node:assert/strict';
+import {POST as sms} from '../app/api/twilio/messages/route.ts';
+import {POST as email} from '../app/api/email/messages/route.ts';
+import {assertAutomatedContact} from '../app/lib/automated-contact.ts';
+beforeEach(()=>{globalThis.testWorkspace={leads:[{id:1,name:'Test Person',phone:'8185550100',email:'test@example.com',stage:'New lead',outcome:'Not contacted',smsConsent:true,emailConsent:true}],profile:{businessAddress:'123 Test Street',emailConsentSources:[]}};globalThis.testDeliveries=[]});
+const request=body=>new Request('http://localhost/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+test('AI SMS is rejected by server for each protected stage',async()=>{for(const patch of [{outcome:'Interested'},{stage:'Appointment'},{stage:'Closed'},{stage:'Quoted'}]){Object.assign(globalThis.testWorkspace.leads[0],patch);const response=await sms(request({to:'8185550100',body:'Hi',sendMode:'ai'}));assert.equal(response.status,403);assert.equal(globalThis.testDeliveries.length,0)}});
+test('manual SMS still sends for Interested leads',async()=>{globalThis.testWorkspace.leads[0].outcome='Interested';const response=await sms(request({to:'8185550100',body:'My personal follow-up'}));assert.equal(response.status,200);assert.equal(globalThis.testDeliveries.length,1);assert.equal(globalThis.testDeliveries[0].automated,false)});
+test('AI email submits subject and body for an eligible contact',async()=>{const response=await email(request({leadId:1,to:'test@example.com',subject:'Requested information',text:'Your information',sendMode:'ai'}));assert.equal(response.status,200);assert.equal(globalThis.testDeliveries[0].subject,'Requested information');assert.match(globalThis.testDeliveries[0].text,/Your information/)});
+test('AI email refuses an appointment lead',async()=>{globalThis.testWorkspace.leads[0].stage='Appointment';const response=await email(request({leadId:1,to:'test@example.com',subject:'Info',text:'Hello',sendMode:'ai'}));assert.notEqual(response.status,200);assert.equal(globalThis.testDeliveries.length,0)});
+test('provider guard rereads state and catches a lead closed after planning',async()=>{await assertAutomatedContact('test','8185550100','sms');globalThis.testWorkspace.leads[0].stage='Closed';await assert.rejects(()=>assertAutomatedContact('test','8185550100','sms'),/paused/)});

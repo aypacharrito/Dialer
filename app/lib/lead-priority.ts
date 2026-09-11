@@ -29,12 +29,16 @@ export type LeadPriority={
 export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & {followUp?:string;deletedAt?:string};
 
 export function isDialerEligibleLead(lead:DialerEligibilityInput,now=Date.now()){
-  if(lead.deletedAt||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||lead.stage==="Quoted")return false;
+  const stage=lead.stage.trim().toLowerCase();
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
-  if(outcome==="call back later"&&(!Number.isFinite(dateValue(lead.followUp))||dateValue(lead.followUp)>now))return false;
-  if(new Set(["interested","appointment set","not interested","wrong number","sold / won","sold","won"]).has(outcome))return false;
+  if(lead.deletedAt||lead.doNotCall||!["new lead","follow-up","open"].includes(stage))return false;
+  if(outcome!=="no answer"&&outcome!=="voicemail")return false;
   if(/interested|working|quoted|appointment|sold|closed|lost|wrong number/.test(disposition))return false;
+  if(lead.followUp?.trim()){
+    const due=dateValue(lead.followUp);
+    if(!Number.isFinite(due)||due>now)return false;
+  }
   return true;
 }
 

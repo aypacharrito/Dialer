@@ -18,7 +18,7 @@ export async function runClientReminderAutomation(options:{workspaceId?:string;w
       for(const action of actions){
         due++;if(!status.configured){blocked++;continue}
         try{
-          const result=await sendOutboundSms({workspaceId:record.workspaceId,to:action.to,body:action.body});const sentAt=new Date().toISOString();const keys=[...(lead.clientReminderKeys||[]),action.key].slice(-60);
+          const result=await sendOutboundSms({workspaceId:record.workspaceId,to:action.to,body:action.body,automated:action.recipient==="customer"});const sentAt=new Date().toISOString();const keys=[...(lead.clientReminderKeys||[]),action.key].slice(-60);
           let updated:ReminderLead={...leads[index],clientReminderKeys:keys};
           if(action.recipient==="customer")updated={...updated,lastSmsAt:sentAt,communications:appendCommunication(updated.communications,{id:crypto.randomUUID(),channel:"sms",direction:"outbound",body:action.body,status:result.status,sentAt,provider:result.provider,providerId:result.id})};
           leads[index]=updated;sent++;changed=true;if(action.recipient==="customer")customerSent++;else ownerSent++;

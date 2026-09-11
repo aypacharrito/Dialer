@@ -2591,3 +2591,49 @@ html[data-theme] .client-row-main b{font-size:calc(13px * var(--ui-type-scale,1)
 html[data-theme] .client-row-main small{font-size:calc(11px * var(--ui-type-scale,1))!important;line-height:1.4}
 html[data-theme] .client-person i{width:38px;height:38px;font-size:calc(10px * var(--ui-type-scale,1))}
 html[data-theme] .client-table-row{min-height:calc(62px * var(--ui-control-scale,1))}
+
+/* Conversation workspace: one inbox, readable previews, and contact actions in context. */
+[hidden]{display:none!important}
+html[data-theme] .messages-center{max-width:1480px}
+html[data-theme] .messages-layout{grid-template-columns:minmax(280px,340px) minmax(0,1fr);border-radius:16px;min-height:540px;height:calc(100dvh - 185px)}
+html[data-theme] .message-contacts>header{position:sticky;top:0;z-index:1;background:var(--surface,#1d2022)}
+html[data-theme="light"] .message-contacts>header{background:#fff}
+.inbox-filters{display:flex;gap:4px;flex-wrap:wrap}
+.inbox-filters button,.thread-contact-actions button{border:1px solid #53636a;border-radius:8px;background:transparent;color:inherit;padding:8px 10px;font:inherit;font-size:14px;cursor:pointer}
+.inbox-filters button[aria-pressed="true"]{background:#177c69;color:#fff;border-color:#177c69}
+html[data-theme] .message-contacts>button{grid-template-columns:42px minmax(0,1fr) auto;min-height:96px;align-items:start;border-bottom:1px solid #52615b33}
+html[data-theme] .message-contacts>button b{font-size:16px;font-weight:650}
+html[data-theme] .message-contacts>button small{font-size:14px;line-height:1.45}
+html[data-theme] .message-contacts>button .conversation-status{font-size:12px;color:#62b9a3;margin-top:6px}
+html[data-theme="light"] .message-contacts>button .conversation-status{color:#34745e}
+.message-contacts time{font-size:12px;color:#899b93;white-space:nowrap;padding-top:4px}
+html[data-theme] .message-thread{min-height:0;grid-template-rows:auto minmax(0,1fr) auto}
+html[data-theme] .message-thread>header{justify-content:flex-start;flex-wrap:wrap;gap:12px;padding:14px 20px}
+.thread-contact{flex:1;text-align:left;background:transparent;border:0;padding:0;color:inherit;cursor:pointer;min-width:130px}
+.thread-contact-actions{display:flex;gap:8px;flex-wrap:wrap}
+.thread-contact-actions button:disabled{opacity:.5;cursor:default}
+html[data-theme] .message-history{padding:24px;gap:14px;overscroll-behavior:contain}
+html[data-theme] .message-history article{border-radius:16px;max-width:min(78%,620px);padding:12px 16px}
+html[data-theme] .message-history article.incoming{border-bottom-left-radius:4px}
+html[data-theme] .message-history article.outgoing{border-bottom-right-radius:4px}
+html[data-theme] .message-history p{font-size:16px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+html[data-theme] .message-history small{font-size:12px;line-height:1.5}
+html[data-theme] .message-thread>footer{padding:12px 18px;max-height:48dvh;overflow:auto}
+html[data-theme] .message-thread>footer textarea{min-height:84px;max-height:170px}
+.personal-text-note,.email-setup-note{padding:10px 12px;border-radius:8px;background:#2b8c7618;font-size:14px;line-height:1.5;margin:0 0 10px}
+.ai-channel-choice{display:flex;gap:8px;margin:12px 0}
+.ai-channel-choice button[aria-pressed="true"]{background:#167d69;color:white}
+.ai-subject{display:grid;gap:6px;font-size:14px;margin-bottom:12px}
+.ai-subject input,.ai-recipient-review>input{width:100%;padding:10px 12px;border:1px solid #7b938466;border-radius:8px;background:transparent;color:inherit;font:inherit}
+.ai-recipient-review{margin:14px 0;padding-top:14px;border-top:1px solid #7b938444}
+.ai-recipient-review>p{font-size:14px;line-height:1.5}
+.ai-recipient-list{max-height:230px;overflow:auto;margin-top:8px}
+.ai-recipient-list label{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid #7b938422;cursor:pointer}
+.ai-recipient-list input{width:18px;height:18px;accent-color:#167d69;flex:none}
+.ai-recipient-list span{display:grid;gap:4px;min-width:0}
+.ai-recipient-list b{font-size:14px}.ai-recipient-list small{font-size:12px;overflow-wrap:anywhere}
+html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-height:150px}
+@media(max-width:900px){html[data-theme] .messages-layout{grid-template-columns:minmax(250px,300px) minmax(0,1fr)}.thread-contact-actions{width:100%}}
+@media(max-width:680px){html[data-theme] .messages-layout{display:grid;grid-template-columns:minmax(0,1fr);height:calc(100dvh - 170px);min-height:420px}html[data-theme] .messages-layout.inbox-open .message-thread{display:none}html[data-theme] .messages-layout.thread-open .message-contacts{display:none}html[data-theme] .messages-layout.thread-open .message-thread{display:grid}html[data-theme] .message-history{padding:14px}html[data-theme] .message-history article{max-width:90%}html[data-theme] .message-thread>header{padding:12px}.thread-contact-actions button{flex:1}html[data-theme] .message-thread>footer{padding:10px}.composer-actions{flex-wrap:wrap}.composer-actions .send-feedback{flex-basis:100%}}
+
+.ai-background-status{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;gap:20px;align-items:center;background:#176d5d;color:#fff;border:1px solid #429886;border-radius:12px;box-shadow:0 6px 20px #0002;padding:14px 18px;font:inherit;font-size:14px;cursor:pointer}.ai-background-status span{font-weight:650}
