@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {beginDriveCall,createDriveSession,currentDriveLead,finishDriveCall,pauseDriveSession,resumeDriveSession,saveDriveDisposition,startDriveSession} from "../mobile/src/drive-session.ts";
+import * as driveSessionModule from "../mobile/src/drive-session.ts";
+// Expo owns a CommonJS package; Node 22 exposes its TS exports under default.
+const {beginDriveCall,createDriveSession,currentDriveLead,finishDriveCall,pauseDriveSession,resumeDriveSession,saveDriveDisposition,startDriveSession}=driveSessionModule.default||driveSessionModule;
 import {createCallStartGate,dialDigits,findDialedContact} from "../app/lib/call-start-gate.ts";
 
 const queue=[

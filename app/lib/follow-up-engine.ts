@@ -1,3 +1,4 @@
+import {hasContactPermission} from "./contact-permission";
 import {appendCommunication,cleanCommunications,type StoredCommunication} from "./communications";
 import {personalizeAutomationMessage} from "./ai-outreach"; // PACIFICA_DYNAMIC_OUTREACH_V1
 import {logError,logEvent} from "./observability";
@@ -43,9 +44,9 @@ export function prepareAutomationLead(lead:FollowUpLead,profile:WorkspaceProfile
 }
 
 function templateFor(step:AutomationStep,profile:WorkspaceProfile){return profile.communicationTemplates.find(template=>template.id===step.templateId)||starterCommunicationTemplates.find(template=>template.id===step.templateId)}
-function compliant(lead:FollowUpLead,channel:AutomationChannel){
-  if(channel==="sms")return Boolean(lead.smsConsent&&!lead.smsOptOut&&lead.phone);
-  if(channel==="email")return Boolean(lead.email&&lead.emailConsent&&!lead.emailOptOut);
+function compliant(lead:FollowUpLead,channel:AutomationChannel,profile:WorkspaceProfile){
+  if(channel==="sms")return Boolean(hasContactPermission(lead,profile,"sms")&&lead.phone);
+  if(channel==="email")return Boolean(lead.email&&hasContactPermission(lead,profile,"email"));
   return true;
 }
 function bodyFor(step:AutomationStep,lead:FollowUpLead,profile:WorkspaceProfile){
@@ -78,7 +79,7 @@ async function deliver(workspaceId:string,lead:FollowUpLead,profile:WorkspacePro
 async function availableChannels(workspaceId:string,lead:FollowUpLead,profile:WorkspaceProfile,preferred:AutomationChannel){
   const emailReady=outboundEmailStatus().configured&&Boolean(profile.businessAddress);
   const smsReady=(await outboundSmsStatus(workspaceId)).configured;
-  const allowed=(channel:"sms"|"email")=>compliant(lead,channel)&&(channel==="sms"?smsReady:emailReady);
+  const allowed=(channel:"sms"|"email")=>compliant(lead,channel,profile)&&(channel==="sms"?smsReady:emailReady);
   const candidates:Array<"sms"|"email">=[];
   if(preferred!=="task"&&allowed(preferred))candidates.push(preferred);
   if(profile.providerFallbackEnabled){const alternate=preferred==="sms"?"email":"sms";if(allowed(alternate)&&!candidates.includes(alternate))candidates.push(alternate)}

@@ -43,3 +43,38 @@ test('an empty successful run is explicit and an incomplete payload never implie
 test('quiet dialing defaults on for legacy profiles and persists an explicit opt-out',()=>{
  assert.equal(cleanWorkspaceProfile({}).quietDialing,true);assert.equal(cleanWorkspaceProfile({quietDialing:false}).quietDialing,false);
 });
+
+import {configureCallAudio,openCallMicrophone,callSetupMessage} from '../app/lib/call-audio-setup.ts';
+import {defaultAudioPreferences} from '../app/audio-preferences.ts';
+import {mergeIncomingContacts,contactMatches} from '../app/lib/contact-sync.ts';
+import {hasContactPermission} from '../app/lib/contact-permission.ts';
+
+test('missing saved output devices recover to the current default before dialing',async()=>{
+ const chosen=[];const audio={availableInputDevices:new Map([['default',{}]]),availableOutputDevices:new Map([['default',{}],['usb',{}]]),isOutputSelectionSupported:true,setInputDevice:async id=>chosen.push(['input',id]),speakerDevices:{set:async id=>chosen.push(['speaker',id])},ringtoneDevices:{set:async id=>chosen.push(['ring',id])}};
+ const patch=await configureCallAudio(audio,{...defaultAudioPreferences,speaker:'disconnected-airpods',ring:'old-device'});
+ assert.deepEqual(chosen,[['input','default'],['speaker','default'],['ring','default']]);assert.deepEqual(patch,{speaker:'default',ring:'default'});
+ chosen.length=0;assert.deepEqual(await configureCallAudio(audio,{...defaultAudioPreferences,speaker:'usb'}),{});assert.deepEqual(chosen[1],['speaker','usb']);
+});
+test('a missing microphone can fall back, but blocked permission is never retried',async()=>{
+ const requests=[],stream={};const preferences={...defaultAudioPreferences,input:'old-mic'};
+ const result=await openCallMicrophone(preferences,async request=>{requests.push(request);if(requests.length===1)throw {name:'NotFoundError'};return stream});
+ assert.equal(result.input,'default');assert.equal(requests[1].audio.deviceId,undefined);
+ let count=0;await assert.rejects(openCallMicrophone(preferences,async()=>{count++;throw new DOMException('blocked','NotAllowedError')}));assert.equal(count,1);
+ assert.doesNotMatch(callSetupMessage(new Error('Devices not found: secret-device-id')),/secret-device-id/);
+});
+test('a real output error remains visible rather than silently dialing with no audio',async()=>{
+ const audio={availableInputDevices:new Map([['default',{}]]),availableOutputDevices:new Map([['default',{}]]),isOutputSelectionSupported:true,setInputDevice:async()=>{},speakerDevices:{set:async()=>{throw new Error('Speaker hardware failed')}},ringtoneDevices:{set:async()=>{}}};
+ await assert.rejects(configureCallAudio(audio,defaultAudioPreferences),/Speaker hardware failed/);
+});
+test('cloud inbound contacts appear without dropping local edits or duplicating phones',()=>{
+ const local=[{id:1,phone:'8185550100',name:'Existing',notes:'Unsaved note'}],fresh={id:2,phone:'8185550101',name:'Website lead'};
+ const merged=mergeIncomingContacts(local,[{...local[0],notes:'old'},fresh]);assert.equal(merged[0],fresh);assert.equal(merged[1],local[0]);
+ assert.equal(mergeIncomingContacts(merged,[fresh]),merged);assert.equal(mergeIncomingContacts(local,[{id:3,phone:'+1 (818) 555-0100'}]),local);
+ assert.equal(contactMatches(fresh,'website 818-555'),true);assert.equal(contactMatches(fresh,'other'),false);
+});
+test('source permission is channel-specific and opt-outs always win',()=>{
+ const profile=cleanWorkspaceProfile({smsConsentSources:['SmartFinancial'],emailConsentSources:['Website']});
+ assert.equal(hasContactPermission({source:'smartfinancial'},profile,'sms'),true);assert.equal(hasContactPermission({source:'SmartFinancial'},profile,'email'),false);
+ assert.equal(hasContactPermission({source:'Unknown'},profile,'sms'),false);assert.equal(hasContactPermission({source:'SmartFinancial'},cleanWorkspaceProfile({}),'sms'),false);
+ for(const blocked of [{smsOptOut:true},{doNotCall:true},{deletedAt:'2026-09-10'}])assert.equal(hasContactPermission({source:'SmartFinancial',smsConsent:true,...blocked},profile,'sms'),false);
+});

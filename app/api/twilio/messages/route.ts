@@ -1,3 +1,4 @@
+import {hasContactPermission} from "../../../lib/contact-permission";
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
@@ -100,7 +101,7 @@ export async function POST(request:Request){
     const access=await workspaceAccess();const workspace=await readStoredWorkspace(access.userId);const digits=to.replace(/\D/g,"").slice(-10);const lead=workspace?.leads.find(raw=>{const item=raw as Record<string,unknown>;return String(item.phone||"").replace(/\D/g,"").slice(-10)===digits}) as Record<string,unknown>|undefined;
     if(!lead||lead.deletedAt)return Response.json({error:"Save this phone number as a workspace contact before texting."},{status:400});
     if(body.permissionDocumented===true&&lead.smsConsent!==true){lead.smsConsent=true;await writeStoredWorkspace(access.userId,{...workspace!,leads:workspace!.leads.map(raw=>raw===lead?lead:raw)})}
-    if(lead.doNotCall||lead.smsOptOut||lead.smsConsent!==true)return Response.json({error:lead.smsOptOut?"This contact opted out of SMS.":"Document this contact’s SMS consent before sending."},{status:403});
+    if(!hasContactPermission(lead,workspace!.profile,"sms"))return Response.json({error:lead.smsOptOut?"This contact opted out of SMS.":"Document this contact’s SMS consent before sending."},{status:403});
     const result=await sendOutboundSms({workspaceId:access.userId,workspaceEmail:access.email,to,body:text});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text,status:result.status,date_created:new Date().toISOString()};
     console.log("[twilio/messages] sent",{sid:result.id,toLast4:to.slice(-4),credential:"tenant SMS adapter"});
     return Response.json({ok:true,message:safe(message)});

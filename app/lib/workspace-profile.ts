@@ -43,6 +43,8 @@ export type WorkspaceProfile={
   appearance:WorkspaceAppearance;
   displaySize:WorkspaceDisplaySize;
   quietDialing:boolean;
+  smsConsentSources:string[];
+  emailConsentSources:string[];
   businessName:string;
   agentName:string;
   callbackNumber:string;
@@ -83,6 +85,8 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   appearance:"light",
   displaySize:"large",
   quietDialing:true,
+  smsConsentSources:[],
+  emailConsentSources:[],
   businessName:"",
   agentName:"",
   callbackNumber:"",
@@ -151,6 +155,8 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     appearance:profile.appearance==="dark"?"dark":"light",
     displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
     quietDialing:profile.quietDialing!==false,
+    smsConsentSources:cleanConsentSources(profile.smsConsentSources),
+    emailConsentSources:cleanConsentSources(profile.emailConsentSources),
     businessName:String(profile.businessName||"").trim().slice(0,100),
     agentName:String(profile.agentName||"").trim().slice(0,80),
     callbackNumber:String(profile.callbackNumber||"").trim().slice(0,40),
@@ -186,3 +192,5 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     expoPushToken:/^ExponentPushToken\[[^\]]+\]$/.test(String(profile.expoPushToken||""))?String(profile.expoPushToken):"",
   };
 }
+
+function cleanConsentSources(value:unknown):string[]{return Array.isArray(value)?Array.from(new Set(value.filter(item=>typeof item==="string").map(item=>item.trim().slice(0,100)).filter(Boolean))).slice(0,50):[]}

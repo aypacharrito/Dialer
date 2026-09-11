@@ -28,7 +28,7 @@ export default function SystemHealthPanel(){
   return <section className="workspace-health" aria-label="System health" aria-busy={loading}>
     <header><div><h2>System health</h2><p role="status">{error?"Could not refresh status":!health?"Checking connections…":needsAttention?`${needsAttention} connection${needsAttention===1?" needs":"s need"} attention`:"All connections ready"}</p></div><button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Checking…":"Refresh"}</button></header>
     {error&&<p className="workspace-health-error" role="alert">{error}</p>}
-    {health&&<div className="workspace-health-list">{Object.entries(health.checks).map(([key,check])=><details key={key} className={check.ready?"ready":"attention"}><summary><b>{labels[key]||key}</b><span>{check.ready?"Connected":"Needs attention"}</span></summary><p>{check.detail}</p></details>)}</div>}
+    {health&&<div className="workspace-health-list">{Object.entries(health.checks).map(([key,check])=><details key={key} className={check.ready?"health-ready":"health-attention"}><summary><b>{labels[key]||key}</b><span>{check.ready?"Connected":"Needs attention"}</span></summary><p>{check.detail}</p></details>)}</div>}
     {health?.lastAutomationRun?.completedAt&&<footer>Last automation run: {new Date(health.lastAutomationRun.completedAt).toLocaleString()}</footer>}
   </section>;
 }

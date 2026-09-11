@@ -35,5 +35,5 @@ export function readAudioPreferences(): AudioPreferences {
 
 export function saveAudioPreferences(patch: Partial<AudioPreferences>) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(AUDIO_PREFERENCES_KEY, JSON.stringify({ ...readAudioPreferences(), ...patch }));
+  try{window.localStorage.setItem(AUDIO_PREFERENCES_KEY, JSON.stringify({ ...readAudioPreferences(), ...patch }));}catch{/* A blocked preference store must not interrupt an active call. */}
 }

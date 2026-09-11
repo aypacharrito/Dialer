@@ -39,8 +39,27 @@ html[data-theme] .app-shell .workspace-health{padding:22px;border:1px solid var(
 .workspace-health-list summary::-webkit-details-marker{display:none}
 .workspace-health-list summary:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px}
 .workspace-health-list summary span{font-size:12px;color:var(--ui-accent);white-space:nowrap}
-.workspace-health-list .attention summary span{color:var(--ui-text);font-weight:650}
+.workspace-health-list .health-attention summary span{color:var(--ui-text);font-weight:650}
 .workspace-health-list details p{margin:0 0 16px;font-size:14px;line-height:1.6;overflow-wrap:anywhere;color:var(--ui-muted)}
 .workspace-health>footer{margin-top:18px;color:var(--ui-muted);font-size:12px}
 .workspace-health-error{font-size:14px;line-height:1.5;color:var(--ui-text)}
 @media(max-width:700px){.workspace-health-list{grid-template-columns:1fr}html[data-theme] .app-shell .workspace-health{padding:16px}.workspace-health>header{align-items:flex-start}.workspace-health-list summary{flex-wrap:wrap}}
+
+/* Scoped profile and filter layouts: avoid legacy generic form overrides. */
+html[data-theme] .app-shell .settings-content .workspace-profile-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 20px}
+.workspace-profile-fields .wide-field{grid-column:1/-1}
+html[data-theme] .app-shell .workspace-profile-fields label{display:flex;flex-direction:column;min-width:0;gap:6px}
+html[data-theme] .app-shell .workspace-profile-fields :is(input,select,textarea){width:100%;min-width:0;box-sizing:border-box;margin:0;padding:10px 12px;border:1px solid var(--ui-border);border-radius:9px;background:var(--ui-surface);color:var(--ui-text);font-weight:400;line-height:1.5}
+html[data-theme] .app-shell .workspace-profile-fields textarea{min-height:80px;resize:vertical;font-family:inherit}
+html[data-theme] .app-shell .workspace-profile-fields ::placeholder{color:var(--ui-muted);font-weight:400;opacity:.75}
+.profile-examples{margin-top:18px;color:var(--ui-muted);font-size:13px}.profile-examples summary{cursor:pointer;color:var(--ui-accent)}.profile-examples p{max-width:75ch;line-height:1.6}
+html[data-theme] .app-shell .crm-tools{display:grid!important;grid-template-columns:1fr!important;gap:12px!important}
+html[data-theme] .app-shell .crm-tools>label{width:100%!important;min-width:0;display:flex;align-items:center}
+html[data-theme] .app-shell .crm-tools>label input{width:100%;min-width:0;outline:none!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.contact-filter-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+html[data-theme] .app-shell .contact-filter-fields label{display:grid;gap:6px;min-width:0;height:auto;min-height:0;padding:0;border:0!important;box-shadow:none!important;background:transparent!important;color:var(--ui-muted);font-size:12px;font-weight:600}
+html[data-theme] .app-shell .contact-filter-fields select{width:100%!important;min-width:0;max-width:100%;padding:0 12px!important;color:var(--ui-text)!important;font-weight:400;text-align:left}
+@media(max-width:1000px){.contact-filter-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){html[data-theme] .app-shell .settings-content .workspace-profile-fields{grid-template-columns:1fr!important}}
+
+.lead-form-permissions{margin:24px 0;padding-top:20px;border-top:1px solid var(--ui-border)}.lead-form-permissions h3{font-size:15px;margin:0 0 6px}.lead-form-permissions>p,.message-permission-note{font-size:12px;color:var(--ui-muted);line-height:1.5;margin:8px 0;max-width:80ch}
