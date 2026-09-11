@@ -18,6 +18,7 @@ import { hasLeadDetail, supplementalLeadDetails } from "./lib/lead-presentation"
 import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
 import AiCommandCenter, { type AiAction, type AiCreateLead } from "./components/AiCommandCenter";
+import QuoteDesk from "./components/QuoteDesk";
 import MessagesCenter from "./components/MessagesCenter";
 import TodayWorkspace from "./components/TodayWorkspace";
 import LeadGrowthPanel from "./components/LeadGrowthPanel";
@@ -51,7 +52,7 @@ import {scanDocumentLocally} from "./lib/local-document-scanner";
 
 type LeadLine = "life" | "home-auto";
 type Lead = { deletedAt?:string;deletionUpdatedAt?:string;id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; queueOverride?:boolean; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; vendorId?:string; sourceSyncStatus?:string; providerUpdatedAt?:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string; extraFields?:Record<string,string>; csvFileName?:string; csvUpdatedAt?:string; importedFields?:Record<string,string>; smsConsent?:boolean; smsOptOut?:boolean; lastSmsAt?:string; emailConsent?:boolean; emailOptOut?:boolean; lastEmailAt?:string; communications?:StoredCommunication[]; attempts?:number; lastAttemptAt?:string; lastConnectedAt?:string; priorityOverride?:"auto"|"high"|"low"; assignedTo?:string; estimatedValue?:number; closedRevenue?:number; closedAt?:string; automationEnabled?:boolean; automationSequenceId?:string; automationStep?:number; automationNextAt?:string; automationStatus?:string; automationDeliveryFailures?:number; automationLastError?:string; automationDeadLetterAt?:string; automationUpdatedAt?:string; lastInboundAt?:string; clientStatus?:"active"|"inactive"; dateOfBirth?:string; policyNumber?:string; policyEffectiveDate?:string; policyExpirationDate?:string; renewalDate?:string; policyPremium?:number; policyTermMonths?:number; clientReminderKeys?:string[]; licenseNumber?:string; licenseState?:string; licenseExpiration?:string; vin?:string; vehicle?:string };
-type View = "today" | "dialer" | "leads" | "messages" | "ai" | "quotes" | "campaigns" | "clients" | "activity" | "billing" | "settings";
+type View = "today" | "dialer" | "leads" | "messages" | "ai" | "quote-desk" | "quotes" | "campaigns" | "clients" | "activity" | "billing" | "settings";
 type SettingsSection = "workspace" | "team" | "phone" | "integrations" | "system";
 const pendingViews=new Set<View>(["quotes"]);
 const smartFinancialDispositions=["Received - not worked yet","Attempted Contact","Contacted","Quoted with Contact","Quoted without Contact","Sold - 1 Policy","Sold - Multi Policy","Lost - Not Interested","Interested - Working","Interested - Future Prospect"];
@@ -860,7 +861,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       if(action.startsWith("digit:")){const digit=action.slice(6);if(/^[0-9*#]$/.test(digit))pressKey(digit)}
     });
   });
-  const nav:[View,string,string][]=[["today","Today","spark"],["dialer","Dialer","dial"],["leads","Contacts","users"],["messages","Messages","chat"],["campaigns","Pipeline","list"],["clients","Clients","shield"],["activity","Reports","chart"],["ai","Pacifica AI","spark"],["quotes","Industry Tools","shield"],["billing","Plans & Billing","list"]];
+  const nav:[View,string,string][]=[["today","Today","spark"],["dialer","Dialer","dial"],["leads","Contacts","users"],["messages","Messages","chat"],["campaigns","Pipeline","list"],["clients","Clients","shield"],["activity","Reports","chart"],["ai","Pacifica AI","spark"],["quote-desk","Quote desk","list"],["quotes","Industry Tools","shield"],["billing","Plans & Billing","list"]];
   const activeLead=leads.find(l=>l.id===selectedLead);
   const growthLead=leads.find(l=>l.id===growthLeadId);
   const incomingLead=findDialedContact(leads,incomingNumber);
@@ -1084,6 +1085,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       {view==="clients"&&<div className="page-view clients-view"><ClientPortfolio leads={leads} profile={workspaceProfile} onOpen={id=>setSelectedLead(id)} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile} onImportDocument={openDocumentPicker}/></div>}
 
       {view==="activity"&&<div className="page-view report-view"><header className="module-bar"><span className="eyebrow">REPORTS</span></header><CallLogReport logs={callLogs} leadSpend={leads.reduce((total,item)=>total+item.leadCost,0)} callerId={callerId} agentName={currentUserName} recordingEnabled={workspaceProfile.callRecordingEnabled} onOpenRecordingSettings={()=>{setSettingsSection("workspace");setView("settings")}}/></div>}
+
+      {view==="quote-desk"&&<div className="page-view"><QuoteDesk leads={leads} onOpen={setSelectedLead} onQuote={setGrowthLeadId} onQuoted={id=>{const lead=leads.find(l=>l.id===id);if(lead)updateLead(id,{stage:"Quoted",automationEnabled:false,automationNextAt:"",sourceDisposition:/smart\s*financial/i.test(lead.source)?"Quoted without Contact":"Quoted"});}}/></div>}
 
       {view==="quotes"&&<div className="page-view"><header className="module-bar"><span className="eyebrow">INDUSTRY TOOLS</span><em>COMING SOON</em></header><div className="crm-summary"><article><span>INSURANCE</span><b>Quotes</b></article><article><span>HOME SERVICES</span><b>Estimates</b></article><article><span>PROFESSIONAL</span><b>Intakes</b></article><article><span>APPOINTMENT</span><b>Booking</b></article></div></div>}
 

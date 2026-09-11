@@ -1,3 +1,4 @@
+import {extraFields} from "../../../lib/provider-quote-fields";
 import { getPacificaAccess, isPacificaOwnerApi } from "../../../lib/clerk-access";
 import { crmFieldsForDisposition, leadLineForProduct } from "../../../lib/lead-priority";
 import { readStoredWorkspace, writeStoredWorkspace } from "../../../lib/workspace-storage";
@@ -39,22 +40,6 @@ function flattenPayload(payload:unknown):IncomingRecord {
   return flat;
 }
 
-function extraFields(record:IncomingRecord){
-  const known=new Set(["id","leadid","deliveryid","firstname","lastname","name","fullname","prospect","customername","phone","phonenumber","primaryphone","telephone","mobile","email","emailaddress","city","location","type","product","leadtype","vertical","insurancetype","disposition","status","leadstatus","notes","note","comments","cost","leadcost","price","source","provider","vendor","leadsource","publisher","createdat","timestamp","received","address","streetaddress","address1","street","state","province","zip","zipcode","postalcode","territory","market","brand","agency","company","profilename","profile","campaign","return","returnstatus","numberofemployees","employees","employeecount","searchpro"]);
-  const blocked=/secret|token|password|authorization|socialsecurity|ssn/i;
-  const output:Record<string,string>={};
-  const used=new Set<string>();
-  for(const [rawKey,rawValue] of Object.entries(record)){
-    if(rawKey.includes("."))continue;
-    const key=canonical(rawKey);
-    if(!key||known.has(key)||blocked.test(key)||used.has(key))continue;
-    if(!["string","number","boolean"].includes(typeof rawValue))continue;
-    const value=String(rawValue).trim();if(!value||value.length>500)continue;
-    output[rawKey]=value;used.add(key);
-    if(Object.keys(output).length>=40)break;
-  }
-  return output;
-}
 
 function normalize(payload:unknown,requestedSource:string):NormalizedLead {
   const record=flattenPayload(payload);

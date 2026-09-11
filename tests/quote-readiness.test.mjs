@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {quoteReadiness} from '../app/lib/quote-readiness.ts';
+const auto={id:1,name:'Test',product:'Auto',phone:'5551234567',address:'1 Main St',state:'CA',zip:'91401',vin:'1HGCM82633A004352',dateOfBirth:'1990-01-01'};
+test('basic auto checklist requires more than a VIN',()=>{assert.equal(quoteReadiness(auto).ready,true);assert.equal(quoteReadiness({...auto,dateOfBirth:''}).ready,false);assert.equal(quoteReadiness({...auto,vin:'123'}).ready,false)});
+test('provider extras and CSV columns are available for classification',()=>{assert.equal(quoteReadiness({...auto,vin:'',dateOfBirth:'',extraFields:{'Vehicle 1 VIN':auto.vin,'Driver 1 DOB':'1990-01-01'}}).ready,true)});
+test('home address alone is incomplete',()=>{const home={...auto,product:'Home',vin:''};assert.equal(quoteReadiness(home).ready,false);assert.equal(quoteReadiness({...home,extraFields:{'Year Built':'1980','Square Footage':'1500'}}).ready,true)});
+test('closed and deleted leads excluded, quoted separated, interested available for personal quoting',()=>{assert.equal(quoteReadiness({...auto,stage:'Closed'}).excluded,true);assert.equal(quoteReadiness({...auto,deletedAt:'2026-09-11'}).excluded,true);assert.equal(quoteReadiness({...auto,stage:'Quoted'}).quoted,true);assert.equal(quoteReadiness({...auto,outcome:'Interested'}).excluded,false)});
+test('unknown product and placeholder data cannot become ready',()=>{assert.equal(quoteReadiness({...auto,product:'Life',vin:''}).ready,false);assert.equal(quoteReadiness({...auto,vin:'',extraFields:{VIN:'unknown'}}).ready,false)});
+import {extraFields} from '../app/lib/provider-quote-fields.ts';
+test('multiple vehicle and driver source fields survive import',()=>{const fields=extraFields({'vehicles.0.vin':'1HGCM82633A004352','vehicles.1.vin':'1HGCM82633A004353','drivers.1.dob':'1980-01-01','drivers.1.ssn':'123','api.token':'secret'});assert.equal(fields['vehicles.1.vin'],'1HGCM82633A004353');assert.equal(fields['drivers.1.dob'],'1980-01-01');assert.equal(fields['drivers.1.ssn'],undefined);assert.equal(fields['api.token'],undefined)});

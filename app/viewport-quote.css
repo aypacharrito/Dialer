@@ -1,0 +1,21 @@
+/* Native titlebar is injected by existing desktop releases. Reserve its space
+   for both fixed navigation and viewport-sized content, without an EXE update. */
+html[data-theme]{--crm-titlebar:0px;--crm-height:calc(100dvh - var(--crm-titlebar))}
+html[data-theme]:has(#pacifica-window-bar){--crm-titlebar:36px}
+html[data-theme] .app-shell{height:var(--crm-height)!important;min-height:0!important}
+html[data-theme] .app-shell>.workspace{height:var(--crm-height)!important;min-height:0!important}
+html[data-theme] .app-shell>.sidebar{top:var(--crm-titlebar)!important;height:var(--crm-height)!important;max-height:var(--crm-height);box-sizing:border-box}
+html[data-theme] .app-shell .logo{flex-shrink:0!important;overflow:visible!important}
+html[data-theme] .app-shell .workspace>.messages-view{min-height:0!important;padding-bottom:max(16px,env(safe-area-inset-bottom))!important}
+html[data-theme] .app-shell .messages-layout .message-thread{min-width:0;min-height:0;overflow:hidden}
+html[data-theme] .app-shell .message-thread>footer{flex-shrink:0;box-sizing:border-box}
+html[data-theme] .app-shell [hidden]{display:none!important}
+.quote-desk{max-width:1200px;margin:auto;color:var(--ps-text)}
+.quote-desk h1{font-size:26px;margin:0 0 8px}.quote-desk p{line-height:1.6;overflow-wrap:anywhere}
+.quote-desk-tools{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0}.quote-desk-tools label{display:grid;gap:8px;flex:1 1 180px}
+.quote-desk :is(input,select,button){min-height:44px;max-width:100%;padding:10px 14px;border:1px solid var(--ps-line);border-radius:8px;background:var(--ps-surface);color:var(--ps-text)}
+.quote-desk-list{display:grid;gap:16px}.quote-desk-list article{padding:20px;border:1px solid var(--ps-line);border-radius:12px;background:var(--ps-surface);min-width:0}
+.quote-desk-list article>header{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.quote-desk h2{font-size:20px;margin:6px 0}.quote-desk ul{display:flex;flex-wrap:wrap;gap:12px 24px;list-style:none;padding:0}.quote-desk summary{padding:12px 0;cursor:pointer}.quote-desk dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px}.quote-desk dt{font-size:12px;opacity:.75}.quote-desk dd{margin:4px 0;overflow-wrap:anywhere}.quote-desk footer{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+@media(max-height:650px){html[data-theme] .app-shell,html[data-theme] .app-shell>.workspace{height:auto!important;min-height:var(--crm-height)!important}html[data-theme] .app-shell .workspace>.messages-view{overflow:auto!important}html[data-theme] .app-shell .messages-center>.messages-layout{height:auto!important;min-height:450px!important}}
+html[data-theme]:has(#pacifica-window-bar) .app-shell :is(.drawer-backdrop,.quote-modal-backdrop,.new-lead-backdrop){top:var(--crm-titlebar)!important}
+html[data-theme]:has(#pacifica-window-bar) .app-shell .contact-drawer{height:var(--crm-height)!important}
