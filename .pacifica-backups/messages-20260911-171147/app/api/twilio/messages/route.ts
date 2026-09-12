@@ -94,17 +94,17 @@ export async function GET(){
 
 export async function POST(request:Request){
   try{
-    const body=await request.json() as {to?:string;body?:string;permissionDocumented?:boolean;sendMode?:"ai"|"manual";mediaUrls?:string[]};
+    const body=await request.json() as {to?:string;body?:string;permissionDocumented?:boolean;sendMode?:"ai"|"manual"};
     const to=normalized(String(body.to||""));
-    const text=String(body.body||"").trim().slice(0,1400);const mediaUrls=Array.isArray(body.mediaUrls)?body.mediaUrls.map(String).filter(value=>/^https:\/\//i.test(value)).slice(0,10):[];
+    const text=String(body.body||"").trim().slice(0,1400);
     if(!to)return Response.json({error:"Enter a valid US mobile number"},{status:400});
-    if(!text&&!mediaUrls.length)return Response.json({error:"Write a message or attach a file first"},{status:400});
+    if(!text)return Response.json({error:"Write a message first"},{status:400});
     const access=await workspaceAccess();const workspace=await readStoredWorkspace(access.userId);const digits=to.replace(/\D/g,"").slice(-10);const lead=workspace?.leads.find(raw=>{const item=raw as Record<string,unknown>;return String(item.phone||"").replace(/\D/g,"").slice(-10)===digits}) as Record<string,unknown>|undefined;
     if(!lead||lead.deletedAt)return Response.json({error:"Save this phone number as a workspace contact before texting."},{status:400});
     if(body.sendMode==="ai"&&workspace!.leads.some(raw=>{const item=raw as Record<string,unknown>;return String(item.phone||"").replace(/\D/g,"").slice(-10)===digits&&(blocksAiText(item)||item.smsOptOut||item.doNotCall||item.deletedAt)}))return Response.json({error:"AI texting is paused for this contact. Interested and appointment leads require a personal text."},{status:403});
     if(body.permissionDocumented===true&&lead.smsConsent!==true){lead.smsConsent=true;await writeStoredWorkspace(access.userId,{...workspace!,leads:workspace!.leads.map(raw=>raw===lead?lead:raw)})}
     if(!hasContactPermission(lead,workspace!.profile,"sms"))return Response.json({error:lead.smsOptOut?"This contact opted out of SMS.":"Document this contact’s SMS consent before sending."},{status:403});
-    const result=await sendOutboundSms({workspaceId:access.userId,workspaceEmail:access.email,to,body:text,automated:body.sendMode==="ai",mediaUrls});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text||`[${mediaUrls.length} attachment${mediaUrls.length===1?"":"s"}]`,status:result.status,date_created:new Date().toISOString()};
+    const result=await sendOutboundSms({workspaceId:access.userId,workspaceEmail:access.email,to,body:text,automated:body.sendMode==="ai"});const message:TwilioMessage={sid:result.id,direction:"outbound-api",from:result.from,to,body:text,status:result.status,date_created:new Date().toISOString()};
     console.log("[twilio/messages] sent",{sid:result.id,toLast4:to.slice(-4),credential:"tenant SMS adapter"});
     return Response.json({ok:true,message:safe(message)});
   }catch(error){console.error("[twilio/messages] send failed",error instanceof Error?error.message:"unknown");return Response.json({error:error instanceof Error?error.message:"Unable to send message"},{status:500})}

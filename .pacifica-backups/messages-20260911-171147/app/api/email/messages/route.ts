@@ -22,7 +22,7 @@ export async function GET(){
 export async function POST(request:Request){
   try{
     const workspace=await access();
-    const body=await request.json() as {to?:string;subject?:string;text?:string;fromName?:string;replyTo?:string;leadId?:number;permissionDocumented?:boolean;idempotencyKey?:string;sendMode?:"ai"|"manual";attachments?:Array<{path?:string;filename?:string;contentType?:string}>};
+    const body=await request.json() as {to?:string;subject?:string;text?:string;fromName?:string;replyTo?:string;leadId?:number;permissionDocumented?:boolean;idempotencyKey?:string;sendMode?:"ai"|"manual"};
     const leadId=Math.max(0,Number(body.leadId)||0);const stored=await readStoredWorkspace(workspace.userId);const lead=stored?.leads.find(raw=>Number((raw as Record<string,unknown>).id)===leadId) as Record<string,unknown>|undefined;
     if(!lead||lead.deletedAt||String(lead.email||"").trim().toLowerCase()!==String(body.to||"").trim().toLowerCase())return Response.json({error:"Save this email address on the workspace contact before sending."},{status:400});
     if(body.permissionDocumented===true)lead.emailConsent=true;
@@ -31,8 +31,7 @@ export async function POST(request:Request){
     const footer=`\n\n${stored.profile.businessAddress}\nReply UNSUBSCRIBE if you no longer want these emails.`;const text=`${String(body.text||"").trim()}${String(body.text||"").includes(stored.profile.businessAddress)?"":footer}`.slice(0,10000);
     const idempotencyKey=String(body.idempotencyKey||`manual-${workspace.userId}-${leadId}-${Date.now()}`).replace(/[^a-zA-Z0-9:_-]/g,"-").slice(0,200);
     if(body.sendMode==="ai")await assertAutomatedContact(workspace.userId,String(body.to||""),"email");
-    const attachments=(Array.isArray(body.attachments)?body.attachments:[]).flatMap(item=>item?.path&&item?.filename?[{path:String(item.path),filename:String(item.filename).slice(0,120),contentType:String(item.contentType||"").slice(0,100)}]:[]).slice(0,10);
-    const result=await sendOutboundEmail({to:String(body.to||""),subject:String(body.subject||""),text,fromName:String(body.fromName||""),replyTo:inboundReplyAddress(workspace.userId)||String(body.replyTo||""),idempotencyKey,attachments});const sentAt=new Date().toISOString();
+    const result=await sendOutboundEmail({to:String(body.to||""),subject:String(body.subject||""),text,fromName:String(body.fromName||""),replyTo:inboundReplyAddress(workspace.userId)||String(body.replyTo||""),idempotencyKey});const sentAt=new Date().toISOString();
     const leads=stored.leads.map(raw=>Number((raw as Record<string,unknown>).id)===leadId?{...(raw as Record<string,unknown>),lastEmailAt:sentAt,communications:appendCommunication((raw as Record<string,unknown>).communications,{id:crypto.randomUUID(),channel:"email",direction:"outbound",subject:String(body.subject||"").slice(0,200),body:text,status:"sent",sentAt,provider:result.provider,providerId:result.id})}:raw);await writeStoredWorkspace(workspace.userId,{...stored,leads});
     return Response.json({ok:true,message:{id:result.id,provider:result.provider,status:"sent",sentAt}});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Email could not be sent"},{status:503})}
