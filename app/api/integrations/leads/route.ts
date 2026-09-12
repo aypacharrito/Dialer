@@ -49,7 +49,7 @@ function normalize(payload:unknown,requestedSource:string):NormalizedLead {
   const phone=textValue(record,"phone","phone_number","phoneNumber","primary_phone","primaryPhone","telephone","mobile");
   const phoneDigits=phone.replace(/\D/g,"");
   if (phoneDigits.length<7) throw new Error("A valid phone number is required");
-  const product=textValue(record,"type","product","lead_type","leadType","vertical","insurance_type","insuranceType")||"Service inquiry";
+  const product=textValue(record,"product")||textValue(record,"type","lead_type","leadType","vertical","insurance_type","insuranceType")||"Service inquiry";
   const line=leadLineForProduct(product,"life");
   const rawCost=textValue(record,"cost","lead_cost","leadCost","price").replace(/[^0-9.-]/g,"");
   const source=textValue(record,"source","provider","vendor","lead_source","leadSource","publisher")||requestedSource||"Lead provider";
@@ -63,7 +63,7 @@ function normalize(payload:unknown,requestedSource:string):NormalizedLead {
     notes:textValue(record,"notes","note","comments"),cost:Number(rawCost)||0,createdAt:explicitCreated||explicitReceived||arrival,
     address:textValue(record,"address","street_address","streetAddress","address1","street"),state:textValue(record,"state","province"),zip:textValue(record,"zip","zipcode","postal_code","postalCode"),
     territory:textValue(record,"territory","market"),brand:textValue(record,"brand","agency","company"),profileName:textValue(record,"profile_name","profileName","profile","campaign"),
-    received:arrival,receivedProvided:Boolean(explicitReceived||explicitCreated),returnStatus:textValue(record,"return","return_status","returnStatus"),employeeCount:textValue(record,"number_of_employees","numberOfEmployees","employees","employee_count","employeeCount"),searchPro:textValue(record,"search_pro","searchPro"),extraFields:extraFields(record),
+    received:arrival,receivedProvided:Boolean(explicitReceived||explicitCreated),returnStatus:textValue(record,"return","return_status","returnStatus"),employeeCount:textValue(record,"number_of_employees","numberOfEmployees","employees","employee_count","employeeCount"),searchPro:textValue(record,"search_pro","searchPro"),extraFields:{...extraFields(record),...(first?{"First name":first}:{}),...(last?{"Last name":last}:{})},
   };
 }
 

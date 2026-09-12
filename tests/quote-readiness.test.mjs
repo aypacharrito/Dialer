@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {quoteReadiness} from '../app/lib/quote-readiness.ts';
-const auto={id:1,name:'Test',product:'Auto',phone:'5551234567',address:'1 Main St',state:'CA',zip:'91401',vin:'1HGCM82633A004352',dateOfBirth:'1990-01-01'};
+const auto={id:1,name:'Test Customer',product:'Auto',phone:'5551234567',address:'1 Main St',state:'CA',zip:'91401',vin:'1HGCM82633A004352',dateOfBirth:'1990-01-01'};
 test('basic auto checklist requires more than a VIN',()=>{assert.equal(quoteReadiness(auto).ready,true);assert.equal(quoteReadiness({...auto,dateOfBirth:''}).ready,false);assert.equal(quoteReadiness({...auto,vin:'123'}).ready,false)});
 test('provider extras and CSV columns are available for classification',()=>{assert.equal(quoteReadiness({...auto,vin:'',dateOfBirth:'',extraFields:{'Vehicle 1 VIN':auto.vin,'Driver 1 DOB':'1990-01-01'}}).ready,true)});
 test('home address alone is incomplete',()=>{const home={...auto,product:'Home',vin:''};assert.equal(quoteReadiness(home).ready,false);assert.equal(quoteReadiness({...home,extraFields:{'Year Built':'1980','Square Footage':'1500'}}).ready,true)});

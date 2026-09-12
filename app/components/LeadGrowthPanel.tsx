@@ -1,5 +1,6 @@
 "use client";
 
+import {leadVehicles} from "../lib/lead-vehicles";
 import { quoteAddressLine, quoteSourceEntries } from "../lib/lead-quote-data";
 
 type GrowthLead={
@@ -13,6 +14,7 @@ type GrowthLead={
 type Props={lead:GrowthLead;teamMembers:string[];onPatch:(patch:Partial<GrowthLead>)=>void;onGoogleCalendar:()=>void;onDownloadCalendar:()=>void};
 
 export default function LeadGrowthPanel({lead,teamMembers,onPatch,onGoogleCalendar,onDownloadCalendar}:Props){
+  const vehicles=leadVehicles(lead);
   const sourceEntries=quoteSourceEntries(lead);
   const addressLine=quoteAddressLine(lead);
   return <section className="lead-growth-panel quote-workspace" aria-label="Quote information, ownership, and scheduling">
@@ -28,6 +30,7 @@ export default function LeadGrowthPanel({lead,teamMembers,onPatch,onGoogleCalend
         <label>Lead source<input value={lead.source||""} onChange={event=>onPatch({source:event.target.value})} placeholder="Lead source"/></label>
         <label>Lead cost<input type="number" min="0" step=".01" value={lead.leadCost||""} onChange={event=>onPatch({leadCost:Math.max(0,Number(event.target.value)||0)})} placeholder="0.00"/></label>
       </div></section>
+      {vehicles.length>0&&<section className="source-record" aria-label="Vehicles"><h3>{vehicles.length} {vehicles.length===1?"vehicle":"vehicles"}</h3>{vehicles.map(v=><article key={v.number} style={{padding:"12px 0",borderBottom:"1px solid var(--border, #d6dee8)"}}><b>Vehicle {v.number} · {[v.year,v.makeModel].filter(Boolean).join(" ")||"Details pending"}</b><div style={{overflowWrap:"anywhere"}}>VIN: {v.vin||"Missing"}</div><small>{[v.use,v.annualMiles?`${v.annualMiles} miles/year`:""].filter(Boolean).join(" · ")}</small></article>)}</section>}
       {sourceEntries.length>0&&<details className="source-record" open><summary><span>ALL IMPORTED DATA</span><b>{sourceEntries.length} fields captured</b></summary><div className="quote-source-grid">{sourceEntries.map(({label,value})=><article key={label}><span>{label}</span><b>{value||"—"}</b></article>)}</div><small>{lead.csvFileName||"CRM record"}{lead.csvUpdatedAt?` · last CSV sync ${new Date(lead.csvUpdatedAt).toLocaleString()}`:""}</small></details>}
       <section className="sales-control"><span className="quote-section-label">SALES CONTROL</span><div className="sales-control-grid">
         <label className="wide">Assigned owner<select value={lead.assignedTo||""} onChange={event=>onPatch({assignedTo:event.target.value})}><option value="">Unassigned</option>{teamMembers.map(member=><option key={member}>{member}</option>)}</select></label>

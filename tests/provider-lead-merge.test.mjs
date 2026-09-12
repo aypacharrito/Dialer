@@ -39,3 +39,10 @@ test("arrival metadata is refreshed once, then repeated polls are unchanged",()=
  const first=mergeProviderLeads([baseLead],[incoming],()=>{throw new Error("should not create")});assert.equal(first.updated,1);assert.equal(first.leads[0].received,provider.createdAt);
  const second=mergeProviderLeads(first.leads,[incoming],()=>{throw new Error("should not create")});assert.equal(second.updated,0);assert.equal(second.leads,first.leads);
 });
+
+test('a vehicle-only correction refreshes an existing provider lead',()=>{
+  const current={id:1,name:'Ana Test',phone:'5551234567',email:'',city:'Imported',product:'Auto',line:'home-auto',source:'Website',sourceDisposition:'Received - not worked yet',stage:'New lead',outcome:'Not contacted',status:'Ready',leadCost:0,extraFields:{'Vehicle 2 VIN':'1HGCM82633A004352'}};
+  const incoming={...current,id:'remote',disposition:current.sourceDisposition,cost:0,createdAt:'',extraFields:{'Vehicle 2 VIN':'1HGCM82633A004353'}};
+  const result=mergeProviderLeads([current],[incoming],()=>{throw new Error('Should update existing lead')});
+  assert.equal(result.updated,1);assert.equal(result.leads[0].extraFields['Vehicle 2 VIN'],'1HGCM82633A004353');
+});
