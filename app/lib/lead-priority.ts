@@ -1,3 +1,4 @@
+import {hasContactReplied,type ReplyState} from "./ai-sms-recipients";
 export type LeadPriorityInput={
   deletedAt?:string;
   id:number;
@@ -26,13 +27,13 @@ export type LeadPriority={
   fresh:boolean;
 };
 
-export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & {followUp?:string;deletedAt?:string};
+export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & ReplyState & {followUp?:string;deletedAt?:string};
 
 export function isDialerEligibleLead(lead:DialerEligibilityInput,now=Date.now()){
   const stage=lead.stage.trim().toLowerCase();
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
-  if(lead.deletedAt||lead.doNotCall||!["new lead","follow-up","open"].includes(stage))return false;
+  if(hasContactReplied(lead)||lead.deletedAt||lead.doNotCall||!["new lead","follow-up","open"].includes(stage))return false;
   if(outcome!=="no answer"&&outcome!=="voicemail")return false;
   if(/interested|working|quoted|appointment|sold|closed|lost|wrong number/.test(disposition))return false;
   if(lead.followUp?.trim()){

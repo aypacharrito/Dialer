@@ -16,6 +16,12 @@ export type Communication = {
 };
 
 export type Lead = {
+  lastCallResult?: string;
+  lastCallStartedAt?: string;
+  lastCallDetectionAt?: string;
+  lastDetectedCallSid?: string;
+  deletedAt?: string;
+  deletionUpdatedAt?: string;
   id: number;
   name: string;
   phone: string;

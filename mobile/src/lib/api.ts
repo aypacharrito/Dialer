@@ -28,6 +28,7 @@ async function parseResponse(response: Response) {
 
 export async function getWorkspace(token: string): Promise<Workspace> {
   const response = await fetch(`${API_URL}/api/crm/workspace`, {
+    cache: "no-store",
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/json",

@@ -12,6 +12,7 @@ export default async function DashboardPage(){
     const access=await requirePacificaWorkspacePage();
     return <>
       <CRMClient
+        key={access.userId}
         clerkEnabled
         isOwner={access.role==="owner"||access.role==="manager"}
         isPlatformOwner={isPacificaPlatformOwnerEmail(access.email)}

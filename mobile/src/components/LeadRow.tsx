@@ -21,7 +21,7 @@ export function LeadRow({ lead }: { lead: Lead }) {
           {isHotLead(lead) ? <Pill active>Priority</Pill> : null}
         </View>
         <Text style={[styles.phone, { color: p.text }]}>{formatPhone(lead.phone)}</Text>
-        <Text numberOfLines={1} style={[styles.meta, { color: p.muted }]}>{leadSubtitle(lead) || displayStage(lead)}</Text>
+        <Text numberOfLines={1} style={[styles.meta, { color: p.muted }]}>{[lead.lastCallResult ? `Last call: ${lead.lastCallResult}` : "", leadSubtitle(lead) || displayStage(lead)].filter(Boolean).join(" · ")}</Text>
       </View>
       <Text style={[styles.chevron, { color: p.muted }]}>›</Text>
     </Pressable>

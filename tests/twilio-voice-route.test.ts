@@ -41,6 +41,9 @@ test("browser-originated calls dial the requested phone number", async () => {
   assert.equal(response.status, 200);
   assert.match(twiml, /<Number[^>]*>\+18185550123<\/Number>/);
   assert.doesNotMatch(twiml, /<Client/);
+  assert.match(twiml, /machineDetection="Enable"/);
+  assert.match(twiml, /amdStatusCallback=/);
+  assert.match(twiml, /workspaceId=user_test/);
 });
 
 test("PSTN inbound calls ring the assigned Pacifica browser client", async () => {

@@ -1,15 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@clerk/expo";
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { getWorkspace, putWorkspace } from "../lib/api";
+import { createWorkspaceSync, emptyWorkspace, workspaceCacheKey, type Snapshot } from "../lib/workspace-sync";
 import type { Lead, Workspace } from "../lib/types";
-
-const CACHE_KEY = "pacifica.mobile.workspace.v1";
-const DIRTY_KEY = "pacifica.mobile.workspace.dirty.v1";
 
 type WorkspaceContextValue = {
   workspace: Workspace;
@@ -24,10 +22,7 @@ type WorkspaceContextValue = {
   updateProfile: (patch: Record<string, unknown>) => Promise<void>;
 };
 
-const emptyWorkspace: Workspace = { leads: [], callLogs: [], profile: {} };
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
-const LAST_INBOUND_KEY = "pacifica.mobile.last-inbound-notification.v1";
-const LAST_READ_KEY = "pacifica.mobile.last-inbound-read.v1";
 
 function inboundItems(workspace: Workspace) {
   return workspace.leads.flatMap(lead => (Array.isArray(lead.communications) ? lead.communications : [])
@@ -36,175 +31,130 @@ function inboundItems(workspace: Workspace) {
     .sort((a, b) => b.time - a.time);
 }
 
-async function saveCache(workspace: Workspace, dirty = false) {
-  await AsyncStorage.multiSet([
-    [CACHE_KEY, JSON.stringify(workspace)],
-    [DIRTY_KEY, dirty ? "1" : "0"],
-  ]);
-}
-
-async function loadCache(): Promise<{ workspace: Workspace; dirty: boolean } | null> {
-  const pairs = await AsyncStorage.multiGet([CACHE_KEY, DIRTY_KEY]);
-  const raw = pairs[0]?.[1];
-  if (!raw) return null;
-  try {
-    const value = JSON.parse(raw) as Workspace;
-    return {
-      workspace: {
-        leads: Array.isArray(value.leads) ? value.leads : [],
-        callLogs: Array.isArray(value.callLogs) ? value.callLogs : [],
-        profile: value.profile && typeof value.profile === "object" ? value.profile : {},
-      },
-      dirty: pairs[1]?.[1] === "1",
-    };
-  } catch {
-    return null;
-  }
-}
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const { getToken, isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
+  const { userId } = useAuth({ treatPendingAsSignedOut: false });
+  return <AccountWorkspaceProvider key={userId || "signed-out"} userId={userId || ""}>{children}</AccountWorkspaceProvider>;
+}
+
+function AccountWorkspaceProvider({ children, userId }: { children: React.ReactNode; userId: string }) {
+  const { getToken } = useAuth({ treatPendingAsSignedOut: false });
+  const tokenRef = useRef(getToken);
+  useEffect(() => { tokenRef.current = getToken; }, [getToken]);
+  const alive = useRef(true);
   const [workspace, setWorkspace] = useState<Workspace>(emptyWorkspace);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(userId));
   const [syncing, setSyncing] = useState(false);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const operations = useRef(0);
+  const sessionToken = useCallback(async () => {
+    if (!alive.current || !userId) throw new Error("No active Pacifica session.");
+    const result = await tokenRef.current();
+    if (!alive.current || !result) throw new Error("No active Pacifica session.");
+    return result;
+  }, [userId]);
+  const publish = useCallback((value: Workspace) => { if (alive.current) setWorkspace(value); }, []);
+  const syncRef = useRef<ReturnType<typeof createWorkspaceSync> | null>(null);
+  useEffect(() => {
+    if (syncRef.current) return;
+    const key = workspaceCacheKey(userId);
+    syncRef.current = createWorkspaceSync({
+      load: async () => {
+        const raw = await AsyncStorage.getItem(key);
+        if (!raw) return null;
+        try {
+          const value = JSON.parse(raw) as Snapshot;
+          return value.workspace && Array.isArray(value.workspace.leads) && Array.isArray(value.pending) ? value : null;
+        } catch { return null; }
+      },
+      save: snapshot => AsyncStorage.setItem(key, JSON.stringify(snapshot)),
+      get: async () => getWorkspace(await sessionToken()),
+      put: async value => putWorkspace(await sessionToken(), value),
+      publish,
+    });
+  }, [userId, sessionToken, publish]);
 
-  const refresh = useCallback(async () => {
-    if (!isSignedIn) {
-      setWorkspace(emptyWorkspace);
-      setLoading(false);
-      return;
-    }
-    setError("");
+  const run = useCallback(async (operation: () => Promise<void>) => {
+    if (!userId || !alive.current) return;
+    operations.current++;
+    setSyncing(true);
     try {
-      const token = await getToken();
-      if (!token) throw new Error("No active Pacifica session.");
-      const remote = await getWorkspace(token);
-      setWorkspace(remote);
-      await saveCache(remote, false);
-      setOffline(false);
-      const latest = inboundItems(remote)[0];
-      const lastRead = Number(await AsyncStorage.getItem(LAST_READ_KEY)) || 0;
-      setUnreadMessages(inboundItems(remote).filter(entry => entry.time > lastRead).length);
-      const seen = Number(await AsyncStorage.getItem(LAST_INBOUND_KEY)) || 0;
-      if (seen && latest && latest.time > seen) {
-        const permissions = await Notifications.getPermissionsAsync();
-        if (permissions.status === "granted") {
-          await Notifications.scheduleNotificationAsync({
-            content: { title: `New message from ${latest.lead.name}`, body: String(latest.item.body || latest.item.text || latest.item.subject || "Open Pacifica to reply."), data: { leadId: latest.lead.id } },
-            trigger: null,
-          });
-        }
-      }
-      if (latest?.time) await AsyncStorage.setItem(LAST_INBOUND_KEY, String(Math.max(seen, latest.time)));
+      await operation();
+      if (alive.current) { setOffline(false); setError(""); }
     } catch (reason) {
-      const cached = await loadCache();
-      if (cached) {
-        setWorkspace(cached.workspace);
+      if (alive.current) {
         setOffline(true);
+        setError(reason instanceof Error ? reason.message : "Unable to sync. Saved edits will retry when online.");
       }
-      setError(reason instanceof Error ? reason.message : "Unable to load Pacifica.");
     } finally {
-      setLoading(false);
+      operations.current--;
+      if (alive.current) { setSyncing(operations.current > 0); setLoading(false); }
     }
-  }, [getToken, isSignedIn]);
+  }, [userId]);
+  const refresh = useCallback(() => run(() => syncRef.current!.refresh()), [run]);
+  const updateLead = useCallback((id: number, patch: Partial<Lead>) => run(() => syncRef.current!.edit({ leadId: id, patch: {
+    ...patch,
+    ...(Object.prototype.hasOwnProperty.call(patch, "deletedAt") ? { deletionUpdatedAt: new Date().toISOString() } : {}),
+  } })), [run]);
+  const updateProfile = useCallback((patch: Record<string, unknown>) => run(() => syncRef.current!.edit({ patch })), [run]);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => void refresh());
-    return () => cancelAnimationFrame(frame);
+    alive.current = true;
+    const initial = setTimeout(() => void refresh(), 0);
+    const timer = setInterval(() => { if (AppState.currentState === "active") void refresh(); }, 5000);
+    const subscription = AppState.addEventListener("change", state => { if (state === "active") void refresh(); });
+    return () => { alive.current = false; clearTimeout(initial); clearInterval(timer); subscription.remove(); };
   }, [refresh]);
 
+  // Register once per account, through the same ordered edit queue as user changes.
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!userId) return;
+    let canceled = false;
     void (async () => {
       try {
         await Notifications.setNotificationChannelAsync("pacifica", { name: "Pacifica messages", importance: Notifications.AndroidImportance.HIGH });
         const current = await Notifications.getPermissionsAsync();
         const permission = current.status === "granted" ? current : await Notifications.requestPermissionsAsync();
-        if (permission.status === "granted" && Device.isDevice) {
-          const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
-          const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-          const authToken = await getToken();
-          if (authToken && token && workspace.profile.expoPushToken !== token) {
-            const registered = { ...workspace, profile: { ...workspace.profile, expoPushToken: token } };
-            await putWorkspace(authToken, registered);
-            setWorkspace(registered);
-            await saveCache(registered, false);
-          }
-        }
-      } catch { /* Notifications remain optional on unsupported simulators. */ }
+        if (permission.status !== "granted" || !Device.isDevice || canceled) return;
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        if (!canceled && token) await updateProfile({ expoPushToken: token });
+      } catch { /* Push notifications are optional. */ }
     })();
-  }, [getToken, isSignedIn, workspace]);
+    return () => { canceled = true; };
+  }, [userId, updateProfile]);
 
   useEffect(() => {
-    if (!isSignedIn) return;
-    const timer = setInterval(() => {
-      if (AppState.currentState === "active") void refresh();
-    }, 5000);
-    const subscription = AppState.addEventListener("change", state => {
-      if (state === "active") void refresh();
-    });
-    return () => {
-      clearInterval(timer);
-      subscription.remove();
-    };
-  }, [isSignedIn, refresh]);
-
-  const updateLead = useCallback(async (id: number, patch: Partial<Lead>) => {
-    const next: Workspace = {
-      ...workspace,
-      leads: workspace.leads.map(lead => lead.id === id ? { ...lead, ...patch } : lead),
-    };
-    setWorkspace(next);
-
-    await saveCache(next, true);
-    setSyncing(true);
-    setError("");
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No active Pacifica session.");
-      await putWorkspace(token, next);
-      await saveCache(next, false);
-      setOffline(false);
-    } catch (reason) {
-      setOffline(true);
-      setError(reason instanceof Error ? reason.message : "Saved on this device. Will sync when online.");
-    } finally {
-      setSyncing(false);
-    }
-  }, [getToken, workspace]);
-
-  const updateProfile = useCallback(async (patch: Record<string, unknown>) => {
-    const next = { ...workspace, profile: { ...workspace.profile, ...patch } };
-    setWorkspace(next);
-    await saveCache(next, true);
-    setSyncing(true);
-    try {
-      const token = await getToken();
-      if (!token) throw new Error("No active Pacifica session.");
-      await putWorkspace(token, next);
-      const remote = await getWorkspace(token);
-      setWorkspace(remote);
-      await saveCache(remote, false);
-      setOffline(false);
-    } catch (reason) {
-      setOffline(true);
-      setError(reason instanceof Error ? reason.message : "Saved on this device. Will sync when online.");
-    } finally { setSyncing(false); }
-  }, [getToken, workspace]);
-
+    if (!userId) return;
+    let canceled = false;
+    void (async () => {
+      try {
+        const items = inboundItems(workspace);
+        const readKey = `${workspaceCacheKey(userId)}:read`;
+        const seenKey = `${workspaceCacheKey(userId)}:notified`;
+        const [read, seenRaw] = await Promise.all([AsyncStorage.getItem(readKey), AsyncStorage.getItem(seenKey)]);
+        if (canceled) return;
+        setUnreadMessages(items.filter(item => item.time > (Number(read) || 0)).length);
+        const latest = items[0], seen = Number(seenRaw) || 0;
+        if (!latest || latest.time <= seen) return;
+        const permission = await Notifications.getPermissionsAsync();
+        if (canceled) return;
+        await AsyncStorage.setItem(seenKey, String(latest.time));
+        if (seen && permission.status === "granted" && !canceled) await Notifications.scheduleNotificationAsync({
+          content: { title: `New message from ${latest.lead.name}`, body: String(latest.item.body || latest.item.text || latest.item.subject || "Open Pacifica to reply."), data: { leadId: latest.lead.id } }, trigger: null,
+        });
+      } catch { /* Notification failures must never roll back workspace state. */ }
+    })();
+    return () => { canceled = true; };
+  }, [workspace, userId]);
   const markMessagesRead = useCallback(async () => {
-    const now = Date.now();
-    await AsyncStorage.setItem(LAST_READ_KEY, String(now));
-    setUnreadMessages(0);
-  }, []);
-
-  const value = useMemo(() => ({
-    workspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile
-  }), [workspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile]);
-
+    await AsyncStorage.setItem(`${workspaceCacheKey(userId)}:read`, String(Date.now()));
+    if (alive.current) setUnreadMessages(0);
+  }, [userId]);
+  const visibleWorkspace = useMemo(() => ({ ...workspace, leads: workspace.leads.filter(lead => !lead.deletedAt) }), [workspace]);
+  const value = useMemo(() => ({ workspace: visibleWorkspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile }), [visibleWorkspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile]);
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 

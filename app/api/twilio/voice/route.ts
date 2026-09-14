@@ -40,13 +40,20 @@ export async function POST(request: Request) {
   const claim=routeToken&&secret?await verifyVoiceRouteToken(routeToken,secret):null;
   const clientIdentity=from.replace(/^client:/i,"");
   const claimedCallerId=claim&&claim.identity===clientIdentity&&twilioClientIdentity(claim.workspaceId)===clientIdentity?claim.phoneNumber:"";
-  const callerId=claimedCallerId||(await phoneAssignmentForClient(from,"twilio"))?.phoneNumber||"";
+  const assignment=claimedCallerId?null:await phoneAssignmentForClient(from,"twilio");
+  const callerId=claimedCallerId||assignment?.phoneNumber||"";
   if(!callerId){
     console.warn("[twilio/voice] caller identity has no workspace route",{clientIdentityLast8:clientIdentity.slice(-8),routeClaim:Boolean(routeToken),validRouteClaim:Boolean(claim)});
     const explanation=`<?xml version="1.0" encoding="UTF-8"?><Response><Say>This Twilio test client is not assigned to a Pacifica workspace. Place the test call from inside Pacifica CRM.</Say><Hangup/></Response>`;
     return new Response(explanation,{headers:{"Content-Type":"text/xml; charset=utf-8"}});
   }
   console.info("[twilio/voice] outbound request", { destinationLast4: normalized.slice(-4), callerIdLast4: callerId.slice(-4) });
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number statusCallback="${statusCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;
+  const callback=new URL("/api/twilio/status",request.url);
+  callback.searchParams.set("workspaceId",claimedCallerId?claim!.workspaceId:assignment!.workspaceId);
+  callback.searchParams.set("phone",normalized);
+  callback.searchParams.set("startedAt",new Date().toISOString());
+  callback.searchParams.set("parentCallSid",String(form.get("CallSid")||""));
+  const outboundCallback=xmlEscape(callback.toString());
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number machineDetection="Enable" amdStatusCallback="${outboundCallback}" amdStatusCallbackMethod="POST" statusCallback="${outboundCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;
   return new Response(twiml, { headers: { "Content-Type": "text/xml; charset=utf-8" } });
 }

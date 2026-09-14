@@ -1,3 +1,5 @@
+import {applyCallDetection} from "../../../lib/call-detection";
+import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { phoneAssignmentForWorkspace } from "../../../lib/phone-assignments";
@@ -18,10 +20,23 @@ export async function GET() {
 export async function POST(request: Request) {
   const form = await request.formData();
   if(!await validateTwilioWebhook(request,form))return rejectedTwilioWebhook();
-  console.info("[twilio/status] call update", {
-    callSid: String(form.get("CallSid") || "").slice(0, 10),
-    status: String(form.get("CallStatus") || "unknown"),
-    duration: String(form.get("CallDuration") || ""),
-  });
-  return new Response(null, { status: 204 });
+  const params=new URL(request.url).searchParams;
+  const workspaceId=params.get("workspaceId")||"";
+  const callSid=String(form.get("CallSid")||"");
+  const parentCallSid=String(form.get("ParentCallSid")||params.get("parentCallSid")||"");
+  const startedAt=params.get("startedAt")||"";
+  const phone=params.get("phone")||"";
+  // The signed callback URL is constructed only after the voice route resolves its tenant.
+  if(!workspaceId||!/^CA[a-f0-9]{32}$/i.test(callSid)||!/^\+[1-9]\d{7,14}$/.test(phone)||!Number.isFinite(Date.parse(startedAt)))return new Response(null,{status:204});
+  if(parentCallSid&&!/^CA[a-f0-9]{32}$/i.test(parentCallSid))return new Response(null,{status:400});
+  try {
+    const workspace=await readStoredWorkspace(workspaceId);
+    if(!workspace)return new Response(null,{status:204});
+    const next=applyCallDetection(workspace,{
+      callSid,parentCallSid,phone,startedAt,status:String(form.get("CallStatus")||""),answeredBy:String(form.get("AnsweredBy")||""),
+      sequence:form.has("SequenceNumber")?Number(form.get("SequenceNumber")):-1,duration:Math.max(0,Number(form.get("CallDuration"))||0),
+    });
+    if(next!==workspace)await writeStoredWorkspace(workspaceId,{...workspace,...next});
+    return new Response(null,{status:204});
+  } catch { return Response.json({error:"Unable to save call result"},{status:500}); }
 }

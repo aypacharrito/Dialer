@@ -10,3 +10,9 @@ test('manual SMS still sends for Interested leads',async()=>{globalThis.testWork
 test('AI email submits subject and body for an eligible contact',async()=>{const response=await email(request({leadId:1,to:'test@example.com',subject:'Requested information',text:'Your information',sendMode:'ai'}));assert.equal(response.status,200);assert.equal(globalThis.testDeliveries[0].subject,'Requested information');assert.match(globalThis.testDeliveries[0].text,/Your information/)});
 test('AI email refuses an appointment lead',async()=>{globalThis.testWorkspace.leads[0].stage='Appointment';const response=await email(request({leadId:1,to:'test@example.com',subject:'Info',text:'Hello',sendMode:'ai'}));assert.notEqual(response.status,200);assert.equal(globalThis.testDeliveries.length,0)});
 test('provider guard rereads state and catches a lead closed after planning',async()=>{await assertAutomatedContact('test','8185550100','sms');globalThis.testWorkspace.leads[0].stage='Closed';await assert.rejects(()=>assertAutomatedContact('test','8185550100','sms'),/paused/)});
+test('any text reply blocks AI sends while leaving personal texting available',async()=>{
+ globalThis.testWorkspace.leads[0].lastInboundAt='2026-09-14T16:00:00Z';
+ const blocked=await sms(request({to:'8185550100',body:'AI follow-up',sendMode:'ai'}));assert.equal(blocked.status,403);assert.equal(globalThis.testDeliveries.length,0);
+ await assert.rejects(()=>assertAutomatedContact('test','8185550100','sms'),/paused/);
+ const personal=await sms(request({to:'8185550100',body:'My personal reply'}));assert.equal(personal.status,200);assert.equal(globalThis.testDeliveries.length,1);
+});

@@ -54,3 +54,7 @@ test("a neutral callback cannot restart messaging sequences on the server",()=>{
   assert.equal(result.automationNextAt,"");
   assert.notEqual(result.automationStatus,"action due");
 });
+test("a reply stops every sequence even when legacy stopOnReply is false",()=>{
+ const legacy={...profile,automationSequences:profile.automationSequences.map(sequence=>({...sequence,stopOnReply:false}))};
+ assert.equal(prepareAutomationLead(lead({lastInboundAt:"2026-09-14T16:00:00Z"}),legacy).automationNextAt,"");
+});
