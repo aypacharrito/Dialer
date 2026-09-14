@@ -1,4 +1,5 @@
 "use client";
+import {createCallScreening} from "./lib/call-screening";
 import type {ContactCallDetection} from "./lib/call-detection";
 import {mergeIncomingContacts,contactMatches} from "./lib/contact-sync";
 
@@ -36,7 +37,7 @@ import ClientPortfolio from "./components/ClientPortfolio";
 import ClerkTopAuth from "./components/ClerkTopAuth";
 import { pacificaPlans } from "./lib/plans";
 import { cleanWorkspaceProfile, defaultWorkspaceProfile, type WorkspaceMode, type WorkspaceProfile } from "./lib/workspace-profile";
-import { crmFieldsForDisposition, dateValue, isDialerEligibleLead, leadCreatedAt, leadLineForProduct, leadPriority, rankLeads, sourceDispositionForOutcome, suggestedRetryAt, validReceivedDate } from "./lib/lead-priority";
+import { crmFieldsForDisposition, dateValue, isDialerEligibleLead, leadCreatedAt, leadLineForProduct, leadPriority, rankLeads, rankDialerLeads, refreshDialerRun, sourceDispositionForOutcome, suggestedRetryAt, validReceivedDate } from "./lib/lead-priority";
 import { mergeProviderLeads, type ProviderLeadRecord } from "./lib/provider-lead-merge";
 import { deduplicateCsvLeads, mergeCsvLeads, normalizedCsvEmail, normalizedCsvPhone } from "./lib/csv-lead-merge";
 import { calendarIcs, googleCalendarUrl } from "./lib/calendar";
@@ -230,6 +231,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const callStartGateRef=useRef(createCallStartGate());
   const clearVoiceProcessorRef=useRef<PacificaClearVoiceProcessor|null>(null);
   const callRef=useRef<Call|null>(null);
+  const screeningRef=useRef<ReturnType<typeof createCallScreening>|null>(null);
+  const [screening,setScreening]=useState(false);
   const quietCallAudioRef=useRef<ReturnType<typeof attachQuietCallAudio>|null>(null);
   const quietDialingRef=useRef(true);
   const voiceRouteTokenRef=useRef("");
@@ -255,11 +258,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const dialerRunsRef=useRef(workspaceProfile.dialerRuns); // PACIFICA_STABLE_DIALER_RUN_V2
   const lineLeads=useMemo(()=>leads.filter(item=>item.line===activeLine),[leads,activeLine]);
   const activeDialerRun=workspaceProfile.dialerRuns[activeLine];
-  const dynamicCallableLeads=useMemo(()=>rankLeads(lineLeads.filter(item=>isDialerEligibleLead(item,priorityNow)&&normalizedCsvPhone(item.phone).length>=7),priorityNow),[lineLeads,priorityNow]);
+  const dynamicCallableLeads=useMemo(()=>rankDialerLeads(lineLeads.filter(item=>isDialerEligibleLead(item,priorityNow)&&normalizedCsvPhone(item.phone).length>=7),priorityNow),[lineLeads,priorityNow]);
   const callableLeads=useMemo(()=>{
     if(!activeDialerRun?.ids.length)return dynamicCallableLeads;
     const eligibleById=new Map(lineLeads.filter(item=>isDialerEligibleLead(item,priorityNow)&&normalizedCsvPhone(item.phone).length>=7).map(item=>[item.id,item] as const));
-    return activeDialerRun.ids.map(id=>eligibleById.get(id)).filter((item):item is Lead=>Boolean(item));
+    return refreshDialerRun(activeDialerRun.ids,Array.from(eligibleById.values()),priorityNow);
   },[activeDialerRun,dynamicCallableLeads,lineLeads,priorityNow]);
   const queuedLead=(activeDialerRun?callableLeads[0]:callableLeads[index%Math.max(callableLeads.length,1)])||emptyLead;
   const postCallLead=manualWrap?.lead||(postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined);
@@ -292,7 +295,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   useEffect(()=>{dialerRunsRef.current=workspaceProfile.dialerRuns},[workspaceProfile.dialerRuns]);
   useEffect(()=>{callLogsRef.current=callLogs},[callLogs]);
   useEffect(()=>{quietDialingRef.current=workspaceProfile.quietDialing;quietCallAudioRef.current?.setQuiet(workspaceProfile.quietDialing)},[workspaceProfile.quietDialing]);
-  useEffect(()=>()=>quietCallAudioRef.current?.dispose(),[]);
+  useEffect(()=>()=>{quietCallAudioRef.current?.dispose();screeningRef.current?.dispose()},[]);
   useEffect(()=>{if(!workspaceHydrated||!clerkEnabled)return;let canceled=false;let refreshing=false;const seenKey=`pacifica:${workspaceId}:messages-seen`;const refresh=()=>{if(refreshing)return;refreshing=true;void fetch("/api/crm/workspace",{cache:"no-store"}).then(response=>{if(!response.ok)throw new Error("Workspace refresh failed");return response.json()}).then(data=>{if(canceled)return;if(Array.isArray(data.callLogs))setCallLogs(current=>mergeRecordingUpdates(current,data.callLogs as CallLog[]));const remoteLeads=normalizeSavedLeads(data.leads);setLeads(current=>mergeIncomingContacts(current,remoteLeads));let seen=0;try{seen=Number(localStorage.getItem(seenKey))||0}catch{}const inbound=remoteLeads.flatMap(item=>(item.communications||[]).filter(comm=>String(comm.direction||"").toLowerCase().includes("in")).map(comm=>({lead:item,time:new Date(String(comm.sentAt||"")).getTime()||0,body:String(comm.body||comm.subject||"New message")}))).filter(item=>item.time>seen).sort((a,b)=>b.time-a.time);setMessageUnreadCount(inbound.length);const latest=inbound[0];if(latest&&latest.time>latestInboundRef.current){if(latestInboundRef.current&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(`New message from ${latest.lead.name}`,{body:latest.body,icon:"/pacifica-icon-192.png"});latestInboundRef.current=latest.time}}).catch(()=>undefined).finally(()=>{refreshing=false})};const initial=window.setTimeout(refresh,1500);const timer=window.setInterval(refresh,5000);return()=>{canceled=true;window.clearTimeout(initial);window.clearInterval(timer)}},[clerkEnabled,workspaceHydrated,workspaceId]);
   function openView(id:View){if(id==="messages"){try{localStorage.setItem(`pacifica:${workspaceId}:messages-seen`,String(Date.now()))}catch{}setMessageUnreadCount(0);if(typeof Notification!=="undefined"&&Notification.permission==="default")void Notification.requestPermission()}setGrowthLeadId(null);setSelectedLead(null);setView(id)}
   useEffect(()=>{const onKeyDown=(event:KeyboardEvent)=>{if(event.key!=="Escape")return;if(growthLeadId!==null){setGrowthLeadId(null);return}if(selectedLead!==null){setSelectedLead(null);return}if(showNewLead)setShowNewLead(false)};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown)},[growthLeadId,selectedLead,showNewLead]);
@@ -374,6 +377,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     setCallLogs(list=>{const same=(log:CallLog)=>log.id===complete.id||Boolean(complete.callSid&&log.callSid===complete.callSid);const previous=list.find(same);const merged=previous?mergeRecordingUpdates([complete],[previous])[0]:complete;return [merged,...list.filter(log=>!same(log))].slice(0,500)});currentLogRef.current=null;
   }
   function stopAutoDial(message="Auto dial paused"){
+    screeningRef.current?.connect();
     autoDialRef.current=false;setAutoDialing(false);
     if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);
     nextCallTimerRef.current=undefined;setToast(message);
@@ -387,12 +391,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   function createDialerRun(line:LeadLine){
     const now=Date.now();
-    const ranked=eligibleDialerLeads(line).toSorted((left,right)=>{
-      const priorityDifference=leadPriority(right,now).score-leadPriority(left,now).score;if(priorityDifference)return priorityDifference;
-      const leftAttempt=dateValue(left.lastAttemptAt);const rightAttempt=dateValue(right.lastAttemptAt);
-      const recencyDifference=(Number.isFinite(leftAttempt)?leftAttempt:0)-(Number.isFinite(rightAttempt)?rightAttempt:0);if(recencyDifference)return recencyDifference;
-      return leadCreatedAt(right)-leadCreatedAt(left)||right.id-left.id;
-    });
+    const ranked=rankDialerLeads(eligibleDialerLeads(line),now);
     if(!ranked.length){setDialerRunState(line,null);return ranked}
     const stamp=new Date().toISOString();
     setDialerRunState(line,{ids:ranked.map(item=>item.id),completed:0,total:ranked.length,startedAt:stamp,updatedAt:stamp});
@@ -401,10 +400,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function remainingDialerRunLeads(line:LeadLine){
     const run=dialerRunsRef.current[line];if(!run)return [] as Lead[];
     const eligibleById=new Map(eligibleDialerLeads(line).map(item=>[item.id,item] as const));
-    const remaining=run.ids.map(id=>eligibleById.get(id)).filter((item):item is Lead=>Boolean(item));
-    if(remaining.length!==run.ids.length){
-      const removed=run.ids.length-remaining.length;
-      const next=remaining.length?{...run,ids:remaining.map(item=>item.id),completed:Math.min(run.total,run.completed+removed),updatedAt:new Date().toISOString()}:null;
+    const remaining=refreshDialerRun(run.ids,Array.from(eligibleById.values()));
+    if(remaining.map(item=>item.id).join(",")!==run.ids.join(",")){
+      const removed=run.ids.filter(id=>!eligibleById.has(id)).length;
+      const added=remaining.filter(item=>!run.ids.includes(item.id)).length;
+      const next=remaining.length?{...run,ids:remaining.map(item=>item.id),total:run.total+added,completed:Math.min(run.total,run.completed+removed),updatedAt:new Date().toISOString()}:null;
       setDialerRunState(line,next);
     }
     return remaining;
@@ -481,8 +481,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     // Provider status sync must never hold the salesperson or the next call hostage.
     void syncLeadDisposition(completedLead,sourcePatch);
   }
-  function finishCall(wasManual:boolean,leadId?:number,message="Call ended — save an outcome, then resume",outcome="Completed",errorCode?:string,attemptId=callAttemptRef.current){
+  function finishCall(wasManual:boolean,leadId?:number,message="Call ended — save an outcome, then resume",outcome="Completed",errorCode?:string,attemptId=callAttemptRef.current,automaticSkip=false){
     if(attemptId!==callAttemptRef.current||advancingRef.current)return;advancingRef.current=true;
+    screeningRef.current?.dispose();screeningRef.current=null;setScreening(false);
     const endedLog=currentLogRef.current;
     const wasConnected=Boolean(endedLog?.connectedAt);const shouldResume=autoDialRef.current;
     if(!wasConnected&&outcome==="Completed")outcome="No answer";
@@ -490,6 +491,15 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;finalizeLog(outcome,message,errorCode);
     quietCallAudioRef.current?.dispose();quietCallAudioRef.current=null;
     callDigits.clear();callRef.current=null;callStartGateRef.current.finish();setCurrentCallLeadId(null);setLoadedLeadId(!attemptWasEstablished&&!wasManual&&leadId?leadId:null);setRecordingSid("");setIndex(0);setDialing(false);setConnected(false);setSeconds(0);elapsedRef.current=0;setMuted(false);setDtmfDisplay("");setDtmfFeedback({message:"",error:false});setManualCall(false);setWorkspaceProfile(profile=>({...profile,liveCallSession:null}));
+    if(automaticSkip&&leadId&&shouldResume){
+      const item=leadsRef.current.find(contact=>contact.id===leadId);
+      if(item){
+        const patch:Partial<Lead>={...(attemptWasEstablished?{}:{attempts:(item.attempts||0)+1,lastAttemptAt:new Date().toISOString()}),lastCallResult:outcome,lastContact:`${outcome} · ${new Date().toLocaleString()}`};
+        if(!item.deletedAt&&!item.lastInboundAt&&["New lead","Follow-up","Open"].includes(item.stage)&&["Not contacted","No answer","Voicemail"].includes(item.outcome)&&["No answer","Voicemail"].includes(outcome))patch.outcome=outcome;
+        updateLead(leadId,patch);completeDialerRunLead(leadId,item.line);
+      }
+      setPhoneStatus(`${outcome} · continuing`);scheduleNextAuto();return;
+    }
     if(leadId&&attemptWasEstablished){openPostCall(leadId,shouldResume,outcome,wasConnected);setToast(`${wasConnected?"Conversation":"Call attempt"} complete · save the result before continuing`);return}
     if(wasManual&&attemptWasEstablished&&endedLog){
       const summary=normalizeSavedLeads([{id:-Date.now(),name:endedLog.phone,phone:endedLog.phone,source:"Manual keypad",line:activeLineRef.current}])[0];
@@ -527,7 +537,17 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>{signalingTimer=window.setTimeout(()=>{signalingExpired=true;reject(new Error("Twilio signaling timed out after 15 seconds"))},15000)})]).finally(()=>window.clearTimeout(signalingTimer));
       if(attemptId!==callAttemptRef.current||advancingRef.current){call.disconnect();return}
       callRef.current=call;
-      quietCallAudioRef.current=attachQuietCallAudio(call,quietDialingRef.current);
+      const screenThisCall=!wasManual&&autoDialRef.current;
+      quietCallAudioRef.current=attachQuietCallAudio(call,screenThisCall||quietDialingRef.current,screenThisCall);
+      if(screenThisCall){
+        setScreening(true);call.mute(true);
+        screeningRef.current=createCallScreening({
+          callSid:()=>String(call.parameters?.CallSid||""),
+          read:async sid=>{const response=await fetch(`/api/twilio/status?callSid=${encodeURIComponent(sid)}`,{cache:"no-store",signal:AbortSignal.timeout(1800)});if(!response.ok)throw new Error("Call screening unavailable");return (await response.json()).result},
+          connect:()=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;quietCallAudioRef.current?.release();call.mute(false);setMuted(false);setScreening(false);setPhoneStatus("Audio connected · human or screening assistant")},
+          skip:result=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;call.disconnect();finishCall(wasManual,currentLeadId,`${result} · saved automatically`,result,undefined,attemptId,true)},
+        });
+      }
       const markAttempt=()=>{
         if(attemptId!==callAttemptRef.current||advancingRef.current||establishedAttemptRef.current===attemptId)return;
         establishedAttemptRef.current=attemptId;
@@ -536,10 +556,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       call.on("ringing",()=>{markAttempt();setPhoneStatus(quietDialingRef.current?"Ringing · quiet until answered":"Ringing…")});
       if(watchdogRef.current)window.clearTimeout(watchdogRef.current);
       watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out",undefined,attemptId);call.disconnect()},25000);
-      call.on("accept",()=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
-      call.on("disconnect",()=>finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed",undefined,attemptId));
-      call.on("cancel",()=>finishCall(wasManual,currentLeadId,"Call canceled","Canceled",undefined,attemptId));
-      call.on("reject",()=>finishCall(wasManual,currentLeadId,"Call was rejected","Rejected",undefined,attemptId));
+      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(screenThisCall?"Checking answer · Connect now to speak":clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
+      call.on("disconnect",()=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed",undefined,attemptId)})()});
+      const onUnconnectedEnd=(message:string,outcome:string)=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;finishCall(wasManual,currentLeadId,message,outcome,undefined,attemptId)})()};
+      call.on("cancel",()=>onUnconnectedEnd("Call canceled","Canceled"));
+      call.on("reject",()=>onUnconnectedEnd("Call was rejected","Rejected"));
       call.on("error",error=>{const code="code" in error?String(error.code):undefined;finishCall(wasManual,currentLeadId,error.message||"Call failed","Failed",code,attemptId)});
     }catch(error){
       if(attemptId!==callAttemptRef.current||advancingRef.current)return;
@@ -559,6 +580,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=!loadedLead;setAutoDialing(!loadedLead);void placeCall(nextLead.phone,false,nextLead);
   }
   function hangup(){
+    screeningRef.current?.dispose();screeningRef.current=null;setScreening(false);
     const call=callRef.current;
     if(call){call.disconnect();return}
     const attemptId=callAttemptRef.current;
@@ -578,7 +600,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     updateLead(deletedLead.id,{deletedAt:"",deletionUpdatedAt:new Date().toISOString(),automationEnabled:deletedLead.automationEnabled,automationNextAt:deletedLead.automationNextAt,automationStatus:deletedLead.automationStatus});
     setDeletedLead(null);
   }
-  function toggleMute(){const call=callRef.current;if(!call)return;const next=!muted;call.mute(next);setMuted(next)}
+  function toggleMute(){if(screeningRef.current&&screening){screeningRef.current.connect();return}const call=callRef.current;if(!call)return;const next=!muted;call.mute(next);setMuted(next)}
   async function toggleRecording(){
     const sid=callRef.current?.parameters?.CallSid||"";if(!sid||recordingBusy)return;
     if(!recordingSid&&!window.confirm("Confirm that every person on this call has received the legally required recording disclosure and consented. Start recording?"))return;
@@ -1010,7 +1032,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         <section className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
           <div className="call-grid">
             <div className="call-status-line"><span><i/>{postCallLeadId?"CALL COMPLETE":connected?"LIVE":dialing?"CONNECTING":"NEXT UP"}</span>{!postCallLeadId&&autoDialing&&<em>{leadQueueRemaining} REMAINING</em>}</div>
-            <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><h2>{manualCall?"Manual call":lead.name}</h2>{lead.lastCallResult&&<p role="status">Last call: {lead.lastCallResult}</p>}<a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":[lead.city,lead.state].filter(Boolean).join(", ")}</p></div>{connected&&<b className="timer">{fmt}</b>}</article>
+            <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><h2>{manualCall?"Manual call":lead.name}</h2>{screening&&<button type="button" onClick={()=>screeningRef.current?.connect()}>Connect now</button>}{lead.lastCallResult&&<p role="status">Last call: {lead.lastCallResult}</p>}<a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":[lead.city,lead.state].filter(Boolean).join(", ")}</p></div>{connected&&<b className="timer">{fmt}</b>}</article>
             {!postCallLeadId&&<>
             <div className={`call-controls ${!dialing?"idle":""}`}>
               {!dialing?<button className="start-call" onClick={start}><Icon name="play"/><span>Start calling</span></button>:<>

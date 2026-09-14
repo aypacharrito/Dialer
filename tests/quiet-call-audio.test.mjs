@@ -33,3 +33,6 @@ test('original audio settings survive answer, cancel, error and disposal',()=>{
   assert.equal(call.listenerCount('audio'),0);assert.equal(call.listenerCount('accept'),0);
  }
 });
+test('screening holds remote playback beyond answer until explicitly released',()=>{
+ const call=new Call(),audio={muted:false};const control=attachQuietCallAudio(call,true,true);call.emit('audio',audio);call.answer();assert.equal(audio.muted,true);assert.equal(call.remote.enabled,false);control.release();assert.equal(audio.muted,false);assert.equal(call.remote.enabled,true);control.dispose();
+});

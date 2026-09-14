@@ -13,3 +13,16 @@ Scope: calls placed through Pacifica's Twilio browser route. Native phone/carrie
 Reference: https://www.twilio.com/docs/voice/twiml/number
 
 Checks: web TypeScript, mobile TypeScript, ESLint on changed code, full unit suite, signed/unsigned status-webhook tests, callback ordering tests, stale save tests, and Next.js production build.
+
+## Conservative screening update
+
+Supersedes the earlier detection-only behavior described above for automatic browser dialing:
+- Uses DetectMessageEnd. Only machine_end_beep permits an automatic voicemail skip.
+- Human, unknown, fax, and machine endings without a beep connect to the agent. A screening assistant has no dependable special Twilio code; it can still be misclassified.
+- The agent's remote audio and microphone are muted while screening. The existing overlay/dialer remains active and a Connect now button releases audio immediately.
+- An eight-second ceiling after answer releases audio rather than hanging up. This protects uncertain humans from prolonged silence, but allows long voicemail greetings through. Network read failures after answer also release audio.
+- The exact Call SID must match. Disposed/old attempt callbacks are ignored. Once released, a later machine verdict cannot hang up the conversation. A recorded human verdict also vetoes later voicemail skipping.
+- Confirmed network no-answer/busy and eligible ending-beep voicemail skip the second wrap-up popup, save the result, and continue to the next queued lead. Manual calls, unknown results, and human conversations retain outcome controls.
+- New untouched leads now take priority over retries and overdue follow-ups and can join an existing saved run between calls.
+
+These are defensive control-flow checks around one imperfect Twilio classifier, not independent proof of voicemail or a 100% detection guarantee. Live phone/Google screening tests remain necessary. The browser must stay running; suspended devices cannot keep the screening loop active.

@@ -7,9 +7,16 @@ import { rejectedTwilioWebhook, validateTwilioWebhook } from "../../../lib/twili
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   const access=isClerkConfigured()?await getPacificaAccess():{allowed:!process.env.VERCEL,userId:"local",email:"local"};
   if(!access.allowed)return Response.json({configured:false,error:"An active Pacifica subscription is required."},{status:403});
+  const callSid=new URL(request.url).searchParams.get("callSid");
+  if(callSid){
+    if(!/^CA[a-f0-9]{32}$/i.test(callSid))return Response.json({error:"Invalid call"},{status:400});
+    const workspace=await readStoredWorkspace(access.userId);
+    const log=workspace?.callLogs.find(raw=>(raw as {callSid?:string}).callSid===callSid) as Record<string,unknown>|undefined;
+    return Response.json({result:log?{callSid:log.callSid,humanDetected:log.humanDetected,answeredBy:log.answeredBy,detectionStatus:log.detectionStatus,detectedResult:log.detectedResult}:null},{headers:{"Cache-Control":"no-store"}});
+  }
   const assignment=await phoneAssignmentForWorkspace(access.userId,access.email);
   const phoneNumber=assignment?.phoneNumber||"";
   const provider=assignment?.provider||"twilio";

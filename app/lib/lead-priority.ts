@@ -34,7 +34,7 @@ export function isDialerEligibleLead(lead:DialerEligibilityInput,now=Date.now())
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
   if(hasContactReplied(lead)||lead.deletedAt||lead.doNotCall||!["new lead","follow-up","open"].includes(stage))return false;
-  if(outcome!=="no answer"&&outcome!=="voicemail")return false;
+  if(!["not contacted","no answer","voicemail"].includes(outcome))return false;
   if(/interested|working|quoted|appointment|sold|closed|lost|wrong number/.test(disposition))return false;
   if(lead.followUp?.trim()){
     const due=dateValue(lead.followUp);
@@ -163,4 +163,13 @@ export function sourceDispositionForOutcome(source:string,outcome:string,current
   if(outcome==="Sold / Won")return smart?"Sold - 1 Policy":"Sold";
   if(outcome==="Not interested"||outcome==="Wrong number")return "Lost - Not Interested";
   return current;
+}
+
+export function untouchedDialerLead(lead:LeadPriorityInput){return lead.outcome.toLowerCase()==="not contacted"&&!lead.attempts&&!lead.lastAttemptAt;}
+export function rankDialerLeads<T extends LeadPriorityInput>(leads:T[],now=Date.now()){
+  return [...leads].sort((a,b)=>Number(untouchedDialerLead(b))-Number(untouchedDialerLead(a)) || (untouchedDialerLead(a)&&untouchedDialerLead(b)?leadCreatedAt(b)-leadCreatedAt(a):leadPriority(b,now).score-leadPriority(a,now).score) || a.id-b.id);
+}
+export function refreshDialerRun<T extends LeadPriorityInput>(ids:number[],eligible:T[],now=Date.now()){
+  const saved=new Set(ids);
+  return rankDialerLeads(eligible.filter(lead=>saved.has(lead.id)||untouchedDialerLead(lead)),now);
 }

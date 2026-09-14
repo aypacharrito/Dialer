@@ -1,4 +1,5 @@
 export type CallDetection = {
+  humanDetected?: boolean;
   detectedResult?: string;
   detectionUpdatedAt?: string;
   answeredBy?: string;
@@ -23,7 +24,7 @@ export function detectedResult(status: string, answeredBy: string): string {
 }
 export function mergeCallDetection<T extends CallDetection>(local: T, remote: CallDetection): T {
   if (!remote.detectionUpdatedAt || Date.parse(remote.detectionUpdatedAt) <= (Date.parse(local.detectionUpdatedAt || '') || 0)) return local;
-  return {...local, detectedResult:remote.detectedResult, detectionUpdatedAt:remote.detectionUpdatedAt, answeredBy:remote.answeredBy, detectionSequence:remote.detectionSequence, detectionStatus:remote.detectionStatus};
+  return {...local, humanDetected:Boolean(local.humanDetected||remote.humanDetected), detectedResult:remote.detectedResult, detectionUpdatedAt:remote.detectionUpdatedAt, answeredBy:remote.answeredBy, detectionSequence:remote.detectionSequence, detectionStatus:remote.detectionStatus};
 }
 export function mergeContactCallDetection<T extends ContactCallDetection>(local:T,remote:ContactCallDetection):T {
   if (!remote.lastCallDetectionAt || Date.parse(remote.lastCallDetectionAt) <= (Date.parse(local.lastCallDetectionAt || '') || 0)) return local;
@@ -49,7 +50,7 @@ export function applyCallDetection(workspace:{leads:unknown[];callLogs:unknown[]
   const digits=(value:unknown)=>String(value||'').replace(/\D/g,'');
   const contact=(workspace.leads as RecordValue[]).find(lead=>digits(lead.phone)===digits(event.phone)||digits(lead.phone)===digits(event.phone).replace(/^1(?=\d{10}$)/,''));
   const log={id:`detected-${id}`,callSid:id,name:String(contact?.name||event.phone),phone:event.phone,startedAt:event.startedAt,outcome:'Unknown',status:'Call detected',campaign:'Pacifica',source:String(contact?.source||'Manual'),...previous,
-    detectedResult:result,answeredBy,detectionUpdatedAt:now,detectionStatus:status,detectionSequence:incomingStatus?event.sequence:Number(previous.detectionSequence??-1),duration:Math.max(Number(previous.duration)||0,event.duration)};
+    humanDetected:Boolean(previous.humanDetected||previous.answeredBy==='human'||event.answeredBy==='human'),detectedResult:result,answeredBy,detectionUpdatedAt:now,detectionStatus:status,detectionSequence:incomingStatus?event.sequence:Number(previous.detectionSequence??-1),duration:Math.max(Number(previous.duration)||0,event.duration)};
   const callLogs=[...logs];if(index<0)callLogs.unshift(log);else callLogs[index]=log;
   const leads=workspace.leads.map(raw=>{
     const lead=raw as RecordValue;if(lead!==contact||lead.deletedAt)return lead;

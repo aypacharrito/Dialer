@@ -54,6 +54,6 @@ export async function POST(request: Request) {
   callback.searchParams.set("startedAt",new Date().toISOString());
   callback.searchParams.set("parentCallSid",String(form.get("CallSid")||""));
   const outboundCallback=xmlEscape(callback.toString());
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number machineDetection="Enable" amdStatusCallback="${outboundCallback}" amdStatusCallbackMethod="POST" statusCallback="${outboundCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${xmlEscape(callerId)}" answerOnBridge="true" timeout="20"><Number machineDetection="DetectMessageEnd" amdStatusCallback="${outboundCallback}" amdStatusCallbackMethod="POST" statusCallback="${outboundCallback}" statusCallbackEvent="initiated ringing answered completed" statusCallbackMethod="POST">${xmlEscape(normalized)}</Number></Dial></Response>`;
   return new Response(twiml, { headers: { "Content-Type": "text/xml; charset=utf-8" } });
 }

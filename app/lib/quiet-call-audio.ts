@@ -1,9 +1,9 @@
 import type { Call } from "@twilio/voice-sdk";
 
 /** Silence only outbound playback before answer. Microphone mute is independent. */
-export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean) {
+export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean, holdUntilReleased = false) {
   let quiet = initiallyQuiet;
-  let answered = call.status() === "open";
+  let answered = !holdUntilReleased && call.status() === "open";
   let disposed = false;
   const elements = new Map<HTMLAudioElement, boolean>();
   const tracks = new Map<MediaStreamTrack, boolean>();
@@ -29,6 +29,7 @@ export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean) {
     silenceExistingStream();
   }
   function onAccept() {
+    if (holdUntilReleased) { silenceExistingStream(); return; }
     answered = true;
     restore();
   }
@@ -52,8 +53,9 @@ export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean) {
   silenceExistingStream();
   return {
     dispose,
+    release() { holdUntilReleased = false; answered = true; restore(); },
     setQuiet(value: boolean) {
-      quiet = value;
+      quiet = holdUntilReleased || value;
       if (!quiet) restore();
       else silenceExistingStream();
     },

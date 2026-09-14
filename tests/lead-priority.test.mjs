@@ -86,6 +86,6 @@ test("SmartFinancial interest maps back to its working disposition",()=>{
     assert.equal(isDialerEligibleLead({...item,followUp:"2026-09-11T12:00:00Z"},now),true);
     assert.equal(isDialerEligibleLead({...item,followUp:"bad date"},now),false);
   }
-  for(const outcome of ["Not contacted","Interested","Call back later","Appointment set","Completed"])
+  for(const outcome of ["Interested","Call back later","Appointment set","Completed"])
     assert.equal(isDialerEligibleLead(lead({outcome,followUp:""}),now),false);
  });
