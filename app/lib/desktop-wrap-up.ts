@@ -1,6 +1,6 @@
 import {selectPostCallOutcome,type PostCallDraft} from './post-call';
 
-export const desktopOutcomes=['Call back later','Interested','Appointment set','No answer','Voicemail','Not interested','Wrong number','Sold / Won','Completed'];
+export const desktopOutcomes=['Call back later','Interested','Appointment set','Voicemail','Not interested','Wrong number','Sold / Won','Completed'];
 const stages=['New lead','Follow-up','Appointment','Quoted','Closed'];
 export type DesktopWrapAction={id:string;kind:'save'|'again'|'pause';outcome:string;notes:string;appointmentAt:string;stage:string};
 

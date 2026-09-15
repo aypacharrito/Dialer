@@ -635,7 +635,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   function undoDelete(){
     if(!deletedLead)return;
-    updateLead(deletedLead.id,{deletedAt:"",deletionUpdatedAt:new Date().toISOString(),automationEnabled:deletedLead.automationEnabled,automationNextAt:deletedLead.automationNextAt,automationStatus:deletedLead.automationStatus});
+    const now=new Date().toISOString(),phone=normalizedCsvPhone(deletedLead.phone),email=normalizedCsvEmail(deletedLead.email);
+    setLeads(list=>list.map(lead=>{const same=lead.id===deletedLead.id||(phone.length>=7&&normalizedCsvPhone(lead.phone)===phone)||(email.includes("@")&&normalizedCsvEmail(lead.email)===email);return same?{...lead,deletedAt:"",deletionUpdatedAt:now,automationEnabled:deletedLead.automationEnabled,automationNextAt:deletedLead.automationNextAt,automationStatus:deletedLead.automationStatus}:lead}));
     setDeletedLead(null);
   }
   function toggleMute(){if(screeningRef.current&&screening){screeningRef.current.connect();return}const call=callRef.current;if(!call)return;const next=!muted;call.mute(next);setMuted(next)}

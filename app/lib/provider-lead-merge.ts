@@ -14,12 +14,26 @@ const phoneDigits=(value:string)=>value.replace(/\D/g,"").slice(-10);
 
 export function mergeProviderLeads<T extends ProviderManagedLead>(existing:T[],incoming:ProviderLeadRecord[],create:(item:ProviderLeadRecord,index:number)=>T,nowIso=new Date().toISOString()){
   const next=[...existing];const newItems:T[]=[];let added=0;let updated=0;
-  const byPhone=new Map<string,number>(existing.map((lead,position)=>[phoneDigits(lead.phone),position]));
-  const byVendor=new Map<string,number>(existing.flatMap((lead,position)=>lead.vendorId?[[`${lead.source.toLowerCase()}:${lead.vendorId}`,position]]:[]));
+  const emailKey=(value:string)=>String(value||"").trim().toLowerCase();
+  const byPhone=new Map<string,number>(),byVendor=new Map<string,number>();
+  for(const [position,lead] of existing.entries()){
+    const digits=phoneDigits(lead.phone);if(digits)byPhone.set(digits,position);
+    if(lead.vendorId)byVendor.set(`${lead.source.toLowerCase()}:${lead.vendorId}`,position);
+  }
+  const deletedPhones=new Set<string>(),deletedEmails=new Set<string>(),deletedVendors=new Set<string>();
+  for(const lead of existing){
+    if(!lead.deletedAt)continue;
+    const digits=phoneDigits(lead.phone),email=emailKey(lead.email);
+    if(digits)deletedPhones.add(digits);
+    if(email.includes("@"))deletedEmails.add(email);
+    if(lead.vendorId)deletedVendors.add(`${lead.source.toLowerCase()}:${lead.vendorId}`);
+  }
 
   for(const [position,item] of incoming.entries()){
     const digits=phoneDigits(item.phone);if(!digits)continue;
+    const email=emailKey(item.email);
     const vendorKey=item.vendorId?`${(item.source||"Lead provider").toLowerCase()}:${item.vendorId}`:"";
+    if(deletedPhones.has(digits)||(email.includes("@")&&deletedEmails.has(email))||(vendorKey&&deletedVendors.has(vendorKey)))continue;
     const existingPosition=vendorKey&&byVendor.has(vendorKey)?byVendor.get(vendorKey):byPhone.get(digits);
     if(existingPosition===undefined){newItems.push(create(item,position));added++;continue}
 
