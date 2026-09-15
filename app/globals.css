@@ -2673,3 +2673,14 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 .miner-person span{display:grid}.miner-person small,.miner-table small{opacity:.6}
 .miner-actions{display:flex;gap:7px}.miner-actions button{padding:8px 10px;border-radius:9px;border:1px solid rgba(120,130,150,.22);background:transparent;color:inherit;cursor:pointer}
 @media(max-width:760px){.onboarding-fields{grid-template-columns:1fr}.onboarding-fields .wide{grid-column:auto}.business-onboarding footer{align-items:stretch;flex-direction:column}.miner-mode-switch{grid-template-columns:1fr}.miner-source-note{grid-template-columns:1fr}.miner-table .table-head{display:none}.miner-table .table-row{grid-template-columns:1fr}}
+
+
+/* PACIFICA_DIALER_TIMEOUT_TOGGLE_V1 */
+.dialer-timeout-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px;padding:10px 12px;border:1px solid rgba(120,130,150,.18);border-radius:12px;background:rgba(110,125,150,.055)}
+.dialer-timeout-control>span{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.62}
+.dialer-timeout-control>div{display:flex;gap:5px}
+.dialer-timeout-control button{border:1px solid rgba(120,130,150,.24);background:transparent;color:inherit;border-radius:9px;padding:6px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.dialer-timeout-control button.active{background:currentColor}
+.dialer-timeout-control button.active{color:var(--panel,#fff)}
+.dialer-timeout-control button:disabled{cursor:not-allowed;opacity:.55}
+.dialer-timeout-control small{font-size:11px;opacity:.57}

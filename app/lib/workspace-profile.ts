@@ -46,6 +46,7 @@ export type WorkspaceProfile={
   appearance:WorkspaceAppearance;
   displaySize:WorkspaceDisplaySize;
   quietDialing:boolean;
+  dialerRingTimeoutSeconds:20|30;
   smsConsentSources:string[];
   emailConsentSources:string[];
   businessName:string;
@@ -91,6 +92,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   appearance:"light",
   displaySize:"large",
   quietDialing:true,
+  dialerRingTimeoutSeconds:20,
   smsConsentSources:[],
   emailConsentSources:[],
   businessName:"",
@@ -164,6 +166,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     appearance:profile.appearance==="dark"?"dark":"light",
     displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
     quietDialing:profile.quietDialing!==false,
+    dialerRingTimeoutSeconds:Number(profile.dialerRingTimeoutSeconds)===30?30:20,
     smsConsentSources:cleanConsentSources(profile.smsConsentSources),
     emailConsentSources:cleanConsentSources(profile.emailConsentSources),
     businessName:String(profile.businessName||"").trim().slice(0,100),
