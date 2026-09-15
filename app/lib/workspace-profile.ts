@@ -31,6 +31,9 @@ export const defaultAutomationSequences:AutomationSequence[]=[
 export type WorkspaceProfile={
   mode:WorkspaceMode;
   industry:WorkspaceIndustry;
+  onboardingCompleted:boolean;
+  businessTypeLabel:string;
+  customerType:"consumer"|"business"|"both";
   businessDescription:string;
   productsServices:string[];
   idealCustomer:string;
@@ -73,6 +76,9 @@ export type WorkspaceProfile={
 export const defaultWorkspaceProfile:WorkspaceProfile={
   mode:"sales",
   industry:"general",
+  onboardingCompleted:false,
+  businessTypeLabel:"",
+  customerType:"both",
   businessDescription:"",
   productsServices:[],
   idealCustomer:"",
@@ -143,6 +149,9 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   return {
     mode:profile.mode==="insurance"?"insurance":"sales",
     industry:workspaceIndustries.has(profile.industry as WorkspaceIndustry)?profile.industry as WorkspaceIndustry:profile.mode==="insurance"?"insurance":"general",
+    onboardingCompleted:profile.onboardingCompleted===true||Boolean(String(profile.businessName||"").trim()||String(profile.businessDescription||"").trim()||(Array.isArray(profile.productsServices)&&profile.productsServices.length)),
+    businessTypeLabel:String(profile.businessTypeLabel||"").trim().slice(0,120),
+    customerType:profile.customerType==="consumer"||profile.customerType==="business"?profile.customerType:"both",
     businessDescription:String(profile.businessDescription||"").trim().slice(0,1200),
     productsServices:Array.isArray(profile.productsServices)?Array.from(new Set(profile.productsServices.map(value=>String(value).trim().slice(0,120)).filter(Boolean))).slice(0,30):[],
     idealCustomer:String(profile.idealCustomer||"").trim().slice(0,800),

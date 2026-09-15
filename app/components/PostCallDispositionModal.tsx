@@ -6,7 +6,7 @@ import type { PostCallDraft } from "../lib/post-call";
 
 type LeadSummary={name:string;phone:string;source:string;stage?:string;doNotCall?:boolean};
 
-const outcomes=["Call back later","Interested","Appointment set","No answer","Voicemail","Not interested","Wrong number","Sold / Won"];
+const outcomes=["Call back later","Interested","Appointment set","Voicemail","Not interested","Wrong number","Sold / Won"];
 
 export default function PostCallDispositionModal({lead,draft,technicalOutcome,connected,resume,saving,onSelect,onChange,onSave,onCallAgain,onPause}:{
   lead:LeadSummary;

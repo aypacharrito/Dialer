@@ -2637,3 +2637,39 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 @media(max-width:680px){html[data-theme] .messages-layout{display:grid;grid-template-columns:minmax(0,1fr);height:calc(100dvh - 170px);min-height:420px}html[data-theme] .messages-layout.inbox-open .message-thread{display:none}html[data-theme] .messages-layout.thread-open .message-contacts{display:none}html[data-theme] .messages-layout.thread-open .message-thread{display:grid}html[data-theme] .message-history{padding:14px}html[data-theme] .message-history article{max-width:90%}html[data-theme] .message-thread>header{padding:12px}.thread-contact-actions button{flex:1}html[data-theme] .message-thread>footer{padding:10px}.composer-actions{flex-wrap:wrap}.composer-actions .send-feedback{flex-basis:100%}}
 
 .ai-background-status{position:fixed;right:24px;bottom:24px;z-index:40;display:flex;gap:20px;align-items:center;background:#176d5d;color:#fff;border:1px solid #429886;border-radius:12px;box-shadow:0 6px 20px #0002;padding:14px 18px;font:inherit;font-size:14px;cursor:pointer}.ai-background-status span{font-weight:650}
+
+/* PACIFICA_BUSINESS_ONBOARDING_MINER_V1 */
+.business-onboarding-backdrop{position:fixed;inset:0;z-index:5000;background:rgba(8,15,28,.72);backdrop-filter:blur(14px);display:grid;place-items:center;padding:24px}
+.business-onboarding{width:min(920px,96vw);max-height:94vh;overflow:auto;background:var(--panel,#fff);border:1px solid rgba(120,130,150,.24);border-radius:24px;box-shadow:0 32px 90px rgba(0,0,0,.28);padding:30px}
+.business-onboarding header span,.miner-source-note span{font-size:11px;font-weight:800;letter-spacing:.14em;opacity:.62}
+.business-onboarding header h1{margin:8px 0;font-size:34px;line-height:1.05}
+.business-onboarding header p{margin:0 0 22px;opacity:.72;max-width:680px}
+.onboarding-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.onboarding-fields label{display:grid;gap:7px;font-weight:700;font-size:13px}
+.onboarding-fields .wide{grid-column:1/-1}
+.onboarding-fields input,.onboarding-fields select,.onboarding-fields textarea{width:100%;border:1px solid rgba(120,130,150,.28);background:transparent;color:inherit;border-radius:12px;padding:12px 13px;font:inherit}
+.onboarding-fields textarea{min-height:84px;resize:vertical}
+.onboarding-fields small{font-weight:500;opacity:.58}
+.onboarding-error{color:#c43b3b;font-weight:700}
+.business-onboarding footer{display:flex;gap:18px;align-items:center;justify-content:space-between;margin-top:22px;padding-top:18px;border-top:1px solid rgba(120,130,150,.18)}
+.business-onboarding footer span{font-size:12px;opacity:.62;max-width:560px}
+.business-onboarding footer button{border:0;border-radius:12px;padding:13px 18px;font-weight:800;cursor:pointer;background:#111d33;color:#fff}
+.locked-business-profile{display:grid;grid-template-columns:1fr auto;gap:10px 18px;padding:18px;border:1px solid rgba(120,130,150,.2);border-radius:16px;margin-bottom:18px}
+.locked-business-profile span{font-size:10px;letter-spacing:.12em;font-weight:800;opacity:.55}
+.locked-business-profile h3{margin:4px 0}
+.locked-business-profile p{margin:0;opacity:.7}
+.locked-business-profile>strong{align-self:start;font-size:10px;letter-spacing:.08em;padding:7px 9px;border-radius:999px;background:rgba(70,120,255,.1)}
+.locked-business-profile>small{grid-column:1/-1;opacity:.58}
+.miner-view .module-bar h1{margin:4px 0;font-size:32px}.miner-view .module-bar p{margin:0;opacity:.65}
+.miner-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.miner-mode-switch button{display:grid;text-align:left;gap:3px;padding:16px 18px;border-radius:16px;border:1px solid rgba(120,130,150,.2);background:transparent;color:inherit;cursor:pointer}
+.miner-mode-switch button.active{border-color:currentColor;box-shadow:inset 0 0 0 1px currentColor}
+.miner-mode-switch small{opacity:.6}
+.miner-source-note{display:grid;grid-template-columns:minmax(220px,.55fr) 1fr;gap:18px;align-items:center;padding:16px 18px;border-radius:16px;background:rgba(110,125,150,.08);margin-bottom:18px}
+.miner-source-note div{display:grid;gap:4px}.miner-source-note p{margin:0;opacity:.7;line-height:1.45}
+.miner-table .table-head,.miner-table .table-row{grid-template-columns:1.5fr 1fr .7fr .65fr}
+.miner-person{display:flex;gap:10px;align-items:center;text-align:left;border:0;background:transparent;color:inherit;cursor:pointer}
+.miner-person i{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(90,110,150,.12);font-style:normal;font-weight:800}
+.miner-person span{display:grid}.miner-person small,.miner-table small{opacity:.6}
+.miner-actions{display:flex;gap:7px}.miner-actions button{padding:8px 10px;border-radius:9px;border:1px solid rgba(120,130,150,.22);background:transparent;color:inherit;cursor:pointer}
+@media(max-width:760px){.onboarding-fields{grid-template-columns:1fr}.onboarding-fields .wide{grid-column:auto}.business-onboarding footer{align-items:stretch;flex-direction:column}.miner-mode-switch{grid-template-columns:1fr}.miner-source-note{grid-template-columns:1fr}.miner-table .table-head{display:none}.miner-table .table-row{grid-template-columns:1fr}}

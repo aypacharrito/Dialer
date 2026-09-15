@@ -50,7 +50,7 @@ export function businessAiContext(profile:WorkspaceProfile){
   const industry=profile.industry||"general";
   return {
     industry,
-    industryLabel:industryLabels[industry],
+    industryLabel:profile.businessTypeLabel||industryLabels[industry],
     businessName:profile.businessName||"the business",
     representative:profile.agentName||"the sales team",
     businessDescription:profile.businessDescription||"",

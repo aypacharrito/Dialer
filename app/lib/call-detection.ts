@@ -16,6 +16,7 @@ export function detectedResult(status: string, answeredBy: string): string {
   if (answeredBy === 'human') return 'Answered';
   if (/^machine_(start|end_beep|end_silence|end_other)$/.test(answeredBy)) return 'Voicemail';
   if (answeredBy === 'fax') return 'Fax';
+  if (status === 'in-progress' || status === 'answered' || status === 'completed') return 'Answered';
   if (status === 'no-answer') return 'No answer';
   if (status === 'busy') return 'Busy';
   if (status === 'failed') return 'Failed';

@@ -34,6 +34,8 @@ import TeamManagement from "./components/TeamManagement";
 import SystemHealthPanel from "./components/SystemHealthPanel";
 import WorkspaceProfileSettings from "./components/WorkspaceProfileSettings";
 import ClientPortfolio from "./components/ClientPortfolio";
+import BusinessOnboarding from "./components/BusinessOnboarding";
+import MinerPanel, {type MinerMode} from "./components/MinerPanel";
 import ClerkTopAuth from "./components/ClerkTopAuth";
 import { pacificaPlans } from "./lib/plans";
 import { cleanWorkspaceProfile, defaultWorkspaceProfile, type WorkspaceMode, type WorkspaceProfile } from "./lib/workspace-profile";
@@ -53,8 +55,9 @@ import {documentLeadCompletenessScore,documentLeadImportedFields,documentLeadNam
 import {scanDocumentLocally} from "./lib/local-document-scanner";
 
 type LeadLine = "life" | "home-auto";
+type DialerScope="crm"|"miner-personal-auto"|"miner-commercial";
 type Lead = ContactCallDetection & { deletedAt?:string;deletionUpdatedAt?:string;id:number; name:string; phone:string; city:string; status:string; email:string; stage:string; outcome:string; notes:string; followUp:string; doNotCall:boolean; lastContact:string; line:LeadLine; queueOverride?:boolean; source:string; leadCost:number; product:string; sourceDisposition:string; importedAt:string; vendorId?:string; sourceSyncStatus?:string; providerUpdatedAt?:string; address?:string; state?:string; zip?:string; territory?:string; brand?:string; profileName?:string; received?:string; returnStatus?:string; employeeCount?:string; searchPro?:string; extraFields?:Record<string,string>; csvFileName?:string; csvUpdatedAt?:string; importedFields?:Record<string,string>; smsConsent?:boolean; smsOptOut?:boolean; lastSmsAt?:string; emailConsent?:boolean; emailOptOut?:boolean; lastEmailAt?:string; communications?:StoredCommunication[]; attempts?:number; lastAttemptAt?:string; lastConnectedAt?:string; priorityOverride?:"auto"|"high"|"low"; assignedTo?:string; estimatedValue?:number; closedRevenue?:number; closedAt?:string; automationEnabled?:boolean; automationSequenceId?:string; automationStep?:number; automationNextAt?:string; automationStatus?:string; automationDeliveryFailures?:number; automationLastError?:string; automationDeadLetterAt?:string; automationUpdatedAt?:string; lastInboundAt?:string; clientStatus?:"active"|"inactive"; dateOfBirth?:string; policyNumber?:string; policyEffectiveDate?:string; policyExpirationDate?:string; renewalDate?:string; policyPremium?:number; policyTermMonths?:number; clientReminderKeys?:string[]; licenseNumber?:string; licenseState?:string; licenseExpiration?:string; vin?:string; vehicle?:string };
-type View = "today" | "dialer" | "leads" | "messages" | "ai" | "quote-desk" | "quotes" | "campaigns" | "clients" | "activity" | "billing" | "settings";
+type View = "today" | "dialer" | "leads" | "miner" | "messages" | "ai" | "quote-desk" | "quotes" | "campaigns" | "clients" | "activity" | "billing" | "settings";
 type SettingsSection = "workspace" | "team" | "phone" | "integrations" | "system";
 const pendingViews=new Set<View>(["quotes"]);
 const smartFinancialDispositions=["Received - not worked yet","Attempted Contact","Contacted","Quoted with Contact","Quoted without Contact","Sold - 1 Policy","Sold - Multi Policy","Lost - Not Interested","Interested - Working","Interested - Future Prospect"];
@@ -160,7 +163,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [view,setView]=useState<View>("today");
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("workspace");
   const [allLeads,setLeads]=useState<Lead[]>(starterLeads);
-  const leads=useMemo(()=>allLeads.filter(item=>!item.deletedAt),[allLeads]);
+  const minerLeads=useMemo(()=>allLeads.filter(item=>!item.deletedAt&&/^Pacifica Miner\b/i.test(item.source)),[allLeads]);
+  const leads=useMemo(()=>allLeads.filter(item=>!item.deletedAt&&!/^Pacifica Miner\b/i.test(item.source)),[allLeads]);
   const [deletedLead,setDeletedLead]=useState<Lead|null>(null);
   const [dialing,setDialing]=useState(false);
   const [connected,setConnected]=useState(false);
@@ -178,7 +182,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [stageFilter,setStageFilter]=useState("All stages");
   const [sourceFilter,setSourceFilter]=useState("All sources");
   const [ownerFilter,setOwnerFilter]=useState("All owners");
-  const [leadSort,setLeadSort]=useState("Next best");
+  const [leadSort,setLeadSort]=useState("Newest");
   const [phoneReady,setPhoneReady]=useState(false);
   const [phoneStatus,setPhoneStatus]=useState("Checking Twilio setup…");
   const [muted,setMuted]=useState(false);
@@ -193,6 +197,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [showPhoneSettings,setShowPhoneSettings]=useState(false);
   const [callLogs,setCallLogs]=useState<CallLog[]>([]);
   const [activeLine,setActiveLine]=useState<LeadLine>("home-auto");
+  const [minerMode,setMinerMode]=useState<MinerMode>("personal-auto");
+  const [dialerScope,setDialerScope]=useState<DialerScope>("crm");
+  const [minerRunIds,setMinerRunIds]=useState<number[]>([]);
   const [autoDialing,setAutoDialing]=useState(false);
   const [checkoutPlan,setCheckoutPlan]=useState("");
   const [leadFeedStatus,setLeadFeedStatus]=useState("Checking the secure inbound queue…");
@@ -224,6 +231,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [recordingBusy,setRecordingBusy]=useState(false);
   const [pipelineScope,setPipelineScope]=useState<"open"|"closed">("open");
   const inputRef=useRef<HTMLInputElement>(null);
+  const minerInputRef=useRef<HTMLInputElement>(null);
   const scanInputRef=useRef<HTMLInputElement>(null);
   const fileDragDepthRef=useRef(0);
   const deviceRef=useRef<Device|null>(null);
@@ -239,11 +247,14 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const watchdogRef=useRef<number|undefined>(undefined);
   const elapsedRef=useRef(0);
   const savedPostCallRef=useRef("");
+  const postCallLogIdRef=useRef("");
   const [desktopWrapError,setDesktopWrapError]=useState("");
   const currentLogRef=useRef<(CallLog & { connectedAt?:number; finalized?:boolean })|null>(null);
   const callLogsRef=useRef<CallLog[]>([]);
   const leadsRef=useRef<Lead[]>(starterLeads);
   const activeLineRef=useRef<LeadLine>("home-auto");
+  const dialerScopeRef=useRef<DialerScope>("crm");
+  const minerRunIdsRef=useRef<number[]>([]);
   const skipQueuePreferenceSaveRef=useRef(true);
   const autoDialRef=useRef(false);
   const advancingRef=useRef(false);
@@ -257,13 +268,15 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const latestInboundRef=useRef(0);
   const dialerRunsRef=useRef(workspaceProfile.dialerRuns); // PACIFICA_STABLE_DIALER_RUN_V2
   const lineLeads=useMemo(()=>leads.filter(item=>item.line===activeLine),[leads,activeLine]);
-  const activeDialerRun=workspaceProfile.dialerRuns[activeLine];
-  const dynamicCallableLeads=useMemo(()=>rankDialerLeads(lineLeads.filter(item=>isDialerEligibleLead(item,priorityNow)&&normalizedCsvPhone(item.phone).length>=7),priorityNow),[lineLeads,priorityNow]);
+  const scopedDialerLeads=useMemo(()=>dialerScope==="miner-personal-auto"?minerLeads.filter(item=>/Personal Auto/i.test(item.source)):dialerScope==="miner-commercial"?minerLeads.filter(item=>/Commercial/i.test(item.source)):lineLeads,[dialerScope,minerLeads,lineLeads]);
+  const activeDialerRun=dialerScope==="crm"?workspaceProfile.dialerRuns[activeLine]:null;
+  const dynamicCallableLeads=useMemo(()=>rankDialerLeads(scopedDialerLeads.filter(item=>isDialerEligibleLead(item,priorityNow)&&normalizedCsvPhone(item.phone).length>=7),priorityNow),[scopedDialerLeads,priorityNow]);
   const callableLeads=useMemo(()=>{
+    if(dialerScope!=="crm")return minerRunIds.length?refreshDialerRun(minerRunIds,dynamicCallableLeads,priorityNow):dynamicCallableLeads;
     if(!activeDialerRun?.ids.length)return dynamicCallableLeads;
     const eligibleById=new Map(lineLeads.filter(item=>isDialerEligibleLead(item,priorityNow)&&normalizedCsvPhone(item.phone).length>=7).map(item=>[item.id,item] as const));
     return refreshDialerRun(activeDialerRun.ids,Array.from(eligibleById.values()),priorityNow);
-  },[activeDialerRun,dynamicCallableLeads,lineLeads,priorityNow]);
+  },[dialerScope,minerRunIds,activeDialerRun,dynamicCallableLeads,lineLeads,priorityNow]);
   const queuedLead=(activeDialerRun?callableLeads[0]:callableLeads[index%Math.max(callableLeads.length,1)])||emptyLead;
   const postCallLead=manualWrap?.lead||(postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined);
   const loadedLead=loadedLeadId?leads.find(item=>item.id===loadedLeadId):undefined;
@@ -279,7 +292,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const importedLeadDetails=useMemo(()=>supplementalLeadDetails(lead),[lead]);
   const upNextLeads=callableLeads.filter(item=>item.id!==lead.id).slice(0,3);
   const leadQueuePosition=activeDialerRun?Math.min(activeDialerRun.completed,Math.max(0,activeDialerRun.total-1)):Math.max(0,callableLeads.findIndex(item=>item.id===lead.id));
-  const leadQueueTotal=activeDialerRun?.total||callableLeads.length;
+  const leadQueueTotal=activeDialerRun?.total||(dialerScope==="crm"?callableLeads.length:Math.max(minerRunIds.length,callableLeads.length));
   const leadQueueRemaining=callableLeads.length;
 
   useEffect(()=>{let canceled=false;let saved:LeadLine="home-auto";try{if(localStorage.getItem(`pacifica:${workspaceId}:last-lead-queue`)==="life")saved="life"}catch{}activeLineRef.current=saved;skipQueuePreferenceSaveRef.current=true;queueMicrotask(()=>{if(!canceled)setActiveLine(saved)});return()=>{canceled=true}},[workspaceId]);
@@ -293,11 +306,13 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   useEffect(()=>{document.documentElement.dataset.theme=workspaceProfile.appearance;document.documentElement.dataset.displaySize=workspaceProfile.displaySize;document.documentElement.style.colorScheme=workspaceProfile.appearance},[workspaceProfile.appearance,workspaceProfile.displaySize]);
   useEffect(()=>{leadsRef.current=allLeads},[allLeads]);
   useEffect(()=>{dialerRunsRef.current=workspaceProfile.dialerRuns},[workspaceProfile.dialerRuns]);
+  useEffect(()=>{dialerScopeRef.current=dialerScope},[dialerScope]);
+  useEffect(()=>{minerRunIdsRef.current=minerRunIds},[minerRunIds]);
   useEffect(()=>{callLogsRef.current=callLogs},[callLogs]);
   useEffect(()=>{quietDialingRef.current=workspaceProfile.quietDialing;quietCallAudioRef.current?.setQuiet(workspaceProfile.quietDialing)},[workspaceProfile.quietDialing]);
   useEffect(()=>()=>{quietCallAudioRef.current?.dispose();screeningRef.current?.dispose()},[]);
   useEffect(()=>{if(!workspaceHydrated||!clerkEnabled)return;let canceled=false;let refreshing=false;const seenKey=`pacifica:${workspaceId}:messages-seen`;const refresh=()=>{if(refreshing)return;refreshing=true;void fetch("/api/crm/workspace",{cache:"no-store"}).then(response=>{if(!response.ok)throw new Error("Workspace refresh failed");return response.json()}).then(data=>{if(canceled)return;if(Array.isArray(data.callLogs))setCallLogs(current=>mergeRecordingUpdates(current,data.callLogs as CallLog[]));const remoteLeads=normalizeSavedLeads(data.leads);setLeads(current=>mergeIncomingContacts(current,remoteLeads));let seen=0;try{seen=Number(localStorage.getItem(seenKey))||0}catch{}const inbound=remoteLeads.flatMap(item=>(item.communications||[]).filter(comm=>String(comm.direction||"").toLowerCase().includes("in")).map(comm=>({lead:item,time:new Date(String(comm.sentAt||"")).getTime()||0,body:String(comm.body||comm.subject||"New message")}))).filter(item=>item.time>seen).sort((a,b)=>b.time-a.time);setMessageUnreadCount(inbound.length);const latest=inbound[0];if(latest&&latest.time>latestInboundRef.current){if(latestInboundRef.current&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(`New message from ${latest.lead.name}`,{body:latest.body,icon:"/pacifica-icon-192.png"});latestInboundRef.current=latest.time}}).catch(()=>undefined).finally(()=>{refreshing=false})};const initial=window.setTimeout(refresh,1500);const timer=window.setInterval(refresh,5000);return()=>{canceled=true;window.clearTimeout(initial);window.clearInterval(timer)}},[clerkEnabled,workspaceHydrated,workspaceId]);
-  function openView(id:View){if(id==="messages"){try{localStorage.setItem(`pacifica:${workspaceId}:messages-seen`,String(Date.now()))}catch{}setMessageUnreadCount(0);if(typeof Notification!=="undefined"&&Notification.permission==="default")void Notification.requestPermission()}setGrowthLeadId(null);setSelectedLead(null);setView(id)}
+  function openView(id:View){if(id==="dialer"){dialerScopeRef.current="crm";setDialerScope("crm");minerRunIdsRef.current=[];setMinerRunIds([])}if(id==="messages"){try{localStorage.setItem(`pacifica:${workspaceId}:messages-seen`,String(Date.now()))}catch{}setMessageUnreadCount(0);if(typeof Notification!=="undefined"&&Notification.permission==="default")void Notification.requestPermission()}setGrowthLeadId(null);setSelectedLead(null);setView(id)}
   useEffect(()=>{const onKeyDown=(event:KeyboardEvent)=>{if(event.key!=="Escape")return;if(growthLeadId!==null){setGrowthLeadId(null);return}if(selectedLead!==null){setSelectedLead(null);return}if(showNewLead)setShowNewLead(false)};window.addEventListener("keydown",onKeyDown);return()=>window.removeEventListener("keydown",onKeyDown)},[growthLeadId,selectedLead,showNewLead]);
   useEffect(()=>{if(!workspaceHydrated||workspaceProfile.assignmentStrategy!=="round-robin")return;const members=workspaceProfile.teamRoster.filter(member=>member.active);if(!members.length)return;const initial=window.setTimeout(()=>setLeads(list=>{const counts=new Map(members.map(member=>[member.name,list.filter(lead=>lead.assignedTo===member.name&&lead.stage!=="Closed").length]));let changed=false;const next=list.map(lead=>{if(lead.assignedTo||lead.stage==="Closed"||lead.doNotCall)return lead;const member=members.toSorted((left,right)=>(counts.get(left.name)||0)-(counts.get(right.name)||0)||left.name.localeCompare(right.name))[0];counts.set(member.name,(counts.get(member.name)||0)+1);changed=true;return {...lead,assignedTo:member.name}});return changed?next:list}),0);return()=>window.clearTimeout(initial)},[workspaceHydrated,workspaceProfile.assignmentStrategy,workspaceProfile.teamRoster]);
   useEffect(()=>{const refresh=()=>setPriorityNow(Date.now());const reconnect=()=>{refresh();setWorkspaceSavePulse(value=>value+1)};const timer=window.setInterval(refresh,15000);window.addEventListener("focus",refresh);window.addEventListener("online",reconnect);document.addEventListener("visibilitychange",refresh);return()=>{window.clearInterval(timer);window.removeEventListener("focus",refresh);window.removeEventListener("online",reconnect);document.removeEventListener("visibilitychange",refresh)}},[]);
@@ -386,18 +401,30 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     dialerRunsRef.current={...dialerRunsRef.current,[line]:run};
     setWorkspaceProfile(profile=>({...profile,dialerRuns:{...profile.dialerRuns,[line]:run}}));
   }
+  function scopeForLead(item:Lead):DialerScope{return /Pacifica Miner\s*·\s*Personal Auto/i.test(item.source)?"miner-personal-auto":/Pacifica Miner\s*·\s*Commercial/i.test(item.source)?"miner-commercial":"crm"}
+  function dialerQueueLabel(scope=dialerScopeRef.current){return scope==="miner-personal-auto"?"Miner · Personal Auto":scope==="miner-commercial"?"Miner · Commercial":queueLabel(activeLineRef.current,workspaceProfile.mode)}
   function eligibleDialerLeads(line:LeadLine){
-    return leadsRef.current.filter(item=>item.line===line&&isDialerEligibleLead(item)&&normalizedCsvPhone(item.phone).length>=7);
+    const scope=dialerScopeRef.current;
+    if(scope!=="crm")return leadsRef.current.filter(item=>!item.deletedAt&&scopeForLead(item)===scope&&isDialerEligibleLead(item)&&normalizedCsvPhone(item.phone).length>=7);
+    return leadsRef.current.filter(item=>!item.deletedAt&&scopeForLead(item)==="crm"&&item.line===line&&isDialerEligibleLead(item)&&normalizedCsvPhone(item.phone).length>=7);
   }
   function createDialerRun(line:LeadLine){
-    const now=Date.now();
-    const ranked=rankDialerLeads(eligibleDialerLeads(line),now);
+    const ranked=rankDialerLeads(eligibleDialerLeads(line),Date.now());
+    if(dialerScopeRef.current!=="crm"){
+      const ids=ranked.map(item=>item.id);minerRunIdsRef.current=ids;setMinerRunIds(ids);return ranked;
+    }
     if(!ranked.length){setDialerRunState(line,null);return ranked}
     const stamp=new Date().toISOString();
     setDialerRunState(line,{ids:ranked.map(item=>item.id),completed:0,total:ranked.length,startedAt:stamp,updatedAt:stamp});
     return ranked;
   }
   function remainingDialerRunLeads(line:LeadLine){
+    if(dialerScopeRef.current!=="crm"){
+      const eligible=eligibleDialerLeads(line);if(!minerRunIdsRef.current.length)return [] as Lead[];
+      const remaining=refreshDialerRun(minerRunIdsRef.current,eligible);
+      const ids=remaining.map(item=>item.id);if(ids.join(",")!==minerRunIdsRef.current.join(",")){minerRunIdsRef.current=ids;setMinerRunIds(ids)}
+      return remaining;
+    }
     const run=dialerRunsRef.current[line];if(!run)return [] as Lead[];
     const eligibleById=new Map(eligibleDialerLeads(line).map(item=>[item.id,item] as const));
     const remaining=refreshDialerRun(run.ids,Array.from(eligibleById.values()));
@@ -410,6 +437,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     return remaining;
   }
   function completeDialerRunLead(leadId:number,line:LeadLine){
+    if(dialerScopeRef.current!=="crm"){
+      const remaining=minerRunIdsRef.current.filter(id=>id!==leadId);minerRunIdsRef.current=remaining;setMinerRunIds(remaining);return null;
+    }
     const run=dialerRunsRef.current[line];if(!run||!run.ids.includes(leadId))return run;
     const eligibleIds=new Set(eligibleDialerLeads(line).map(item=>item.id));
     const remainingIds=run.ids.filter(id=>id!==leadId&&eligibleIds.has(id));
@@ -421,7 +451,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if(!autoDialRef.current)return;
     if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);
     const queue=remainingDialerRunLeads(activeLineRef.current);
-    if(!queue.length){stopAutoDial(`${queueLabel(activeLineRef.current,workspaceProfile.mode)} run completed · Start calling creates a fresh queue`);return}
+    if(!queue.length){stopAutoDial(`${dialerQueueLabel()} run completed · Start calling creates a fresh queue`);return}
     const nextLead=queue[0];setIndex(0);setPhoneStatus(`Calling ${nextLead.name} next…`);setToast("");
     nextCallTimerRef.current=window.setTimeout(()=>{nextCallTimerRef.current=undefined;if(autoDialRef.current)void placeCall(nextLead.phone,false,nextLead)},450);
   }
@@ -461,6 +491,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const saveId=`${callAttemptRef.current}:${postCallLeadId}`;if(savedPostCallRef.current===saveId)return;
     savedPostCallRef.current=saveId;
     const resultDraft=desktopDraft||postCallDraft;
+    const markedLogId=postCallLogIdRef.current;if(markedLogId){setCallLogs(list=>list.map(log=>log.id===markedLogId?{...log,outcome:resultDraft.crmOutcome,status:"Disposition saved"}:log));postCallLogIdRef.current=""}
     setSourceSyncing(true);
     const won=resultDraft.crmOutcome==="Sold / Won";const now=new Date();
     const missed=["No answer","Voicemail"].includes(resultDraft.crmOutcome);const terminal=resultDraft.crmStage==="Closed"||["Not interested","Wrong number","Sold / Won"].includes(resultDraft.crmOutcome);const humanFollowUp=["Interested","Appointment set","Completed","Call back later"].includes(resultDraft.crmOutcome);
@@ -485,6 +516,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if(attemptId!==callAttemptRef.current||advancingRef.current)return;advancingRef.current=true;
     screeningRef.current?.dispose();screeningRef.current=null;setScreening(false);
     const endedLog=currentLogRef.current;
+    postCallLogIdRef.current=endedLog?.id||"";
     const wasConnected=Boolean(endedLog?.connectedAt);const shouldResume=autoDialRef.current;
     if(!wasConnected&&outcome==="Completed")outcome="No answer";
     const attemptWasEstablished=establishedAttemptRef.current===attemptId;
@@ -518,7 +550,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     advancingRef.current=false;
     setManualCall(wasManual);setCurrentCallLeadId(wasManual?null:queuedLead.id);setDialing(true);setConnected(false);setSeconds(0);elapsedRef.current=0;setPhoneStatus("Checking microphone…");const callStartedAt=new Date().toISOString();setWorkspaceProfile(profile=>({...profile,liveCallSession:{leadId:wasManual?null:queuedLead.id,name:wasManual?"Manual call":queuedLead.name,phone:number,line:queuedLead.line,status:"dialing",startedAt:callStartedAt,updatedAt:callStartedAt}}));
     const currentLeadId=wasManual?findDialedContact(leadsRef.current.filter(item=>!item.deletedAt),number)?.id:queuedLead.id;
-    currentLogRef.current={id:crypto.randomUUID(),name:wasManual?"Manual call":queuedLead.name,phone:number,startedAt:new Date().toISOString(),duration:0,outcome:"Dialing",status:"Connecting",campaign:queueLabel(queuedLead.line,workspaceProfile.mode),source:wasManual?"Manual keypad":autoDialRef.current?"CRM auto dial":"CRM manual call"};
+    currentLogRef.current={id:crypto.randomUUID(),name:wasManual?"Manual call":queuedLead.name,phone:number,startedAt:new Date().toISOString(),duration:0,outcome:"Dialing",status:"Connecting",campaign:dialerQueueLabel(),source:wasManual?"Manual keypad":autoDialRef.current?"CRM auto dial":"CRM manual call"};
     watchdogRef.current=window.setTimeout(()=>finishCall(wasManual,currentLeadId,"Call setup timed out. Check microphone access and Calling settings, then retry.","Failed",undefined,attemptId),30000);
     try{
       const audioPreferences=readAudioPreferences();
@@ -544,8 +576,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         screeningRef.current=createCallScreening({
           callSid:()=>String(call.parameters?.CallSid||""),
           read:async sid=>{const response=await fetch(`/api/twilio/status?callSid=${encodeURIComponent(sid)}`,{cache:"no-store",signal:AbortSignal.timeout(1800)});if(!response.ok)throw new Error("Call screening unavailable");return (await response.json()).result},
-          connect:()=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;quietCallAudioRef.current?.release();call.mute(false);setMuted(false);setScreening(false);setPhoneStatus("Audio connected · human or screening assistant")},
-          skip:result=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;call.disconnect();finishCall(wasManual,currentLeadId,`${result} · saved automatically`,result,undefined,attemptId,true)},
+          connect:()=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;quietCallAudioRef.current?.release();call.mute(false);setMuted(false);setScreening(false);if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current&&!currentLogRef.current.connectedAt)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")},
+          skip:result=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;finishCall(wasManual,currentLeadId,`${result} · continuing`,result,undefined,attemptId,true);call.disconnect()},
         });
       }
       const markAttempt=()=>{
@@ -555,9 +587,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       };
       call.on("ringing",()=>{markAttempt();setPhoneStatus(quietDialingRef.current?"Ringing · quiet until answered":"Ringing…")});
       if(watchdogRef.current)window.clearTimeout(watchdogRef.current);
-      watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,"No answer after four-ring window","Timed out",undefined,attemptId);call.disconnect()},25000);
-      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(screenThisCall?"Checking answer · Connect now to speak":clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
-      call.on("disconnect",()=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;finishCall(wasManual,currentLeadId,autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume","Completed",undefined,attemptId)})()});
+      watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,"No answer after four-ring window","No answer",undefined,attemptId,Boolean(!wasManual&&autoDialRef.current));call.disconnect()},25000);
+      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(screenThisCall){setPhoneStatus("Ringing quietly · waiting for answer");return}if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
+      call.on("disconnect",()=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;const neverConnected=!currentLogRef.current?.connectedAt;finishCall(wasManual,currentLeadId,neverConnected&&autoDialRef.current?"No answer · continuing":autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume",neverConnected?"No answer":"Completed",undefined,attemptId,Boolean(neverConnected&&!wasManual&&autoDialRef.current))})()});
       const onUnconnectedEnd=(message:string,outcome:string)=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;finishCall(wasManual,currentLeadId,message,outcome,undefined,attemptId)})()};
       call.on("cancel",()=>onUnconnectedEnd("Call canceled","Canceled"));
       call.on("reject",()=>onUnconnectedEnd("Call was rejected","Rejected"));
@@ -579,6 +611,12 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if((!loadedLead&&!queue.length)||normalizedCsvPhone(nextLead.phone).length<7){setView("leads");setToast(lineLeads.length?"No open contacts are eligible to dial":`Import ${queueLabel(activeLine,workspaceProfile.mode)} first`);return}
     sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=!loadedLead;setAutoDialing(!loadedLead);void placeCall(nextLead.phone,false,nextLead);
   }
+  function startMinerDialer(mode:MinerMode){
+    if(dialing||postCallLeadId){setToast("Finish the current call and save its result first");return}
+    const scope:DialerScope=mode==="personal-auto"?"miner-personal-auto":"miner-commercial";setMinerMode(mode);dialerScopeRef.current=scope;setDialerScope(scope);setLoadedLeadId(null);minerRunIdsRef.current=[];setMinerRunIds([]);
+    const queue=createDialerRun(activeLineRef.current);if(!queue.length){setToast(`No ${mode==="personal-auto"?"personal-auto":"commercial"} Miner prospects are ready to dial`);return}
+    sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=true;setAutoDialing(true);void placeCall(queue[0].phone,false,queue[0]);
+  }
   function hangup(){
     screeningRef.current?.dispose();screeningRef.current=null;setScreening(false);
     const call=callRef.current;
@@ -590,8 +628,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function deleteLead(item:Lead){
     if(postCallLeadId===item.id){setToast("Save the call result before deleting this contact.");return}
     if(dialing&&item.id===currentCallLeadId){setToast("Finish the current call before deleting this contact.");return}
-    const now=new Date().toISOString();
-    updateLead(item.id,{deletedAt:now,deletionUpdatedAt:now,automationEnabled:false,automationNextAt:"",automationStatus:"deleted"});
+    const now=new Date().toISOString(),phone=normalizedCsvPhone(item.phone),email=normalizedCsvEmail(item.email);
+    setLeads(list=>list.map(lead=>{const same=lead.id===item.id||(phone.length>=7&&normalizedCsvPhone(lead.phone)===phone)||(email.includes("@")&&normalizedCsvEmail(lead.email)===email);return same?{...lead,deletedAt:now,deletionUpdatedAt:now,automationEnabled:false,automationNextAt:"",automationStatus:"deleted"}:lead}));
     if(loadedLeadId===item.id)setLoadedLeadId(null);
     setSelectedLead(null);setDeletedLead(item);
   }
@@ -642,11 +680,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     call.on("error",error=>finishCall(!matched,matched?.id,error.message||"Inbound call failed","Failed","code" in error?String(error.code):undefined,attemptId));
     call.accept();
   }
-  function callLeadById(id:number){const item=leadsRef.current.find(candidate=>candidate.id===id);if(!item)return;if(postCallLeadId){setToast("Save the call result or choose Call again first");return}if(item.doNotCall||normalizedCsvPhone(item.phone).length<7){setToast(item.doNotCall?"This contact is marked Do Not Call":"Enter a complete phone number");return}sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=item.line;setActiveLine(item.line);const queue=rankLeads(leadsRef.current.filter(candidate=>candidate.line===item.line&&isDialerEligibleLead(candidate)));setIndex(Math.max(0,queue.findIndex(candidate=>candidate.id===id)));setView("dialer");void placeCall(item.phone,false,item)}
+  function callLeadById(id:number){const item=leadsRef.current.find(candidate=>candidate.id===id);if(!item)return;const nextScope=scopeForLead(item);dialerScopeRef.current=nextScope;setDialerScope(nextScope);if(postCallLeadId){setToast("Save the call result or choose Call again first");return}if(item.doNotCall||normalizedCsvPhone(item.phone).length<7){setToast(item.doNotCall?"This contact is marked Do Not Call":"Enter a complete phone number");return}sessionAttemptedLeadIdsRef.current.clear();autoDialRef.current=false;setAutoDialing(false);activeLineRef.current=item.line;setActiveLine(item.line);const queue=rankLeads(leadsRef.current.filter(candidate=>candidate.line===item.line&&isDialerEligibleLead(candidate)));setIndex(Math.max(0,queue.findIndex(candidate=>candidate.id===id)));if(nextScope==="crm")setView("dialer");void placeCall(item.phone,false,item)}
   function loadLeadInDialer(item:Lead){
     if(dialing||postCallLeadId){setToast("Finish the current call and save its result first");return}
     if(item.doNotCall||normalizedCsvPhone(item.phone).length<7){setToast(item.doNotCall?"This contact is marked Do Not Call":"This contact needs a complete phone number");return}
-    stopAutoDial(`${item.name} loaded for a one-off call`);activeLineRef.current=item.line;setActiveLine(item.line);setLoadedLeadId(item.id);setDialNumber(item.phone);setManualCall(false);setSelectedLead(null);setView("dialer");
+    stopAutoDial(`${item.name} loaded for a one-off call`);const nextScope=scopeForLead(item);dialerScopeRef.current=nextScope;setDialerScope(nextScope);activeLineRef.current=item.line;setActiveLine(item.line);setLoadedLeadId(item.id);setDialNumber(item.phone);setManualCall(false);setSelectedLead(null);setView(nextScope==="crm"?"dialer":"miner");
   }
   function pressKey(digits:string){
     if(dialing||callRef.current){
@@ -701,7 +739,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     for(let index=0;index<text.length;index++){const char=text[index];if(char==='"'){record+=char;if(quoted&&text[index+1]==='"'){record+=text[++index];continue}quoted=!quoted;continue}if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&text[index+1]==='\n')index++;if(record.trim())records.push(record);record="";continue}record+=char}
     if(record.trim())records.push(record);return records;
   }
-  function importFile(file?: File) {
+  function importFile(file?: File, minerType?: MinerMode) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
@@ -751,7 +789,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       const estimatedValueIndex=find("estimatedvalue","dealvalue","opportunityvalue","pipelinevalue");
       const closedRevenueIndex=find("closedrevenue","revenue","wonrevenue","saleamount");
       const fileSource = file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim() || "CSV import";
-      const detectedSource=header.includes("searchpro")&&header.includes("profilename")&&header.includes("territory")?"SmartFinancial":fileSource;
+      const detectedSource=minerType?`Pacifica Miner · ${minerType==="personal-auto"?"Personal Auto":"Commercial"}`:header.includes("searchpro")&&header.includes("profilename")&&header.includes("territory")?"SmartFinancial":fileSource;
       const importStartedAt=new Date().toISOString();
       let invalid = 0;
       let detectedLife = 0;
@@ -795,7 +833,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
           line,
           source: (hasHeader ? get(cells, sourceIndex) : "") || detectedSource,
           leadCost: Number((hasHeader ? get(cells, costIndex) : "0").replace(/[^0-9.-]/g, "")) || 0,
-          product: product || "Service inquiry",
+          product: product || (minerType==="personal-auto"?"Auto insurance prospect":minerType==="commercial"?"Commercial insurance prospect":"Service inquiry"),
           sourceDisposition: disposition,
           importedAt: received?validReceivedDate(received):new Date().toISOString(),
           address: get(cells, addressIndex),
@@ -825,7 +863,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         setActiveLine(dominantLine);
         setIndex(0);
       }
-      setView("leads");
+      setView(minerType?"miner":"leads");
 
       if (parsed.length) {
         const merged=mergeCsvLeads(leadsRef.current,parsed,importStartedAt);
@@ -884,8 +922,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       if(action.startsWith("digit:")){const digit=action.slice(6);if(/^[0-9*#]$/.test(digit))pressKey(digit)}
     });
   });
-  const nav:[View,string,string][]=[["today","Today","spark"],["dialer","Dialer","dial"],["leads","Contacts","users"],["messages","Messages","chat"],["campaigns","Pipeline","list"],["clients","Clients","shield"],["activity","Reports","chart"],["ai","Pacifica AI","spark"],["quote-desk","Quote desk","list"],["quotes","Industry Tools","shield"],["billing","Plans & Billing","list"]];
-  const activeLead=leads.find(l=>l.id===selectedLead);
+  const nav:[View,string,string][]=([["today","Today","spark"],["dialer","Dialer","dial"],["leads","Contacts","users"],["messages","Messages","chat"],["campaigns","Pipeline","list"],...(workspaceProfile.mode==="insurance"?[["miner","Miner","spark"]]:[]),["clients","Clients","shield"],["activity","Reports","chart"],["ai","Pacifica AI","spark"],...(workspaceProfile.mode==="insurance"?[["quote-desk","Quote desk","list"]]:[]),["quotes","Industry Tools","shield"],["billing","Plans & Billing","list"]] as [View,string,string][]);
+  const activeLead=allLeads.find(l=>l.id===selectedLead&&!l.deletedAt);
   const growthLead=leads.find(l=>l.id===growthLeadId);
   const incomingLead=findDialedContact(leads,incomingNumber);
   const sourceOptions=["All sources",...Array.from(new Set(lineLeads.map(item=>item.source)))];
@@ -1009,6 +1047,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
 
   return <main className="app-shell" onDragEnter={onFileDragEnter} onDragOver={onFileDragOver} onDragLeave={onFileDragLeave} onDrop={onFileDrop}>
     {!workspaceHydrated&&<WorkspaceLoadGate failed={workspaceSyncStatus.startsWith("Offline")}/>}
+    {workspaceHydrated&&isOwner&&!workspaceProfile.onboardingCompleted&&<BusinessOnboarding profile={workspaceProfile} onComplete={setWorkspaceProfile}/>}
     {fileDragActive&&<div className="file-drop-overlay" role="status" aria-live="polite"><div><Icon name="upload"/><span>DROP TO IMPORT</span><b>License, policy, or lead file</b><small>Images create a reviewable lead · CSV, TSV, and TXT merge into Contacts</small></div></div>}
     <aside className="sidebar">
       <div className="logo"><span className="brand-mark"><Image src="/pacifica-mark.png" width={32} height={32} alt="" priority/></span><div><b>PACIFICA</b></div></div>
@@ -1018,15 +1057,15 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>{callerId}</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" role="group" aria-label="Lead queue"><button className={activeLine==="life"?"active":""} aria-pressed={activeLine==="life"} disabled={dialing} onClick={()=>switchLine("life")}>{queueLabel("life",workspaceProfile.mode)}</button><button className={activeLine==="home-auto"?"active":""} aria-pressed={activeLine==="home-auto"} disabled={dialing} onClick={()=>switchLine("home-auto")}>{queueLabel("home-auto",workspaceProfile.mode)}</button></div><div className="top-actions"><button className={`inbound-availability ${phoneAvailable?"available":""}`} disabled={!phoneReady||dialing} title={!phoneReady?"Assign this workspace a Twilio number first":undefined} onClick={()=>void togglePhoneAvailability()}><i/>{phoneAvailable?"Calls on":"Go available"}</button><span className="workspace-sync" title="Leads, calls, and settings save automatically"><i/>{workspaceSyncStatus}</span><span className="connection" title={provider}><Icon name="wifi"/><span>{provider}</span></span><button className={`notification ${dueLeadCount?"has-alerts":""}`} aria-label={`${dueLeadCount} follow-ups due`} title={`${dueLeadCount} follow-ups due`} onClick={()=>setView("today")}><Icon name="bell"/>{dueLeadCount>0&&<em>{Math.min(99,dueLeadCount)}</em>}</button><button className="scan-action" aria-label={scanBusy?"Reading document":"Scan document"} title="Scan document" aria-busy={scanBusy} disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={scanInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";void scanDocument(file)}}/><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/></div></header>
+      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>{callerId}</b><span className={`idle-badge ${phoneReady?"online":""}`}>{phoneReady?"READY":"SETUP"}</span></div><div className="lead-line-switch" role="group" aria-label="Lead queue"><button className={activeLine==="life"?"active":""} aria-pressed={activeLine==="life"} disabled={dialing} onClick={()=>switchLine("life")}>{queueLabel("life",workspaceProfile.mode)}</button><button className={activeLine==="home-auto"?"active":""} aria-pressed={activeLine==="home-auto"} disabled={dialing} onClick={()=>switchLine("home-auto")}>{queueLabel("home-auto",workspaceProfile.mode)}</button></div><div className="top-actions"><button className={`inbound-availability ${phoneAvailable?"available":""}`} disabled={!phoneReady||dialing} title={!phoneReady?"Assign this workspace a Twilio number first":undefined} onClick={()=>void togglePhoneAvailability()}><i/>{phoneAvailable?"Calls on":"Go available"}</button><span className="workspace-sync" title="Leads, calls, and settings save automatically"><i/>{workspaceSyncStatus}</span><span className="connection" title={provider}><Icon name="wifi"/><span>{provider}</span></span><button className={`notification ${dueLeadCount?"has-alerts":""}`} aria-label={`${dueLeadCount} follow-ups due`} title={`${dueLeadCount} follow-ups due`} onClick={()=>setView("today")}><Icon name="bell"/>{dueLeadCount>0&&<em>{Math.min(99,dueLeadCount)}</em>}</button><button className="scan-action" aria-label={scanBusy?"Reading document":"Scan document"} title="Scan document" aria-busy={scanBusy} disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={scanInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";void scanDocument(file)}}/><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/><input ref={minerInputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file,minerMode)}}/></div></header>
 
-      <FloatingCallWindow onWindowChange={setFloatingWindowOpen} category={queueLabel(activeLine,workspaceProfile.mode)} active={dialing} result={postCallLead?{id:postCallLead.id,source:postCallLead.source,stage:postCallLead.stage,connected:postCallConnected,technicalOutcome:postCallTechnicalOutcome,name:postCallLead.name,number:postCallLead.phone,draft:postCallDraft,resume:resumeAfterWrap,saving:sourceSyncing,doNotCall:postCallLead.doNotCall,error:desktopWrapError,onSelect:choosePostCallOutcome,onChange:patch=>setPostCallDraft(draft=>({...draft,...patch})),onSave:()=>void savePostCall(),onAgain:()=>void savePostCall("again"),onPause:()=>{resumeAfterWrapRef.current=false;setResumeAfterWrap(false);stopAutoDial("Queue paused")}}:undefined} name={manualCall?"Manual call":lead.name} number={manualCall?dialNumber:lead.phone} connected={connected} muted={muted} elapsed={fmt} sentDigits={dtmfDisplay} feedback={dtmfFeedback.message} onMute={toggleMute} onEnd={hangup} onDigits={pressKey}/>
+      <FloatingCallWindow onWindowChange={setFloatingWindowOpen} category={dialerQueueLabel()} active={dialing} result={postCallLead?{id:postCallLead.id,source:postCallLead.source,stage:postCallLead.stage,connected:postCallConnected,technicalOutcome:postCallTechnicalOutcome,name:postCallLead.name,number:postCallLead.phone,draft:postCallDraft,resume:resumeAfterWrap,saving:sourceSyncing,doNotCall:postCallLead.doNotCall,error:desktopWrapError,onSelect:choosePostCallOutcome,onChange:patch=>setPostCallDraft(draft=>({...draft,...patch})),onSave:()=>void savePostCall(),onAgain:()=>void savePostCall("again"),onPause:()=>{resumeAfterWrapRef.current=false;setResumeAfterWrap(false);stopAutoDial("Queue paused")}}:undefined} name={manualCall?"Manual call":lead.name} number={manualCall?dialNumber:lead.phone} connected={connected} muted={muted} elapsed={fmt} sentDigits={dtmfDisplay} feedback={dtmfFeedback.message} onMute={toggleMute} onEnd={hangup} onDigits={pressKey}/>
       {dialing&&view!=="dialer"&&<ActiveCallBar name={manualCall?"Manual call":lead.name} number={manualCall?dialNumber:lead.phone} connected={connected} muted={muted} elapsed={fmt} queueRunning={autoDialing} onOpen={()=>setView("dialer")} onKeypad={openCallKeypad} onMute={toggleMute} onEnd={hangup} onPause={pauseQueue}/>}
 
       {view==="today"&&<TodayWorkspace leads={leads} onOpen={id=>setSelectedLead(id)} onCall={callLeadById} onImport={()=>inputRef.current?.click()} onAdd={openNewLead}/>}
 
       {view==="dialer"&&<div className={`dialer-view conversation-workspace ${connected||postCallLeadId?"has-conversation":"is-waiting"} ${keypadOpen?"has-keypad":""}`}>
-        <header className="dialer-toolbar"><div><h1>Dialer</h1><span>{queueLabel(activeLine,workspaceProfile.mode)} · {callableLeads.length} remaining</span></div><div className="dialer-toolbar-actions"><label className="quiet-dialing-toggle"><input type="checkbox" checked={workspaceProfile.quietDialing} onChange={event=>setWorkspaceProfile(profile=>({...profile,quietDialing:event.target.checked}))}/>Quiet dialing</label><button type="button" aria-expanded={keypadOpen} aria-controls="dialer-keypad" onClick={()=>setKeypadOpen(open=>!open)}><Icon name="keypad"/>{keypadOpen?"Hide keypad":"Keypad"}</button></div></header>
+        <header className="dialer-toolbar"><div><h1>Dialer</h1><span>{dialerQueueLabel()} · {callableLeads.length} remaining</span></div><div className="dialer-toolbar-actions"><label className="quiet-dialing-toggle"><input type="checkbox" checked={workspaceProfile.quietDialing} onChange={event=>setWorkspaceProfile(profile=>({...profile,quietDialing:event.target.checked}))}/>Quiet dialing</label><button type="button" aria-expanded={keypadOpen} aria-controls="dialer-keypad" onClick={()=>setKeypadOpen(open=>!open)}><Icon name="keypad"/>{keypadOpen?"Hide keypad":"Keypad"}</button></div></header>
         <div className="dialer-main-grid">
         <div className="dialer-primary">
         <section className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
@@ -1089,7 +1128,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
 
         <section className="bottom-grid">
           <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b></article><article><span>PHONE</span><b className="phone-stat" role="status">{phoneStatus}</b></article></div>
-          <article className="queue-card"><header><div><span>{activeDialerRun?"SAVED CALLING RUN":"PRIORITY FLOW"} · {queueLabel(activeLine,workspaceProfile.mode).toUpperCase()}</span><b>{callableLeads.length?`${Math.max(0,leadQueueRemaining-(dialing?1:0))} ${activeDialerRun?"REMAINING":"READY"}`:"QUEUE CLEAR"}</b></div><button onClick={()=>setView("leads")}>Contacts</button></header>{upNextLeads.map((l,i)=><div className="queue-row" key={l.id}><em>{String(i+1).padStart(2,"0")}</em><span className="mini-avatar">{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><div><b>{l.name}</b><small>{l.phone} · {l.city}</small></div></div>)}{!callableLeads.length&&<div className="empty-queue"><b>{lineLeads.length?"Queue clear":"No contacts"}</b>{!lineLeads.length&&<button onClick={()=>inputRef.current?.click()}>Import</button>}</div>}</article>
+          <article className="queue-card"><header><div><span>{activeDialerRun?"SAVED CALLING RUN":"PRIORITY FLOW"} · {dialerQueueLabel().toUpperCase()}</span><b>{callableLeads.length?`${Math.max(0,leadQueueRemaining-(dialing?1:0))} ${activeDialerRun?"REMAINING":"READY"}`:"QUEUE CLEAR"}</b></div><button onClick={()=>setView("leads")}>Contacts</button></header>{upNextLeads.map((l,i)=><div className="queue-row" key={l.id}><em>{String(i+1).padStart(2,"0")}</em><span className="mini-avatar">{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><div><b>{l.name}</b><small>{l.phone} · {l.city}</small></div></div>)}{!callableLeads.length&&<div className="empty-queue"><b>{lineLeads.length?"Queue clear":"No contacts"}</b>{!lineLeads.length&&<button onClick={()=>inputRef.current?.click()}>Import</button>}</div>}</article>
         </section>
         </div>
         {keypadOpen&&<DialerKeypad muted={muted} onMute={toggleMute} connected={connected} dialing={dialing} phoneReady={phoneReady} number={dialNumber} sentDigits={dtmfDisplay} feedback={dtmfFeedback} onNumberChange={setDialNumber} onDigits={pressKey} onCall={callTypedNumber}/>}
@@ -1097,6 +1136,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       </div>}
 
       {view==="leads"&&<div className="page-view crm-view"><header className="module-bar"><span className="eyebrow">{queueLabel(activeLine,workspaceProfile.mode).toUpperCase()} CONTACTS</span><div className="module-actions"><button className="secondary" disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/> {scanBusy?"Reading…":"Scan document"}</button><button className="secondary" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button><button className="primary" onClick={openNewLead}>+ Add lead</button></div></header>{importReport&&<div className="import-hint" role="status"><span><i/>Import summary</span><p>{importReport}</p></div>}<div className="crm-summary five"><article><span>CONTACTS</span><b>{lineLeads.length}</b></article><article><span>LEAD SPEND</span><b>${lineLeads.reduce((total,leadItem)=>total+leadItem.leadCost,0).toFixed(0)}</b></article><article><span>FOLLOW-UPS</span><b>{dueLeadCount}</b></article><article><span>APPOINTMENTS</span><b>{lineLeads.filter(l=>l.stage==="Appointment").length}</b></article><article><span>CALL ATTEMPTS</span><b>{lineLeads.reduce((total,item)=>total+(item.attempts||0),0)}</b></article></div><div className="crm-tools"><label><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} aria-label="Search contacts" placeholder="Search name, phone or email"/></label><div className="contact-filter-fields"><label><span>Source</span><select aria-label="Filter by source" value={sourceFilter} onChange={e=>setSourceFilter(e.target.value)}>{sourceOptions.map(source=><option key={source}>{source}</option>)}</select></label><label><span>Owner</span><select aria-label="Filter by owner" value={ownerFilter} onChange={e=>setOwnerFilter(e.target.value)}>{ownerOptions.map(owner=><option key={owner}>{owner}</option>)}</select></label><label><span>Stage</span><select aria-label="Filter by pipeline stage" value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option>All stages</option><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Quoted</option><option>Closed</option></select></label><label><span>Sort</span><select aria-label="Sort contacts" value={leadSort} onChange={e=>setLeadSort(e.target.value)}><option value="Next best">Recommended order</option><option>Newest</option><option>Follow-up due</option><option>Recently attempted</option><option>Name</option></select></label></div></div><div className="table-card crm-table smart-table"><div className="table-head"><span>CONTACT & PRIORITY</span><span>SOURCE & OWNER</span><span>STAGE</span><span>LAST RESULT</span><span>NEXT FOLLOW-UP</span></div>{filteredLeads.map(l=>{const priority=leadPriority(l,priorityNow);const nextAction=l.followUp||l.automationNextAt;return <button className="table-row" key={l.id} onClick={()=>setSelectedLead(l.id)}><span><i>{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</i><span><span className="contact-name-line"><b>{l.name}</b><em className={`priority-pill ${priority.level.toLowerCase()}`}>{priority.level}</em></span><small>{l.phone||"No phone"} · {l.email||"No email"}</small><small className="priority-summary">{priority.reason}</small></span></span><span className="lead-source"><b>{l.source}</b><small>{l.assignedTo||"Unassigned"}{l.leadCost?` · $${l.leadCost.toFixed(2)}`:""}</small></span><span><em className={`stage ${l.stage.toLowerCase().replace(" ","-")}`}>{l.stage}</em></span><span>{l.outcome}<small>{l.attempts||0} attempt{l.attempts===1?"":"s"}</small></span><span>{nextAction?new Date(nextAction).toLocaleString():"—"}{l.doNotCall&&<strong className="dnc">DNC</strong>}</span></button>})}{!filteredLeads.length&&<div className="empty-state">No matching contacts</div>}</div></div>}
+
+      {view==="miner"&&workspaceProfile.mode==="insurance"&&<MinerPanel mode={minerMode} onMode={setMinerMode} prospects={minerLeads} dialing={dialing} activeScope={dialerScope} onImport={()=>minerInputRef.current?.click()} onStart={startMinerDialer} onCall={callLeadById} onOpen={setSelectedLead}/>}
 
       <div hidden={view!=="messages"} className="page-view messages-view"><MessagesCenter key={`${workspaceId}:${activeLine}:${messageTarget?.leadId||"inbox"}:${messageTarget?.channel||"sms"}`} workspaceId={workspaceId} profile={workspaceProfile} leads={lineLeads} initialLeadId={messageTarget?.leadId} initialChannel={messageTarget?.channel} onOpenContact={id=>setSelectedLead(id)} onCloseLead={id=>updateLead(id,{stage:"Closed",status:"Closed",outcome:"Not interested",followUp:"",automationEnabled:false,automationNextAt:"",automationStatus:"complete",automationUpdatedAt:new Date().toISOString()})} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile}/></div>
 

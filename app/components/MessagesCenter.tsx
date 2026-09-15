@@ -60,6 +60,7 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
   const visibleLeads=useMemo(()=>{
     const query=contactSearch.trim().toLowerCase();
     return orderedLeads.filter(lead=>{
+      if(lead.smsOptOut&&lead.stage==="Closed")return false;
       if(inboxFilter==="personal"&&!requiresPersonalText(lead))return false;
       if(inboxFilter==="closed"&&lead.stage!=="Closed")return false;
       if(inboxFilter==="replies"&&(!latestMessages.get(lead.id)?.incoming||lead.stage==="Closed"||lead.smsOptOut||lead.doNotCall))return false;
@@ -82,7 +83,7 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
     if(!mounted.current)return;
     if(smsResult.status==="fulfilled"&&smsResult.value.response.ok){
       const incoming=smsResult.value.data.messages||[];setSmsMessages(incoming);setTwilioNumber(smsResult.value.data.phone||"");setSmsConnection(smsResult.value.data.sending?.configured?"ready":"error");setSmsSetupMessage(smsResult.value.data.sending?.message||"SMS sending readiness could not be confirmed. Refresh to check again.");
-      for(const message of incoming){if(!/inbound/i.test(message.direction)||!/^\s*(stop|stopall|unsubscribe|cancel|end|quit)\s*[.!]?\s*$/i.test(message.body))continue;const match=leadSnapshot.current.find(lead=>digits(lead.phone)===digits(message.from));if(match&&!match.smsOptOut)patchLead.current(match.id,{smsOptOut:true,smsConsent:false})}
+      for(const message of incoming){if(!/inbound/i.test(message.direction)||!/^\s*(stop|stopall|unsubscribe|cancel|end|quit)\s*[.!]?\s*$/i.test(message.body))continue;const match=leadSnapshot.current.find(lead=>digits(lead.phone)===digits(message.from));if(match&&!match.smsOptOut)patchLead.current(match.id,{smsOptOut:true,smsConsent:false,doNotCall:true,stage:"Closed",outcome:"Not interested",followUp:"",sourceDisposition:"Lost - Not Interested"})}
     }else {setSmsConnection("error");setSmsSetupMessage(smsResult.status==="fulfilled"?smsResult.value.data.error||"SMS connection unavailable":"Could not reach SMS. Refresh to try again.");}
     if(workspaceResult.status==="fulfilled"&&workspaceResult.value.response.ok){
       for(const remote of workspaceResult.value.data.leads||[]){
