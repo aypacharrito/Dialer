@@ -518,6 +518,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const endedLog=currentLogRef.current;
     postCallLogIdRef.current=endedLog?.id||"";
     const wasConnected=Boolean(endedLog?.connectedAt);const shouldResume=autoDialRef.current;
+    const autoUnconnected=Boolean(!wasManual&&shouldResume&&!wasConnected);
+    automaticSkip=Boolean(automaticSkip||autoUnconnected);
     if(!wasConnected&&outcome==="Completed")outcome="No answer";
     const attemptWasEstablished=establishedAttemptRef.current===attemptId;
     if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;finalizeLog(outcome,message,errorCode);

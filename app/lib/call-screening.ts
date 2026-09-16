@@ -4,14 +4,15 @@ export type ScreeningDecision="wait"|"connect"|"skip-no-answer";
 
 export function screeningDecision(result:ScreeningResult|null,callSid:string,released:boolean):ScreeningDecision{
   if(released||!result||result.callSid!==callSid)return "wait";
-  if(result.detectionStatus==="in-progress"||result.detectionStatus==="answered"||result.detectionStatus==="completed")return "connect";
+  if(result.detectionStatus==="in-progress"||result.detectionStatus==="answered")return "connect";
   if(result.detectionStatus==="no-answer")return "skip-no-answer";
   return "wait";
 }
 
 /**
  * Auto dial uses Twilio call-progress status only:
- * - in-progress/answered/completed => release audio
+ * - in-progress/answered => release audio
+ * - completed alone is only a terminal status; it does not prove an answer
  * - no-answer => skip to next
  * It never interprets AnsweredBy and never auto-skips voicemail/machines.
  */
