@@ -17,6 +17,8 @@ let overlayPosition=null;
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
+let rendererRecoveryTimer=null;
+let lastRendererRecovery=0;
 
 function host(url){
   try{return new URL(url).hostname.toLowerCase()}catch{return ""}
@@ -45,8 +47,8 @@ function saveOverlayLayout(){
 }
 function overlayState(){return {...lastCallState,layout:lastCallState.active?overlayLayout:"vertical"}}
 function overlayDimensions(phase){
-  const minimum=phase==="wrap"?[480,560]:(overlayLayout==="vertical"?[280,180]:[480,88]);
-  const saved=overlaySizes[phase==="wrap"?"wrap:result":`${phase}:${overlayLayout}`];
+  const minimum=phase==="incoming"?[420,138]:phase==="wrap"?[480,560]:(overlayLayout==="vertical"?[280,180]:[480,88]);
+  const saved=overlaySizes[phase==="incoming"?"incoming":phase==="wrap"?"wrap:result":`${phase}:${overlayLayout}`];
   return minimum.map((size,index)=>Math.max(size,Math.min(index?900:1200,Number(saved?.[index])||size)));
 }
 
@@ -78,6 +80,20 @@ function createOverlay(){
   return overlayWindow;
 }
 
+function recoverMainRenderer(reason="renderer unavailable"){
+  if(!mainWindow||mainWindow.isDestroyed())return;
+  const now=Date.now();if(now-lastRendererRecovery<8000)return;lastRendererRecovery=now;
+  console.warn("[Pacifica desktop recovery]",reason);
+  if(rendererRecoveryTimer)clearTimeout(rendererRecoveryTimer);
+  rendererRecoveryTimer=setTimeout(()=>{
+    rendererRecoveryTimer=null;
+    if(!mainWindow||mainWindow.isDestroyed())return;
+    const current=mainWindow.webContents.getURL();
+    if(isAppUrl(current))mainWindow.webContents.reloadIgnoringCache();
+    else void mainWindow.loadURL(appUrl);
+  },650);
+}
+
 function createWindow(){
   mainWindow=new BrowserWindow({
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
@@ -93,6 +109,9 @@ function createWindow(){
     if(/^https?:\/\//i.test(url))void shell.openExternal(url);return {action:"deny"};
   });
   mainWindow.webContents.on("will-navigate",(event,url)=>{if(!isTrustedNavigation(url)){event.preventDefault();if(/^https?:\/\//i.test(url))void shell.openExternal(url)}});
+  mainWindow.webContents.on("render-process-gone",(_event,details)=>{if(details.reason!=="clean-exit")recoverMainRenderer(`renderer process gone: ${details.reason}`)});
+  mainWindow.webContents.on("unresponsive",()=>recoverMainRenderer("renderer became unresponsive"));
+  mainWindow.webContents.on("did-fail-load",(_event,code,description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)recoverMainRenderer(`load failed ${code}: ${description}`)});
   void mainWindow.loadURL(appUrl);
   mainWindow.on("closed",()=>{overlayWindow?.close();overlayWindow=null;mainWindow=null});
 }
@@ -122,14 +141,14 @@ app.whenReady().then(()=>{
 app.on("window-all-closed",()=>{if(updateTimer){clearInterval(updateTimer);updateTimer=null}if(process.platform!=="darwin")app.quit()});
 
 function showCallOverlay(){
-  const nextPhase=lastCallState.active?"call":lastCallState.wrapUp?"wrap":"";
+  const nextPhase=lastCallState.incoming?"incoming":lastCallState.active?"call":lastCallState.wrapUp?"wrap":"";
   if(!nextPhase){overlayWindow?.hide();overlayPhase="";return}
   const overlay=createOverlay();
   const phaseChanged=overlayPhase!==nextPhase;
-  const geometry=nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}`;
+  const geometry=nextPhase==="incoming"?"incoming":nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}`;
   if(overlayGeometry!==geometry){
     const [width,height]=overlayDimensions(nextPhase);
-    overlay.setMinimumSize(nextPhase==="wrap"?480:(overlayLayout==="vertical"?280:480),nextPhase==="wrap"?560:(overlayLayout==="vertical"?180:88));
+    overlay.setMinimumSize(nextPhase==="incoming"?420:nextPhase==="wrap"?480:(overlayLayout==="vertical"?280:480),nextPhase==="incoming"?138:nextPhase==="wrap"?560:(overlayLayout==="vertical"?180:88));
     overlay.setSize(width,height,false);
     const bounds=overlay.getBounds(),area=screen.getDisplayMatching(bounds).workArea;
     overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-width)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
@@ -140,10 +159,12 @@ function showCallOverlay(){
   // Timer updates must not restore a minimized window or move a dragged window.
   // A new result is shown so wrap-up is available outside the CRM as requested.
   if(overlay.isMinimized()){
-    if(nextPhase!=="wrap"||!phaseChanged)return;
+    if(nextPhase!=="wrap"&&nextPhase!=="incoming")return;
+    if(!phaseChanged)return;
     overlay.restore();
   }
-  if(!overlay.isVisible())overlay.showInactive();
+  if(nextPhase==="incoming"&&phaseChanged){overlay.show();overlay.focus();overlay.flashFrame(true)}
+  else if(!overlay.isVisible())overlay.showInactive();
 }
 
 ipcMain.on("pacifica:call-state",(event,state)=>{
@@ -157,7 +178,7 @@ ipcMain.on("pacifica:call-action",(event,action)=>{
   if(!overlayWindow||event.sender!==overlayWindow.webContents||typeof action!=="string")return;
   if(action==="toggle-layout"&&lastCallState.active){overlayLayout=overlayLayout==="horizontal"?"vertical":"horizontal";saveOverlayLayout();showCallOverlay();return}
   if(action==="minimize"){overlayWindow.setSkipTaskbar(false);overlayWindow.minimize();return}
-  if(!["open","mute","end","pause"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
+  if(!["open","mute","end","pause","answer-incoming","decline-incoming"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
   if(action==="open"){mainWindow?.show();mainWindow?.focus()}
   mainWindow?.webContents.send("pacifica:call-action",action);
 });

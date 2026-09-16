@@ -237,6 +237,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const fileDragDepthRef=useRef(0);
   const deviceRef=useRef<Device|null>(null);
   const deviceInitPromiseRef=useRef<Promise<Device>|null>(null);
+  const audioDeviceChangeTimerRef=useRef<number|undefined>(undefined);
   const callStartGateRef=useRef(createCallStartGate());
   const clearVoiceProcessorRef=useRef<PacificaClearVoiceProcessor|null>(null);
   const callRef=useRef<Call|null>(null);
@@ -358,10 +359,25 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         device.on("error",error=>{const code="code" in error?` ${String(error.code)}`:"";setPhoneStatus(`Twilio${code}: ${error.message}`);setToast(`Twilio${code}: ${error.message}`)});
         device.on("registered",()=>{setPhoneAvailable(true);setPhoneStatus("Secure line available")});
         device.on("unregistered",()=>{setPhoneAvailable(false);setPhoneStatus("Inbound calls paused · outbound still ready")});
-        device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";/* PACIFICA_NATIVE_INCOMING_FOCUS_V1 */const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;showMainWindow?:()=>Promise<boolean>}}).pacificaDesktop;if(desktop?.isDesktop)void desktop.showMainWindow?.();setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
+        device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
         device.audio?.outgoing(false);
         device.audio?.disconnect(false);
-        device.audio?.on("deviceChange",()=>setPhoneStatus("Audio device changed — run the phone test"));
+        device.audio?.on("deviceChange",()=>{
+          if(audioDeviceChangeTimerRef.current)window.clearTimeout(audioDeviceChangeTimerRef.current);
+          audioDeviceChangeTimerRef.current=window.setTimeout(()=>{
+            audioDeviceChangeTimerRef.current=undefined;
+            const active=deviceRef.current;if(!active)return;
+            const preferences=readAudioPreferences();
+            void configureCallAudio(active.audio,preferences).then(async recovered=>{
+              if(Object.keys(recovered).length){saveAudioPreferences(recovered);setToast("Audio source changed · Pacifica switched the missing device to Windows default")}
+              await configureClearVoice(active);
+              setPhoneStatus(callRef.current?"Audio source changed · call audio re-routed":"Audio source changed · phone ready");
+            }).catch(error=>{
+              const message=callSetupMessage(error);
+              setPhoneStatus(message);setToast("Audio source changed · open Calling settings if you cannot hear the call");
+            });
+          },400);
+        });
       }else device.updateToken(token);
       await configureClearVoice(device);
       return device;
@@ -384,7 +400,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       }).catch(error=>setPhoneStatus(error instanceof Error?error.message:"Phone setup needs attention"));
     }catch{setPhoneStatus("Unable to check Twilio setup")}
   },[ensureDevice]);
-  useEffect(()=>{const timer=window.setTimeout(()=>void refreshPhoneStatus(),0);return()=>{window.clearTimeout(timer);if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);deviceRef.current?.destroy();deviceRef.current=null;deviceInitPromiseRef.current=null;clearVoiceProcessorRef.current=null}},[refreshPhoneStatus]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void refreshPhoneStatus(),0);return()=>{window.clearTimeout(timer);if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);if(audioDeviceChangeTimerRef.current)window.clearTimeout(audioDeviceChangeTimerRef.current);audioDeviceChangeTimerRef.current=undefined;deviceRef.current?.destroy();deviceRef.current=null;deviceInitPromiseRef.current=null;clearVoiceProcessorRef.current=null}},[refreshPhoneStatus]);
   function finalizeLog(outcome:string,status:string,errorCode?:string){
     const current=currentLogRef.current;if(!current||current.finalized)return;current.finalized=true;
     const duration=current.connectedAt?elapsedRef.current:0;
@@ -573,7 +589,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       if(attemptId!==callAttemptRef.current||advancingRef.current){call.disconnect();return}
       callRef.current=call;
       const screenThisCall=!wasManual&&autoDialRef.current;
-      quietCallAudioRef.current=attachQuietCallAudio(call,screenThisCall||quietDialingRef.current,screenThisCall);
+      quietCallAudioRef.current=attachQuietCallAudio(call,quietDialingRef.current,screenThisCall&&quietDialingRef.current);
       if(screenThisCall){
         setScreening(true);call.mute(true);
         screeningRef.current=createCallScreening({
@@ -591,7 +607,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       call.on("ringing",()=>{markAttempt();setPhoneStatus(quietDialingRef.current?"Ringing · quiet until answered":"Ringing…")});
       if(watchdogRef.current)window.clearTimeout(watchdogRef.current);
       watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,`No answer after ${workspaceProfile.dialerRingTimeoutSeconds}-second ring window`,"No answer",undefined,attemptId,Boolean(!wasManual&&autoDialRef.current));call.disconnect()},(workspaceProfile.dialerRingTimeoutSeconds+5)*1000);
-      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(screenThisCall){setPhoneStatus("Ringing quietly · waiting for answer");return}if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
+      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(screenThisCall){setPhoneStatus(quietDialingRef.current?"Ringing quietly · waiting for answer":"Answered · remote audio open while Pacifica confirms status");return}if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
       call.on("disconnect",()=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;const neverConnected=!currentLogRef.current?.connectedAt;finishCall(wasManual,currentLeadId,neverConnected&&autoDialRef.current?"No answer · continuing":autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume",neverConnected?"No answer":"Completed",undefined,attemptId,Boolean(neverConnected&&!wasManual&&autoDialRef.current))})()});
       const onUnconnectedEnd=(message:string,outcome:string)=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;const autoUnconnected=!wasManual&&autoDialRef.current&&!currentLogRef.current?.connectedAt;finishCall(wasManual,currentLeadId,autoUnconnected?`${message} · continuing`:message,outcome,undefined,attemptId,autoUnconnected)})()};
       call.on("cancel",()=>onUnconnectedEnd("Call canceled","Canceled"));
@@ -673,7 +689,15 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   }
   function rejectIncoming(){incomingCall?.reject();setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Incoming call declined")}
   function acceptIncoming(){
-    const call=incomingCall;if(!call)return;const attemptId=++callAttemptRef.current;stopAutoDial("Inbound call answered");advancingRef.current=false;establishedAttemptRef.current=attemptId;callRef.current=call;setDialing(true);setIncomingCall(null);
+    const call=incomingCall;if(!call)return;
+    const previousCall=callRef.current;
+    const attemptId=++callAttemptRef.current;
+    stopAutoDial("Inbound call answered");
+    screeningRef.current?.dispose();screeningRef.current=null;setScreening(false);
+    quietCallAudioRef.current?.dispose();quietCallAudioRef.current=null;
+    advancingRef.current=false;establishedAttemptRef.current=attemptId;
+    if(previousCall&&previousCall!==call){try{previousCall.disconnect()}catch{}}
+    callRef.current=call;setDialing(true);setIncomingCall(null);
     const matched=findDialedContact(leadsRef.current,incomingNumber);
     setManualCall(!matched);
     setCurrentCallLeadId(matched?.id||null);const inboundStartedAt=new Date().toISOString();setWorkspaceProfile(profile=>({...profile,liveCallSession:{leadId:matched?.id||null,name:matched?.name||"Inbound caller",phone:incomingNumber,line:matched?.line||activeLineRef.current,status:"dialing",startedAt:inboundStartedAt,updatedAt:inboundStartedAt}}));
@@ -892,6 +916,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;supportsDesktopWrapUp?:boolean;setCallState?:(state:Record<string,unknown>)=>void}}).pacificaDesktop;
     if(!desktop?.isDesktop||!desktop.setCallState)return;
     if(!desktop.supportsDesktopWrapUp){desktop.setCallState({active:false});return;}
+    const desktopIncoming=incomingNumber?findDialedContact(leads,incomingNumber):undefined;
     const wrapUp=desktop.supportsDesktopWrapUp&&postCallLead?{
       id:`${callAttemptRef.current}:${postCallLead.id}`,name:postCallLead.name,number:postCallLead.phone,
       category:postCallLead.product||queueLabel(postCallLead.line,workspaceProfile.mode),draft:postCallDraft,
@@ -900,8 +925,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     }:null;
     desktop.setCallState({active:dialing,name:manualCall?"Manual call":lead.name,number:manualCall?dialNumber:lead.phone,
       category:manualCall?"Manual call":lead.product||queueLabel(lead.line,workspaceProfile.mode),connected,muted,elapsed:fmt,
-      queueRunning:autoDialing,statusText:phoneStatus,theme:workspaceProfile.appearance,wrapUp});
-  },[phoneStatus,dialing,manualCall,lead.name,lead.phone,lead.product,lead.line,dialNumber,connected,muted,fmt,autoDialing,workspaceProfile.mode,workspaceProfile.appearance,postCallLead,postCallDraft,resumeAfterWrap,sourceSyncing,desktopWrapError]);
+      queueRunning:autoDialing,statusText:phoneStatus,theme:workspaceProfile.appearance,wrapUp,
+      incoming:incomingCall?{name:desktopIncoming?.name||"Unknown caller",number:incomingNumber,category:desktopIncoming?.product||"Incoming Pacifica call",busy:dialing}:null});
+  },[phoneStatus,dialing,manualCall,lead.name,lead.phone,lead.product,lead.line,dialNumber,connected,muted,fmt,autoDialing,workspaceProfile.mode,workspaceProfile.appearance,postCallLead,postCallDraft,resumeAfterWrap,sourceSyncing,desktopWrapError,incomingCall,incomingNumber,leads]);
   useEffect(()=>{
     const desktop=(window as unknown as {pacificaDesktop?:{onWrapAction?:(callback:(action:unknown)=>void)=>(()=>void)}}).pacificaDesktop;
     if(!desktop?.onWrapAction)return;
@@ -919,6 +945,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const desktop=(window as unknown as {pacificaDesktop?:{isDesktop?:boolean;onCallAction?:(callback:(action:string)=>void)=>(()=>void);showMainWindow?:()=>Promise<boolean>}}).pacificaDesktop;
     if(!desktop?.isDesktop||!desktop.onCallAction)return;
     return desktop.onCallAction(action=>{
+      if(action==="answer-incoming"){acceptIncoming();return}
+      if(action==="decline-incoming"){rejectIncoming();return}
       if(action==="mute"){toggleMute();return}
       if(action==="end"){hangup();return}
       if(action==="pause"){pauseQueue();return}
