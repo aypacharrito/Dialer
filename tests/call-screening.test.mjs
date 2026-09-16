@@ -5,9 +5,9 @@ import {rankDialerLeads,refreshDialerRun,isDialerEligibleLead} from "../app/lib/
 const sid="CA123";
 
 test("screening uses network status only and never classifies voicemail",()=>{
-  for(const status of ["in-progress","answered","completed"])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid,false),"connect");
+  for(const status of ["in-progress","answered"])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid,false),"connect");
   assert.equal(screeningDecision({callSid:sid,detectionStatus:"no-answer",answeredBy:"machine_end_beep"},sid,false),"skip-no-answer");
-  for(const status of ["ringing","busy","failed","canceled",""])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid,false),"wait");
+  for(const status of ["completed","ringing","busy","failed","canceled",""])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid,false),"wait");
 });
 
 test("no-answer skips once and answered only connects",async()=>{

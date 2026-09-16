@@ -13,6 +13,7 @@ export type AutomationSequence={id:string;name:string;trigger:AutomationTrigger;
 export type WorkspaceTeamMember={userId:string;email:string;name:string;role:"manager"|"agent";active:boolean};
 export type LiveCallSession={leadId:number|null;name:string;phone:string;line:"life"|"home-auto";status:"dialing"|"connected";startedAt:string;updatedAt:string};
 export type DialerRunState={ids:number[];completed:number;total:number;startedAt:string;updatedAt:string}; // PACIFICA_STABLE_DIALER_RUN_V2
+export type MinerAutoFeedSettings={enabled:boolean;personalAuto:boolean;home:boolean;commercial:boolean;zipCodes:string[];commercialCategories:string[];batchSize:number;lastRunAt:string;lastRunStatus:string;lastAdded:number;cursor:number};
 
 export const defaultAutomationSequences:AutomationSequence[]=[
   {id:"speed-to-lead",name:"Fresh lead follow-up",trigger:"new-lead",active:true,stopOnReply:true,steps:[
@@ -61,6 +62,7 @@ export type WorkspaceProfile={
   communicationTemplates:CommunicationTemplate[];
   automationSequences:AutomationSequence[];
   providerFallbackEnabled:boolean;
+  minerAutoFeed:MinerAutoFeedSettings;
   assignmentStrategy:"manual"|"round-robin";
   teamRoster:WorkspaceTeamMember[];
   callRecordingEnabled:boolean;
@@ -107,6 +109,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   communicationTemplates:[],
   automationSequences:defaultAutomationSequences,
   providerFallbackEnabled:true,
+  minerAutoFeed:{enabled:false,personalAuto:true,home:true,commercial:true,zipCodes:[],commercialCategories:[],batchSize:20,lastRunAt:"",lastRunStatus:"Not run yet",lastAdded:0,cursor:0},
   assignmentStrategy:"round-robin",
   teamRoster:[],
   callRecordingEnabled:false,
@@ -148,6 +151,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   const profile=value&&typeof value==="object"?value as Partial<WorkspaceProfile>:{};
   const rawLiveCall=profile.liveCallSession&&typeof profile.liveCallSession==="object"?profile.liveCallSession:null;
   const rawDialerRuns=profile.dialerRuns&&typeof profile.dialerRuns==="object"?profile.dialerRuns as Partial<Record<"life"|"home-auto",DialerRunState>>:{};
+  const rawMiner=profile.minerAutoFeed&&typeof profile.minerAutoFeed==="object"?profile.minerAutoFeed as Partial<MinerAutoFeedSettings>:{};
   return {
     mode:profile.mode==="insurance"?"insurance":"sales",
     industry:workspaceIndustries.has(profile.industry as WorkspaceIndustry)?profile.industry as WorkspaceIndustry:profile.mode==="insurance"?"insurance":"general",
@@ -186,6 +190,19 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     }):[],
     automationSequences:(Array.isArray(profile.automationSequences)?profile.automationSequences:defaultAutomationSequences).slice(0,20).flatMap((raw,index)=>{const sequence=cleanSequence(raw,index);return sequence?[sequence]:[]}),
     providerFallbackEnabled:profile.providerFallbackEnabled!==false,
+    minerAutoFeed:{
+      enabled:rawMiner.enabled===true,
+      personalAuto:rawMiner.personalAuto!==false,
+      home:rawMiner.home!==false,
+      commercial:rawMiner.commercial!==false,
+      zipCodes:Array.isArray(rawMiner.zipCodes)?Array.from(new Set(rawMiner.zipCodes.map(value=>String(value).trim()).filter(value=>/^\d{5}(?:-\d{4})?$/.test(value)))).slice(0,30):[],
+      commercialCategories:Array.isArray(rawMiner.commercialCategories)?Array.from(new Set(rawMiner.commercialCategories.map(value=>String(value).trim().slice(0,80)).filter(Boolean))).slice(0,30):[],
+      batchSize:Math.min(50,Math.max(5,Math.round(Number(rawMiner.batchSize)||20))),
+      lastRunAt:String(rawMiner.lastRunAt||"").slice(0,80),
+      lastRunStatus:String(rawMiner.lastRunStatus||"Not run yet").slice(0,240),
+      lastAdded:Math.max(0,Math.round(Number(rawMiner.lastAdded)||0)),
+      cursor:Math.max(0,Math.round(Number(rawMiner.cursor)||0)),
+    },
     assignmentStrategy:profile.assignmentStrategy==="manual"?"manual":"round-robin",
     teamRoster:Array.isArray(profile.teamRoster)?profile.teamRoster.slice(0,50).flatMap(raw=>{
       if(!raw||typeof raw!=="object")return [];

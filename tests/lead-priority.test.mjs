@@ -33,11 +33,11 @@ test("a spreadsheet imported today is not falsely treated as a newly received le
   assert.equal(leadPriority(recentlyImported,now).reason,"Recently imported");
 });
 
-test("interest and due follow-ups affect the next-best order",()=>{
+test("untouched leads precede interest and due follow-ups",()=>{
   const ordinary=lead({id:1});
   const interested=lead({id:2,outcome:"Interested",stage:"Follow-up"});
   const overdue=lead({id:3,outcome:"No answer",stage:"Follow-up",followUp:"2026-08-24T18:00:00Z",attempts:1});
-  assert.deepEqual(rankLeads([ordinary,interested,overdue],now).map(item=>item.id),[interested.id,overdue.id,ordinary.id]);
+  assert.deepEqual(rankLeads([ordinary,interested,overdue],now).map(item=>item.id),[ordinary.id,interested.id,overdue.id]);
   assert.equal(leadPriority(overdue,now).reason,"Overdue follow-up");
 });
 

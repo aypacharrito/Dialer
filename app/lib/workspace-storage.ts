@@ -32,7 +32,9 @@ export function mergeStoredWorkspace(server:StoredWorkspace|null,incoming:Stored
   const serverLogs=server.callLogs as Array<Record<string,unknown>>;const byLogId=new Map(serverLogs.map(log=>[String(log.id),log]));const byCallSid=new Map(serverLogs.filter(log=>log.callSid).map(log=>[String(log.callSid),log]));const matchedServerLogIds=new Set<string>();
   const callLogs=(incoming.callLogs as Array<Record<string,unknown>>).map(client=>{const previous=byLogId.get(String(client.id))||(client.callSid?byCallSid.get(String(client.callSid)):undefined);if(!previous)return client;matchedServerLogIds.add(String(previous.id));return {...previous,...client,...mergeCallDetection(client,previous),recordingSid:client.recordingSid||previous.recordingSid,recordingUrl:client.recordingUrl||previous.recordingUrl,recordingStatus:client.recordingStatus||previous.recordingStatus,transcript:client.transcript||previous.transcript,aiSummary:client.aiSummary||previous.aiSummary}});
   for(const log of serverLogs)if(!matchedServerLogIds.has(String(log.id)))callLogs.push(log);
-  return cleanWorkspacePayload({leads:leads.slice(0,5000),callLogs:callLogs.slice(0,1000),profile:incoming.profile});
+  const serverFeed=server.profile.minerAutoFeed,clientFeed=incoming.profile.minerAutoFeed;
+  const profile=newer(serverFeed.lastRunAt,clientFeed.lastRunAt)?{...incoming.profile,minerAutoFeed:{...clientFeed,lastRunAt:serverFeed.lastRunAt,lastRunStatus:serverFeed.lastRunStatus,lastAdded:serverFeed.lastAdded,cursor:Math.max(serverFeed.cursor,clientFeed.cursor)}}:incoming.profile;
+  return cleanWorkspacePayload({leads:leads.slice(0,5000),callLogs:callLogs.slice(0,1000),profile});
 }
 
 export function workspaceRedisConfig(){
@@ -98,4 +100,25 @@ export async function listStoredWorkspaces(limit=500):Promise<WorkspaceRecord[]>
   const db=await workspaceD1();
   const result=await db.prepare("SELECT user_id AS userId,workspace_json AS workspaceJson FROM crm_workspaces WHERE user_id LIKE 'v2:%' LIMIT ?").bind(limit).all();
   return (result.results as Array<{userId:string;workspaceJson:string}>).map(row=>({workspaceId:row.userId.replace(/^v2:/,""),workspace:cleanWorkspacePayload(JSON.parse(row.workspaceJson))}));
+}
+
+// Apply a narrow background update without replacing edits made during enrichment.
+export async function updateStoredWorkspace(userId:string,update:(current:StoredWorkspace)=>StoredWorkspace){
+  for(let attempt=0;attempt<4;attempt++){
+    if(workspaceRedisConfig().url){
+      const raw=await workspaceRedis(["GET",workspaceKey(userId)]);
+      if(typeof raw!=="string")throw new Error("Workspace not found");
+      const next=cleanWorkspacePayload(update(cleanWorkspacePayload(JSON.parse(raw))));
+      const saved=await workspaceRedis(["EVAL","if redis.call('GET',KEYS[1]) == ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end",1,workspaceKey(userId),raw,JSON.stringify(next)]);
+      if(saved===1)return next;
+    }else{
+      const db=await workspaceD1();
+      const row=await db.prepare("SELECT workspace_json AS value FROM crm_workspaces WHERE user_id=?").bind(workspaceDatabaseId(userId)).first() as {value:string}|null;
+      if(!row)throw new Error("Workspace not found");
+      const next=cleanWorkspacePayload(update(cleanWorkspacePayload(JSON.parse(row.value))));
+      const result=await db.prepare("UPDATE crm_workspaces SET workspace_json=?,updated_at=? WHERE user_id=? AND workspace_json=?").bind(JSON.stringify(next),new Date().toISOString(),workspaceDatabaseId(userId),row.value).run();
+      if(result.meta.changes===1)return next;
+    }
+  }
+  throw new Error("Workspace changed during save. Please retry.");
 }

@@ -16,7 +16,7 @@ export function screeningDecision(result:ScreeningResult|null,callSid:string,rel
  * - no-answer => skip to next
  * It never interprets AnsweredBy and never auto-skips voicemail/machines.
  */
-export function createCallScreening(options:{callSid:()=>string;read:(sid:string)=>Promise<ScreeningResult|null>;connect:()=>void;skip:(outcome:string)=>void;maxWaitMs?:number}){
+export function createCallScreening(options:{callSid:()=>string;read:(sid:string)=>Promise<ScreeningResult|null>;connect:()=>void;skip:(outcome:string)=>void}){
   let disposed=false,released=false,skipped=false,reading=false;
   function connect(){if(disposed||released||skipped)return;released=true;options.connect();}
   async function check(){

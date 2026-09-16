@@ -101,7 +101,7 @@ export default function BusinessOnboarding({profile,onComplete}:{profile:Workspa
         <label className="wide">What kind of business do you run?
           <input list="pacifica-business-types" value={businessType} onChange={event=>applyPreset(event.target.value)} placeholder="Start typing: Insurance Agency, Car Dealership, Taxes…"/>
           <datalist id="pacifica-business-types">{presets.map(item=><option key={item.label} value={item.label}/>)}</datalist>
-          <small>Can't find it? Type the business in your own words.</small>
+          <small>Can&apos;t find it? Type the business in your own words.</small>
         </label>
         <label>Business name<input value={businessName} onChange={event=>setBusinessName(event.target.value)} placeholder="David's Insurance"/></label>
         <label>Who do you mainly serve?
