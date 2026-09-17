@@ -16,7 +16,7 @@ export function screeningDecision(result:ScreeningResult|null,callSid:string,rel
  * - no-answer => skip to next
  * It never interprets AnsweredBy and never auto-skips voicemail/machines.
  */
-export function createCallScreening(options:{callSid:()=>string;read:(sid:string)=>Promise<ScreeningResult|null>;connect:()=>void;skip:(outcome:string)=>void}){
+export function createCallScreening(options:{callSid:()=>string;read:(sid:string)=>Promise<ScreeningResult|null>;connect:()=>void;skip:(outcome:string)=>void;pollMs?:number}){
   let disposed=false,released=false,skipped=false,reading=false;
   function connect(){if(disposed||released||skipped)return;released=true;options.connect();}
   async function check(){
@@ -29,7 +29,8 @@ export function createCallScreening(options:{callSid:()=>string;read:(sid:string
       else if(decision==="skip-no-answer"){skipped=true;options.skip("No answer");}
     }catch{}finally{reading=false}
   }
-  const interval=setInterval(()=>void check(),650);
+  const pollMs=Math.max(150,Number(options.pollMs)||650);
+  const interval=setInterval(()=>void check(),pollMs);
   return {
     accept(){if(disposed||released||skipped)return;void check();},
     connect,
@@ -38,7 +39,7 @@ export function createCallScreening(options:{callSid:()=>string;read:(sid:string
       if(released||skipped)return skipped;
       // The final Twilio child-call callback can trail the browser disconnect.
       // Wait briefly so a real no-answer can still advance without a wrap-up.
-      for(let i=0;i<8&&!disposed&&!skipped&&!released;i++){await check();if(!skipped&&!released)await new Promise(resolve=>setTimeout(resolve,300));}
+      for(let i=0;i<8&&!disposed&&!skipped&&!released;i++){await check();if(!skipped&&!released)await new Promise(resolve=>setTimeout(resolve,Math.min(300,pollMs)));}
       return skipped;
     },
     dispose(){disposed=true;clearInterval(interval);},
