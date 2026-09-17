@@ -8,7 +8,7 @@ export type MinerProspect={
   id:number;name:string;phone:string;email?:string;city:string;state?:string;source:string;product:string;stage:string;outcome:string;
   received?:string;importedAt?:string;attempts?:number;doNotCall:boolean;vin?:string;vehicle?:string;address?:string;
 };
-type ProviderStatus={dataAxle:boolean;regrid:boolean;nhtsa:boolean};
+type ProviderStatus={dataAxle:boolean;regrid:boolean;nhtsa:boolean;publicBusiness:boolean};
 
 function isMode(lead:MinerProspect,mode:MinerMode){
   if(mode==="personal-auto")return /personal auto/i.test(lead.source);
@@ -46,17 +46,20 @@ export default function MinerPanel({
     return()=>{active=false};
   },[]);
 
-  const providerReady=providerStatus?.dataAxle===true;
+  const consumerReady=providerStatus?.dataAxle===true;
+  const commercialReady=providerStatus?.publicBusiness===true||consumerReady;
   const checkingProviders=providerStatus===null;
   const zips=autoFeed.zipCodes.join(", ");
-  const sourceState=checkingProviders?"Checking source…":providerReady?"Prospect source connected":"Prospect source required";
-  const scheduleState=providerReady&&autoFeed.enabled?"Background feed active":providerReady?"Background feed off":"Waiting for source";
+  const currentReady=mode==="commercial"?commercialReady:consumerReady;
+  const runReady=(autoFeed.commercial&&commercialReady)||((autoFeed.personalAuto||autoFeed.home)&&consumerReady);
+  const sourceState=checkingProviders?"Checking sources…":currentReady?(mode==="commercial"?"Commercial source ready":"Consumer source connected"):"Auto/Home source required";
+  const scheduleState=runReady&&autoFeed.enabled?"Background feed active":runReady?"Background feed off":"Waiting for eligible source";
 
   function patchAutoFeed(patch:Partial<MinerAutoFeedSettings>){onAutoFeedChange({...autoFeed,...patch})}
 
   async function runNow(){
     if(feedInFlight.current)return;
-    if(!providerReady){setFeedMessage("Automatic mining cannot run until DATA_AXLE_API_KEY is configured on the server.");return}
+    if(!runReady){setFeedMessage("Enable Commercial for the public business source, or connect Data Axle for Personal Auto/Home.");return}
     if(!autoFeed.zipCodes.length){setFeedMessage("Add at least one target ZIP code first.");return}
     feedInFlight.current=true;setFeedBusy(true);setFeedMessage("Searching connected prospect data…");
     try{
@@ -76,7 +79,7 @@ export default function MinerPanel({
     <header className="module-bar miner-pro-header">
       <div>
         <span className="eyebrow">INSURANCE PROSPECTING</span>
-        <div className="miner-title-line"><h1>Miner</h1><span className={`miner-health ${providerReady?"ready":checkingProviders?"checking":"setup"}`}><i/>{sourceState}</span></div>
+        <div className="miner-title-line"><h1>Miner</h1><span className={`miner-health ${currentReady?"ready":checkingProviders?"checking":"setup"}`}><i/>{sourceState}</span></div>
         <p>Build separate Auto, Home, and Commercial prospect queues in the background.</p>
       </div>
       <div className="module-actions">
@@ -90,7 +93,7 @@ export default function MinerPanel({
         <div>
           <span className="miner-kicker">PROSPECT ENGINE</span>
           <h2>Automatic lead feed</h2>
-          <p>Pacifica checks your connected prospect source once daily and routes new records into Miner.</p>
+          <p>Pacifica checks connected sources once daily and routes new records into Miner. {scheduleState}</p>
         </div>
         <button type="button" className={`miner-master-toggle ${autoFeed.enabled?"on":""}`} onClick={()=>patchAutoFeed({enabled:!autoFeed.enabled})} aria-pressed={autoFeed.enabled}>
           <i/><span>{autoFeed.enabled?"Background feed on":"Background feed off"}</span>
@@ -98,16 +101,16 @@ export default function MinerPanel({
       </div>
 
       <div className="miner-provider-row">
-        <div className={providerReady?"ok":"missing"}><i/><span><b>Prospect data</b><small>{checkingProviders?"Checking…":providerReady?"Connected":"Not connected"}</small></span></div>
+        <div className={consumerReady?"ok":"missing"}><i/><span><b>Consumer data</b><small>{checkingProviders?"Checking…":consumerReady?"Data Axle connected":"Auto/Home source needed"}</small></span></div>
+        <div className={commercialReady?"ok":"missing"}><i/><span><b>Public business</b><small>{checkingProviders?"Checking…":providerStatus?.publicBusiness?"OpenStreetMap ready":consumerReady?"Data Axle ready":"Unavailable"}</small></span></div>
         <div className={providerStatus?.nhtsa?"ok":"missing"}><i/><span><b>VIN decode</b><small>{providerStatus?.nhtsa?"NHTSA ready":"Unavailable"}</small></span></div>
         <div className={providerStatus?.regrid?"ok":"optional"}><i/><span><b>Property verify</b><small>{providerStatus?.regrid?"Regrid connected":"Optional"}</small></span></div>
-        <div className={providerReady&&autoFeed.enabled?"ok":"optional"}><i/><span><b>Schedule</b><small>{scheduleState}</small></span></div>
       </div>
 
-      {!checkingProviders&&!providerReady&&<div className="miner-setup-callout">
+      {!checkingProviders&&!consumerReady&&<div className="miner-setup-callout">
         <div className="miner-setup-icon">!</div>
-        <div><b>Connect a prospect source to start automatic mining</b><p>The Miner code is running, but the server has no <code>DATA_AXLE_API_KEY</code>. Until that source is connected, Pacifica has no names, phone numbers, VINs, or property records to pull.</p></div>
-        <button type="button" onClick={()=>{void navigator.clipboard?.writeText("DATA_AXLE_API_KEY");setFeedMessage("Copied DATA_AXLE_API_KEY · add it in Vercel Environment Variables, then redeploy.")}}>Copy env key</button>
+        <div><b>Commercial can mine now · Personal Auto/Home still need a consumer source</b><p>Pacifica has a keyless public-business fallback for Commercial. For names + phone + VIN/property data on consumers, connect a licensed Data Axle consumer API account.</p></div>
+        <button type="button" onClick={()=>window.open("https://www.data-axle.com/data-solutions/apis/","_blank","noopener,noreferrer")}>Get consumer source</button>
       </div>}
 
       <div className="miner-config-grid">
@@ -122,11 +125,11 @@ export default function MinerPanel({
           <button className={autoFeed.home?"active":""} onClick={()=>patchAutoFeed({home:!autoFeed.home})}><span>Home</span>{autoFeed.home&&<b>✓</b>}</button>
           <button className={autoFeed.commercial?"active":""} onClick={()=>patchAutoFeed({commercial:!autoFeed.commercial})}><span>Commercial</span>{autoFeed.commercial&&<b>✓</b>}</button>
         </div>
-        <button className="miner-run-button" disabled={feedBusy||!autoFeed.enabled||!autoFeed.zipCodes.length||!providerReady} onClick={()=>void runNow()}>{feedBusy?<><i/>Searching…</>:"Run now"}</button>
+        <button className="miner-run-button" disabled={feedBusy||!autoFeed.enabled||!autoFeed.zipCodes.length||!runReady} onClick={()=>void runNow()}>{feedBusy?<><i/>Searching…</>:"Run now"}</button>
       </div>
 
-      <div className={`miner-run-status ${!providerReady&&!checkingProviders?"warning":""}`}>
-        <span>{feedMessage||(!providerReady&&!checkingProviders?"Automatic feed paused · prospect source not connected":autoFeed.lastRunStatus||"Ready")}</span>
+      <div className={`miner-run-status ${!consumerReady&&!checkingProviders?"warning":""}`}>
+        <span>{feedMessage||(!consumerReady&&!checkingProviders?"Commercial public source ready · Auto/Home waiting for consumer data":autoFeed.lastRunStatus||"Ready")}</span>
         {autoFeed.lastRunAt&&<small>Last run {new Date(autoFeed.lastRunAt).toLocaleString()} · {autoFeed.lastAdded} added</small>}
       </div>
     </section>
@@ -138,8 +141,8 @@ export default function MinerPanel({
     </div>
 
     <section className="miner-mode-context">
-      <div><span>{modeShort(mode)}</span><div><b>{modeLabel(mode)}</b><small>{mode==="personal-auto"?"Licensed vehicle/contact data · VIN decoded by NHTSA":mode==="home"?"Licensed property/contact data · Regrid verification optional":"Licensed business/contact data · separate from inbound leads"}</small></div></div>
-      <p>{mode==="personal-auto"?"VINs are decoded automatically before prospects are stored.":mode==="home"?"Property records can be cross-checked against parcel ownership when Regrid is connected.":"Commercial categories can be narrowed above or left open for a broader business list."}</p>
+      <div><span>{modeShort(mode)}</span><div><b>{modeLabel(mode)}</b><small>{mode==="personal-auto"?"Licensed vehicle/contact data · VIN decoded by NHTSA":mode==="home"?"Licensed property/contact data · Regrid verification optional":"Public business listings + licensed provider when connected"}</small></div></div>
+      <p>{mode==="personal-auto"?"VINs are decoded automatically before prospects are stored.":mode==="home"?"Property records can be cross-checked against parcel ownership when Regrid is connected.":"Commercial can use the public OpenStreetMap business fallback now; a licensed provider adds broader coverage and contacts."}</p>
     </section>
 
     <div className="crm-summary miner-stats">
@@ -159,8 +162,8 @@ export default function MinerPanel({
       </div>)}
       {!visible.length&&<div className="miner-empty">
         <div className="miner-empty-icon">⌁</div>
-        <b>{!providerReady&&!checkingProviders?"Connect your prospect source":"No prospects in this queue yet"}</b>
-        <span>{!providerReady&&!checkingProviders?"Automatic Miner cannot create real leads until the server has a licensed prospect-data connection.":autoFeed.enabled?"The next feed run will place matching records here automatically.":"Turn Background feed on or import an existing list."}</span>
+        <b>{!currentReady&&!checkingProviders?(mode==="commercial"?"Commercial source unavailable":"Connect Auto/Home consumer data"):"No prospects in this queue yet"}</b>
+        <span>{!currentReady&&!checkingProviders?(mode==="commercial"?"Try again later or connect a licensed business provider.":"Personal Auto/Home need an authorized consumer source that provides callable contact data."):autoFeed.enabled?"The next feed run will place matching records here automatically.":"Turn Background feed on or import an existing list."}</span>
       </div>}
     </div>
   </div>;

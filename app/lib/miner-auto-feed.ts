@@ -3,7 +3,7 @@ import {cleanWorkspaceProfile,type MinerAutoFeedSettings} from "./workspace-prof
 import {listStoredWorkspaces,type StoredWorkspace,updateStoredWorkspace} from "./workspace-storage";
 
 type UnknownRecord=Record<string,unknown>;
-export type MinerFeedProviderStatus={dataAxle:boolean;regrid:boolean;nhtsa:boolean};
+export type MinerFeedProviderStatus={dataAxle:boolean;regrid:boolean;nhtsa:boolean;publicBusiness:boolean};
 export type MinerFeedResult={
   added:number;personalAuto:number;home:number;commercial:number;skipped:number;
   providerStatus:MinerFeedProviderStatus;message:string;ranAt:string;
@@ -14,7 +14,7 @@ const dataAxleKey=()=>String(process.env.DATA_AXLE_API_KEY||"").trim();
 const regridToken=()=>String(process.env.REGRID_API_TOKEN||"").trim();
 
 export function minerProviderStatus():MinerFeedProviderStatus{
-  return {dataAxle:Boolean(dataAxleKey()),regrid:Boolean(regridToken()),nhtsa:true};
+  return {dataAxle:Boolean(dataAxleKey()),regrid:Boolean(regridToken()),nhtsa:true,publicBusiness:true};
 }
 
 export function cleanMinerAutoFeed(value:unknown,previous?:MinerAutoFeedSettings):MinerAutoFeedSettings{
@@ -159,6 +159,65 @@ async function dataAxleSearch(documentType:"people"|"places",zip:string,limit:nu
   return recordArray(await response.json()).filter(record=>postal(flatten(record)).slice(0,5)===zip.slice(0,5));
 }
 
+async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
+  const geo=new URL("https://nominatim.openstreetmap.org/search");
+  geo.searchParams.set("postalcode",zip.slice(0,5));
+  geo.searchParams.set("country","US");
+  geo.searchParams.set("format","jsonv2");
+  geo.searchParams.set("limit","1");
+  const headers={Accept:"application/json","User-Agent":"PacificaCRM/1.0 (https://pacificacrm.com)"};
+  const geoResponse=await fetch(geo,{headers,cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(8000)])});
+  if(!geoResponse.ok)throw new Error("Public business geocoder unavailable");
+  const geoRows=await geoResponse.json() as Array<{lat?:string;lon?:string}>;
+  const lat=Number(geoRows[0]?.lat),lon=Number(geoRows[0]?.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))throw new Error("Could not locate target ZIP for public business search");
+
+  const keys=["shop","office","craft","amenity","industrial","tourism","healthcare"];
+  const clauses=keys.flatMap(key=>[
+    `nwr(around:6500,${lat},${lon})["${key}"]["name"]["phone"];`,
+    `nwr(around:6500,${lat},${lon})["${key}"]["name"]["contact:phone"];`,
+  ]).join("\n");
+  const query=`[out:json][timeout:14];(\n${clauses}\n);out tags center ${Math.min(180,Math.max(40,limit*6))};`;
+  const response=await fetch("https://overpass-api.de/api/interpreter",{
+    method:"POST",
+    headers:{...headers,"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+    body:`data=${encodeURIComponent(query)}`,
+    cache:"no-store",
+    signal:AbortSignal.any([signal,AbortSignal.timeout(18000)]),
+  });
+  if(!response.ok)throw new Error(`Public business source failed (${response.status})`);
+  const payload=await response.json() as {elements?:Array<{type?:string;id?:number;tags?:Record<string,string>} >};
+  const seen=new Set<string>();
+  const records:UnknownRecord[]=[];
+  for(const element of payload.elements||[]){
+    if(records.length>=Math.max(limit*4,40))break;
+    const tags=element.tags||{};
+    const phone=tags.phone||tags["contact:phone"]||"";
+    const name=tags.name||"";
+    const normalized=normalizePhone(phone);
+    if(!name||!normalized)continue;
+    const identity=`${name.toLowerCase()}|${normalized}`;
+    if(seen.has(identity))continue;
+    seen.add(identity);
+    const categoryValue=tags.shop||tags.office||tags.craft||tags.amenity||tags.industrial||tags.tourism||tags.healthcare||"business";
+    records.push({
+      id:`${element.type||"osm"}:${element.id||identity}`,
+      provider_source:"OpenStreetMap",
+      name,
+      phone:normalized,
+      email:tags.email||tags["contact:email"]||"",
+      website:tags.website||tags["contact:website"]||"",
+      address:[tags["addr:housenumber"],tags["addr:street"]].filter(Boolean).join(" "),
+      city:tags["addr:city"]||"",
+      state:tags["addr:state"]||"",
+      zip:tags["addr:postcode"]||zip.slice(0,5),
+      category:categoryValue,
+      description:[categoryValue,tags.description||""].filter(Boolean).join(" "),
+    });
+  }
+  return records;
+}
+
 type VinDetails={vehicle:string;year:string;make:string;model:string;bodyClass:string;fuelType:string;driveType:string};
 async function decodeVin(vin:string,signal:AbortSignal):Promise<VinDetails|null>{
   if(!validVin(vin))return null;
@@ -214,13 +273,15 @@ function createLead(kind:"personal-auto"|"home"|"commercial",record:UnknownRecor
   const source=kind==="personal-auto"?"Pacifica Miner · Personal Auto":kind==="home"?"Pacifica Miner · Home":"Pacifica Miner · Commercial";
   const product=kind==="personal-auto"?"Auto insurance prospect":kind==="home"?"Home insurance prospect":"Commercial insurance prospect";
   const vendor=providerId(flat);
+  const provider=pick(flat,["provider_source","providersource"])||"Data Axle";
+  const providerKey=normalizeKey(provider)||"provider";
   const now=new Date().toISOString();
   const id=randomInt(1,281474976710655);
   return {
     id,name,phone,email:mail,city:city(flat)||"Prospect",status:"Ready",stage:"New lead",outcome:"Not contacted",notes:"",followUp:"",
     doNotCall:false,lastContact:"Never",line:"home-auto",queueOverride:true,source,leadCost:0,product,sourceDisposition:"New",importedAt:now,
-    vendorId:vendor?`data-axle:${vendor}`:"",address:street,state:state(flat),zip,vin:recordVin,vehicle:"",
-    extraFields:{...compactFields(flat),...extra,"Miner feed":"Automatic","Data provider":"Data Axle"},
+    vendorId:vendor?`${providerKey}:${vendor}`:"",address:street,state:state(flat),zip,vin:recordVin,vehicle:"",
+    extraFields:{...compactFields(flat),...extra,"Miner feed":"Automatic","Data provider":provider},
     smsConsent:false,emailConsent:false,automationEnabled:false,automationStatus:"cold-prospect",
   } as UnknownRecord;
 }
@@ -241,7 +302,9 @@ function categoryMatches(flat:Record<string,string>,categories:string[]){
 
 async function prospectsForKind(kind:"personal-auto"|"home"|"commercial",settings:MinerAutoFeedSettings,zip:string,offset:number,signal:AbortSignal){
   const documentType=kind==="commercial"?"places":"people";
-  const records=await dataAxleSearch(documentType,zip,settings.batchSize,offset,signal);
+  const records=kind==="commercial"&&!dataAxleKey()
+    ?await publicBusinessSearch(zip,settings.batchSize,signal)
+    :await dataAxleSearch(documentType,zip,settings.batchSize,offset,signal);
   const sorted=records.map(record=>({record,score:score(kind,record)})).sort((a,b)=>b.score-a.score);
   const output:UnknownRecord[]=[];
   for(const {record} of sorted){
@@ -318,8 +381,8 @@ export async function runMinerAutoFeedForWorkspace(workspaceId:string,workspace:
     settings={...settings,lastRunAt:ranAt,lastRunStatus:"Add at least one target ZIP code",lastAdded:0};
     return {workspace:{...workspace,profile:cleanWorkspaceProfile({...workspace.profile,minerAutoFeed:settings})},result:{added:0,personalAuto:0,home:0,commercial:0,skipped:0,providerStatus:status,message:settings.lastRunStatus,ranAt} satisfies MinerFeedResult};
   }
-  if(!status.dataAxle){
-    settings={...settings,lastRunAt:ranAt,lastRunStatus:"Waiting for Data Axle API key",lastAdded:0};
+  if(!status.dataAxle&&!settings.commercial){
+    settings={...settings,lastRunAt:ranAt,lastRunStatus:"Personal Auto/Home need a licensed consumer source · enable Commercial for the public business feed",lastAdded:0};
     return {workspace:{...workspace,profile:cleanWorkspaceProfile({...workspace.profile,minerAutoFeed:settings})},result:{added:0,personalAuto:0,home:0,commercial:0,skipped:0,providerStatus:status,message:settings.lastRunStatus,ranAt} satisfies MinerFeedResult};
   }
 
@@ -329,6 +392,7 @@ export async function runMinerAutoFeedForWorkspace(workspaceId:string,workspace:
   const errors:string[]=[];
   await Promise.all((["personal-auto","home","commercial"] as const).map(async kind=>{
     if(kind==="personal-auto"&&!settings.personalAuto||kind==="home"&&!settings.home||kind==="commercial"&&!settings.commercial)return;
+    if(!status.dataAxle&&kind!=="commercial"){errors.push(`${kind}: licensed consumer source required`);return}
     try{prospects.push(...await prospectsForKind(kind,settings,zip,providerOffset,signal))}
     catch(error){errors.push(`${kind}: ${error instanceof Error?error.message:"provider error"}`)}
   }));

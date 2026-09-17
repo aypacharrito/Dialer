@@ -174,7 +174,6 @@ button{cursor:pointer}
 .provider-options{flex-wrap:wrap}
 }
 
-
 .twilio-selected{font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;letter-spacing:.1em;color:#26785c;background:#e5f8ef;padding:12px 15px;border-radius:20px;white-space:nowrap}
 .twilio-selected i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);margin-right:6px}
 .keypad-backdrop{position:fixed;inset:0;background:rgba(7,26,45,.64);backdrop-filter:blur(7px);display:grid;place-items:center;z-index:60;padding:18px}
@@ -196,7 +195,6 @@ button{cursor:pointer}
 .phone-call{justify-self:center;width:58px;height:58px;border:0;border-radius:50%;background:var(--mint);color:white;display:grid;place-items:center;box-shadow:0 8px 22px #32d6a155}
 .phone-pad>p{text-align:center;color:#89949c;font-size: calc(12px * var(--workspace-text-scale, 1));margin:15px 0 0}
 .toast{z-index:70}
-
 
 .crm-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
 .crm-summary article{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:18px}
@@ -296,7 +294,6 @@ button{cursor:pointer}
 .crm-table .table-head span:nth-child(3),.crm-table .table-head span:nth-child(4),.crm-table .table-row>span:nth-child(3),.crm-table .table-row>span:nth-child(4){display:none}
 }
 
-
 .idle-badge{font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;color:#7c8993;background:#eaedeb;border-radius:12px;padding:6px 8px}
 .dialer-main-grid{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:stretch}
 .side-pad{width:auto;border:1px solid var(--line);border-radius:19px;box-shadow:0 16px 45px rgba(28,54,75,.07);padding:19px 23px;background:var(--paper)}
@@ -319,7 +316,6 @@ button{cursor:pointer}
 .side-pad .key-grid button{aspect-ratio:auto;height:60px}
 .bottom-grid{grid-template-columns:1fr}
 }
-
 
 .record-actions{flex-wrap:wrap}
 .record-actions button:disabled{opacity:.4;cursor:not-allowed}
@@ -347,7 +343,6 @@ button{cursor:pointer}
 .phone-stat{font-size: calc(18px * var(--workspace-text-scale, 1))!important;margin-top:16px!important}
 .twilio-selected.waiting{color:#8b641d;background:#fff1d5}
 .twilio-selected.waiting i{background:#e9aa36}
-
 
 /* Pacifica — dark lead-sales command center */
 :root{--navy:#08111f;--navy2:#101d2d;--ivory:#09111d;--paper:#111c29;--coral:#ff6b4a;--mint:#24d6a0;--ink:#eef5fa;--muted:#8ea0b2;--line:#243244;--cyan:#22bfd0;--panel:#0d1724;--panel2:#131f2d}
@@ -531,7 +526,6 @@ button,input,select,textarea{font-family:inherit}
 @media(min-width:761px){.workspace{margin-left:0;grid-column:2}
 }
 
-
 /* Life, Home & Auto Quote Center */
 .quote-title{align-items:flex-start}
 .quote-disclaimer{border:1px solid #4d4125;background:#2d2719;color:#e6bb65;border-radius:999px;padding:9px 12px;font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;letter-spacing:.08em;white-space:nowrap}
@@ -619,7 +613,6 @@ button,input,select,textarea{font-family:inherit}
 .quote-form-card>footer button{flex:1}
 }
 
-
 .quote-results-card{margin-top:15px;background:#101b27;border:1px solid #243446;border-radius:12px;box-shadow:none;overflow:hidden}
 .carrier-catalog{margin-top:15px;background:#0e1925;border:1px solid #243446;border-radius:14px;overflow:hidden}
 .carrier-catalog>header{padding:18px 21px;display:flex;align-items:center;justify-content:space-between;gap:18px}
@@ -691,7 +684,6 @@ button,input,select,textarea{font-family:inherit}
 .carrier-catalog>header>div:last-child{width:100%;flex-wrap:wrap}
 }
 
-
 /* Browser softphone configuration, call logs, and reputation monitoring */
 .pad-tools{display:flex;align-items:center;gap:8px}
 .pad-tools>button{width:28px;height:28px;display:grid;place-items:center;border:1px solid #2c4153;border-radius:7px;background:#142331;color:#7ecbd4}
@@ -736,7 +728,6 @@ button,input,select,textarea{font-family:inherit}
 .clearvoice-switch input:checked+i{border-color:var(--ui-accent);background:var(--ui-accent)}
 .clearvoice-switch input:checked+i:after{left:18px;background:var(--ui-surface)}
 .clearvoice-switch b{font-size:14px;color:var(--ui-text)}
-.clearvoice-switch:focus-within{outline:2px solid var(--ui-accent);outline-offset:4px;border-radius:6px}
 .clearvoice-status{padding:9px 15px;border-block:1px solid #203342;background:#0d1a26;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .clearvoice-status strong,.clearvoice-status span{font-size: calc(12px * var(--workspace-text-scale, 1))}
 .clearvoice-status strong{display:flex;align-items:center;gap:6px;color:#55d5be;letter-spacing:.08em}
@@ -843,11 +834,9 @@ button,input,select,textarea{font-family:inherit}
 .volume-row{grid-template-columns:80px 1fr 34px auto}
 }
 
-
 .lead-line-switch{position:absolute;left:50%;transform:translateX(-50%);display:flex;padding:4px;background:#08121d;border:1px solid #263a4c;border-radius:10px;box-shadow:0 8px 24px #0004;overflow:hidden}
 .lead-line-switch button{height:34px;padding:0 17px;border:0;border-radius:7px;background:transparent;color:#70889b;font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;white-space:nowrap}
 .lead-line-switch button.active{background:linear-gradient(135deg,#1bacc4,#157fa7);color:#f4fdff;box-shadow:0 5px 16px #149eb33d}
-.lead-line-switch button:focus-visible{outline:2px solid #5ed9e1;outline-offset:-2px}
 .lead-line-switch button:disabled{cursor:not-allowed;opacity:.55}
 .auto-session-note{display:flex;align-items:center;justify-content:center;gap:13px;margin:20px auto 0;max-width:620px}
 .auto-session-note>span{font-size: calc(12px * var(--workspace-text-scale, 1));letter-spacing:.08em;font-weight:900;color:#56d9b0;background:#103328;border:1px solid #205b47;border-radius:15px;padding:8px 11px}
@@ -870,7 +859,6 @@ button,input,select,textarea{font-family:inherit}
 .auto-session-note>span{text-align:center}
 }
 
-
 .import-hint{display:flex;align-items:center;gap:16px;margin:-13px 0 15px;padding:12px 15px;border:1px solid #245064;background:#102331;border-radius:10px}
 .import-hint span{flex:none;color:#62d6df;font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;letter-spacing:.13em}
 .import-hint p{margin:0;color:#7f9aaa;font-size: calc(12px * var(--workspace-text-scale, 1));line-height:1.5}
@@ -892,7 +880,6 @@ button,input,select,textarea{font-family:inherit}
 @media(max-width:520px){.crm-summary.five{grid-template-columns:1fr}
 }
 
-
 .smart-connect{margin-top:15px;padding:20px;background:linear-gradient(180deg,#111d2a,#0e1925);border:1px solid #245064;border-radius:13px}
 .smart-connect header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
 .smart-connect header span{color:#5fd3dc;font-size: calc(12px * var(--workspace-text-scale, 1));letter-spacing:.14em;font-weight:900}
@@ -907,7 +894,6 @@ button,input,select,textarea{font-family:inherit}
 .smart-connect>div{display:flex;align-items:center;gap:12px;margin-top:12px}
 .smart-connect button{border:0;border-radius:8px;padding:11px 13px;background:linear-gradient(135deg,#1bacc4,#157fa7);color:white;font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900}
 .smart-connect small{color:#6f8799;font-size: calc(12px * var(--workspace-text-scale, 1));line-height:1.5}
-
 
 .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;align-items:stretch}
 .pricing-grid article{position:relative;background:linear-gradient(180deg,#111d2a,#0e1925);border:1px solid #243446;border-radius:15px;padding:25px;color:#dce9ef}
@@ -947,7 +933,6 @@ button,input,select,textarea{font-family:inherit}
 .terms-page article{padding:24px}
 .terms-page h1{font-size: calc(29px * var(--workspace-text-scale, 1))}
 }
-
 
 /* Pacifica AI — a calm, focused workspace rather than a dashboard full of widgets. */
 .message-ai-mode{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:9px;padding:9px 11px;border:1px solid #2b5a58;border-radius:9px;background:#152b2b}.message-ai-mode b{font-size: calc(12px * var(--workspace-text-scale, 1));color:#72d5cf}.message-ai-mode span{font-size: calc(12px * var(--workspace-text-scale, 1));color:#819296;text-align:right}.message-ai-mode.smart-fallback{border-color:#69552e;background:#2a2418}.message-ai-mode.smart-fallback b{color:#e7bd69}
@@ -1003,7 +988,6 @@ button,input,select,textarea{font-family:inherit}
 .lead-file-edit{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 14px}
 .lead-file-edit label{min-width:0}
 .lead-file-edit select,.lead-file-edit input,.lead-file-edit textarea{width:100%;border:1px solid #2a4053;background:#0a1520;color:#c9d9e2;border-radius:7px;font:inherit;font-size: calc(12px * var(--workspace-text-scale, 1));padding:8px;outline:none}
-.lead-file-edit select:focus,.lead-file-edit input:focus,.lead-file-edit textarea:focus{border-color:#39aeba}
 .lead-file-edit .file-notes{grid-column:1/-1}
 .lead-file-edit textarea{min-height:70px;resize:vertical;line-height:1.45}
 .post-call-wrap{margin:12px;border:1px solid #746037;background:#191812;color:#dfe7e8;border-radius:5px;overflow:hidden}
@@ -1032,12 +1016,10 @@ button,input,select,textarea{font-family:inherit}
 .post-call-modal>header em{align-self:flex-start;max-width:180px;padding:6px 9px;border:1px solid #3f5152;background:#172022;color:#b1c3c4;font-size: calc(12px * var(--workspace-text-scale, 1));font-style:normal;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .post-call-outcomes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:18px 22px 4px}
 .post-call-outcomes button{min-height:42px;border:1px solid #3b4749;background:#202728;color:#bdc7c8;font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;cursor:pointer}
-.post-call-outcomes button:hover,.post-call-outcomes button:focus-visible{border-color:#4fa5a2;color:#ebffff;outline:none}
 .post-call-outcomes button.active{border-color:#43b9b0;background:#185b56;color:#efffff;box-shadow:inset 0 0 0 1px #43b9b0}
 .post-call-modal-fields{display:grid;grid-template-columns:1fr 170px;gap:11px;padding:15px 22px 20px}
 .post-call-modal-fields label>span{display:block;margin-bottom:6px;color:#899798;font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .post-call-modal-fields input,.post-call-modal-fields select,.post-call-modal-fields textarea{width:100%;border:1px solid #465052!important;background:#111617!important;color:#edf3f3!important;border-radius:3px!important;padding:10px;font:inherit;font-size: calc(12px * var(--workspace-text-scale, 1));outline:none}
-.post-call-modal-fields input:focus,.post-call-modal-fields select:focus,.post-call-modal-fields textarea:focus{border-color:#4aa29e!important}
 .post-call-modal-notes{grid-column:1/-1}
 .post-call-modal-fields textarea{min-height:95px;resize:vertical;line-height:1.5}
 .post-call-modal>footer{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 22px;border-top:1px solid #354144;background:#121819}
@@ -1183,7 +1165,7 @@ html[data-theme="light"] .sidebar nav button{color:#607485}html[data-theme="ligh
 html[data-theme="light"] .sidebar-foot{border-color:#e1e7ea}html[data-theme="light"] .agent>span{background:#e7f2f4;border-color:#cce0e4;color:#126a72}html[data-theme="light"] .agent small{color:#738996}html[data-theme="light"] .sidebar-foot>button{color:#607b8b}
 html[data-theme="light"] .workspace{background:#f5f7f9}
 html[data-theme="light"] .topbar{background:#fff;border-color:#dce4e8;box-shadow:0 2px 12px rgba(29,52,67,.05)}html[data-theme="light"] .topbar b{color:#173247}html[data-theme="light"] .topbar small,html[data-theme="light"] .session-bar label{color:#718796}
-html[data-theme="light"] .lead-line-switch{background:#f0f4f6;border-color:#d4dfe4;box-shadow:none}html[data-theme="light"] .lead-line-switch button{color:#637988}html[data-theme="light"] .lead-line-switch button.active{background:#128f98;color:#fff;box-shadow:none}html[data-theme="light"] .lead-line-switch button:focus-visible{outline-color:#075f65}
+html[data-theme="light"] .lead-line-switch{background:#f0f4f6;border-color:#d4dfe4;box-shadow:none}html[data-theme="light"] .lead-line-switch button{color:#637988}html[data-theme="light"] .lead-line-switch button.active{background:#128f98;color:#fff;box-shadow:none}
 html[data-theme="light"] .queue-pause,html[data-theme="light"] .notification,html[data-theme="light"] .inbound-availability{background:#fff;border-color:#d6e0e5;color:#566e7d}html[data-theme="light"] .workspace-sync,html[data-theme="light"] .connection{color:#647b89}
 html[data-theme="light"] .dialer-view,html[data-theme="light"] .page-view,html[data-theme="light"] .today-workspace,html[data-theme="light"] .messages-view{background:#f5f7f9}
 html[data-theme="light"] :where(.hero-call,.side-pad,.stats-row article,.queue-card,.table-card,.campaign-card,.chart-card,.provider-card,.activity-grid article,.follow-card,.pipeline>section,.today-metrics article,.focus-list,.source-pulse,.revenue-metrics article,.revenue-table){background:#fff;border-color:#dbe3e8;box-shadow:0 8px 28px rgba(28,55,72,.06)}
@@ -1469,7 +1451,6 @@ html[data-theme] .queue-row,
 html[data-theme] .revenue-table>article{
   transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .2s ease,transform .18s ease,opacity .18s ease;
 }
-html[data-theme] :is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--ui-focus);outline-offset:2px}
 html[data-theme] button:not(:disabled):active{transform:translateY(1px) scale(.99)}
 html[data-theme] button:disabled{cursor:not-allowed}
 html[data-theme] :is(.primary,.import,.start-call,.pricing-grid button,.membership-actions button,.call-report>header button):not(:disabled){box-shadow:0 7px 18px rgba(17,134,109,.17)}
@@ -1479,9 +1460,6 @@ html[data-theme] :is(.table-row,.queue-row):hover{background:var(--ui-surface-ho
 html[data-theme] input:not(:disabled):hover,
 html[data-theme] select:not(:disabled):hover,
 html[data-theme] textarea:not(:disabled):hover{border-color:var(--ui-accent)!important}
-html[data-theme] input:focus,
-html[data-theme] select:focus,
-html[data-theme] textarea:focus{border-color:var(--ui-accent)!important;box-shadow:0 0 0 3px var(--ui-focus)!important}
 
 @media(prefers-reduced-motion:reduce){
   html[data-theme] *,html[data-theme] *::before,html[data-theme] *::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
@@ -1560,7 +1538,6 @@ html[data-theme] .side-pad>header{padding-bottom:14px}
 html[data-theme] .number-display{padding:18px 0 16px;text-align:left}
 html[data-theme] .number-display>label{display:block;margin:0 0 7px;color:var(--ui-muted);font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;letter-spacing:.14em}
 html[data-theme] .number-input-shell{height:54px;display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid var(--ui-border-strong);border-radius:12px;background:var(--ui-surface-soft);box-shadow:inset 0 1px 2px rgba(25,69,54,.04)}
-html[data-theme] .number-input-shell:focus-within{border-color:var(--ui-accent);box-shadow:0 0 0 4px var(--ui-focus)}
 html[data-theme] .number-input-shell>svg{width:17px;flex:none;color:var(--ui-accent)}
 html[data-theme] .number-input-shell input,
 html[data-theme] .number-input-shell input:hover,
@@ -1823,9 +1800,6 @@ html[data-theme="light"] :is(.settings-content,.contact-drawer,.lead-growth-pane
   -webkit-text-fill-color:#16342b!important;box-shadow:0 2px 7px rgba(25,69,54,.035)!important;color-scheme:light!important
 }
 html[data-theme="light"] :is(.settings-content,.contact-drawer,.lead-growth-panel,.new-lead-modal,.post-call-modal) :is(input,textarea)::placeholder{color:#8ca098!important;-webkit-text-fill-color:#8ca098!important;opacity:1}
-html[data-theme="light"] :is(.settings-content,.contact-drawer,.lead-growth-panel,.new-lead-modal,.post-call-modal) :is(input,select,textarea):focus{
-  border-color:#58aa8e!important;outline:3px solid rgba(17,134,109,.14)!important;outline-offset:0!important;box-shadow:0 4px 14px rgba(17,134,109,.08)!important
-}
 html[data-theme="light"] :is(.settings-content,.contact-drawer,.lead-growth-panel,.new-lead-modal,.post-call-modal) :is(input,select,textarea):disabled{
   background:#f1f5f3!important;color:#82958e!important;-webkit-text-fill-color:#82958e!important;opacity:1
 }
@@ -1933,10 +1907,6 @@ html[data-theme="light"] .post-call-modal>header em{
 html[data-theme="light"] .post-call-outcomes button{
   border-color:#d5e4de;background:#f7faf8;color:#315b4c;border-radius:10px;
   box-shadow:0 3px 10px rgba(25,69,54,.035)
-}
-html[data-theme="light"] .post-call-outcomes button:hover,
-html[data-theme="light"] .post-call-outcomes button:focus-visible{
-  border-color:#77bda3;background:#edf9f4;color:#0c765c
 }
 html[data-theme="light"] .post-call-outcomes button.active{
   border-color:#11866a;background:#11866a;color:#fff;box-shadow:0 8px 20px rgba(17,134,106,.18)
@@ -2184,7 +2154,6 @@ html[data-theme] .inline-pause{
   box-shadow:0 4px 12px rgba(25,69,54,.045);font-size: calc(12px * var(--workspace-text-scale, 1));font-weight:900;cursor:pointer
 }
 html[data-theme] .inline-pause:hover{border-color:var(--ui-accent);background:var(--ui-accent-soft);color:var(--ui-accent);box-shadow:0 8px 20px rgba(17,134,109,.1);transform:translateY(-1px)}
-html[data-theme] .inline-pause:focus-visible{outline:3px solid var(--ui-focus);outline-offset:2px}
 html[data-theme] .inline-pause svg{width:13px;height:13px}
 
 html[data-theme] .today-workspace{padding:28px}
@@ -2674,7 +2643,6 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 .miner-actions{display:flex;gap:7px}.miner-actions button{padding:8px 10px;border-radius:9px;border:1px solid rgba(120,130,150,.22);background:transparent;color:inherit;cursor:pointer}
 @media(max-width:760px){.onboarding-fields{grid-template-columns:1fr}.onboarding-fields .wide{grid-column:auto}.business-onboarding footer{align-items:stretch;flex-direction:column}.miner-mode-switch{grid-template-columns:1fr}.miner-source-note{grid-template-columns:1fr}.miner-table .table-head{display:none}.miner-table .table-row{grid-template-columns:1fr}}
 
-
 /* PACIFICA_DIALER_TIMEOUT_TOGGLE_V1 */
 .dialer-timeout-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px;padding:10px 12px;border:1px solid rgba(120,130,150,.18);border-radius:12px;background:rgba(110,125,150,.055)}
 .dialer-timeout-control>span{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.62}
@@ -2692,7 +2660,6 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 .miner-autofeed-grid{display:grid;grid-template-columns:2fr 1fr;gap:10px}.miner-autofeed-grid label{display:grid;gap:5px}.miner-autofeed-grid label.wide{grid-column:1/-1}.miner-autofeed-grid label>span{font-size:10px;font-weight:800;opacity:.65}.miner-autofeed-grid input,.miner-autofeed-grid select{width:100%;min-width:0}
 .miner-autofeed-modes{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.miner-autofeed-modes .run-feed{margin-left:auto}.miner-feed-status{display:flex;justify-content:space-between;gap:12px;font-size:10px;opacity:.7}.miner-mode-switch.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:800px){.miner-autofeed-grid{grid-template-columns:1fr}.miner-autofeed-grid label.wide{grid-column:auto}.miner-mode-switch.three{grid-template-columns:1fr}.miner-feed-status{display:grid}}
-
 
 /* PACIFICA_VIN_LOOKUP_V1 */
 .vin-lookup-field{display:grid;gap:9px;grid-column:1/-1}
@@ -2736,14 +2703,3 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 .miner-pro-table{overflow:hidden}.miner-empty{min-height:150px;display:grid;place-items:center;align-content:center;gap:5px;padding:28px;text-align:center}.miner-empty-icon{width:35px;height:35px;display:grid;place-items:center;border-radius:10px;background:var(--ui-surface-soft);color:var(--ui-muted);font-size:19px}.miner-empty b{font-size:12px;color:var(--ui-text)}.miner-empty span{max-width:500px;color:var(--ui-muted);font-size:10px;line-height:1.5}
 @media(max-width:900px){.miner-provider-row{grid-template-columns:repeat(2,1fr)}.miner-provider-row>div:nth-child(2){border-right:0}.miner-config-grid{grid-template-columns:1fr}.miner-categories{grid-column:auto}.miner-pro-tabs{grid-template-columns:1fr!important}.miner-mode-context{align-items:flex-start;flex-direction:column}.miner-mode-context p{text-align:left}.miner-setup-callout{grid-template-columns:34px 1fr}.miner-setup-callout button{grid-column:2;justify-self:start}}
 @media(max-width:620px){.miner-engine-head{align-items:flex-start;flex-direction:column}.miner-provider-row{grid-template-columns:1fr}.miner-provider-row>div{border-right:0;border-bottom:1px solid var(--ui-border)}.miner-provider-row>div:last-child{border-bottom:0}.miner-engine-footer{align-items:stretch;flex-direction:column}.miner-run-button{width:100%}}
-
-/* Remove the green click-box effect while preserving keyboard accessibility. */
-html[data-theme] .app-shell :is(input,select,textarea):focus{
-  outline:none!important;
-  border-color:var(--ui-border-strong)!important;
-  box-shadow:0 1px 2px rgba(24,55,45,.06)!important;
-}
-html[data-theme] .app-shell :is(button,a):focus:not(:focus-visible){outline:none!important;box-shadow:none}
-html[data-theme] .app-shell :is(button,a):focus-visible{outline:2px solid #778b83!important;outline-offset:2px!important}
-html[data-theme] .app-shell :is(.number-input-shell,.clearvoice-switch):focus-within{outline:none!important}
-html[data-theme] .app-shell button:not(:disabled):active{transform:none}
