@@ -36,7 +36,9 @@ export async function POST(request: Request) {
     return new Response("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Reject/></Response>", { status: 400, headers: { "Content-Type": "text/xml; charset=utf-8" } });
   }
   const routeToken=String(form.get("RouteToken")||"");
-  const ringTimeout=String(form.get("RingTimeout")||"20")==="30"?30:20;
+  // RingTimeout=30 is Pacifica's Listen Through mode token.
+  // Give voicemail/call-screening services enough time to answer before the PSTN leg is abandoned.
+  const ringTimeout=String(form.get("RingTimeout")||"20")==="30"?45:20;
   const secret=(process.env.TWILIO_API_KEY_SECRET||"").trim();
   const claim=routeToken&&secret?await verifyVoiceRouteToken(routeToken,secret):null;
   const clientIdentity=from.replace(/^client:/i,"");

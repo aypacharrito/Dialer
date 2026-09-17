@@ -545,7 +545,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const endedLog=currentLogRef.current;
     postCallLogIdRef.current=endedLog?.id||"";
     const wasConnected=Boolean(endedLog?.connectedAt);const shouldResume=autoDialRef.current;
-    const autoUnconnected=Boolean(!wasManual&&shouldResume&&!wasConnected);
+    const listenThroughMode=workspaceProfile.dialerRingTimeoutSeconds===30;
+    const autoUnconnected=Boolean(!wasManual&&shouldResume&&!wasConnected&&(!listenThroughMode||outcome==="No answer"));
     automaticSkip=Boolean(automaticSkip||autoUnconnected);
     if(!wasConnected&&outcome==="Completed")outcome="No answer";
     const attemptWasEstablished=establishedAttemptRef.current===attemptId;
@@ -599,10 +600,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       const call=await Promise.race([connectPromise,new Promise<never>((_,reject)=>{signalingTimer=window.setTimeout(()=>{signalingExpired=true;reject(new Error("Twilio signaling timed out after 15 seconds"))},15000)})]).finally(()=>window.clearTimeout(signalingTimer));
       if(attemptId!==callAttemptRef.current||advancingRef.current){call.disconnect();return}
       callRef.current=call;
+      const listenThroughCall=!wasManual&&autoDialRef.current&&workspaceProfile.dialerRingTimeoutSeconds===30;
       const screenThisCall=!wasManual&&autoDialRef.current;
-      quietCallAudioRef.current=attachQuietCallAudio(call,quietDialingRef.current,screenThisCall&&quietDialingRef.current);
+      quietCallAudioRef.current=attachQuietCallAudio(call,listenThroughCall?false:quietDialingRef.current,screenThisCall&&!listenThroughCall&&quietDialingRef.current);
       if(screenThisCall){
-        setScreening(true);call.mute(true);
+        setScreening(true);call.mute(!listenThroughCall);
         screeningRef.current=createCallScreening({
           callSid:()=>String(call.parameters?.CallSid||""),
           read:async sid=>{const response=await fetch(`/api/twilio/status?callSid=${encodeURIComponent(sid)}`,{cache:"no-store",signal:AbortSignal.timeout(1800)});if(!response.ok)throw new Error("Call screening unavailable");return (await response.json()).result},
@@ -615,12 +617,35 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         establishedAttemptRef.current=attemptId;
         if(currentLeadId){sessionAttemptedLeadIdsRef.current.add(currentLeadId);const attemptAt=new Date();setLeads(list=>list.map(item=>{if(item.id!==currentLeadId)return item;const attempts=(item.attempts||0)+1;return {...item,attempts,lastAttemptAt:attemptAt.toISOString(),lastContact:`Attempted ${attemptAt.toLocaleString()}`,...(isDialerEligibleLead(item)?{automationEnabled:true,automationSequenceId:"missed-call",automationStep:0,automationNextAt:nextAutomationAfterAttempt(1,attemptAt.getTime()),automationStatus:"scheduled"}:{})}}))}
       };
-      call.on("ringing",()=>{markAttempt();setPhoneStatus(quietDialingRef.current?"Ringing · quiet until answered":"Ringing…")});
+      call.on("ringing",()=>{markAttempt();setPhoneStatus(listenThroughCall?"Ringing · listen-through audio open":quietDialingRef.current?"Ringing · quiet until answered":"Ringing…")});
       if(watchdogRef.current)window.clearTimeout(watchdogRef.current);
-      watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,`No answer after ${workspaceProfile.dialerRingTimeoutSeconds}-second ring window`,"No answer",undefined,attemptId,Boolean(!wasManual&&autoDialRef.current));call.disconnect()},(workspaceProfile.dialerRingTimeoutSeconds+5)*1000);
-      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(screenThisCall){setPhoneStatus(quietDialingRef.current?"Ringing quietly · waiting for answer":"Answered · remote audio open while Pacifica confirms status");return}if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
-      call.on("disconnect",()=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;const neverConnected=!currentLogRef.current?.connectedAt;finishCall(wasManual,currentLeadId,neverConnected&&autoDialRef.current?"No answer · continuing":autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume",neverConnected?"No answer":"Completed",undefined,attemptId,Boolean(neverConnected&&!wasManual&&autoDialRef.current))})()});
-      const onUnconnectedEnd=(message:string,outcome:string)=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;const autoUnconnected=!wasManual&&autoDialRef.current&&!currentLogRef.current?.connectedAt;finishCall(wasManual,currentLeadId,autoUnconnected?`${message} · continuing`:message,outcome,undefined,attemptId,autoUnconnected)})()};
+      const effectiveRingWindow=listenThroughCall?45:workspaceProfile.dialerRingTimeoutSeconds;
+      watchdogRef.current=window.setTimeout(()=>{finishCall(wasManual,currentLeadId,`No answer after ${effectiveRingWindow}-second ring window`,"No answer",undefined,attemptId,Boolean(!wasManual&&autoDialRef.current));call.disconnect()},(effectiveRingWindow+5)*1000);
+      call.on("accept",()=>{screeningRef.current?.accept();if(attemptId!==callAttemptRef.current||advancingRef.current)return;markAttempt();if(screenThisCall){setPhoneStatus(listenThroughCall?"Listen through · voicemail / assistants / answered audio pass through":quietDialingRef.current?"Ringing quietly · waiting for answer":"Answered · remote audio open while Pacifica confirms status");return}if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")});
+      call.on("disconnect",()=>{const screen=screeningRef.current;void (async()=>{
+        if(screen&&await screen.ended())return;
+        const neverConnected=!currentLogRef.current?.connectedAt;
+        if(listenThroughCall&&neverConnected){
+          const sid=String(call.parameters?.CallSid||"");
+          let terminal="";
+          for(let check=0;check<3&&sid&&!terminal;check++){
+            try{
+              const response=await fetch(`/api/twilio/status?callSid=${encodeURIComponent(sid)}`,{cache:"no-store",signal:AbortSignal.timeout(1800)});
+              if(response.ok){
+                const data=await response.json() as {result?:{detectionStatus?:string}|null};
+                terminal=String(data.result?.detectionStatus||"").toLowerCase();
+              }
+            }catch{}
+            if(!terminal)await new Promise(resolve=>window.setTimeout(resolve,250));
+          }
+          const trueNoAnswer=terminal==="no-answer";
+          const terminalOutcome=terminal==="busy"?"Busy":terminal==="failed"?"Failed":terminal==="canceled"?"Canceled":trueNoAnswer?"No answer":"Completed";
+          finishCall(wasManual,currentLeadId,trueNoAnswer?"No answer · continuing":terminal?`Call ended · ${terminalOutcome}`:"Call ended · review result",terminalOutcome,undefined,attemptId,trueNoAnswer);
+          return;
+        }
+        finishCall(wasManual,currentLeadId,neverConnected&&autoDialRef.current?"No answer · continuing":autoDialRef.current?"Call ended":"Call ended — save an outcome, then resume",neverConnected?"No answer":"Completed",undefined,attemptId,Boolean(neverConnected&&!wasManual&&autoDialRef.current));
+      })()});
+      const onUnconnectedEnd=(message:string,outcome:string)=>{const screen=screeningRef.current;void (async()=>{if(screen&&await screen.ended())return;const autoUnconnected=!wasManual&&autoDialRef.current&&!currentLogRef.current?.connectedAt&&!listenThroughCall;finishCall(wasManual,currentLeadId,autoUnconnected?`${message} · continuing`:message,outcome,undefined,attemptId,autoUnconnected)})()};
       call.on("cancel",()=>onUnconnectedEnd("Call canceled","Canceled"));
       call.on("reject",()=>onUnconnectedEnd("Call was rejected","Rejected"));
       call.on("error",error=>{const code="code" in error?String(error.code):undefined;finishCall(wasManual,currentLeadId,error.message||"Call failed","Failed",code,attemptId)});
@@ -1108,13 +1133,13 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       {view==="today"&&<TodayWorkspace leads={leads} onOpen={id=>setSelectedLead(id)} onCall={callLeadById} onImport={()=>inputRef.current?.click()} onAdd={openNewLead}/>}
 
       {view==="dialer"&&<div className={`dialer-view conversation-workspace ${connected||postCallLeadId?"has-conversation":"is-waiting"} ${keypadOpen?"has-keypad":""}`}>
-        <header className="dialer-toolbar"><div><h1>Dialer</h1><span>{dialerQueueLabel()} · {callableLeads.length} remaining</span></div><div className="dialer-toolbar-actions"><label className="quiet-dialing-toggle"><input type="checkbox" checked={workspaceProfile.quietDialing} onChange={event=>setWorkspaceProfile(profile=>({...profile,quietDialing:event.target.checked}))}/>Quiet dialing</label><button type="button" aria-expanded={keypadOpen} aria-controls="dialer-keypad" onClick={()=>setKeypadOpen(open=>!open)}><Icon name="keypad"/>{keypadOpen?"Hide keypad":"Keypad"}</button></div></header>
+        <header className="dialer-toolbar"><div><h1>Dialer</h1><span>{dialerQueueLabel()} · {callableLeads.length} remaining</span></div><div className="dialer-toolbar-actions"><label className="quiet-dialing-toggle" title={workspaceProfile.dialerRingTimeoutSeconds===30?"Listen through keeps remote audio open":undefined}><input type="checkbox" checked={workspaceProfile.dialerRingTimeoutSeconds===30?false:workspaceProfile.quietDialing} disabled={workspaceProfile.dialerRingTimeoutSeconds===30} onChange={event=>setWorkspaceProfile(profile=>({...profile,quietDialing:event.target.checked}))}/>{workspaceProfile.dialerRingTimeoutSeconds===30?"Audio open":"Quiet dialing"}</label><button type="button" aria-expanded={keypadOpen} aria-controls="dialer-keypad" onClick={()=>setKeypadOpen(open=>!open)}><Icon name="keypad"/>{keypadOpen?"Hide keypad":"Keypad"}</button></div></header>
         <div className="dialer-main-grid">
         <div className="dialer-primary">
         <section className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
           <div className="call-grid">
             <div className="call-status-line"><span><i/>{postCallLeadId?"CALL COMPLETE":connected?"LIVE":dialing?"CONNECTING":"NEXT UP"}</span>{!postCallLeadId&&autoDialing&&<em>{leadQueueRemaining} REMAINING</em>}</div>
-            {!postCallLeadId&&<div className="dialer-timeout-control"><span>Ring timeout</span><div role="group" aria-label="Ring timeout">{([20,30] as const).map(seconds=><button key={seconds} type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===seconds?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===seconds} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:seconds}))}>{seconds} sec</button>)}</div><small>{workspaceProfile.dialerRingTimeoutSeconds===20?"Fast · moves through no-answers quicker":"Extended · gives voicemail and call-screening assistants more time"}</small></div>}
+            {!postCallLeadId&&<div className="dialer-timeout-control"><span>Call mode</span><div role="group" aria-label="Call mode"><button type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===20?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===20} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:20}))}>Fast skip</button><button type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===30?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===30} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:30}))}>Listen through</button></div><small>{workspaceProfile.dialerRingTimeoutSeconds===20?"Fast skip · move through true no-answers sooner":"Listen through · 45-second ring window · hear voicemail, Google/call-screening assistants, IVRs and answered audio · only true no-answer auto-skips"}</small></div>}
             <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><h2>{manualCall?"Manual call":lead.name}</h2>{screening&&<button type="button" onClick={()=>screeningRef.current?.connect()}>Connect now</button>}{lead.lastCallResult&&<p role="status">Last call: {lead.lastCallResult}</p>}<a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":[lead.city,lead.state].filter(Boolean).join(", ")}</p></div>{connected&&<b className="timer">{fmt}</b>}</article>
             {!postCallLeadId&&<>
             <div className={`call-controls ${!dialing?"idle":""}`}>
