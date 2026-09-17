@@ -212,6 +212,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [postCallDraft,setPostCallDraft]=useState<PostCallDraft>({crmStage:"Follow-up",crmOutcome:"Completed",sourceDisposition:"Contacted",appointmentAt:"",notes:""});
   const [postCallTechnicalOutcome,setPostCallTechnicalOutcome]=useState("Completed");
   const [postCallConnected,setPostCallConnected]=useState(false);
+  const postCallLeadSnapshotRef=useRef<Lead|null>(null);
   const [sourceSyncing,setSourceSyncing]=useState(false);
   const [showNewLead,setShowNewLead]=useState(false);
   const [newLead,setNewLead]=useState<NewLeadDraft>(emptyNewLead);
@@ -280,9 +281,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     return refreshDialerRun(activeDialerRun.ids,Array.from(eligibleById.values()),priorityNow);
   },[dialerScope,minerRunIds,activeDialerRun,dynamicCallableLeads,lineLeads,priorityNow]);
   const queuedLead=(activeDialerRun?callableLeads[0]:callableLeads[index%Math.max(callableLeads.length,1)])||emptyLead;
-  const postCallLead=manualWrap?.lead||(postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined);
+  const livePostCallLead=postCallLeadId?leads.find(item=>item.id===postCallLeadId):undefined;
+  const snapshotPostCallLead=postCallLeadId&&postCallLeadSnapshotRef.current?.id===postCallLeadId?postCallLeadSnapshotRef.current:undefined;
+  const postCallLead=manualWrap?.lead||livePostCallLead||snapshotPostCallLead;
   const loadedLead=loadedLeadId?leads.find(item=>item.id===loadedLeadId):undefined;
-  const lead=(currentCallLeadId?leads.find(item=>item.id===currentCallLeadId):undefined)||postCallLead||loadedLead||queuedLead;
+  const lead=postCallLead||(currentCallLeadId?leads.find(item=>item.id===currentCallLeadId):undefined)||loadedLead||queuedLead;
   const incomingDialogRef=useRef<HTMLElement>(null);
   useDialogFocus(incomingDialogRef,Boolean(incomingCall));
   const newLeadDialogRef=useRef<HTMLFormElement>(null);
@@ -478,6 +481,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     setDesktopWrapError("");
     setPostCallTechnicalOutcome(technicalOutcome);setPostCallConnected(wasConnected);
     setPostCallDraft(postCallDraftForEnd(completedLead,technicalOutcome,wasConnected));
+    postCallLeadSnapshotRef.current=completedLead;
     setPostCallLeadId(leadId);setPhoneStatus(`Wrap up ${completedLead.name}, then continue`);
     updateLead(leadId,{lastContact:new Date().toLocaleString(),...(wasConnected?{lastConnectedAt:new Date().toISOString()}:{})});
   }
@@ -500,12 +504,18 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       const result=desktopDraft||postCallDraft,number=manualWrap.lead.phone;
       const saveId=`${callAttemptRef.current}:${postCallLeadId}`;if(savedPostCallRef.current===saveId)return;savedPostCallRef.current=saveId;
       setCallLogs(list=>list.map(log=>log.id===manualWrap.logId?{...log,outcome:result.crmOutcome,notes:result.notes,followUp:result.appointmentAt}:log));
-      setManualWrap(null);setPostCallLeadId(null);setDesktopWrapError("");setPhoneStatus("Call result saved");
+      setManualWrap(null);postCallLeadSnapshotRef.current=null;setPostCallLeadId(null);setDesktopWrapError("");setPhoneStatus("Call result saved");
       if(next==="again"){setDialNumber(number);void placeCall(number,true)}
       return;
     }
-    const completedLead=leadsRef.current.find(item=>item.id===postCallLeadId);if(!completedLead)return;
-    const saveId=`${callAttemptRef.current}:${postCallLeadId}`;if(savedPostCallRef.current===saveId)return;
+    const snapshot=postCallLeadSnapshotRef.current;
+    const completedLead=leadsRef.current.find(item=>item.id===postCallLeadId)||(snapshot?findDialedContact(leadsRef.current,snapshot.phone):undefined);
+    if(!completedLead){
+      postCallLeadSnapshotRef.current=null;setPostCallLeadId(null);setSourceSyncing(false);setDesktopWrapError("");
+      setPhoneStatus("Wrap-up cleared");setToast("The call result could not be matched to the refreshed contact, so Pacifica unlocked the dialer.");
+      return;
+    }
+    const saveId=`${callAttemptRef.current}:${completedLead.id}`;if(savedPostCallRef.current===saveId)return;
     savedPostCallRef.current=saveId;
     const resultDraft=desktopDraft||postCallDraft;
     const markedLogId=postCallLogIdRef.current;if(markedLogId){setCallLogs(list=>list.map(log=>log.id===markedLogId?{...log,outcome:resultDraft.crmOutcome,status:"Disposition saved"}:log));postCallLogIdRef.current=""}
@@ -518,7 +528,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     completeDialerRunLead(completedLead.id,completedLead.line);
     const sourcePatch={sourceDisposition:resultDraft.sourceDisposition,stage:resultDraft.crmStage,outcome:resultDraft.crmOutcome,followUp:patch.followUp||"",notes:resultDraft.notes};
     const resume=resumeAfterWrapRef.current&&next!=="again";
-    resumeAfterWrapRef.current=false;setResumeAfterWrap(false);setPostCallLeadId(null);setSourceSyncing(false);
+    resumeAfterWrapRef.current=false;setResumeAfterWrap(false);postCallLeadSnapshotRef.current=null;setPostCallLeadId(null);setSourceSyncing(false);
     if(next==="again"){
       autoDialRef.current=false;setAutoDialing(false);setToast("");
       if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);
@@ -554,6 +564,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if(leadId&&attemptWasEstablished){openPostCall(leadId,shouldResume,outcome,wasConnected);setToast(`${wasConnected?"Conversation":"Call attempt"} complete · save the result before continuing`);return}
     if(wasManual&&attemptWasEstablished&&endedLog){
       const summary=normalizeSavedLeads([{id:-Date.now(),name:endedLog.phone,phone:endedLog.phone,source:"Manual keypad",line:activeLineRef.current}])[0];
+      postCallLeadSnapshotRef.current=summary;
       setManualWrap({lead:summary,logId:endedLog.id});setPostCallLeadId(summary.id);setPostCallDraft(postCallDraftForEnd(summary,outcome,wasConnected));setPostCallTechnicalOutcome(outcome);setPostCallConnected(wasConnected);setResumeAfterWrap(false);resumeAfterWrapRef.current=false;setDesktopWrapError("");setPhoneStatus("Choose a call result");return;
     }
     setPhoneStatus(message);
@@ -1118,11 +1129,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         {(connected||Boolean(postCallLeadId))&&<aside className="lead-file" aria-label="Current lead file">
           <header>
             <div><span>CONTACT</span><b>{manualCall?"Manual call":lead.name}</b></div>
-            <em className={connected?"live":""}>{postCallLeadId?"WRAP UP":connected?"LIVE":callableLeads.length?`${leadQueuePosition+1} OF ${leadQueueTotal}`:"OPEN"}</em>
+            <em className={connected?"live":""} role={postCallLeadId?"button":undefined} tabIndex={postCallLeadId?0:undefined} title={postCallLeadId?"Open call wrap-up":undefined} onClick={()=>{if(postCallLeadId)document.getElementById("post-call-wrap")?.scrollIntoView({behavior:"smooth",block:"nearest"})}} onKeyDown={event=>{if(postCallLeadId&&(event.key==="Enter"||event.key===" ")){event.preventDefault();document.getElementById("post-call-wrap")?.scrollIntoView({behavior:"smooth",block:"nearest"})}}}>{postCallLeadId?"WRAP UP":connected?"LIVE":callableLeads.length?`${leadQueuePosition+1} OF ${leadQueueTotal}`:"OPEN"}</em>
           </header>
           {lead.id&&!manualCall?<>
             <div className="lead-file-identity"><span className="file-avatar">{lead.name.split(" ").map(part=>part[0]).slice(0,2).join("")}</span><div><a href={`tel:${lead.phone}`}>{lead.phone}</a><a href={`mailto:${lead.email}`}>{lead.email||"No email provided"}</a><small>{[lead.address,lead.city,lead.state,lead.zip].filter(Boolean).join(", ")||lead.city||"No address provided"}</small></div></div>
-            {postCallLeadId===lead.id?<section className="post-call-wrap" aria-label="Post-call wrap-up">
+            {postCallLead?<section id="post-call-wrap" className="post-call-wrap" aria-label="Post-call wrap-up">
               <header><div><span>{postCallConnected?"CONNECTED CALL COMPLETE":"CALL ATTEMPT COMPLETE"}</span><h3>Save the outcome</h3></div><em>{lead.source||"Lead provider"}</em></header>
               <div className="post-call-fields">
                 <label><span>Pacifica CRM stage</span><select value={postCallDraft.crmStage} onChange={event=>setPostCallDraft(draft=>({...draft,crmStage:event.target.value}))}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
