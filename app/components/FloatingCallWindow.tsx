@@ -18,6 +18,7 @@ export default function FloatingCallWindow(props:Props){
   const {active,result,onWindowChange}=props;
   const phase=active?"call":result?"result":"idle";
   const [target,setTarget]=useState<Window|null>(null);
+  const [desktopOpen,setDesktopOpen]=useState(false);
   const [error,setError]=useState("");
   const [layout,setLayout]=useState<"horizontal"|"vertical">("horizontal");
   const [keypad,setKeypad]=useState(false);
@@ -41,9 +42,13 @@ export default function FloatingCallWindow(props:Props){
     };
   },[]);
 
-  useEffect(()=>{onWindowChange(Boolean(target)||Boolean(desktop?.supportsDesktopWrapUp))},[target,desktop?.supportsDesktopWrapUp,onWindowChange]);
+  useEffect(()=>{onWindowChange(Boolean(target)||desktopOpen)},[target,desktopOpen,onWindowChange]);
   useEffect(()=>{
-    if(desktop?.supportsDesktopWrapUp){if(phase!=="idle")void desktop.enterCallOverlay().catch(()=>setError("Could not open the desktop window."));return}
+    if(desktop?.supportsDesktopWrapUp){
+      if(phase==="idle"){setDesktopOpen(false);void desktop.exitCallOverlay().catch(()=>undefined);return}
+      void desktop.enterCallOverlay().then(opened=>{setDesktopOpen(Boolean(opened));if(!opened)setError("Could not open the desktop window.")}).catch(()=>{setDesktopOpen(false);setError("Could not open the desktop window.")});
+      return;
+    }
     const popup=windowRef.current;if(!popup)return;
     if(phase==="idle"){const timer=window.setTimeout(()=>popup.close(),900);return()=>window.clearTimeout(timer)}
     if(phaseRef.current!==phase){
@@ -57,8 +62,12 @@ export default function FloatingCallWindow(props:Props){
     const desktop=bridge();
     if(desktop?.isDesktop&&desktop.supportsDesktopWrapUp){
       setError("");
-      try{await desktop.enterCallOverlay();document.documentElement.dataset.pacificaDesktopCall="true"}
-      catch{setError("The desktop overlay could not open. Keep using the call controls in Pacifica.")}
+      try{
+        const opened=await desktop.enterCallOverlay();
+        setDesktopOpen(Boolean(opened));
+        if(opened)document.documentElement.dataset.pacificaDesktopCall="true";
+        else setError("The desktop overlay could not open. Keep using the call controls in Pacifica.");
+      }catch{setDesktopOpen(false);setError("The desktop overlay could not open. Keep using the call controls in Pacifica.")}
       return;
     }
     if(windowRef.current&&!windowRef.current.closed){windowRef.current.focus();return}
@@ -97,7 +106,7 @@ export default function FloatingCallWindow(props:Props){
 
   return <>
     {legacyDesktop&&<div className="desktop-update-notice" role="status">This installed Pacifica uses the old overlay. <a href="/api/desktop/download?platform=windows" target="_blank" rel="noreferrer">Install the current desktop app</a></div>}
-    {(props.active||props.result)&&<div className="float-call-launch"><button type="button" onClick={()=>void open()}>{target?"Show floating call":"Float call ↗"}</button>{error&&<p role="status">{error}</p>}</div>}
+    {(props.active||props.result)&&<div className="float-call-launch"><button type="button" onClick={()=>void open()}>{target||desktopOpen?"Show floating call":"Float call ↗"}</button>{error&&<p role="status">{error}</p>}</div>}
     {target&&createPortal(props.active?callCard():props.result?<PostCallDispositionModal lead={{name:props.result.name,phone:props.result.number,source:props.result.source,stage:props.result.stage,doNotCall:props.result.doNotCall}} draft={props.result.draft} technicalOutcome={props.result.technicalOutcome} connected={props.result.connected} resume={props.result.resume} saving={props.result.saving} onSelect={props.result.onSelect} onChange={props.result.onChange} onSave={props.result.onSave} onCallAgain={props.result.onAgain} onPause={props.result.onPause}/>:<p>Result saved</p>,target.document.body)}
   </>;
 }

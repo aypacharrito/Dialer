@@ -36,7 +36,9 @@ export function createCallScreening(options:{callSid:()=>string;read:(sid:string
     check,
     async ended(){
       if(released||skipped)return skipped;
-      for(let i=0;i<4&&!disposed&&!skipped&&!released;i++){await check();if(!skipped&&!released)await new Promise(resolve=>setTimeout(resolve,300));}
+      // The final Twilio child-call callback can trail the browser disconnect.
+      // Wait briefly so a real no-answer can still advance without a wrap-up.
+      for(let i=0;i<8&&!disposed&&!skipped&&!released;i++){await check();if(!skipped&&!released)await new Promise(resolve=>setTimeout(resolve,300));}
       return skipped;
     },
     dispose(){disposed=true;clearInterval(interval);},

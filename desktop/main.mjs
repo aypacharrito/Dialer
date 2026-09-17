@@ -57,7 +57,9 @@ function positionOverlay(){
   const display=overlayPosition?screen.getDisplayMatching({...overlayPosition,width:480,height:88}):mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
   const area=display.workArea;
   const [width]=overlayWindow.getSize();
-  overlayWindow.setPosition(overlayPosition?Math.max(area.x,Math.min(overlayPosition.x,area.x+area.width-width)):area.x+Math.max(0,Math.round((area.width-width)/2)),overlayPosition?Math.max(area.y,Math.min(overlayPosition.y,area.y+area.height-88)):area.y+16,false);
+  const x=overlayPosition?Math.max(area.x,Math.min(overlayPosition.x,area.x+area.width-80)):area.x+Math.max(0,Math.round((area.width-width)/2));
+  const y=overlayPosition?Math.max(area.y,Math.min(overlayPosition.y,area.y+area.height-40)):area.y+16;
+  overlayWindow.setPosition(x,y,false);
 }
 
 function createOverlay(){
@@ -147,11 +149,17 @@ function showCallOverlay(){
   const phaseChanged=overlayPhase!==nextPhase;
   const geometry=nextPhase==="incoming"?"incoming":nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}`;
   if(overlayGeometry!==geometry){
+    // Keep the exact top-left location when switching Call -> Call result.
+    // Size changes must not make the overlay "jump" to a new position.
+    const [oldX,oldY]=overlay.getPosition();
     const [width,height]=overlayDimensions(nextPhase);
     overlay.setMinimumSize(nextPhase==="incoming"?420:nextPhase==="wrap"?480:(overlayLayout==="vertical"?280:480),nextPhase==="incoming"?138:nextPhase==="wrap"?560:(overlayLayout==="vertical"?180:88));
     overlay.setSize(width,height,false);
-    const bounds=overlay.getBounds(),area=screen.getDisplayMatching(bounds).workArea;
-    overlay.setPosition(Math.max(area.x,Math.min(bounds.x,area.x+area.width-width)),Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),false);
+    const area=screen.getDisplayMatching({x:oldX,y:oldY,width:1,height:1}).workArea;
+    const x=Math.max(area.x,Math.min(oldX,area.x+area.width-80));
+    const y=Math.max(area.y,Math.min(oldY,area.y+area.height-40));
+    overlay.setPosition(x,y,false);
+    overlayPosition={x,y};saveOverlayLayout();
     overlayGeometry=geometry;
   }
   overlayPhase=nextPhase;
@@ -191,7 +199,17 @@ ipcMain.on("pacifica:wrap-action",(event,action)=>{
 
 function trustedMain(event){return mainWindow&&event.sender===mainWindow.webContents&&isAppUrl(event.senderFrame?.url||"")}
 
-ipcMain.handle("pacifica:enter-call-overlay",(event)=>{if(!trustedMain(event)||(!lastCallState.active&&!lastCallState.wrapUp))return false;const overlay=createOverlay();if(overlay.isMinimized())overlay.restore();showCallOverlay();return true});
+ipcMain.handle("pacifica:enter-call-overlay",(event)=>{
+  if(!trustedMain(event)||(!lastCallState.active&&!lastCallState.wrapUp&&!lastCallState.incoming))return false;
+  const overlay=createOverlay();
+  if(overlay.isMinimized())overlay.restore();
+  showCallOverlay();
+  if(!overlay.isVisible())overlay.show();
+  overlay.setAlwaysOnTop(true,"floating");
+  try{overlay.moveTop()}catch{}
+  overlay.focus();
+  return overlay.isVisible();
+});
 ipcMain.handle("pacifica:exit-call-overlay",(event)=>{if(!trustedMain(event))return false;if(!lastCallState.wrapUp)overlayWindow?.hide();return true});
 ipcMain.handle("pacifica:show-main-window",(event)=>{if(!trustedMain(event))return false;mainWindow?.show();mainWindow?.focus();return true});
 
