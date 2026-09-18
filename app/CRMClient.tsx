@@ -21,6 +21,7 @@ import PhoneSettings from "./components/PhoneSettings";
 import CallLogReport, { type CallLog } from "./components/CallLogReport";
 import AiCommandCenter, { type AiAction, type AiCreateLead } from "./components/AiCommandCenter";
 import QuoteDesk from "./components/QuoteDesk";
+import ContactQuoteReadiness from "./components/ContactQuoteReadiness";
 import MessagesCenter from "./components/MessagesCenter";
 import TodayWorkspace from "./components/TodayWorkspace";
 import LeadGrowthPanel from "./components/LeadGrowthPanel";
@@ -314,7 +315,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   useEffect(()=>{dialerScopeRef.current=dialerScope},[dialerScope]);
   useEffect(()=>{minerRunIdsRef.current=minerRunIds},[minerRunIds]);
   useEffect(()=>{callLogsRef.current=callLogs},[callLogs]);
-  useEffect(()=>{quietDialingRef.current=workspaceProfile.quietDialing;quietCallAudioRef.current?.setQuiet(workspaceProfile.quietDialing)},[workspaceProfile.quietDialing]);
+  useEffect(()=>{quietDialingRef.current=workspaceProfile.quietDialing;quietCallAudioRef.current?.setQuiet(workspaceProfile.quietDialing);deviceRef.current?.audio?.outgoing(!workspaceProfile.quietDialing)},[workspaceProfile.quietDialing]);
   useEffect(()=>()=>{quietCallAudioRef.current?.dispose();screeningRef.current?.dispose()},[]);
   useEffect(()=>{if(!workspaceHydrated||!clerkEnabled)return;let canceled=false;let refreshing=false;const seenKey=`pacifica:${workspaceId}:messages-seen`;const refresh=()=>{if(refreshing)return;refreshing=true;void fetch("/api/crm/workspace",{cache:"no-store"}).then(response=>{if(!response.ok)throw new Error("Workspace refresh failed");return response.json()}).then(data=>{if(canceled)return;if(Array.isArray(data.callLogs))setCallLogs(current=>mergeRecordingUpdates(current,data.callLogs as CallLog[]));const remoteLeads=normalizeSavedLeads(data.leads);setLeads(current=>mergeIncomingContacts(current,remoteLeads));let seen=0;try{seen=Number(localStorage.getItem(seenKey))||0}catch{}const inbound=remoteLeads.flatMap(item=>(item.communications||[]).filter(comm=>String(comm.direction||"").toLowerCase().includes("in")).map(comm=>({lead:item,time:new Date(String(comm.sentAt||"")).getTime()||0,body:String(comm.body||comm.subject||"New message")}))).filter(item=>item.time>seen).sort((a,b)=>b.time-a.time);setMessageUnreadCount(inbound.length);const latest=inbound[0];if(latest&&latest.time>latestInboundRef.current){if(latestInboundRef.current&&typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification(`New message from ${latest.lead.name}`,{body:latest.body,icon:"/pacifica-icon-192.png"});latestInboundRef.current=latest.time}}).catch(()=>undefined).finally(()=>{refreshing=false})};const initial=window.setTimeout(refresh,1500);const timer=window.setInterval(refresh,5000);return()=>{canceled=true;window.clearTimeout(initial);window.clearInterval(timer)}},[clerkEnabled,workspaceHydrated,workspaceId]);
   function openView(id:View){if(id==="dialer"){dialerScopeRef.current="crm";setDialerScope("crm");minerRunIdsRef.current=[];setMinerRunIds([])}if(id==="messages"){try{localStorage.setItem(`pacifica:${workspaceId}:messages-seen`,String(Date.now()))}catch{}setMessageUnreadCount(0);if(typeof Notification!=="undefined"&&Notification.permission==="default")void Notification.requestPermission()}setGrowthLeadId(null);setSelectedLead(null);setView(id)}
@@ -363,7 +364,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         device.on("registered",()=>{setPhoneAvailable(true);setPhoneStatus("Secure line available")});
         device.on("unregistered",()=>{setPhoneAvailable(false);setPhoneStatus("Inbound calls paused · outbound still ready")});
         device.on("incoming",call=>{const from=call.customParameters.get("From")||call.parameters.From||"Unknown caller";setIncomingNumber(from);setIncomingCall(call);setPhoneStatus(`Incoming call from ${from}`);call.on("cancel",()=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus("Caller hung up before answer")});call.on("error",(error:Error)=>{setIncomingCall(null);setIncomingNumber("");setPhoneStatus(error.message||"Incoming call failed")})});
-        device.audio?.outgoing(false);
+        device.audio?.outgoing(!quietDialingRef.current);
         device.audio?.disconnect(false);
         device.audio?.on("deviceChange",()=>{
           if(audioDeviceChangeTimerRef.current)window.clearTimeout(audioDeviceChangeTimerRef.current);
@@ -412,7 +413,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     setCallLogs(list=>{const same=(log:CallLog)=>log.id===complete.id||Boolean(complete.callSid&&log.callSid===complete.callSid);const previous=list.find(same);const merged=previous?mergeRecordingUpdates([complete],[previous])[0]:complete;return [merged,...list.filter(log=>!same(log))].slice(0,500)});currentLogRef.current=null;
   }
   function stopAutoDial(message="Auto dial paused"){
-    screeningRef.current?.connect();
+    // Queue state is independent from the current call. Never force the screening
+    // controller to "connect" merely because auto dialing was paused.
     autoDialRef.current=false;setAutoDialing(false);
     if(nextCallTimerRef.current)window.clearTimeout(nextCallTimerRef.current);
     nextCallTimerRef.current=undefined;setToast(message);
@@ -604,15 +606,16 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       callRef.current=call;
       const listenThroughCall=!wasManual&&autoDialRef.current&&workspaceProfile.dialerRingTimeoutSeconds===30;
       const screenThisCall=!wasManual&&autoDialRef.current;
-      // "Hear ringing" controls ringback only. Screening still releases
-      // voicemail / assistants / IVRs / humans immediately after PSTN answer.
+      // With <Dial answerOnBridge="true">, Voice SDK accept/open is the answer signal.
+      // Release humans, voicemail, assistants and IVRs immediately; server status only
+      // confirms terminal no-answer so the queue never skips an answered call.
       quietCallAudioRef.current=attachQuietCallAudio(call,quietDialingRef.current,screenThisCall&&quietDialingRef.current);
       if(screenThisCall){
         setScreening(true);call.mute(true);
         screeningRef.current=createCallScreening({
           callSid:()=>String(call.parameters?.CallSid||""),
           read:async sid=>{const response=await fetch(`/api/twilio/status?callSid=${encodeURIComponent(sid)}`,{cache:"no-store",signal:AbortSignal.timeout(1800)});if(!response.ok)throw new Error("Call screening unavailable");return (await response.json()).result},
-          pollMs:listenThroughCall?180:650,
+          pollMs:650,
           connect:()=>{if(attemptId!==callAttemptRef.current||advancingRef.current)return;
             quietCallAudioRef.current?.release();
             call.mute(false);setMuted(false);setScreening(false);if(watchdogRef.current)window.clearTimeout(watchdogRef.current);watchdogRef.current=undefined;if(currentLogRef.current&&!currentLogRef.current.connectedAt)currentLogRef.current.connectedAt=Date.now();if(currentLeadId)updateLead(currentLeadId,{lastConnectedAt:new Date().toISOString()});setWorkspaceProfile(profile=>profile.liveCallSession?{...profile,liveCallSession:{...profile.liveCallSession,status:"connected",updatedAt:new Date().toISOString()}}:profile);setConnected(true);setSeconds(0);setPhoneStatus(listenThroughCall?"Answered · audio on":clearVoiceActive?`Live call · ClearVoice ${clearVoiceProcessorRef.current?.engineLabel||"active"}`:"Live call over Wi-Fi");setToast("Recording available · give the disclosure, then tap Record")},
@@ -1147,7 +1150,15 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
           <div className="call-grid">
             <div className="call-status-line"><span><i/>{postCallLeadId?"CALL COMPLETE":connected?"LIVE":dialing?"CONNECTING":"NEXT UP"}</span>{!postCallLeadId&&autoDialing&&<em>{leadQueueRemaining} REMAINING</em>}</div>
             {!postCallLeadId&&<div className="dialer-timeout-control"><span>Call mode</span><div role="group" aria-label="Call mode"><button type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===20?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===20} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:20}))}>Fast skip</button><button type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===30?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===30} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:30}))}>Listen through</button></div><small>{workspaceProfile.dialerRingTimeoutSeconds===20?"Fast skip · move through true no-answers sooner":"Listen through · 45-second ring window · hear voicemail, Google/call-screening assistants, IVRs and answered audio · only true no-answer auto-skips"}</small></div>}
-            <article className="contact-card"><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><h2>{manualCall?"Manual call":lead.name}</h2>{screening&&<button type="button" onClick={()=>screeningRef.current?.connect()}>Connect now</button>}{lead.lastCallResult&&<p role="status">Last call: {lead.lastCallResult}</p>}<a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":[lead.city,lead.state].filter(Boolean).join(", ")}</p></div>{connected&&<b className="timer">{fmt}</b>}</article>
+            <article
+              className={`contact-card ${!manualCall&&lead.id?"contact-card-openable":""}`}
+              role={!manualCall&&lead.id?"button":undefined}
+              tabIndex={!manualCall&&lead.id?0:undefined}
+              aria-label={!manualCall&&lead.id?`Open contact and quote details for ${lead.name}`:undefined}
+              title={!manualCall&&lead.id?"Open contact and quote details":undefined}
+              onClick={event=>{if(manualCall||!lead.id||(event.target as HTMLElement).closest("a,button"))return;setSelectedLead(lead.id)}}
+              onKeyDown={event=>{if(manualCall||!lead.id||event.currentTarget!==event.target||!(event.key==="Enter"||event.key===" "))return;event.preventDefault();setSelectedLead(lead.id)}}
+            ><div className="avatar">{manualCall?"#":lead.name.split(" ").map(n=>n[0]).slice(0,2).join("")}</div><div><h2>{manualCall?"Manual call":lead.name}</h2>{screening&&<button type="button" onClick={()=>screeningRef.current?.connect()}>Connect now</button>}{lead.lastCallResult&&<p role="status">Last call: {lead.lastCallResult}</p>}<a href={`tel:${manualCall?dialNumber:lead.phone}`}>{manualCall?dialNumber:lead.phone}</a><p>{manualCall?"One-off call":[lead.city,lead.state].filter(Boolean).join(", ")}</p>{!manualCall&&lead.id&&<small className="contact-card-open-hint">View contact &amp; quote details â†’</small>}</div>{connected&&<b className="timer">{fmt}</b>}</article>
             {!postCallLeadId&&<>
             <div className={`call-controls ${!dialing?"idle":""}`}>
               {!dialing?<button className="start-call" onClick={start}><Icon name="play"/><span>Start calling</span></button>:<>

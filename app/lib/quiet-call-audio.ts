@@ -14,6 +14,7 @@ export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean, holdUn
     elements.clear();
     tracks.clear();
   }
+
   function silenceExistingStream() {
     // Covers media created before Device.connect resolves. Never access local audio.
     if (!quiet || answered || disposed) return;
@@ -22,17 +23,25 @@ export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean, holdUn
       track.enabled = false;
     }
   }
+
   function onAudio(element: HTMLAudioElement) {
     if (!quiet || answered || disposed) return;
     if (!elements.has(element)) elements.set(element, element.muted);
     element.muted = true;
     silenceExistingStream();
   }
+
   function onAccept() {
-    if (holdUntilReleased) { silenceExistingStream(); return; }
+    // Screening releases in the CRM's accept listener immediately afterward.
+    // Until then, preserve silent ringback only if Quiet Dialing is still on.
+    if (holdUntilReleased) {
+      silenceExistingStream();
+      return;
+    }
     answered = true;
     restore();
   }
+
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -44,6 +53,7 @@ export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean, holdUn
     call.removeListener("reject", dispose);
     call.removeListener("error", dispose);
   }
+
   call.on("audio", onAudio);
   call.on("accept", onAccept);
   call.on("disconnect", dispose);
@@ -51,11 +61,18 @@ export function attachQuietCallAudio(call: Call, initiallyQuiet: boolean, holdUn
   call.on("reject", dispose);
   call.on("error", dispose);
   silenceExistingStream();
+
   return {
     dispose,
-    release() { holdUntilReleased = false; answered = true; restore(); },
+    release() {
+      holdUntilReleased = false;
+      answered = true;
+      restore();
+    },
     setQuiet(value: boolean) {
-      quiet = holdUntilReleased || value;
+      // Explicitly respect the live UI toggle. Do not force quiet back on merely
+      // because the call has a screening controller.
+      quiet = value;
       if (!quiet) restore();
       else silenceExistingStream();
     },
