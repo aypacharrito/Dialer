@@ -28,7 +28,8 @@ function signedUrls(request:Request){
 
 export async function validateTwilioWebhook(request:Request,form:FormData){
   const authToken=(process.env.TWILIO_AUTH_TOKEN||"").trim();
-  if(!authToken)return true;
+  // Missing credentials must never turn a public webhook into an unsigned writer.
+  if(!authToken)return false;
   const supplied=request.headers.get("x-twilio-signature")||"";
   if(!supplied)return false;
   const fields=Array.from(form.entries())

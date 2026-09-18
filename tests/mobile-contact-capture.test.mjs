@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {capturedContact,cleanContactDraft,matchingContact} from "../mobile/src/lib/contact-capture.ts";
+import * as mobileModule from "../mobile/src/lib/contact-capture.ts";
+// Expo is CommonJS; Node 22 exposes these TypeScript exports under default.
+const {capturedContact,cleanContactDraft,matchingContact}=mobileModule.default||mobileModule;
 
 test("photo contact requires a reviewed way to reach the person",()=>{
  assert.throws(()=>capturedContact(cleanContactDraft({name:"Sam"}),1),/phone number or email/);

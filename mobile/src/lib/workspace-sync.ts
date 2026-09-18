@@ -12,7 +12,9 @@ export function applyEdits(workspace: Workspace, edits: PendingEdit[]): Workspac
       if (lead.id !== edit.leadId) return lead;
       const patch = { ...edit.patch };
       // A stale offline edit must not restore a contact deleted on another device.
-      if (Date.parse(lead.deletionUpdatedAt || lead.deletedAt || "") >= Date.parse(String(patch.deletionUpdatedAt || ""))) {
+      const remoteDecision=Date.parse(lead.deletionUpdatedAt || lead.deletedAt || "");
+      const pendingDecision=Date.parse(String(patch.deletionUpdatedAt || ""));
+      if (Number.isFinite(remoteDecision) && (!Number.isFinite(pendingDecision) || remoteDecision >= pendingDecision)) {
         delete patch.deletedAt;
         delete patch.deletionUpdatedAt;
       }

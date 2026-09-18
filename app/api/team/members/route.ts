@@ -1,7 +1,7 @@
 import {clerkClient} from "@clerk/nextjs/server";
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {isClerkConfigured} from "../../../lib/clerk-config";
-import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
+import {readStoredWorkspace,saveWorkspaceChanges} from "../../../lib/workspace-storage";
 import {defaultWorkspaceProfile,type WorkspaceTeamMember} from "../../../lib/workspace-profile";
 
 export const runtime="nodejs";
@@ -41,7 +41,7 @@ export async function POST(request:Request){
         roster=roster.map(item=>item.userId===member.userId?{...item,role,active}:item);
       }
     }
-    const profile={...workspace.profile,teamRoster:roster,teamMembers:roster.filter(item=>item.active).map(item=>item.name)};await writeStoredWorkspace(access.userId,{...workspace,profile});
+    const profile={...workspace.profile,teamRoster:roster,teamMembers:roster.filter(item=>item.active).map(item=>item.name)};await saveWorkspaceChanges(access.userId,workspace,{...workspace,profile});
     return Response.json({ok:true,members:roster});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to update team"},{status:500})}
 }

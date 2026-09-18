@@ -18,6 +18,9 @@ export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
     patch.lastInboundAt=remote.lastInboundAt;
     patch.automationEnabled=false;patch.automationNextAt='';patch.automationStatus='replied';
     for(const key of ['smsOptOut','emailOptOut'])if(values[key]!==undefined)patch[key]=values[key];
+    if(values.smsOptOut===true){
+      for(const key of ['doNotCall','stage','status','outcome','sourceDisposition','followUp','smsConsent'])if(values[key]!==undefined)patch[key]=values[key];
+    }
   }
   if(remote.communications?.length){
     const messages=new Map<string,unknown>();

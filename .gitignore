@@ -9,3 +9,8 @@ dist/
 desktop/dist/
 .sites-runtime/
 mobile/.expo/
+
+# Runtime assets are copied from the lockfile-pinned packages before dev/build.
+/public/clearvoice/
+/public/scanner/
+*.bak

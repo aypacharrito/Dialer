@@ -1,7 +1,7 @@
 import {extraFields} from "../../../lib/provider-quote-fields";
 import { getPacificaAccess, isPacificaOwnerApi } from "../../../lib/clerk-access";
 import { crmFieldsForDisposition, leadLineForProduct } from "../../../lib/lead-priority";
-import { readStoredWorkspace, writeStoredWorkspace } from "../../../lib/workspace-storage";
+import { readStoredWorkspace, saveWorkspaceChanges } from "../../../lib/workspace-storage";
 
 type IncomingRecord = Record<string, unknown>;
 
@@ -250,7 +250,7 @@ async function syncLeadDirectlyToWorkspace(workspaceId:string,lead:NormalizedLea
     nextLeads=currentLeads.map((item,index)=>index===existingIndex?merged:item);
   }
 
-  await writeStoredWorkspace(workspaceId,{
+  await saveWorkspaceChanges(workspaceId,workspace,{
     ...workspace,
     leads:nextLeads.slice(0,5000),
   });

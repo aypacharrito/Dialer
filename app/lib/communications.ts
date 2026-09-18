@@ -37,5 +37,9 @@ export function cleanCommunications(value:unknown):StoredCommunication[]{
 }
 
 export function appendCommunication(current:unknown,communication:StoredCommunication){
-  return [...cleanCommunications(current),communication].slice(-200);
+  const items=cleanCommunications(current);
+  const existing=items.findIndex(item=>item.id===communication.id||Boolean(communication.providerId&&item.provider===communication.provider&&item.providerId===communication.providerId));
+  // Webhook retries must not duplicate a message or roll back a delivery status.
+  if(existing>=0)return items;
+  return [...items,communication].slice(-200);
 }

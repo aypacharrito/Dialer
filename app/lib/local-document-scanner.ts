@@ -15,8 +15,10 @@ async function scanBarcode(file:File){
 async function pdfText(file:File){
   const pdfjs=await import("pdfjs-dist");pdfjs.GlobalWorkerOptions.workerSrc="/scanner/pdf.worker.min.mjs";
   const document=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;let text="";
-  for(let number=1;number<=document.numPages;number+=1){const page=await document.getPage(number);const content=await page.getTextContent();text+=content.items.map(item=>"str" in item?`${item.str}${item.hasEOL?"\n":" "}`:"").join("")+"\n"}
-  return text;
+  try{
+    for(let number=1;number<=document.numPages;number+=1){const page=await document.getPage(number);const content=await page.getTextContent();text+=content.items.map(item=>"str" in item?`${item.str}${item.hasEOL?"\n":" "}`:"").join("")+"\n"}
+    return text;
+  }finally{await document.destroy()}
 }
 
 async function imageVariants(file:File){

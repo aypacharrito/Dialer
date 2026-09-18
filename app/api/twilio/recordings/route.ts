@@ -4,7 +4,7 @@ import {isClerkConfigured} from "../../../lib/clerk-config";
 import {phoneAssignmentForWorkspace} from "../../../lib/phone-assignments";
 import {twilioAccountConfig,twilioApiErrorMessage,twilioApiRequest,type TwilioApiError} from "../../../lib/twilio-rest";
 import {twilioClientIdentity} from "../../../lib/twilio-workspaces";
-import {readStoredWorkspace,writeStoredWorkspace} from "../../../lib/workspace-storage";
+import {readStoredWorkspace,saveWorkspaceChanges} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 
@@ -37,7 +37,7 @@ export async function POST(request:Request){
       const results=await Promise.all(requested.map(async sid=>{const result=await twilioApiRequest<TwilioRecording>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${sid}.json`,{},credentials);return result.response.ok?{sid,status:String(result.data.status||"")}:null}));
       const statuses=new Map(results.filter((item):item is {sid:string;status:string}=>Boolean(item)).map(item=>[item.sid,item.status]));let changed=false;
       const callLogs=stored.callLogs.map(raw=>{const log=raw as Record<string,unknown>;const sid=recordingSid(String(log.recordingSid||""));const status=statuses.get(sid);if(!status)return log;const recordingUrl=status==="completed"?`/api/twilio/recordings?sid=${sid}`:String(log.recordingUrl||"");if(log.recordingStatus===status&&String(log.recordingUrl||"")===recordingUrl)return log;changed=true;return {...log,recordingStatus:status,...(recordingUrl?{recordingUrl}:{})}});
-      if(changed)await writeStoredWorkspace(workspace.userId,{...stored,callLogs});return Response.json({ok:true,callLogs});
+      if(changed)await saveWorkspaceChanges(workspace.userId,stored,{...stored,callLogs});return Response.json({ok:true,callLogs});
     }
     const sid=callSid(String(body.callSid||""));if(!sid)return Response.json({error:"A live Twilio Call SID is required"},{status:400});
     const {accountSid,credentials}=await ownedCall(workspace.userId,sid);

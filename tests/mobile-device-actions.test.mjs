@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizePhoneNumber, openDeviceAction, phoneCallUrl, textMessageUrl } from "../mobile/src/lib/device-actions.ts";
+import * as mobileModule from "../mobile/src/lib/device-actions.ts";
+// Expo is CommonJS; Node 22 exposes these TypeScript exports under default.
+const { normalizePhoneNumber, openDeviceAction, phoneCallUrl, textMessageUrl }=mobileModule.default||mobileModule;
 
 test("mobile device actions preserve a leading country code", () => {
   assert.equal(normalizePhoneNumber("+1 (310) 439-4020"), "+13104394020");

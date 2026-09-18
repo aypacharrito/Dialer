@@ -56,9 +56,9 @@ function positionOverlay(){
   if(!overlayWindow)return;
   const display=overlayPosition?screen.getDisplayMatching({...overlayPosition,width:480,height:88}):mainWindow?screen.getDisplayMatching(mainWindow.getBounds()):screen.getPrimaryDisplay();
   const area=display.workArea;
-  const [width]=overlayWindow.getSize();
-  const x=overlayPosition?Math.max(area.x,Math.min(overlayPosition.x,area.x+area.width-80)):area.x+Math.max(0,Math.round((area.width-width)/2));
-  const y=overlayPosition?Math.max(area.y,Math.min(overlayPosition.y,area.y+area.height-40)):area.y+16;
+  const [width,height]=overlayWindow.getSize();
+  const x=overlayPosition?Math.max(area.x,Math.min(overlayPosition.x,area.x+area.width-width)):area.x+Math.max(0,Math.round((area.width-width)/2));
+  const y=overlayPosition?Math.max(area.y,Math.min(overlayPosition.y,area.y+area.height-height)):area.y+16;
   overlayWindow.setPosition(x,y,false);
 }
 
@@ -156,8 +156,8 @@ function showCallOverlay(){
     overlay.setMinimumSize(nextPhase==="incoming"?420:nextPhase==="wrap"?480:(overlayLayout==="vertical"?280:480),nextPhase==="incoming"?138:nextPhase==="wrap"?560:(overlayLayout==="vertical"?180:88));
     overlay.setSize(width,height,false);
     const area=screen.getDisplayMatching({x:oldX,y:oldY,width:1,height:1}).workArea;
-    const x=Math.max(area.x,Math.min(oldX,area.x+area.width-80));
-    const y=Math.max(area.y,Math.min(oldY,area.y+area.height-40));
+    const x=Math.max(area.x,Math.min(oldX,area.x+area.width-width));
+    const y=Math.max(area.y,Math.min(oldY,area.y+area.height-height));
     overlay.setPosition(x,y,false);
     overlayPosition={x,y};saveOverlayLayout();
     overlayGeometry=geometry;

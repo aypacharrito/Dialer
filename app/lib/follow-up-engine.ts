@@ -10,7 +10,7 @@ import {renderCommunicationTemplate,starterCommunicationTemplates} from "./messa
 import {deduplicateCsvLeads,type CsvManagedLead} from "./csv-lead-merge";
 import {queuedProviderLeads} from "./provider-inbox";
 import {mergeProviderLeads,type ProviderLeadRecord,type ProviderManagedLead} from "./provider-lead-merge";
-import {listStoredWorkspaces,workspaceRedis,writeStoredWorkspace} from "./workspace-storage";
+import {automationWorkspaces,workspaceRedis,saveWorkspaceChanges} from "./workspace-storage";
 import type {AutomationChannel,AutomationSequence,AutomationStep,WorkspaceProfile} from "./workspace-profile";
 
 export type FollowUpLead={
@@ -106,14 +106,14 @@ function assignRoundRobin<T extends {assignedTo?:string;stage?:string;doNotCall?
 
 export async function runFollowUpAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number}={}):Promise<AutomationRun>{
   const startedAt=new Date().toISOString();let workspaces=0,changed=0,duplicatesRemoved=0,due=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
-  const records=(await listStoredWorkspaces(options.workspaceLimit||500)).filter(record=>!options.workspaceId||record.workspaceId===options.workspaceId);
+  const records=await automationWorkspaces(options);
   for(const record of records){
     workspaces++;const profile=record.workspace.profile;
     let workspaceChanged=false;let currentLeads=record.workspace.leads as Array<FollowUpLead&ProviderManagedLead>;
     try{const incoming=await queuedProviderLeads(record.workspaceId);if(incoming.length){const merged=mergeProviderLeads(currentLeads,incoming,createProviderLead);if(merged.added||merged.updated){currentLeads=merged.leads as Array<FollowUpLead&ProviderManagedLead>;workspaceChanged=true}}}catch(error){logError("provider_inbox_merge_failed",error,{workspaceId:record.workspaceId})}
     const deduplicated=deduplicateCsvLeads(currentLeads as unknown as CsvManagedLead[]);if(deduplicated.removed){currentLeads=deduplicated.leads as unknown as Array<FollowUpLead&ProviderManagedLead>;duplicatesRemoved+=deduplicated.removed;workspaceChanged=true}
     const assigned=assignRoundRobin(currentLeads,profile);if(assigned!==currentLeads){currentLeads=assigned;workspaceChanged=true}
-    if(!profile.serverAutomationEnabled){if(workspaceChanged){await writeStoredWorkspace(record.workspaceId,{...record.workspace,leads:currentLeads});changed++}continue}
+    if(!profile.serverAutomationEnabled){if(workspaceChanged){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads:currentLeads});changed++}continue}
     const leads=currentLeads.map(raw=>{const prepared=prepareAutomationLead(raw,profile);if(JSON.stringify(prepared)!==JSON.stringify(raw))workspaceChanged=true;return prepared});
     for(let index=0;index<leads.length&&due<(options.sendLimit||250);index++){
       const lead=leads[index];if(lead.automationStatus!=="action due")continue;due++;
@@ -144,7 +144,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
       else {if(providerBlocked(lastError))blocked++;else failed++;retried++;leads[index]={...lead,automationDeliveryFailures:failures,automationLastError:lastError,automationStatus:"retry scheduled",automationNextAt:isoAfter(retryDelays[failures-1]),automationUpdatedAt:new Date().toISOString()}}
       workspaceChanged=true;
     }
-    if(workspaceChanged){await writeStoredWorkspace(record.workspaceId,{...record.workspace,leads});changed++}
+    if(workspaceChanged){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads});changed++}
   }
   const run:AutomationRun={ok:true,startedAt,completedAt:new Date().toISOString(),workspaces,changed,duplicatesRemoved,due,sent,smsSent,emailSent,tasksCreated,fallbacks,retried,blocked,deadLettered,failed};
   await workspaceRedis(["SET","pacifica:v2:automation:last-run",JSON.stringify(run)]).catch(()=>null);

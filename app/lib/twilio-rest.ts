@@ -17,7 +17,9 @@ export async function twilioApiRequest<T>(url:string,init:RequestInit,credential
   let lastResponse:Response|null=null;
   let lastData:unknown=null;
   for(const credential of credentials){
-    const response=await fetch(url,{...init,headers:{...(init.headers||{}),Authorization:credential.authorization},cache:"no-store"});
+    const headers=new Headers(init.headers);
+    headers.set("Authorization",credential.authorization);
+    const response=await fetch(url,{...init,headers,signal:init.signal||AbortSignal.timeout(15_000),cache:"no-store"});
     const data=await response.json().catch(()=>({message:"Twilio returned an unreadable response"}));
     if(response.ok)return {response,data:data as T,credential:credential.label};
     lastResponse=response;lastData=data;

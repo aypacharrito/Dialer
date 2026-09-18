@@ -58,3 +58,10 @@ test("a reply stops every sequence even when legacy stopOnReply is false",()=>{
  const legacy={...profile,automationSequences:profile.automationSequences.map(sequence=>({...sequence,stopOnReply:false}))};
  assert.equal(prepareAutomationLead(lead({lastInboundAt:"2026-09-14T16:00:00Z"}),legacy).automationNextAt,"");
 });
+
+test('a stale browser cannot reopen a contact closed by an inbound STOP',()=>{
+ const serverLead=lead({lastInboundAt:'2026-09-17T18:00:00Z',smsOptOut:true,smsConsent:false,doNotCall:true,stage:'Closed',status:'Closed',outcome:'Not interested',followUp:'',automationEnabled:false,automationStatus:'opted out',automationNextAt:''});
+ const clientLead=lead({smsOptOut:false,smsConsent:true,doNotCall:false,stage:'New lead',automationEnabled:true});
+ const result=mergeStoredWorkspace({leads:[serverLead],callLogs:[],profile},{leads:[clientLead],callLogs:[],profile}).leads[0];
+ assert.equal(result.doNotCall,true);assert.equal(result.stage,'Closed');assert.equal(result.smsConsent,false);assert.equal(result.automationEnabled,false);
+});

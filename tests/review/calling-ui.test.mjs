@@ -17,9 +17,9 @@ class FakeCall extends EventEmitter {
 }
 class FakeDevice extends EventEmitter {
  static calls=[];
- audio={setAudioConstraints:async()=>{},setInputDevice:async()=>{},outgoing(){},disconnect(){},on(){},speakerDevices:{set:async()=>{}},ringtoneDevices:{set:async()=>{}}};
+ audio={availableInputDevices:new Map([['default',{deviceId:'default'}]]),availableOutputDevices:new Map([['default',{deviceId:'default'}]]),isOutputSelectionSupported:true,setAudioConstraints:async()=>{},setInputDevice:async()=>{},outgoing(){},disconnect(){},on(){},speakerDevices:{set:async()=>{}},ringtoneDevices:{set:async()=>{}}};
  updateToken(){}
- async connect(options){const call=new FakeCall();call.number=options.params.To;FakeDevice.calls.push(call);return call}
+ async connect(options){const call=new FakeCall();call.number=options.params.To;FakeDevice.calls.push(call);setTimeout(()=>call.emit('ringing'),0);return call}
  disconnectAll(){for(const call of FakeDevice.calls)if(call.status()!=='closed')call.disconnect()}
  destroy(){}
 }
@@ -43,6 +43,7 @@ async function setup(leads=[base]){
  globalThis.fetch=async(url,options)=>{
   requests.push({url,options});
   if(url==='/api/twilio/status')return Response.json({configured:true,phoneNumber:'+18185550999'});
+  if(String(url).startsWith('/api/twilio/status?'))return Response.json({result:{callSid:'CA-test',detectionStatus:FakeDevice.calls.at(-1)?.state==='open'?'in-progress':'ringing'}});
   if(url==='/api/twilio/token')return Response.json({token:'test-token',routeToken:'test-route'});
   if(url==='/api/integrations/dispositions')return Response.json({synced:false,message:'Saved locally'});
   return Response.json({configured:false,leads:[]});

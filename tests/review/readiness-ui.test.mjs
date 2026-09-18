@@ -27,25 +27,25 @@ test('message history can load while the sending gate stays visibly blocked',asy
  globalThis.fetch=async url=>Response.json(url==='/api/twilio/messages'?{phone:'+18185550000',messages:[],sending:{configured:ready,message:ready?'SMS sending enabled':'Registration recorded, sending paused'}}:{configured:false});
  try{
   await h.render(React.createElement(MessagesCenter,{workspaceId:'test',profile:defaultWorkspaceProfile,leads:[lead],onPatch(){},onProfileChange(){}}));
-  assert.match(document.querySelector('.message-connection').textContent,/SMS setup needed/);
-  assert.match(document.querySelector('.sms-setup-notice').textContent,/sending paused/);
+  assert.match(document.querySelector('.message-connection').textContent,/SMS needs attention/);
+  assert.match(document.querySelector('.message-connection').title,/sending paused/);
   const area=document.querySelector('[aria-label="Message body"]');
   await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(area,'hello');area.dispatchEvent(new window.Event('input',{bubbles:true}))});
   assert.equal(button('Send text message').disabled,true);
-  ready=true;await click(button('Refresh'));
-  assert.match(document.querySelector('.message-connection').textContent,/SMS ready to send/);
+  ready=true;await click(document.querySelector('[aria-label="Refresh message connection"]'));
+  assert.match(document.querySelector('.message-connection').textContent,/SMS ready/);
   assert.equal(document.querySelector('.sms-setup-notice'),null);
  }finally{await h.cleanup()}
 });
 test('floating window keeps mute, keypad and end attached to the same call and closes on unmount',async()=>{
  const h=await setup();const pip=new JSDOM('<html><head></head><body></body></html>',{url:'https://example.test'});let closed=false;let muted=0;let ended=0;const digits=[];
- pip.window.close=()=>{closed=true};window.documentPictureInPicture={requestWindow:async()=>pip.window};
- const props={name:'Test',number:'8185550101',connected:true,muted:false,elapsed:'01:00',sentDigits:'',feedback:'',onMute(){muted++},onEnd(){ended++},onDigits(value){digits.push(value)}};
+ pip.window.resizeTo=()=>{};pip.window.close=()=>{closed=true};window.documentPictureInPicture={requestWindow:async()=>pip.window};
+ const props={active:true,category:'Home',onWindowChange(){},name:'Test',number:'8185550101',connected:true,muted:false,elapsed:'01:00',sentDigits:'',feedback:'',onMute(){muted++},onEnd(){ended++},onDigits(value){digits.push(value)}};
  try{
   await h.render(React.createElement(FloatingCallWindow,props));await click(button('Float call ↗'));
   await click(button('Mute',pip.window.document));assert.equal(muted,1);
-  await click(button('5',pip.window.document));await click(button('7',pip.window.document));assert.deepEqual(digits,['5','7']);
-  await h.render(React.createElement(FloatingCallWindow,{...props,muted:true,elapsed:'01:01'}));assert.ok(button('Unmute',pip.window.document));assert.equal(pip.window.document.querySelector('time').textContent,'01:01');
+  await click(pip.window.document.querySelector('[aria-label="Toggle keypad"]'));await click(button('5',pip.window.document));await click(button('7',pip.window.document));assert.deepEqual(digits,['5','7']);
+  await h.render(React.createElement(FloatingCallWindow,{...props,muted:true,elapsed:'01:01'}));assert.ok(button('Unmute',pip.window.document));assert.equal(pip.window.document.querySelector('[role="status"]').textContent,'Live · 01:01');
   await click(button('End call',pip.window.document));assert.equal(ended,1);
  }finally{await h.cleanup();assert.equal(closed,true)}
 });
@@ -67,20 +67,18 @@ test('AI setup does not equate a saved key with funded access or make an automat
   await click(button('Test AI connection'));assert.match(document.querySelector('[role="status"]').textContent,/could not bill/);assert.deepEqual(methods,['GET','POST']);
  }finally{await h.cleanup()}
 });
-test('microphone sample stops capture before speaker playback, preventing the live monitoring feedback loop',async()=>{
- const h=await setup();let stopped=false;let played=false;let recorder;
- const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL;
- URL.createObjectURL=()=> 'blob:mic';URL.revokeObjectURL=()=>{};
+test('live microphone monitoring stops all tracks and closes audio when stopped',async()=>{
+ const h=await setup();let stopped=false;let closed=false;
+ localStorage.setItem('pacific-audio-preferences',JSON.stringify({clearVoiceEnabled:false}));
  const track={stop(){stopped=true},addEventListener(){}};
  const stream={getTracks:()=>[track],getAudioTracks:()=>[track]};
  Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>stream,enumerateDevices:async()=>[]}});
- globalThis.AudioContext=class{state='running';createAnalyser(){return {frequencyBinCount:128,getByteTimeDomainData(values){values.fill(128)}}}createMediaStreamSource(){return {connect(){}}}async close(){}};
- globalThis.MediaRecorder=class{static isTypeSupported(){return true}state='inactive';mimeType='audio/webm';constructor(){recorder=this}start(){this.state='recording'}stop(){this.state='inactive';this.ondataavailable?.({data:new Blob(['sample'])});this.onstop?.()}};
+ const node=()=>({connect(){},disconnect(){}});
+ globalThis.AudioContext=class{state='running';destination={};createAnalyser(){return {frequencyBinCount:128,getByteTimeDomainData(values){values.fill(128)}}}createMediaStreamSource(){return node()}createGain(){return {...node(),gain:{value:1}}}async close(){closed=true}};
  window.HTMLMediaElement.prototype.pause=function(){};
- window.HTMLMediaElement.prototype.play=async function(){assert.equal(stopped,true);assert.equal(this.srcObject,null);played=true};
  try{
   await h.render(React.createElement(PhoneSettings,{device:null,ensureDevice:async()=>({})}));
-  await click(button('Record original'));assert.equal(played,false);assert.equal(recorder.state,'recording');
-  await act(async()=>recorder.stop());assert.equal(played,true);assert.equal(stopped,true);
- }finally{await h.cleanup();URL.createObjectURL=originalCreate;URL.revokeObjectURL=originalRevoke;delete globalThis.AudioContext;delete globalThis.MediaRecorder}
+  await click(button('Start live monitor'));assert.equal(stopped,false);assert.ok(button('Stop live monitor'));
+  await click(button('Stop live monitor'));assert.equal(stopped,true);assert.equal(closed,true);
+ }finally{await h.cleanup();delete globalThis.AudioContext}
 });

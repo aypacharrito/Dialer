@@ -23,30 +23,31 @@ Pacifica is a lead-sales command center with a CRM, Twilio auto dialer, quote wo
 - Side-by-side carrier-offer comparison with lowest-premium highlighting
 - Manual carrier-result entry so agents can compare offers before API activation
 - Responsive desktop and mobile interface
-- Local browser persistence for the current prototype
+- Account-scoped cloud storage with a browser cache
 - Stripe Checkout subscriptions for Solo, Team, and Agency plans
 - Customer Compliance Agreement and sequential-dialing guardrails
 - Pacifica AI command center for prioritization, call preparation, follow-up drafting, and human-approved CRM updates
-- Public `/landing` sales page with transparent $49, $199, and $499 monthly plans and a dated competitor price comparison
+- Public `/landing` sales page with transparent $25, $125, and $315 monthly plans and a dated competitor price comparison
 
 ## Run locally
 
-Requirements: Node.js 22.13 or newer.
+Requirements: Node.js 22.15 or newer within the Node 22 release line.
 
 ```bash
-npm install
+npm ci
 cp .env.example .env.local
-npm run dev
+npm run dev:next
 ```
 
 On Windows, copy `.env.example` to `.env.local` manually instead of using the `cp` command.
 
 ## Twilio setup
 
-Create these five environment variables locally and in the hosting dashboard:
+Create these six environment variables locally and in the hosting dashboard:
 
 ```text
 TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
 TWILIO_API_KEY_SID
 TWILIO_API_KEY_SECRET
 TWILIO_TWIML_APP_SID
@@ -60,6 +61,8 @@ https://YOUR-DOMAIN.com/api/twilio/voice
 ```
 
 Use HTTP `POST`. The Twilio phone number must use E.164 format, for example `+14174412831`.
+
+`TWILIO_AUTH_TOKEN` is required to validate Twilio signatures, even if outbound requests use API keys. Public webhooks reject requests when it is missing.
 
 ## Put this code in GitHub
 
@@ -88,7 +91,7 @@ If the GitHub repository already has different history, clone it first and copy 
 1. Import `aypacharrito/Dialer` into Vercel.
 2. Keep the framework preset on Next.js and use the default build settings.
    The included build script automatically selects a native Next.js build on Vercel and a Cloudflare-compatible build on ChatGPT Sites.
-3. Add all five Twilio environment variables under **Project Settings → Environment Variables**.
+3. Add all six Twilio environment variables under **Project Settings → Environment Variables**.
 4. Deploy.
 5. Copy the deployed `/api/twilio/voice` URL into the TwiML App Voice Request URL.
 6. Redeploy after changing environment variables.
@@ -137,7 +140,7 @@ Open **Clients → Reminder settings**, save the owner mobile number, and choose
 
 1. Open **Phone setup** in Pacifica and click **Run device & connection test**.
 2. Allow microphone access in the browser address bar.
-3. Open `/api/twilio/diagnostics` on your deployed domain. All five checks should be `true`.
+3. Open `/api/twilio/diagnostics` on your deployed domain. All required checks should be `true`.
 4. Confirm the TwiML App Voice Request URL is `https://YOUR-DOMAIN.com/api/twilio/voice` with HTTP `POST`.
 5. Confirm the API key, TwiML App, phone number, and Account SID all belong to the same Twilio account or subaccount.
 6. On a Twilio trial account, verify the destination number before calling it.
@@ -167,7 +170,7 @@ Keep the endpoint secret. Each Clerk account has its own workspace, browser cach
 
 ## Activate the optional insurance quote workspace
 
-The Quote Center saves complete Life, Home, and Auto intakes now. It intentionally does not invent premiums. Live carrier results require contracts, credentials, and approved data mapping.
+The active quote intake and Quote Desk collect lead and policy details. It intentionally does not invent premiums. Live carrier results require contracts, credentials, and approved data mapping.
 
 1. Obtain Life API access from InsuranceToolkits or a carrier-approved life quoting provider.
 2. Obtain Home/Auto access from a licensed personal-lines comparative rater or participating carriers. Farmers Alta access, if available to your agency, must be authorized by Farmers; it is not treated as a public rate feed.
@@ -180,9 +183,19 @@ Inbound leads, CRM edits, and call history are stored in each authenticated user
 
 ## Main source files
 
-- `app/page.tsx` — CRM and dialer interface
+- `app/CRMClient.tsx` — CRM and dialer interface
 - `app/globals.css` — visual system and responsive layout
 - `app/api/twilio/token/route.ts` — secure browser Voice token
 - `app/api/twilio/voice/route.ts` — outbound TwiML call instructions
 - `app/api/twilio/status/route.ts` — configuration health check
 - `app/api/integrations/smartfinancial/route.ts` — secure real-time lead receiver
+
+## Development and verification
+
+`npm run dev:next` runs native Next.js. `npm run dev` retains the Sites/Vinext development path. After a Vercel-compatible build (`VERCEL=1 npm run build`), use `npm run start:next` to serve it locally; `npm start` serves the Sites artifact.
+
+Run `npm run verify:vercel` before merging. It runs lint, TypeScript, all automatically discovered unit tests, isolated route tests, UI integration tests, and a production Next.js build. `npm test` separately builds and smoke-tests the Sites worker.
+
+The ClearVoice and scanner files under `public/clearvoice` and `public/scanner` are generated from the packages pinned by `package-lock.json`. The dev, build, and unit-test commands copy them automatically. Do not commit generated copies or run a deployment command that skips `prebuild`. Third-party notices remain in `THIRD_PARTY_NOTICES.md`.
+
+Background jobs must use `updateStoredWorkspace` for pure updates or `saveWorkspaceChanges` for changes computed from a previous snapshot. Updaters can run again after a storage conflict: keep network calls, SMS/email sends, and notifications outside them. See [the reliability review](docs/reliability-review.md) for merge behavior and verification limits.

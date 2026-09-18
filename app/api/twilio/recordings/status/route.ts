@@ -3,7 +3,7 @@ import {after} from "next/server";
 import {logError,logEvent} from "../../../../lib/observability";
 import {twilioAccountConfig} from "../../../../lib/twilio-rest";
 import {rejectedTwilioWebhook,validateTwilioWebhook} from "../../../../lib/twilio-webhook";
-import {readStoredWorkspace,writeStoredWorkspace} from "../../../../lib/workspace-storage";
+import {readStoredWorkspace,saveWorkspaceChanges} from "../../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -20,7 +20,7 @@ async function addIntelligence(workspaceId:string,leadId:number,callSid:string,s
   const summary=summaryResponse.output_text.slice(0,10000);const current=await readStoredWorkspace(workspaceId);if(!current)return;
   const callLogs=current.callLogs.map(raw=>{const log=raw as Record<string,unknown>;return log.callSid===callSid?{...log,transcript:text,aiSummary:summary}:log});
   const leads=current.leads.map(raw=>{const lead=raw as Record<string,unknown>;return Number(lead.id)===leadId?{...lead,lastCallTranscript:text,lastCallSummary:summary}:lead});
-  await writeStoredWorkspace(workspaceId,{...current,callLogs,leads});logEvent("call_intelligence_complete",{workspaceId,leadId,callSidLast6:callSid.slice(-6),recordingSidLast6:sid.slice(-6)});
+  await saveWorkspaceChanges(workspaceId,current,{...current,callLogs,leads});logEvent("call_intelligence_complete",{workspaceId,leadId,callSidLast6:callSid.slice(-6),recordingSidLast6:sid.slice(-6)});
 }
 
 export async function POST(request:Request){
@@ -31,7 +31,7 @@ export async function POST(request:Request){
     const workspace=await readStoredWorkspace(workspaceId);if(!workspace)return Response.json({received:true,ignored:true});const recordingUrl=status==="completed"?`/api/twilio/recordings?sid=${sid}`:"";
     let matched=false;const callLogs=workspace.callLogs.map(raw=>{const log=raw as Record<string,unknown>;if(log.callSid!==callSid)return log;matched=true;return {...log,recordingSid:sid,recordingStatus:status,...(recordingUrl?{recordingUrl}:{})}});
     if(!matched){const lead=workspace.leads.find(raw=>Number((raw as Record<string,unknown>).id)===leadId) as Record<string,unknown>|undefined;callLogs.unshift({id:`recording-${callSid}`,callSid,name:String(lead?.name||"Recorded call"),phone:String(lead?.phone||""),startedAt:new Date().toISOString(),duration:0,outcome:"Recording received",status:"Recording received",campaign:"Pacifica",source:"Twilio callback",recordingSid:sid,recordingStatus:status,...(recordingUrl?{recordingUrl}:{})})}
-    await writeStoredWorkspace(workspaceId,{...workspace,callLogs:callLogs.slice(0,1000)});
+    await saveWorkspaceChanges(workspaceId,workspace,{...workspace,callLogs:callLogs.slice(0,1000)});
     if(status==="completed")after(()=>addIntelligence(workspaceId,leadId,callSid,sid).catch(error=>logError("call_intelligence_failed",error,{workspaceId,leadId})));
     return Response.json({received:true});
   }catch(error){logError("recording_status_failed",error,{workspaceId});return Response.json({error:"Recording callback failed"},{status:500})}

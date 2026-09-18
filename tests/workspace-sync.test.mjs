@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createWorkspaceSync, workspaceCacheKey} from '../mobile/src/lib/workspace-sync.ts';
+import * as mobileModule from '../mobile/src/lib/workspace-sync.ts';
+// Expo is CommonJS; Node 22 exposes these TypeScript exports under default.
+const {createWorkspaceSync, workspaceCacheKey}=mobileModule.default||mobileModule;
 import {mergeIncomingContacts} from '../app/lib/contact-sync.ts';
 import {smsRecipients, blocksAiText} from '../app/lib/ai-sms-recipients.ts';
 import {refreshAutomation} from '../app/lib/lead-automation.ts';

@@ -1,7 +1,7 @@
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {crmFieldsForDisposition} from "../../../lib/lead-priority";
 import {mergeProviderLeads,type ProviderLeadRecord,type ProviderManagedLead} from "../../../lib/provider-lead-merge";
-import {readStoredWorkspace,workspaceRedis,workspaceRedisConfig,writeStoredWorkspace} from "../../../lib/workspace-storage";
+import {readStoredWorkspace,workspaceRedis,workspaceRedisConfig,saveWorkspaceChanges} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 
@@ -225,7 +225,7 @@ export async function POST(){
     });
 
     if(merged.added||merged.updated||liftedChanged){
-      await writeStoredWorkspace(workspaceId,{...workspace,leads});
+      await saveWorkspaceChanges(workspaceId,workspace,{...workspace,leads});
     }
 
     return Response.json({

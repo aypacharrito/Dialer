@@ -45,9 +45,14 @@ export default function FloatingCallWindow(props:Props){
   useEffect(()=>{onWindowChange(Boolean(target)||desktopOpen)},[target,desktopOpen,onWindowChange]);
   useEffect(()=>{
     if(desktop?.supportsDesktopWrapUp){
-      if(phase==="idle"){setDesktopOpen(false);void desktop.exitCallOverlay().catch(()=>undefined);return}
-      void desktop.enterCallOverlay().then(opened=>{setDesktopOpen(Boolean(opened));if(!opened)setError("Could not open the desktop window.")}).catch(()=>{setDesktopOpen(false);setError("Could not open the desktop window.")});
-      return;
+      let canceled=false;
+      const operation=phase==="idle"?desktop.exitCallOverlay().then(()=>false):desktop.enterCallOverlay();
+      void operation.then(opened=>{
+        if(canceled)return;
+        setDesktopOpen(Boolean(opened));
+        if(phase!=="idle"&&!opened)setError("Could not open the desktop window.");
+      }).catch(()=>{if(!canceled){setDesktopOpen(false);setError("Could not open the desktop window.")}});
+      return()=>{canceled=true};
     }
     const popup=windowRef.current;if(!popup)return;
     if(phase==="idle"){const timer=window.setTimeout(()=>popup.close(),900);return()=>window.clearTimeout(timer)}
