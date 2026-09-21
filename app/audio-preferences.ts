@@ -4,6 +4,9 @@ export const AUDIO_PREFERENCES_KEY = "pacific-audio-preferences";
 
 export type AudioPreferences = {
   input: string;
+  inputLabel?: string;
+  speakerLabel?: string;
+  ringLabel?: string;
   speaker: string;
   ring: string;
   speakerVolume: number;

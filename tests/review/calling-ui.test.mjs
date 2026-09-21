@@ -49,7 +49,7 @@ async function setup(leads=[base],options={}){
   requests.push({url,options:requestOptions});
   if(url==='/api/twilio/status')return Response.json({configured:true,phoneNumber:'+18185550999'});
   if(String(url).startsWith('/api/twilio/status?')&&options.statusFailure)return new Response('Unavailable',{status:503});
-  if(String(url).startsWith('/api/twilio/status?'))return Response.json({result:{callSid:'CA-test',detectionStatus:FakeDevice.calls.at(-1)?.state==='open'?'in-progress':'ringing'}});
+  if(String(url).startsWith('/api/twilio/status?'))return Response.json({result:{callSid:'CA-test',detectionStatus:options.confirmNoAnswer&&FakeDevice.calls.at(-1)?.state==='closed'?'no-answer':FakeDevice.calls.at(-1)?.state==='open'?'in-progress':'ringing'}});
   if(url==='/api/twilio/token')return Response.json({token:'test-token',routeToken:'test-route'});
   if(url==='/api/integrations/dispositions')return Response.json({synced:false,message:'Saved locally'});
   return Response.json({configured:false,leads:[]});
@@ -213,5 +213,27 @@ test('an older incoming cancellation cannot clear a newer caller',async()=>{
   await act(async()=>FakeDevice.instance.emit('incoming',next));
   await act(async()=>first.emit('cancel'));
   assert.match(document.querySelector('.incoming-call-card').textContent,/8185550121/);
+ }finally{await h.cleanup()}
+});
+
+test('Home or Auto stays visible in Contacts, dialer and active call bar; Contacts omits VIN lookup',async()=>{
+ const h=await setup();try{
+  await h.nav('Contacts');await click(document.querySelector('.table-row'));
+  assert.match(document.querySelector('.drawer-person small').textContent,/HOME CONTACT/);
+  assert.equal(document.querySelector('.contact-drawer .vin-lookup-field'),null);
+  await click(document.querySelector('[aria-label="Close contact"]'));
+  await h.nav('Dialer');assert.equal(document.querySelector('.contact-card .lead-product-label').textContent,'Home');
+  await click(document.querySelector('.start-call'));await act(async()=>FakeDevice.calls[0].answer());
+  await h.nav('Contacts');assert.equal(document.querySelector('.active-call-bar .lead-product-label').textContent,'Home');
+ }finally{await h.cleanup()}
+});
+for(const mode of [20,30])test(`SmartFinancial auto-skipped attempts report Attempted Contact once in mode ${mode}`,async()=>{
+ const h=await setup([{...base,source:'SmartFinancial',vendorId:'sf-1',priorityOverride:'high'},{...base,id:2,phone:'8185550102'}],{confirmNoAnswer:true,profile:{dialerRingTimeoutSeconds:mode}});try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));await pause(50);
+  await act(async()=>FakeDevice.calls[0].disconnect());await pause(550);
+  const calls=h.requests.filter(r=>r.url==='/api/integrations/dispositions');
+  assert.equal(calls.length,1,JSON.stringify({numbers:FakeDevice.calls.map(x=>x.number),saved:h.saved().map(x=>({id:x.id,source:x.source,attempts:x.attempts})),status:document.querySelector('.call-status-line')?.textContent}));const payload=JSON.parse(calls[0].options.body);
+  assert.equal(payload.event,'call-ended');assert.equal(payload.disposition,'Attempted Contact');assert.equal(payload.vendorId,'sf-1');
+  assert.equal(FakeDevice.calls.length,2);
  }finally{await h.cleanup()}
 });

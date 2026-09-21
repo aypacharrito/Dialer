@@ -1,3 +1,4 @@
+import {SmsPreflightError} from "../../../lib/sms-preflight";
 import {
   twilioAccountConfig,
   twilioApiRequest,
@@ -286,6 +287,7 @@ export async function POST(request: Request) {
     });
     return Response.json({ ok: true, message: safe(message) });
   } catch (error) {
+    if(error instanceof SmsPreflightError)return Response.json({error:error.message,code:error.code,submitted:false},{status:422});
     console.error(
       "[twilio/messages] send failed",
       error instanceof Error ? error.message : "unknown",

@@ -3,6 +3,7 @@
 type Props = {
   name: string;
   number: string;
+  product?: string;
   connected: boolean;
   muted: boolean;
   elapsed: string;
@@ -20,7 +21,7 @@ export default function ActiveCallBar(props: Props) {
   return <section className="active-call-bar" aria-label="Current call">
     <div className="active-call-person">
       <span className="active-call-state" role="status"><i aria-hidden="true"/>{status}</span>
-      <b>{props.name || props.number}</b>
+      <b>{props.name || props.number}</b>{props.product&&<strong className="lead-product-label">{props.product}</strong>}
       {props.name && <span className="active-call-number">{props.number}</span>}
       {props.connected && <time aria-label="Call duration">{props.elapsed}</time>}
     </div>

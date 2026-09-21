@@ -21,3 +21,9 @@ test("manual records do not show a fake imported-data section",()=>{
   assert.deepEqual(quoteSourceEntries({name:"Manual contact",source:"Manual"}),[]);
   assert.deepEqual(quoteSourceEntries({importedFields:{Address:"",City:""}}),[]);
 });
+
+test('birthdays from provider fields and CSV become copyable US dates without changing raw data',()=>{
+  const lead={extraFields:{'DATE_OF_BIRTH':'1994-03-09','drivers.0.dob':'1980-12-01T00:00:00Z','policy_expiration_date':'2026-09-21'}};
+  assert.deepEqual(quoteSourceEntries(lead).map(x=>x.value),['03/09/1994','12/01/1980','2026-09-21']);
+  assert.equal(lead.extraFields.DATE_OF_BIRTH,'1994-03-09');
+});

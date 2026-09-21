@@ -82,3 +82,28 @@ test('live microphone monitoring stops all tracks and closes audio when stopped'
   await click(button('Stop live monitor'));assert.equal(stopped,true);assert.equal(closed,true);
  }finally{await h.cleanup();delete globalThis.AudioContext}
 });
+
+test('saved microphone, speaker and ring names survive leaving and reopening settings',async()=>{
+ const h=await setup();let captures=0;
+ localStorage.setItem('pacific-audio-preferences',JSON.stringify({input:'usb-mic',speaker:'headset',ring:'speakers',inputLabel:'USB microphone',speakerLabel:'Headphones',ringLabel:'Desk speakers'}));
+ Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>{captures++;throw Error('Must not capture on mount')},enumerateDevices:async()=>[]}});
+ try{
+  await h.render(React.createElement(PhoneSettings,{ensureDevice:async()=>({})}));
+  assert.deepEqual([...document.querySelectorAll('.config-section select')].map(x=>[x.value,x.selectedOptions[0].textContent]),[['usb-mic','USB microphone'],['headset','Headphones'],['speakers','Desk speakers']]);
+  await h.render(null);await h.render(React.createElement(PhoneSettings,{ensureDevice:async()=>({})}));
+  assert.deepEqual([...document.querySelectorAll('.config-section select')].map(x=>x.value),['usb-mic','headset','speakers']);assert.equal(captures,0);
+ }finally{await h.cleanup()}
+});
+
+test('AI ready notification clears when its result is opened and stays cleared when leaving',async()=>{
+ const {default:AiCommandCenter}=await import('../../app/components/AiCommandCenter.tsx');
+ const h=await setup();let activity='idle';
+ globalThis.fetch=async(_url,options)=>Response.json(options?.method==='POST'?{summary:'Reviewed.',draft:'',priorities:[],actions:[],createLead:null}:{configured:false});
+ const props={leads:[lead],recentCalls:[],profile:defaultWorkspaceProfile,workspaceId:'test',activeLine:'home-auto',onActivity:s=>{activity=s},onApply(){},onCreateLead(){},onOpen(){},onCall(){}};
+ try{
+  await h.render(React.createElement(AiCommandCenter,{...props,visible:false}));
+  await click(document.querySelector('.ai-starters button'));assert.equal(activity,'ready');
+  await h.render(React.createElement(AiCommandCenter,{...props,visible:true}));assert.equal(activity,'idle');
+  await h.render(React.createElement(AiCommandCenter,{...props,visible:false}));assert.equal(activity,'idle');
+ }finally{await h.cleanup()}
+});

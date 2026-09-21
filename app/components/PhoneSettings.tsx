@@ -7,6 +7,7 @@ import { defaultAudioPreferences, readAudioPreferences, saveAudioPreferences } f
 import { clearVoiceEngineInfo, clearVoiceModeLabels, PacificaClearVoiceProcessor, supportsClearVoice, type ClearVoiceMetrics, type ClearVoiceMode } from "../clearvoice";
 
 type AudioChoice = { deviceId: string; label: string };
+type DeviceLabels = {input?:string;speaker?:string;ring?:string};
 type MonitorMode = "raw" | "clearvoice" | null;
 
 const emptyMetrics: ClearVoiceMetrics = { inputLevel: 0, outputLevel: 0, reduction: 0, voiceDetected: false };
@@ -39,6 +40,7 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   useDialogFocus(dialogRef,compact,onClose);
   const [inputs,setInputs]=useState<AudioChoice[]>([]);
   const [outputs,setOutputs]=useState<AudioChoice[]>([]);
+  const [deviceLabels,setDeviceLabels]=useState<DeviceLabels>({});
   const [input,setInput]=useState(defaultAudioPreferences.input);
   const [speaker,setSpeaker]=useState(defaultAudioPreferences.speaker);
   const [ring,setRing]=useState(defaultAudioPreferences.ring);
@@ -85,11 +87,25 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     queueMicrotask(()=>{
       const saved=readAudioPreferences();
       inputRef.current=saved.input;speakerRef.current=saved.speaker;
+      setDeviceLabels({input:saved.inputLabel,speaker:saved.speakerLabel,ring:saved.ringLabel});
       setInput(saved.input);setSpeaker(saved.speaker);setRing(saved.ring);setSpeakerVolume(saved.speakerVolume);setRingVolume(saved.ringVolume);setBeep(saved.beep);
       setClearVoiceEnabled(saved.clearVoiceEnabled);setClearVoiceMode(saved.clearVoiceMode);setClearVoiceEngine(clearVoiceEngineInfo(saved.clearVoiceMode).label);setClearVoiceSupported(supportsClearVoice());
       if(saved.input!=="default")setMessage("Your saved microphone is selected. Start Live Monitor to hear it immediately.");
     });
     return()=>stopMonitor();
+  },[]);
+  useEffect(()=>{
+    let active=true;
+    const media=navigator.mediaDevices;
+    const refresh=async()=>{
+      try{
+        const devices=await media?.enumerateDevices();if(!active||!devices)return;
+        setInputs(devices.filter(d=>d.kind==="audioinput"&&d.deviceId).map((d,i)=>({deviceId:d.deviceId,label:d.label||`Microphone ${i+1}`})));
+        setOutputs(devices.filter(d=>d.kind==="audiooutput"&&d.deviceId).map((d,i)=>({deviceId:d.deviceId,label:d.label||`Audio output ${i+1}`})));
+      }catch{/* Keep the saved selection if device discovery is unavailable. */}
+    };
+    void refresh();media?.addEventListener?.("devicechange",refresh);
+    return()=>{active=false;media?.removeEventListener?.("devicechange",refresh)};
   },[]);
   useEffect(()=>{if(monitorGainRef.current)monitorGainRef.current.gain.value=Math.min(1,Math.max(0,speakerVolume/100));if(monitorAudioRef.current)monitorAudioRef.current.volume=Math.min(1,Math.max(0,speakerVolume/100))},[speakerVolume]);
 
@@ -183,13 +199,14 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
   }
 
   async function selectInput(value:string){
-    stopMonitor();inputRef.current=value;setInput(value);saveAudioPreferences({input:value});
+    stopMonitor();inputRef.current=value;setInput(value);const label=inputs.find(item=>item.deviceId===value)?.label||"Saved microphone";setDeviceLabels(current=>({...current,input:label}));saveAudioPreferences({input:value,inputLabel:label});
     try{const stream=await requestMicrophone(false);await loadDevices(stream);stream.getTracks().forEach(track=>track.stop());setMessage("Microphone saved. Start Live Monitor to hear it.")}
     catch(error){setMessage(`Microphone error: ${microphoneError(error)}`)}
   }
 
   async function selectOutput(kind:"speaker"|"ring",value:string){
-    if(kind==="speaker"){speakerRef.current=value;setSpeaker(value);saveAudioPreferences({speaker:value})}else{setRing(value);saveAudioPreferences({ring:value})}
+    const label=outputs.find(item=>item.deviceId===value)?.label||"Saved output";setDeviceLabels(current=>({...current,[kind]:label}));
+    if(kind==="speaker"){speakerRef.current=value;setSpeaker(value);saveAudioPreferences({speaker:value,speakerLabel:label})}else{setRing(value);saveAudioPreferences({ring:value,ringLabel:label})}
     try{
       const device=await ensureDevice();if(kind==="speaker")await device.audio?.speakerDevices?.set(value);else await device.audio?.ringtoneDevices?.set(value);
       if(kind==="speaker"&&monitorAudioRef.current){const sink=monitorAudioRef.current as HTMLAudioElement&{setSinkId?:(id:string)=>Promise<void>};if(value!=="default"&&sink.setSinkId)await sink.setSinkId(value)}
@@ -208,8 +225,14 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     catch(error){setMessage(`ClearVoice setup: ${error instanceof Error?error.message:"unable to update"}`)}
   }
 
-  const outputOptions=outputs.length?outputs:[{deviceId:"default",label:"Browser default"}];
-  const inputOptions=inputs.length?inputs:[{deviceId:"default",label:"Browser default microphone"}];
+  function choices(devices:AudioChoice[],selected:string,savedLabel:string|undefined,fallback:string){
+    const list=devices.length?[...devices]:[{deviceId:"default",label:fallback}];
+    if(!list.some(d=>d.deviceId===selected))list.push({deviceId:selected,label:savedLabel||"Saved device (reconnect if unavailable)"});
+    return list;
+  }
+  const inputOptions=choices(inputs,input,deviceLabels.input,"Browser default microphone");
+  const speakerOptions=choices(outputs,speaker,deviceLabels.speaker,"Browser default output");
+  const ringOptions=choices(outputs,ring,deviceLabels.ring,"Browser default output");
   return <section ref={dialogRef} role={compact?"dialog":undefined} aria-modal={compact||undefined} aria-label={compact?"Communication devices":undefined} tabIndex={compact?-1:undefined} className={`phone-config ${compact?"compact":""}`}>
     <header><div><span>PHONE SETTINGS</span><b>Communication devices</b></div>{onClose&&<button aria-label="Close phone settings" onClick={onClose}>×</button>}</header>
     <button className="network-test" onClick={runTest} disabled={testing}><span>⌁</span><div><b>{testing?"Testing…":"Run device & connection test"}</b><small>{message}</small></div><em>{meter}%</em></button>
@@ -226,9 +249,9 @@ export default function PhoneSettings({ ensureDevice, compact = false, onClose }
     <div className="config-section"><span>HEADSET SETTINGS</span>
       <label>Microphone<select value={input} onChange={event=>void selectInput(event.target.value)}>{inputOptions.map(item=><option key={item.deviceId} value={item.deviceId}>{item.label}</option>)}</select></label>
       <div className="volume-row"><small>Input level</small><i><b style={{width:`${meter}%`}}/></i><em>{meter}%</em></div>
-      <label>Speaker / live monitor output<select value={speaker} onChange={event=>void selectOutput("speaker",event.target.value)}>{outputOptions.map(item=><option key={item.deviceId} value={item.deviceId}>{item.label}</option>)}</select></label>
+      <label>Speaker / live monitor output<select value={speaker} onChange={event=>void selectOutput("speaker",event.target.value)}>{speakerOptions.map(item=><option key={item.deviceId} value={item.deviceId}>{item.label}</option>)}</select></label>
       <div className="volume-row"><small>Monitor / speaker volume</small><input aria-label="Speaker monitor volume" type="range" min="0" max="100" value={speakerVolume} onChange={event=>{const value=Number(event.target.value);setSpeakerVolume(value);saveAudioPreferences({speakerVolume:value})}}/><em>{speakerVolume}%</em><button onClick={()=>void testOutput("speaker")}>Test</button></div>
-      <label>Ring device<select value={ring} onChange={event=>void selectOutput("ring",event.target.value)}>{outputOptions.map(item=><option key={item.deviceId} value={item.deviceId}>{item.label}</option>)}</select></label>
+      <label>Ring device<select value={ring} onChange={event=>void selectOutput("ring",event.target.value)}>{ringOptions.map(item=><option key={item.deviceId} value={item.deviceId}>{item.label}</option>)}</select></label>
       <div className="volume-row"><small>Ring volume</small><input aria-label="Ring test volume" type="range" min="0" max="100" value={ringVolume} onChange={event=>{const value=Number(event.target.value);setRingVolume(value);saveAudioPreferences({ringVolume:value})}}/><em>{ringVolume}%</em><button onClick={()=>void testOutput("ring")}>Test</button></div>
       <label className="check-row"><input type="checkbox" checked={beep} onChange={event=>{setBeep(event.target.checked);saveAudioPreferences({beep:event.target.checked})}}/> Beep when auto-answering</label>
     </div>

@@ -47,7 +47,7 @@ async function imageForAi(file:File){
   }finally{bitmap.close()}
 }
 
-export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,onOpen,onCall,workspaceId,activeLine,profile,onActivity}:{onActivity:(state:"idle"|"working"|"sending"|"ready")=>void;workspaceId:string;activeLine:"life"|"home-auto";profile:WorkspaceProfile;leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
+export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,onOpen,onCall,workspaceId,activeLine,profile,onActivity,visible=false}:{visible?:boolean;onActivity:(state:"idle"|"working"|"sending"|"ready")=>void;workspaceId:string;activeLine:"life"|"home-auto";profile:WorkspaceProfile;leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
   const [prompt,setPrompt]=useState("");const [submittedPrompt,setSubmittedPrompt]=useState("");const [submittedImages,setSubmittedImages]=useState<AiImage[]>([]);const [includeNotes,setIncludeNotes]=useState(false);const [loading,setLoading]=useState(false);const [result,setResult]=useState<AiResult|null>(null);const [error,setError]=useState("");const [applied,setApplied]=useState<number[]>([]);const [service,setService]=useState("Checking AI connection…");
   const [images,setImages]=useState<AiImage[]>([]);const [dragging,setDragging]=useState(false);const [created,setCreated]=useState(false);const imageInputRef=useRef<HTMLInputElement>(null);const cameraInputRef=useRef<HTMLInputElement>(null);
   const [sending,setSending]=useState(false);const [sendReport,setSendReport]=useState("");const submittedSms=useRef(new Set<string>());
@@ -124,7 +124,11 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
   }
 
   function reset(){setSubmittedPrompt("");setSubmittedImages([]);setResult(null);setPrompt("");setError("");setImages([]);setCreated(false);setHistory([]);setSelectedRecipients([])}
-  useEffect(()=>{onActivity(loading?"working":sending?"sending":result?"ready":"idle")},[loading,sending,result,onActivity]);
+  const seenResult=useRef<AiResult|null>(null);
+  useEffect(()=>{
+    if(visible)seenResult.current=result;
+    onActivity(loading?"working":sending?"sending":result&&seenResult.current!==result?"ready":"idle");
+  },[loading,sending,result,visible,onActivity]);
   const displayPrompt=submittedPrompt;
   const hasDetails=Boolean(result&&(result.createLead||result.priorities.length||result.actions.length||result.draft));
   return <div className={`ai-workspace ${hasDetails?"has-details":""}`} onDragEnter={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();setDragging(true)}}} onDragOver={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();event.dataTransfer.dropEffect="copy"}}} onDragLeave={event=>{if(event.currentTarget===event.target)setDragging(false)}} onDrop={event=>{event.preventDefault();setDragging(false);void addFiles(event.dataTransfer.files)}}>

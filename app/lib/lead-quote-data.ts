@@ -1,3 +1,5 @@
+import {displayBirthDate} from "./lead-presentation";
+
 export type QuoteDataLead={
   address?:string;city?:string;state?:string;zip?:string;product?:string;source?:string;leadCost?:number;
   received?:string;territory?:string;brand?:string;profileName?:string;returnStatus?:string;employeeCount?:string;
@@ -17,5 +19,5 @@ export function quoteSourceEntries(lead:QuoteDataLead):QuoteDataEntry[]{
   for(const [label,value] of Object.entries(lead.importedFields||{}))combined.set(label,text(value));
   for(const [label,value] of Object.entries(lead.extraFields||{}))if(!combined.has(label))combined.set(label,text(value));
   if(![...combined.values()].some(Boolean))return [];
-  return [...combined].map(([label,value])=>({label,value}));
+  return [...combined].map(([label,value])=>({label,value:/dob|dateofbirth|birthdate/.test(label.toLowerCase().replace(/[^a-z]/g,""))?displayBirthDate(value):value}));
 }
