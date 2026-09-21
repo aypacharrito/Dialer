@@ -33,6 +33,18 @@ test('original audio settings survive answer, cancel, error and disposal',()=>{
   assert.equal(call.listenerCount('audio'),0);assert.equal(call.listenerCount('accept'),0);
  }
 });
-test('screening holds remote playback beyond answer until explicitly released',()=>{
- const call=new Call(),audio={muted:false};const control=attachQuietCallAudio(call,true,true);call.emit('audio',audio);call.answer();assert.equal(audio.muted,true);assert.equal(call.remote.enabled,false);control.release();assert.equal(audio.muted,false);assert.equal(call.remote.enabled,true);control.dispose();
+test('carrier-free ringback follows Hear ringing and stops on answer',()=>{
+ const call=new Call();let playing=false;
+ const control=attachQuietCallAudio(call,true,{start(){playing=true},stop(){playing=false}});
+ call.emit('ringing',false);assert.equal(playing,false);
+ control.setQuiet(false);assert.equal(playing,true);
+ control.setQuiet(true);assert.equal(playing,false);
+ control.setQuiet(false);call.emit('ringing',true);assert.equal(playing,false);
+ call.emit('ringing',false);assert.equal(playing,true);
+ call.answer();assert.equal(playing,false);control.setQuiet(false);assert.equal(playing,false);control.dispose();
+});
+test('quiet can mute an audio element created while Hear ringing was on',()=>{
+ const call=new Call(),audio={muted:false};const control=attachQuietCallAudio(call,false);
+ call.emit('audio',audio);control.setQuiet(true);assert.equal(audio.muted,true);
+ control.setQuiet(false);assert.equal(audio.muted,false);control.dispose();
 });

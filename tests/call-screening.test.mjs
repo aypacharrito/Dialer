@@ -4,18 +4,18 @@ import {screeningDecision,createCallScreening} from "../app/lib/call-screening.t
 import {rankDialerLeads,refreshDialerRun,isDialerEligibleLead} from "../app/lib/lead-priority.ts";
 const sid="CA123";
 
-test("screening uses network status only and never classifies voicemail",()=>{
-  for(const status of ["in-progress","answered"])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid,false),"connect");
-  assert.equal(screeningDecision({callSid:sid,detectionStatus:"no-answer",answeredBy:"machine_end_beep"},sid,false),"skip-no-answer");
-  for(const status of ["completed","ringing","busy","failed","canceled",""])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid,false),"wait");
+test("HTTP can confirm no-answer but never classify voicemail or release audio",()=>{
+  for(const status of ["in-progress","answered"])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid),"wait");
+  assert.equal(screeningDecision({callSid:sid,detectionStatus:"no-answer",answeredBy:"machine_end_beep"},sid),"skip-no-answer");
+  for(const status of ["completed","ringing","busy","failed","canceled",""])assert.equal(screeningDecision({callSid:sid,detectionStatus:status,answeredBy:"machine_end_beep"},sid),"wait");
 });
 
-test("no-answer skips once and answered only connects",async()=>{
+test("no-answer skips once; only SDK accept releases the conversation",async()=>{
   let skipped=0,connected=0;
   const noAnswer=createCallScreening({callSid:()=>sid,read:async()=>({callSid:sid,detectionStatus:"no-answer",answeredBy:"machine_end_beep"}),connect:()=>connected++,skip:()=>skipped++});
   try{await noAnswer.check();await noAnswer.check();assert.equal(skipped,1);assert.equal(connected,0)}finally{noAnswer.dispose()}
   const answered=createCallScreening({callSid:()=>sid,read:async()=>({callSid:sid,detectionStatus:"in-progress",answeredBy:"machine_end_beep"}),connect:()=>connected++,skip:()=>skipped++});
-  try{await answered.check();await answered.check();assert.equal(connected,1);assert.equal(skipped,1)}finally{answered.dispose()}
+  try{await answered.check();await answered.check();assert.equal(connected,0);answered.accept();assert.equal(connected,1);assert.equal(skipped,1)}finally{answered.dispose()}
 });
 
 test("new untouched leads outrank overdue follow-ups and enter an existing saved run",()=>{
@@ -26,4 +26,12 @@ test("new untouched leads outrank overdue follow-ups and enter an existing saved
   assert.deepEqual(rankDialerLeads([retry,fresh]).map(x=>x.id),[1,2]);
   assert.deepEqual(refreshDialerRun([2],[retry,fresh]).map(x=>x.id),[1,2]);
   assert.deepEqual(refreshDialerRun([],[retry]).map(x=>x.id),[]);
+});
+test('a delayed no-answer result cannot skip a call answered or disposed while awaiting HTTP',async()=>{
+ for(const action of ['accept','dispose']){
+  let resolve,skipped=0,connected=0;
+  const screen=createCallScreening({callSid:()=>sid,read:()=>new Promise(r=>{resolve=r}),connect:()=>connected++,skip:()=>skipped++});
+  const check=screen.check();screen[action]();resolve({callSid:sid,detectionStatus:'no-answer'});await check;
+  assert.equal(skipped,0);assert.equal(connected,action==='accept'?1:0);screen.dispose();
+ }
 });

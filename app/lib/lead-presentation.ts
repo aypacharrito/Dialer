@@ -20,8 +20,17 @@ export function supplementalLeadDetails(lead:{importedFields?:Record<string,unkn
   const details=new Map<string,{label:string;value:string}>();
   for(const [field,raw] of [...Object.entries(lead.importedFields||{}),...Object.entries(lead.extraFields||{})]){
     const value=String(raw??"").trim();const key=normalizedLeadFieldKey(field);if(!hasLeadDetail(value)||!key||displayedLeadFieldKeys.has(key)||details.has(key))continue;
-    details.set(key,{label:leadFieldLabel(field),value});
+    details.set(key,{label:leadFieldLabel(field),value:/dob|dateofbirth|birthdate/.test(key)?displayBirthDate(value):value});
   }
   return Array.from(details.values());
 }
 
+
+/** Display calendar dates without UTC conversion (which can shift a birthday). */
+export function displayBirthDate(value:unknown){
+  const text=String(value||"").trim();
+  const iso=/^(\d{4})-(\d{2})-(\d{2})(?:T.*)?$/.exec(text);
+  if(iso)return `${iso[2]}/${iso[3]}/${iso[1]}`;
+  const us=/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(text);
+  return us?`${us[1].padStart(2,"0")}/${us[2].padStart(2,"0")}/${us[3]}`:text;
+}

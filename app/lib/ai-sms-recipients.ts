@@ -4,10 +4,10 @@ export function hasContactReplied(lead:ReplyState){
 }
 type SmsContact={id:number;phone?:string;smsOptOut?:boolean;doNotCall?:boolean;deletedAt?:string;stage?:string;outcome?:string;status?:string;automationEnabled?:boolean};
 const normalize=(value:unknown)=>String(value||"").trim().toLowerCase();
-export function requiresPersonalText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown}){
-  return hasContactReplied(lead)||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.stage))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.outcome));
+export function requiresPersonalText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown;sourceDisposition?:unknown}){
+  return hasContactReplied(lead)||/interested|working|quoted|appoint|sold|closed|lost|wrong number/.test(normalize(lead.sourceDisposition))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.status))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.stage))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.outcome));
 }
-export function blocksAiText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown;automationEnabled?:unknown}){
+export function blocksAiText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown;sourceDisposition?:unknown;automationEnabled?:unknown}){
   return requiresPersonalText(lead)||normalize(lead.stage)==="closed"||normalize(lead.status)==="closed"||["not interested","wrong number","sold / won"].includes(normalize(lead.outcome))||lead.automationEnabled===false;
 }
 export function smsRecipients<T extends SmsContact>(leads:T[]){

@@ -1,3 +1,4 @@
+import {emailWithComplianceFooter} from "../../../lib/message-footer";
 import {assertAutomatedContact} from "../../../lib/automated-contact";
 import {hasContactPermission} from "../../../lib/contact-permission";
 import {getPacificaAccess} from "../../../lib/clerk-access";
@@ -28,7 +29,7 @@ export async function POST(request:Request){
     const permissionLead=body.permissionDocumented===true?{...lead,emailConsent:true}:lead;
     if(!hasContactPermission(permissionLead,stored!.profile,"email"))return Response.json({error:lead.emailOptOut?"This contact unsubscribed from email.":"Document this contact’s email permission before sending."},{status:403});
     if(!stored?.profile.businessAddress)return Response.json({error:"Add the business mailing address in Owner Settings before sending commercial email."},{status:400});
-    const footer=`\n\n${stored.profile.businessAddress}\nReply UNSUBSCRIBE if you no longer want these emails.`;const text=`${String(body.text||"").trim()}${String(body.text||"").includes(stored.profile.businessAddress)?"":footer}`.slice(0,10000);
+    const text=emailWithComplianceFooter(String(body.text||""),stored.profile);
     const idempotencyKey=String(body.idempotencyKey||`manual-${workspace.userId}-${leadId}-${Date.now()}`).replace(/[^a-zA-Z0-9:_-]/g,"-").slice(0,200);
     if(body.sendMode==="ai")await assertAutomatedContact(workspace.userId,String(body.to||""),"email");
     const attachments=(Array.isArray(body.attachments)?body.attachments:[]).flatMap(item=>item?.path&&item?.filename?[{path:String(item.path),filename:String(item.filename).slice(0,120),contentType:String(item.contentType||"").slice(0,100)}]:[]).slice(0,10);

@@ -29,17 +29,16 @@ export type LeadPriority={
 
 export type DialerEligibilityInput=Pick<LeadPriorityInput,"stage"|"outcome"|"sourceDisposition"|"doNotCall"> & ReplyState & {followUp?:string;deletedAt?:string};
 
-export function isDialerEligibleLead(lead:DialerEligibilityInput,now=Date.now()){
+export function isDialerEligibleLead(lead:DialerEligibilityInput,_now=Date.now()){
+  void _now; // Keep compatibility with callers that supply a ranking timestamp.
   const stage=lead.stage.trim().toLowerCase();
   const outcome=lead.outcome.trim().toLowerCase();
   const disposition=lead.sourceDisposition.trim().toLowerCase();
   if(hasContactReplied(lead)||lead.deletedAt||lead.doNotCall||!["new lead","follow-up","open"].includes(stage))return false;
   if(!["not contacted","no answer","voicemail"].includes(outcome))return false;
   if(/interested|working|quoted|appointment|sold|closed|lost|wrong number/.test(disposition))return false;
-  if(lead.followUp?.trim()){
-    const due=dateValue(lead.followUp);
-    if(!Number.isFinite(due)||due>now)return false;
-  }
+  // Promised callbacks belong in Follow-ups, even after their scheduled time.
+  if(lead.followUp?.trim())return false;
   return true;
 }
 

@@ -1,3 +1,4 @@
+import {automatedSmsBody} from "./message-footer";
 import {assertAutomatedContact} from "./automated-contact";
 import {logEvent} from "./observability";
 import {smsReadiness} from "./sms-readiness";
@@ -33,7 +34,7 @@ export async function sendOutboundSms(input:{workspaceId:string;to:string;body:s
   const callbackBase=(process.env.TWILIO_WEBHOOK_BASE_URL||"https://pacificacrm.com").trim().replace(/\/$/,"");
   const assignment=await phoneAssignmentForWorkspace(input.workspaceId,input.workspaceEmail);const form=new URLSearchParams({To:to,From:status.from,StatusCallback:`${callbackBase}/api/twilio/messages/status?workspace=${encodeURIComponent(input.workspaceId)}`});if(body)form.set("Body",body);for(const mediaUrl of mediaUrls)form.append("MediaUrl",mediaUrl);
   if(assignment?.messagingServiceSid)form.set("MessagingServiceSid",assignment.messagingServiceSid);
-  if(input.automated)await assertAutomatedContact(input.workspaceId,to,"sms");
+  if(input.automated){const workspace=await assertAutomatedContact(input.workspaceId,to,"sms");form.set("Body",automatedSmsBody(body,workspace.profile.businessName))}
   const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
   if(!response.ok||!data.sid)throw new Error(twilioApiErrorMessage(data,"Twilio rejected the automated follow-up"));
   logEvent("sms_provider_accepted",{providerId:data.sid,workspaceId:input.workspaceId,status:data.status||"queued",mediaCount:mediaUrls.length,embeddedLinks:links.length,requestedAt:new Date(requestedAt).toISOString(),elapsedMs:Date.now()-requestedAt});

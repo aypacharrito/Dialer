@@ -30,3 +30,11 @@ test('delivery callbacks preserve delivered status and queue overflow does not o
   await delivery(request('/api/twilio/messages/status?workspace=test',{...fields,MessageStatus:'failed',ErrorCode:'21610'}));
   assert.equal(globalThis.testWorkspace.leads[0].smsOptOut,true);
 });
+test('HELP identifies the business and Advanced Opt-Out is not answered twice',async()=>{
+ globalThis.testWorkspace={leads:[],callLogs:[],profile:{businessName:'David & Co',callbackNumber:'8185550199'}};
+ const fields={MessageSid:'SM-help',From:'+18185550100',To:'+18185550199',Body:'HELP'};
+ const response=await inbound(request('/api/twilio/inbound',fields));assert.match(await response.text(),/David &amp; Co.*8185550199.*Reply STOP/);
+ assert.equal(globalThis.testWorkspace.leads[0].smsConsent,false);
+ const advanced=await inbound(request('/api/twilio/inbound',{...fields,MessageSid:'SM-help-2',OptOutType:'HELP'}));assert.doesNotMatch(await advanced.text(),/<Message>/);
+ const stop=await inbound(request('/api/twilio/inbound',{...fields,MessageSid:'SM-stop-localized',Body:'BAJA',OptOutType:'STOP'}));assert.equal(stop.status,200);assert.equal(globalThis.testWorkspace.leads[0].smsOptOut,true);
+});

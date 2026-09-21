@@ -20,7 +20,7 @@ test("supplemental details retain useful values and deduplicate normalized field
     { label: "VIN", value: "ABC123" },
     { label: "Policy Premium", value: "0" },
     { label: "Prior Claims", value: "false" },
-    { label: "Date Of Birth", value: "1990-01-02" },
+    { label: "Date Of Birth", value: "01/02/1990" },
   ]);
 });
 
@@ -29,4 +29,8 @@ test("presentation filtering never changes the imported source record", () => {
   const original = JSON.stringify(lead);
   supplementalLeadDetails(lead);
   assert.equal(JSON.stringify(lead), original);
+});
+test('DOB renders MM/DD/YYYY without shifting the calendar day',async()=>{
+ const {displayBirthDate}=await import('../app/lib/lead-presentation.ts');
+ assert.equal(displayBirthDate('2001-03-04'),'03/04/2001');assert.equal(displayBirthDate('3/4/2001'),'03/04/2001');
 });

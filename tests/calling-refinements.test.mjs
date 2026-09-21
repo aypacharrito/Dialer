@@ -75,8 +75,8 @@ test('cloud inbound contacts appear without dropping local edits or duplicating 
 test('existing SMS permission policy and email source permissions still honor opt-outs',()=>{
  const profile=cleanWorkspaceProfile({smsConsentSources:['SmartFinancial'],emailConsentSources:['Website']});
  assert.equal(hasContactPermission({source:'smartfinancial'},profile,'sms'),true);assert.equal(hasContactPermission({source:'SmartFinancial'},profile,'email'),false);
- // The existing workspace policy accepts imported SMS permission; email remains source-specific.
- assert.equal(hasContactPermission({source:'Unknown'},profile,'sms'),true);assert.equal(hasContactPermission({source:'SmartFinancial'},cleanWorkspaceProfile({}),'sms'),true);
+ // Unknown sources never imply consent; configured sources must be explicitly recorded.
+ assert.equal(hasContactPermission({source:'Unknown'},profile,'sms'),false);assert.equal(hasContactPermission({source:'SmartFinancial'},cleanWorkspaceProfile({}),'sms'),false);
  assert.equal(hasContactPermission({source:'Website'},profile,'email'),true);
  assert.equal(hasContactPermission({source:'Website',emailOptOut:true},profile,'email'),false);
  for(const blocked of [{smsOptOut:true},{doNotCall:true},{deletedAt:'2026-09-10'}])assert.equal(hasContactPermission({source:'SmartFinancial',smsConsent:true,...blocked},profile,'sms'),false);

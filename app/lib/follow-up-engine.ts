@@ -1,3 +1,4 @@
+import {emailWithComplianceFooter} from "./message-footer";
 import {assertAutomatedContact} from "./automated-contact";
 import {requiresPersonalText} from "./ai-sms-recipients";
 import {hasContactPermission} from "./contact-permission";
@@ -72,8 +73,7 @@ async function deliver(workspaceId:string,lead:FollowUpLead,profile:WorkspacePro
     return {channel,communication:communication({channel,direction:"outbound",body:rendered.body,status:result.status,sentAt,provider:result.provider,providerId:result.id})};
   }
   if(!profile.businessAddress)throw new Error("Business mailing address is required for automated email");
-  const requiredFooter=`\n\n${profile.businessAddress}\nReply UNSUBSCRIBE to stop these emails.`;
-  const text=`${rendered.body}${rendered.body.includes(profile.businessAddress)?"":requiredFooter}`.slice(0,10000);
+  const text=emailWithComplianceFooter(rendered.body,profile);
   await assertAutomatedContact(workspaceId,lead.email||"","email");
   const result=await sendOutboundEmail({to:lead.email||"",subject:rendered.subject||`Following up about your ${lead.product||"request"}`,text,fromName:profile.businessName||profile.agentName,replyTo:inboundReplyAddress(workspaceId)||profile.replyToEmail,idempotencyKey:`auto:${workspaceId}:${lead.id}:${lead.automationSequenceId}:${lead.automationStep}`});
   return {channel,communication:communication({channel,direction:"outbound",subject:rendered.subject,body:text,status:"sent",sentAt,provider:result.provider,providerId:result.id})};

@@ -14,12 +14,14 @@ import { sendExpoPush } from "../../../lib/expo-push";
 export const runtime = "nodejs";
 
 const stop = /^\s*(stop|stopall|unsubscribe|cancel|end|quit)\s*[.!]?\s*$/i;
+const help = /^\s*(help|info)\s*[.!]?\s*$/i;
 const start = /^\s*(start|yes|unstop)\s*[.!]?\s*$/i;
 const digits = (value: string) => value.replace(/\D/g, "").slice(-10);
 
-function twiml() {
+function twiml(message="") {
+  const escaped=message.replace(/[<>&"']/g,value=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&apos;"})[value]||value);
   return new Response(
-    '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+    `<?xml version="1.0" encoding="UTF-8"?><Response>${escaped?`<Message>${escaped}</Message>`:""}</Response>`,
     {
       headers: {
         "Content-Type": "text/xml; charset=utf-8",
@@ -51,6 +53,10 @@ export async function POST(request: Request) {
     }
     const workspace = await readStoredWorkspace(assignment.workspaceId);
     if (!workspace) return twiml();
+    const optOutType=String(form.get("OptOutType")||"").toUpperCase();
+    const isStop=optOutType==="STOP"||stop.test(body);
+    const isStart=optOutType==="START"||start.test(body);
+    const isHelp=optOutType==="HELP"||help.test(body);
     const phone = digits(from);
     if (!phone) return twiml();
     let matched = false;
@@ -70,8 +76,8 @@ export async function POST(request: Request) {
             return raw;
           }
           const sentAt = new Date().toISOString();
-          const optedOut = stop.test(body);
-          const optedIn = start.test(body);
+          const optedOut = isStop;
+          const optedIn = isStart;
           return {
             ...raw,
             lastInboundAt: sentAt,
@@ -111,7 +117,7 @@ export async function POST(request: Request) {
       );
       if (!matched) {
         const sentAt = new Date().toISOString(),
-          optedOut = stop.test(body);
+          optedOut = isStop;
         leads.unshift({
           id: Date.now(),
           name: `Inbound text · ${from.slice(-4)}`,
@@ -134,7 +140,7 @@ export async function POST(request: Request) {
           sourceDisposition: optedOut ? "Lost - Not Interested" : "New",
           importedAt: sentAt,
           received: sentAt,
-          smsConsent: !optedOut,
+          smsConsent: !optedOut&&!isHelp,
           smsOptOut: optedOut,
           lastInboundAt: sentAt,
           automationEnabled: false,
@@ -167,9 +173,14 @@ export async function POST(request: Request) {
     logEvent("inbound_sms_saved", {
       workspaceId: assignment.workspaceId,
       matched,
-      optedOut: stop.test(body),
+      optedOut: isStop,
       fromLast4: phone.slice(-4),
     });
+    if(isHelp&&!optOutType&&!duplicate){
+      const profile=workspace.profile;
+      const support=profile.callbackNumber||profile.replyToEmail||to;
+      return twiml(`${profile.businessName||"Pacifica"}: For help, contact ${support}. Reply STOP to opt out. Message and data rates may apply.`);
+    }
     return twiml();
   } catch (error) {
     logError("inbound_sms_failed", error);

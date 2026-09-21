@@ -1,4 +1,4 @@
-import {hasContactReplied} from "./ai-sms-recipients";
+import {hasContactReplied,blocksAiText,requiresPersonalText} from "./ai-sms-recipients";
 import { dateValue, leadCreatedAt } from "./lead-priority";
 
 export type AutomationLead={
@@ -37,7 +37,7 @@ export function recommendedAutomationChannel(lead:AutomationLead,step=lead.autom
 }
 
 export function initializeAutomation<T extends AutomationLead>(lead:T,now=Date.now()):T{
-  if(hasContactReplied(lead)||lead.deletedAt||lead.automationEnabled===false||lead.automationNextAt||lead.stage==="Closed"||lead.doNotCall||["Interested","Appointment set","Completed","Call back later"].includes(lead.outcome))return lead;
+  if(blocksAiText(lead)||lead.deletedAt||lead.automationEnabled===false||lead.automationNextAt||lead.stage==="Closed"||lead.doNotCall||["Interested","Appointment set","Completed","Call back later"].includes(lead.outcome))return lead;
   const arrived=leadCreatedAt(lead);
   const next=lead.outcome==="No answer"||lead.outcome==="Voicemail"?nextAutomationAfterAttempt(Math.max(1,lead.attempts||1),Number.isFinite(dateValue(lead.lastAttemptAt))?dateValue(lead.lastAttemptAt):now):new Date(Math.max(now,arrived+5*60*1000)).toISOString();
   return {...lead,automationEnabled:true,automationStep:lead.attempts||0,automationNextAt:next,automationStatus:"scheduled"};
@@ -47,7 +47,7 @@ export function refreshAutomation<T extends AutomationLead>(lead:T,now=Date.now(
   if(lead.deletedAt)return lead;
   if(hasContactReplied(lead))return {...lead,automationEnabled:false,automationNextAt:"",automationStatus:"replied"};
   if(lead.stage==="Closed"||lead.doNotCall)return lead.automationStatus==="paused"?lead:{...lead,automationStatus:"paused",automationNextAt:""};
-  if(lead.stage==="Appointment"||["Appointment set","Interested","Completed","Call back later"].includes(lead.outcome))return lead.automationStatus==="waiting for salesperson"&&!lead.automationNextAt?lead:{...lead,automationStatus:"waiting for salesperson",automationNextAt:""};
+  if(requiresPersonalText(lead)||lead.stage==="Appointment"||["Appointment set","Interested","Completed","Call back later"].includes(lead.outcome))return lead.automationStatus==="waiting for salesperson"&&!lead.automationNextAt?lead:{...lead,automationStatus:"waiting for salesperson",automationNextAt:""};
   if(lead.automationEnabled===false)return lead;
   const initialized=initializeAutomation(lead,now);
   const next=dateValue(initialized.automationNextAt);

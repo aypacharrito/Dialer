@@ -13,13 +13,18 @@ class FakeCall extends EventEmitter {
  sendDigits(value){this.digits.push(value)}
  answer(){this.state='open';this.emit('accept')}
  disconnect(){this.state='closed';this.emit('disconnect')}
- mute(){}
+ muted=false;
+ mute(value){this.muted=value}
+ isMuted(){return this.muted}
+ accept(){this.answer()}
+ reject(){this.state="closed";this.emit("reject")}
 }
 class FakeDevice extends EventEmitter {
- static calls=[];
+ static calls=[];static instance;static alreadyOpen=false;
+ constructor(_token,options){super();this.options=options;FakeDevice.instance=this}
  audio={availableInputDevices:new Map([['default',{deviceId:'default'}]]),availableOutputDevices:new Map([['default',{deviceId:'default'}]]),isOutputSelectionSupported:true,setAudioConstraints:async()=>{},setInputDevice:async()=>{},outgoing(){},disconnect(){},on(){},speakerDevices:{set:async()=>{}},ringtoneDevices:{set:async()=>{}}};
  updateToken(){}
- async connect(options){const call=new FakeCall();call.number=options.params.To;FakeDevice.calls.push(call);setTimeout(()=>call.emit('ringing'),0);return call}
+ async connect(options){const call=new FakeCall();call.number=options.params.To;FakeDevice.calls.push(call);if(FakeDevice.alreadyOpen)call.answer();setTimeout(()=>call.emit('ringing'),0);return call}
  disconnectAll(){for(const call of FakeDevice.calls)if(call.status()!=='closed')call.disconnect()}
  destroy(){}
 }
@@ -28,8 +33,8 @@ const base={id:1,name:'Open Person',phone:'8185550101',email:'',city:'Los Angele
 async function pause(ms=20){await act(async()=>new Promise(resolve=>setTimeout(resolve,ms)))}
 async function click(element){assert.ok(element,'expected interactive element');await act(async()=>element.click());await pause()}
 const byText=(selector,text)=>[...document.querySelectorAll(selector)].find(element=>element.textContent.trim()===text);
-async function setup(leads=[base]){
- FakeDevice.calls=[];
+async function setup(leads=[base],options={}){
+ FakeDevice.calls=[];FakeDevice.alreadyOpen=Boolean(options.alreadyOpen);
  const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test'});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true});
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:dom.window.navigator});
@@ -38,11 +43,12 @@ async function setup(leads=[base]){
  Object.defineProperty(dom.window.navigator,'mediaDevices',{value:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})}});
  localStorage.setItem('pacific-audio-preferences',JSON.stringify({clearVoiceEnabled:false}));
  localStorage.setItem('pacifica:test-call:leads',JSON.stringify(leads));
- localStorage.setItem('pacifica:test-call:profile',JSON.stringify({...defaultWorkspaceProfile,serverAutomationEnabled:false}));
+ localStorage.setItem('pacifica:test-call:profile',JSON.stringify({...defaultWorkspaceProfile,serverAutomationEnabled:false,...options.profile}));
  const requests=[];
- globalThis.fetch=async(url,options)=>{
-  requests.push({url,options});
+ globalThis.fetch=async(url,requestOptions)=>{
+  requests.push({url,options:requestOptions});
   if(url==='/api/twilio/status')return Response.json({configured:true,phoneNumber:'+18185550999'});
+  if(String(url).startsWith('/api/twilio/status?')&&options.statusFailure)return new Response('Unavailable',{status:503});
   if(String(url).startsWith('/api/twilio/status?'))return Response.json({result:{callSid:'CA-test',detectionStatus:FakeDevice.calls.at(-1)?.state==='open'?'in-progress':'ringing'}});
   if(url==='/api/twilio/token')return Response.json({token:'test-token',routeToken:'test-route'});
   if(url==='/api/integrations/dispositions')return Response.json({synced:false,message:'Saved locally'});
@@ -147,5 +153,65 @@ test('Hold is removed from both live call surfaces while Mute stays available',a
   assert.equal(byText('.call-controls button','Hold'),undefined);
   await h.nav('Contacts');assert.ok(byText('.active-call-actions button','Mute'));
   assert.equal(byText('.active-call-actions button','Hold'),undefined);
+ }finally{await h.cleanup()}
+});
+
+for(const mode of [20,30])test(`mode ${mode} opens two-way audio on SDK answer even when status requests fail`,async()=>{
+ const h=await setup([base],{profile:{dialerRingTimeoutSeconds:mode},statusFailure:true});try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));
+  const call=FakeDevice.calls[0],audio={muted:false};await act(async()=>call.emit('audio',audio));
+  assert.equal(audio.muted,true);
+  await act(async()=>call.answer());
+  assert.equal(call.isMuted(),false,'an answered customer must hear the agent without an HTTP callback');
+  assert.equal(audio.muted,false,'answered audio must play without an HTTP callback');
+  assert.ok(document.querySelector('.contact-card .timer'));
+  assert.equal(byText('.contact-card button','Connect now'),undefined);
+  await act(async()=>call.disconnect());assert.ok(document.querySelector('.post-call-modal'));
+ }finally{await h.cleanup()}
+});
+test('an explicit microphone mute while ringing survives SDK answer and a duplicate answer event',async()=>{
+ const h=await setup([base],{statusFailure:true});try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));const call=FakeDevice.calls[0];
+  await click(document.querySelector('[aria-label="Mute"]'));assert.equal(call.isMuted(),true);
+  await act(async()=>call.answer());assert.equal(call.isMuted(),true);
+  await act(async()=>call.emit('accept'));assert.equal(call.isMuted(),true);
+  await click(document.querySelector('[aria-label="Unmute"]'));assert.equal(call.isMuted(),false);
+ }finally{await h.cleanup()}
+});
+test('a call already open when connect resolves is initialized as connected',async()=>{
+ const h=await setup([base],{alreadyOpen:true,statusFailure:true});try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));
+  assert.equal(FakeDevice.calls[0].isMuted(),false);
+  assert.ok(document.querySelector('.contact-card .timer'));
+ }finally{await h.cleanup()}
+});
+
+test('answering an incoming call preserves the outgoing log and ignores its late events',async()=>{
+ const h=await setup([base],{statusFailure:true});try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));const old=FakeDevice.calls[0];
+  await act(async()=>old.answer());await click(document.querySelector('[aria-label="Mute"]'));
+  assert.equal(FakeDevice.instance.options.allowIncomingWhileBusy,true);
+  const incoming=new FakeCall();incoming.parameters={CallSid:'CA-incoming',From:'+18185550123'};
+  await act(async()=>FakeDevice.instance.emit('incoming',incoming));
+  await click(byText('.incoming-call-card button','End current & answer'));
+  assert.equal(old.status(),'closed');assert.equal(incoming.isMuted(),false);
+  const logs=JSON.parse(localStorage.getItem('pacifica:test-call:call-logs'));
+  assert.ok(logs.some(log=>log.callSid==='CA-test'&&log.status==='Replaced by incoming call'));
+  const status=document.querySelector('.phone-stat').textContent;
+  await act(async()=>{old.emit('ringing');old.emit('accept');old.emit('disconnect')});
+  assert.equal(incoming.status(),'open');assert.equal(document.querySelector('.phone-stat').textContent,status);
+  assert.equal(document.querySelector('.post-call-modal'),null);
+ }finally{await h.cleanup()}
+});
+test('an older incoming cancellation cannot clear a newer caller',async()=>{
+ const h=await setup();try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));
+  const first=new FakeCall();first.parameters={From:'+18185550120'};
+  await act(async()=>FakeDevice.instance.emit('incoming',first));
+  await click(byText('.incoming-call-card button','Decline'));
+  const next=new FakeCall();next.parameters={From:'+18185550121'};
+  await act(async()=>FakeDevice.instance.emit('incoming',next));
+  await act(async()=>first.emit('cancel'));
+  assert.match(document.querySelector('.incoming-call-card').textContent,/8185550121/);
  }finally{await h.cleanup()}
 });

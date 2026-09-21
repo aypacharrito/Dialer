@@ -16,3 +16,14 @@ test('any text reply blocks AI sends while leaving personal texting available',a
  await assert.rejects(()=>assertAutomatedContact('test','8185550100','sms'),/paused/);
  const personal=await sms(request({to:'8185550100',body:'My personal reply'}));assert.equal(personal.status,200);assert.equal(globalThis.testDeliveries.length,1);
 });
+test('SMS without permission is blocked and documenting permission enables personal sending',async()=>{
+ globalThis.testWorkspace.leads[0].smsConsent=false;
+ const blocked=await sms(request({to:'8185550100',body:'Hello'}));assert.equal(blocked.status,403);assert.equal(globalThis.testDeliveries.length,0);
+ const allowed=await sms(request({to:'8185550100',body:'Hello',permissionDocumented:true}));assert.equal(allowed.status,200);assert.equal(globalThis.testWorkspace.leads[0].smsConsent,true);
+});
+test('provider working disposition blocks AI even when the local stage is still New lead',async()=>{
+ globalThis.testWorkspace.leads[0].sourceDisposition='Interested - Working';
+ assert.equal((await sms(request({to:'8185550100',body:'Hello',sendMode:'ai'}))).status,403);
+ await assert.rejects(()=>assertAutomatedContact('test','8185550100','sms'),/paused/);
+ assert.equal(globalThis.testDeliveries.length,0);
+});

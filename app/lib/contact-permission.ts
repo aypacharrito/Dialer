@@ -2,7 +2,11 @@ import type {WorkspaceProfile} from './workspace-profile';
 type ContactPermission={source?:unknown;smsConsent?:unknown;emailConsent?:unknown;smsOptOut?:unknown;emailOptOut?:unknown;doNotCall?:unknown;deletedAt?:unknown};
 export function hasContactPermission(lead:ContactPermission|undefined,profile:Pick<WorkspaceProfile,'smsConsentSources'|'emailConsentSources'>,channel:'sms'|'email'){
   if(!lead||lead.deletedAt||lead.doNotCall||lead[channel==='sms'?'smsOptOut':'emailOptOut'])return false;
-  if(channel==='sms')return true;
+  if(channel==='sms'){
+    if(lead.smsConsent===true)return true;
+    const source=String(lead.source||'').trim().toLowerCase();
+    return Boolean(source&&profile.smsConsentSources?.some(item=>item.trim().toLowerCase()===source));
+  }
   if(lead.emailConsent===true)return true;
   const source=String(lead.source||'').trim().toLowerCase();
   return Boolean(source&&profile.emailConsentSources?.some(item=>item.trim().toLowerCase()===source));
