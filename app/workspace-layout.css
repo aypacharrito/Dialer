@@ -2,19 +2,18 @@
    Content scrolls inside its view; the navigation and calling controls stay put. */
 html[data-theme] .app-shell {
   height:100dvh;
-  min-height:0 !important;
   overflow:hidden;
 }
 html[data-theme] .app-shell>.workspace {
   display:flex;
   flex-direction:column;
   height:100dvh;
-  min-height:0 !important;
   overflow:hidden;
 }
 html[data-theme] .app-shell .workspace>.topbar,
 html[data-theme] .app-shell .workspace>.active-call-bar { flex:0 0 auto; }
 html[data-theme] .app-shell .workspace>:is(.page-view,.dialer-view,.today-workspace) {
+  background:var(--ps-surface) !important;
   flex:1 1 0;
   min-height:0;
   width:100% !important;
@@ -121,7 +120,6 @@ html[data-theme] .app-shell .message-contacts>button>em.reply { color:var(--ps-a
 html[data-theme] .app-shell .messages-layout .message-thread {
   min-height:0 !important;
   height:100%;
-  overflow:hidden;
   border-radius:0 !important;
   grid-template-rows:auto minmax(56px,1fr) minmax(0,auto);
 }
@@ -169,7 +167,6 @@ html[data-theme] .app-shell .template-library .template-save>input { flex:1 1 24
 html[data-theme] .app-shell .template-library .template-card-main { font-weight:400; }
 
 @container crm-workspace (max-width:900px) {
-  html[data-theme] .app-shell .messages-center>.messages-layout { grid-template-columns:minmax(0,1fr) !important; }
   html[data-theme] .app-shell .messages-module-bar .message-automation-status { display:none; }
 }
 @container crm-workspace (max-width:760px) {
@@ -184,7 +181,7 @@ html[data-theme] .app-shell .template-library .template-card-main { font-weight:
   html[data-theme] .app-shell { height:auto; min-height:100dvh !important; overflow:visible; }
   html[data-theme] .app-shell>.workspace { height:auto; min-height:100dvh !important; overflow:visible; }
   html[data-theme] .app-shell .workspace>:is(.page-view,.dialer-view,.today-workspace) { flex:1 0 auto; overflow:visible; }
-  html[data-theme] .app-shell .messages-center>.messages-layout { flex:none; height:600px !important; max-height:none; }
+  html[data-theme] .app-shell .messages-center>.messages-layout { height:600px !important; }
   html[data-theme] .app-shell .message-thread>footer { max-height:360px; }
 }
 
@@ -225,7 +222,6 @@ html[data-theme] .app-shell .top-actions .scan-action svg { display:block; width
 
 /* One focus indicator around the search field, with quiet supporting surfaces. */
 html[data-theme] .app-shell .message-contact-search { border-radius:6px; background:var(--ps-surface) !important; border:1px solid var(--ps-line); box-shadow:none !important; }
-html[data-theme] .app-shell .message-contact-search:focus-within { outline:2px solid var(--ps-accent); outline-offset:2px; }
 html[data-theme] .app-shell .message-contact-search input:focus,
 html[data-theme] .app-shell .message-contact-search input:focus-visible { outline:none !important; box-shadow:none !important; border:0 !important; }
 html[data-theme] .app-shell .message-thread>footer .composer-permission { padding:8px 0; border:0 !important; border-radius:0; background:transparent !important; color:var(--ps-muted) !important; box-shadow:none !important; }
@@ -302,9 +298,6 @@ html[data-theme] .app-shell .topbar .lead-line-switch button.active {
 html[data-theme] .app-shell .phone-pad .number-input-shell {
   background:var(--ps-surface) !important; border:1px solid var(--ps-line-strong) !important;
   border-radius:6px !important; box-shadow:none !important; padding:0 !important;
-}
-html[data-theme] .app-shell .phone-pad .number-input-shell:focus-within {
-  border-color:var(--ps-accent) !important; outline:1px solid var(--ps-accent); outline-offset:0;
 }
 html[data-theme] .app-shell .phone-pad .number-input-shell input {
   border:0 !important; outline:none !important; box-shadow:none !important; background:transparent !important;
@@ -502,7 +495,7 @@ html[data-theme] .app-shell .ai-view>.ai-workspace { flex:1; min-width:0; width:
 @media(max-height:650px) {
   html[data-theme] .app-shell .workspace>.messages-view { overflow:auto; display:block; }
   html[data-theme] .app-shell .workspace .messages-center { min-height:560px; }
-  html[data-theme] .app-shell .messages-center>.messages-layout { flex:none; min-height:450px !important; max-height:none; }
+  html[data-theme] .app-shell .messages-center>.messages-layout { flex:none; max-height:none; }
   html[data-theme] .app-shell .messages-layout .message-thread { height:auto; grid-template-rows:auto minmax(120px,1fr) auto; }
   html[data-theme] .app-shell .message-history { max-height:45dvh; }
   html[data-theme] .app-shell .message-thread>footer { max-height:none; overflow:visible; }

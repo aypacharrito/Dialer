@@ -19,12 +19,10 @@
 .message-thread textarea{font-size:1rem!important;line-height:1.5!important}
 .message-history{overscroll-behavior:contain}
 .message-history article{overflow-wrap:anywhere}
-.messages-center :focus-visible{outline:2px solid #168451;outline-offset:3px}
 @media(max-width:700px){
  .composer-actions{flex-wrap:wrap}.composer-actions .send-feedback{flex-basis:100%}
  .messages-module-bar{gap:8px}.message-thread footer{padding:10px!important}
 }
-@media(prefers-reduced-motion:reduce){.messages-center *{animation:none!important;transition:none!important}}
 
 /* Connection status stays readable instead of becoming a row of tiny pills. */
 html[data-theme] .app-shell .workspace-health{padding:22px;border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface);color:var(--ui-text);min-width:0}
@@ -37,7 +35,6 @@ html[data-theme] .app-shell .workspace-health{padding:22px;border:1px solid var(
 .workspace-health-list details{border-top:1px solid var(--ui-border);min-width:0}
 .workspace-health-list summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 0;cursor:pointer;font-size:14px;list-style:none}
 .workspace-health-list summary::-webkit-details-marker{display:none}
-.workspace-health-list summary:focus-visible{outline:2px solid var(--ui-accent);outline-offset:2px}
 .workspace-health-list summary span{font-size:12px;color:var(--ui-accent);white-space:nowrap}
 .workspace-health-list .health-attention summary span{color:var(--ui-text);font-weight:650}
 .workspace-health-list details p{margin:0 0 16px;font-size:14px;line-height:1.6;overflow-wrap:anywhere;color:var(--ui-muted)}

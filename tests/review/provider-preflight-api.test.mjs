@@ -19,7 +19,7 @@ test('unknown delivery history fails closed and a clean history sends with STOP 
 test('SmartFinancial receives only provider ID and Attempted Contact after a call',async()=>{
  process.env.SMARTFINANCIAL_STATUS_URL='https://example.test/status';process.env.SMARTFINANCIAL_API_KEY='test-only';
  const payloads=[];globalThis.fetch=async(url,init)=>{payloads.push(JSON.parse(init.body));return Response.json({ok:true})};
- const base={source:'SmartFinancial',vendorId:'sf-123',disposition:'Contacted',notes:'Private CRM notes',crmStage:'Follow-up'};
+ const base={source:'Smart Financial · Home',vendorId:'sf-123',disposition:'Contacted',notes:'Private CRM notes',crmStage:'Follow-up'};
  assert.equal((await disposition(req({...base,event:'contact-saved'}))).status,200);assert.equal(payloads.length,0);
  const response=await disposition(req({...base,event:'call-ended'}));assert.equal((await response.json()).synced,true);
  assert.deepEqual(payloads,[{lead_id:'sf-123',disposition:'Attempted Contact'}]);
@@ -28,4 +28,11 @@ test('SmartFinancial receives only provider ID and Attempted Contact after a cal
 test('missing SmartFinancial connector is reported as not connected without external requests',async()=>{
  globalThis.fetch=async()=>{throw Error('Unexpected external request')};
  const response=await disposition(req({source:'SmartFinancial',vendorId:'sf-1',event:'call-ended',disposition:'Attempted Contact'}));assert.equal((await response.json()).synced,false);
+});
+
+test('provider rejection uses Pacifica guidance and keeps the failure truthful',async()=>{
+ globalThis.fetch=async(url,init)=>init.method==='POST'?Response.json({code:21610,message:'Twilio opted out'},{status:400}):Response.json({messages:[]});
+ const response=await sms(req({to:'8185550100',body:'Personal reply'}));
+ assert.equal(response.status,500);
+ const data=await response.json();assert.match(data.error,/Pacifica CRM:.*opted out/);assert.doesNotMatch(data.error,/Twilio|21610/);assert.equal(data.message,undefined);
 });

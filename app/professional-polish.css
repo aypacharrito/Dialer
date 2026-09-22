@@ -43,8 +43,6 @@ html[data-theme] body {
   background: var(--pro-bg);
   color: var(--pro-text);
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
 /* ---------- Application shell ---------- */
@@ -58,8 +56,6 @@ html[data-theme] .sidebar {
   padding: 20px 14px 16px;
   border-right: 1px solid rgba(255,255,255,.055);
 }
-
-html[data-theme] .workspace { min-width: 0; }
 
 html[data-theme] .logo {
   min-height: 58px;
@@ -687,7 +683,6 @@ html[data-theme] .pricing-grid article {
 html[data-theme] .pricing-grid article.featured {
   border-color: color-mix(in srgb, var(--pro-accent) 45%, var(--pro-border)) !important;
   box-shadow: 0 16px 38px rgba(17,134,109,.13) !important;
-  transform: none !important;
 }
 
 /* ---------- Drawer / modal balance ---------- */
@@ -700,7 +695,6 @@ html[data-theme] .contact-drawer {
 /* There are four actions in the drawer. Five columns created the visible empty slot. */
 html[data-theme] .record-actions {
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  gap: 8px !important;
   padding: 14px 18px !important;
 }
 

@@ -1,10 +1,11 @@
+import {smsFailureMessage} from "./sms-delivery";
 import {assertSmsDeliveryHistory, SmsPreflightError, type SmsDeliveryRecord} from "./sms-preflight";
 import {automatedSmsBody} from "./message-footer";
 import {assertAutomatedContact} from "./automated-contact";
 import {logEvent} from "./observability";
 import {smsReadiness} from "./sms-readiness";
 import {phoneAssignmentForWorkspace} from "./phone-assignments";
-import {twilioAccountConfig,twilioApiErrorMessage,twilioApiRequest,type TwilioApiError} from "./twilio-rest";
+import {twilioAccountConfig,twilioApiRequest,type TwilioApiError} from "./twilio-rest";
 import {validateSmsLinks} from "./sms-content-policy";
 
 type TwilioMessageResponse=TwilioApiError&{sid?:string;status?:string};
@@ -41,7 +42,7 @@ export async function sendOutboundSms(input:{workspaceId:string;to:string;body:s
   if(!history.response.ok||!Array.isArray(history.data.messages))throw new SmsPreflightError("delivery history could not be checked. Try again after the connection recovers.");
   assertSmsDeliveryHistory(history.data.messages);
   const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
-  if(!response.ok||!data.sid)throw new Error(twilioApiErrorMessage(data,"Twilio rejected the automated follow-up"));
+  if(!response.ok||!data.sid){logEvent("sms_provider_rejected",{workspaceId:input.workspaceId,code:data.code});throw new Error(smsFailureMessage(data.code))};
   logEvent("sms_provider_accepted",{providerId:data.sid,workspaceId:input.workspaceId,status:data.status||"queued",mediaCount:mediaUrls.length,embeddedLinks:links.length,requestedAt:new Date(requestedAt).toISOString(),elapsedMs:Date.now()-requestedAt});
   return {id:data.sid,provider:"twilio" as const,status:data.status||"queued",from:status.from};
 }

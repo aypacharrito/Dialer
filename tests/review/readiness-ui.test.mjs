@@ -107,3 +107,16 @@ test('AI ready notification clears when its result is opened and stays cleared w
   await h.render(React.createElement(AiCommandCenter,{...props,visible:false}));assert.equal(activity,'idle');
  }finally{await h.cleanup()}
 });
+
+test('failed SMS shows dated Pacifica guidance even when old provider text is returned',async()=>{
+ const h=await setup();
+ globalThis.fetch=async url=>Response.json(url==='/api/twilio/messages'?{phone:'+18185550000',sending:{configured:true},messages:[{id:'SM-failed',from:'+18185550000',to:lead.phone,body:'Checking in',direction:'outbound-api',status:'undelivered',sentAt:'2026-09-21T16:00:00Z',errorCode:30003,failureReason:'Unreachable destination handset (Twilio 30003).'}]}:{configured:false});
+ try{
+  await h.render(React.createElement(MessagesCenter,{workspaceId:'test',profile:defaultWorkspaceProfile,leads:[lead],onPatch(){},onProfileChange(){}}));
+  const history=document.querySelector('.message-history');
+  assert.match(history.textContent,/Delivery failed/);
+  assert.match(history.textContent,/Pacifica CRM:.*phone was unreachable/);
+  assert.doesNotMatch(history.textContent,/Twilio|30003/);
+  assert.equal(history.querySelector('time').dateTime,'2026-09-21T16:00:00Z');
+ }finally{await h.cleanup()}
+});

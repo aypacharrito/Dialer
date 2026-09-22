@@ -86,7 +86,8 @@ export async function POST(request:Request){
     };
     if(!body.disposition)return Response.json({error:"Choose a lead-source disposition"},{status:400});
 
-    if(sourceKey(body.source)==="smartfinancial"&&raw.event!=="call-ended")return Response.json({ok:true,synced:false,message:"Saved in Pacifica · SmartFinancial updates after an outbound call"});
+    const smartFinancial=sourceKey(body.source).includes("smartfinancial");
+    if(smartFinancial&&raw.event!=="call-ended")return Response.json({ok:true,synced:false,message:"Saved in Pacifica · SmartFinancial updates after an outbound call"});
     const connector=connectorFor(body.source);
     if(!connector)return Response.json({ok:true,synced:false,message:`Saved in Pacifica · ${body.source} status sync not connected`});
     if(!body.vendorId)return Response.json({ok:true,synced:false,message:"Saved in Pacifica · source lead ID unavailable"});
@@ -97,7 +98,6 @@ export async function POST(request:Request){
     if(!["POST","PUT","PATCH"].includes(method))throw new Error("Lead-source connector method is invalid");
     const leadIdField=connector.leadIdField||"lead_id";
     const dispositionField=connector.dispositionField||"disposition";
-    const smartFinancial=sourceKey(body.source)==="smartfinancial";
     const outbound:Record<string,string>=smartFinancial?{[leadIdField]:body.vendorId,[dispositionField]:"Attempted Contact"}:{
       [leadIdField]:body.vendorId,
       [dispositionField]:body.disposition,

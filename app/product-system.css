@@ -33,7 +33,6 @@ html[data-theme] {
   --ps-control-lg: 46px;
   --ps-shadow-card: 0 1px 2px rgba(12, 38, 29, .035), 0 8px 24px rgba(12, 38, 29, .045);
   --ps-shadow-sheet: 0 24px 70px rgba(12, 38, 29, .19);
-  --ps-focus: 0 0 0 3px rgba(15, 138, 116, .16);
   --ps-ease: cubic-bezier(.2,.8,.2,1);
 }
 
@@ -134,22 +133,28 @@ html[data-theme] :is(input,select,textarea):hover {
 }
 
 html[data-theme] :is(input,select,textarea):focus {
-  border-color: var(--ps-accent) !important;
-  box-shadow: var(--ps-focus) !important;
+  border-color: var(--ps-line-strong) !important;
   outline: none !important;
 }
 
-html[data-theme] :is(button,a,input,select,textarea):focus-visible {
-  outline: none !important;
-  box-shadow: var(--ps-focus) !important;
+html[data-theme] :is(button,a,[role="button"],input,select,textarea,summary,.table-row,.queue-row,.call-log-row) {
+  transition: background-color 140ms var(--ps-ease), border-color 140ms var(--ps-ease), color 140ms var(--ps-ease), box-shadow 140ms var(--ps-ease), scale 100ms ease-out;
 }
 
-html[data-theme] button {
-  transition: transform .14s var(--ps-ease), background-color .14s var(--ps-ease),
-              border-color .14s var(--ps-ease), box-shadow .14s var(--ps-ease), color .14s var(--ps-ease);
+html[data-theme] :is(button,[role="button"]):not(:disabled):active { scale: .985; }
+
+/* Quiet text entry; a neutral ring is reserved for keyboard navigation. */
+
+html[data-theme] :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible {
+  outline: 1px solid var(--ps-muted) !important;
+  outline-offset: 2px;
 }
 
-html[data-theme] button:not(:disabled):active { transform: scale(.985); }
+html[data-theme] :is(input,select,textarea):focus-visible { outline: none !important; border-color: var(--ps-muted) !important; }
+
+html[data-theme] :is(.crm-tools>label,.message-contact-search,.number-input-shell,.ai-chat-composer):has(:focus-visible) {
+  border-color: var(--ps-muted) !important;
+}
 
 /* ---------- Shell + navigation ---------- */
 html[data-theme] .app-shell {
@@ -433,10 +438,6 @@ html[data-theme] .crm-tools select {
 html[data-theme] .crm-tools>label {
   padding: 0 12px !important;
   box-shadow: none !important;
-}
-html[data-theme] .crm-tools>label:focus-within {
-  border-color: var(--ps-accent) !important;
-  box-shadow: var(--ps-focus) !important;
 }
 html[data-theme] .crm-tools>label input,
 html[data-theme] .crm-tools>label input:focus,
@@ -1111,6 +1112,13 @@ html[data-theme] .toast {
   font-weight: 620 !important;
 }
 
+/* Animate newly opened surfaces, while navigation stays immediately visible. */
+
+@media (prefers-reduced-motion: no-preference) {
+ html[data-theme] :is(.new-lead-modal,.post-call-modal,.template-editor) { animation: ps-modal-in 160ms var(--ps-ease); }
+ html[data-theme] .dialer-view { scroll-behavior: smooth; }
+}
+
 /* ---------- Motion ---------- */
 @keyframes ps-sheet-in {
   from { transform: translateX(18px); opacity: .78; }
@@ -1167,6 +1175,7 @@ html[data-theme] .toast {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
+    scale: none !important;
   }
 }
 
@@ -1222,7 +1231,7 @@ html[data-theme] .app-shell .conversation-workspace .call-status-line { grid-col
 html[data-theme] .app-shell .conversation-workspace .contact-card { min-height:0 !important; margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; border-radius:0 !important; }
 html[data-theme] .app-shell .conversation-workspace .contact-card .avatar { width:44px !important; height:44px !important; min-width:44px !important; font-size:calc(15px * var(--workspace-text-scale)) !important; border-radius:10px !important; }
 html[data-theme] .app-shell .conversation-workspace .contact-card h2 { font-size:calc(20px * var(--workspace-text-scale)) !important; }
-html[data-theme] .app-shell .conversation-workspace .call-controls { position:static !important; margin:0 !important; padding:0 !important; min-height:0 !important; gap:10px !important; flex-wrap:wrap; }
+html[data-theme] .app-shell .conversation-workspace .call-controls { position:static !important; margin:0 !important; padding:0 !important; min-height:0 !important; gap:10px !important; }
 html[data-theme] .app-shell .conversation-workspace .call-controls button { height:auto !important; min-height:44px !important; border-radius:8px !important; }
 html[data-theme] .app-shell .conversation-workspace .inline-pause { grid-column:1 / -1; justify-self:end; margin:0 !important; }
 html[data-theme] .app-shell .conversation-workspace .lead-file { grid-column:1; grid-row:2 !important; width:100% !important; max-width:none !important; margin:0 !important; overflow:visible !important; padding:0 24px 24px !important; }
@@ -1246,9 +1255,6 @@ html[data-theme] .app-shell .conversation-workspace .queue-card { width:100%; bo
  html[data-theme] .app-shell .conversation-workspace .lead-file-grid { grid-template-columns:1fr !important; }
  html[data-theme] .app-shell .conversation-workspace.has-keypad .lead-file { grid-row:3 !important; }
  html[data-theme] .app-shell .conversation-workspace .stats-row { flex-wrap:wrap; }
-}
-@media(prefers-reduced-motion:reduce) {
- html[data-theme] .app-shell *,html[data-theme] .app-shell *::before,html[data-theme] .app-shell *::after { animation:none !important; transition:none !important; }
 }
 
 /* Adaptive workspace: keep sizing in flow, never position controls over content. */
@@ -1392,17 +1398,6 @@ html[data-theme] .app-shell :is(.table-card,.client-table,.call-log-table) { max
   from { opacity:0; transform:translateY(5px); }
   to { opacity:1; transform:translateY(0); }
 }
-@keyframes pacifica-panel-enter {
-  from { opacity:0; transform:translateY(8px) scale(.99); }
-  to { opacity:1; transform:translateY(0) scale(1); }
-}
-@media(prefers-reduced-motion:no-preference) {
-  html[data-theme] .app-shell .workspace > :is(.page-view,.dialer-view) { animation:pacifica-surface-enter 180ms ease-out both; }
-  html[data-theme] .app-shell :is(.conversation-workspace .lead-file,.conversation-workspace .side-pad,.settings-section) { animation:pacifica-panel-enter 180ms ease-out both; }
-  html[data-theme] .app-shell :is(.sidebar nav button,.lead-line-switch button,.top-actions button,.queue-row,.table-row) { transition:background-color 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease !important; }
-  html[data-theme] .app-shell :is(.call-controls button,.dialer-toolbar button,.key-grid button) { transition:transform 120ms ease,background-color 140ms ease,box-shadow 140ms ease !important; }
-  html[data-theme] .app-shell :is(.call-controls button,.dialer-toolbar button,.key-grid button):active:not(:disabled) { transform:scale(.97) !important; }
-}
 
 /* Final cross-screen contract: shared type scale, surfaces and focus treatment. */
 html[data-theme][data-display-size] {
@@ -1422,7 +1417,7 @@ html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.rep
 html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics)>article>span { font-size:calc(12px * var(--workspace-text-scale)) !important; font-weight:600 !important; letter-spacing:.035em !important; }
 html[data-theme] .app-shell :is(.today-metrics,.crm-summary,.client-summary,.report-metrics)>article>b { font-size:calc(26px * var(--workspace-text-scale)) !important; font-weight:650 !important; line-height:1.25 !important; margin-top:8px !important; }
 html[data-theme] .app-shell :is(.settings-nav,.settings-content,.focus-list,.source-pulse,.message-contacts,.message-thread,.pricing-grid>article,.pipeline-col) { min-width:0 !important; border-radius:10px !important; box-shadow:none !important; }
-html[data-theme] .app-shell :is(.settings-content,.settings-section,.phone-setup-side) { overflow-wrap:anywhere; }
+html[data-theme] .app-shell :is(.settings-content,.settings-section,.phone-setup-side) { background:var(--ps-surface) !important; overflow-wrap:anywhere; }
 html[data-theme] .app-shell :is(.field-grid,.new-lead-fields,.post-call-modal-fields,.quote-edit-grid,.workspace-profile-fields,.client-reminder-grid) { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)) !important; }
 html[data-theme] .app-shell :is(input,select,textarea) { min-width:0; max-width:100%; }
 html[data-theme] .app-shell :is(.config-section>label,.volume-row) { min-width:0; }
@@ -1431,10 +1426,6 @@ html[data-theme] .app-shell :is(.table-head,.table-row)>span { min-width:0; }
 html[data-theme] .app-shell :is(.table-card,.pipeline,.client-table) { min-width:0; max-width:100%; overscroll-behavior-inline:contain; }
 html[data-theme] .app-shell .pipeline { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)) !important; }
 html[data-theme] .app-shell .pricing-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)) !important; }
-html[data-theme] .app-shell :is(button,a,input,select,textarea,[tabindex]):focus-visible {
-  outline:2px solid var(--ps-accent) !important;
-  outline-offset:3px !important;
-}
 html[data-theme="dark"] .app-shell .sidebar nav button { color:var(--ps-text) !important; }
 html[data-theme="dark"] .app-shell .sidebar nav button.active { color:var(--ps-accent) !important; }
 html[data-theme] .app-shell :is(.new-lead-modal,.post-call-modal,.contact-drawer,.quote-modal-shell) {
@@ -1558,7 +1549,6 @@ html[data-theme] .app-shell .integration-details>summary {
   cursor:pointer; padding:14px 0; color:var(--ps-text); font-weight:600;
   font-size:calc(13px * var(--workspace-text-scale,1)); min-height:44px;
 }
-html[data-theme] .app-shell .integration-details>summary:focus-visible { outline:2px solid var(--ps-accent); outline-offset:2px; }
 html[data-theme] .app-shell .email-workspace-setup>.integration-details { padding-inline:20px; }
 html[data-theme] .app-shell .integration-detail-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:16px; padding-bottom:16px; }
 html[data-theme] .app-shell .integration-detail-grid>section { min-width:0; padding:0; }

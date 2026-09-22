@@ -1,3 +1,4 @@
+import {smsFailureMessage} from "../../../lib/sms-delivery";
 import {SmsPreflightError} from "../../../lib/sms-preflight";
 import {
   twilioAccountConfig,
@@ -58,21 +59,6 @@ async function workspacePhone() {
   return { phone, workspaceId: access.userId, email: access.email };
 }
 
-function twilioMessage(data: TwilioError) {
-  const base = data.message || "Twilio rejected the messaging request";
-  const help: Record<number, string> = {
-    20003: "Check TWILIO_AUTH_TOKEN or give the API key Messaging permissions.",
-    21606:
-      "The selected Twilio number cannot send SMS. Choose an SMS-capable number in TWILIO_PHONE_NUMBER.",
-    21608: "This Twilio trial account can only text verified recipients.",
-    21610: "This recipient previously opted out and cannot be messaged.",
-    30007:
-      "The carrier filtered this message. Check A2P registration and message content.",
-    30034: "Complete US A2P 10DLC registration for this Twilio number.",
-  };
-  const suffix = data.code && help[data.code] ? ` ${help[data.code]}` : "";
-  return data.code ? `${base} (Twilio ${data.code}).${suffix}` : base;
-}
 
 function normalized(value: string) {
   const digits = value.replace(/\D/g, "");
@@ -95,13 +81,7 @@ function safe(message: TwilioMessage) {
     sentAt:
       message.date_sent || message.date_created || new Date().toISOString(),
     errorCode: message.error_code || null,
-    failureReason: failed
-      ? twilioMessage({
-          message:
-            message.error_message || "The carrier did not deliver this message",
-          code: message.error_code || undefined,
-        })
-      : null,
+    failureReason: failed ? smsFailureMessage(message.error_code) : null,
   };
 }
 
@@ -127,8 +107,8 @@ export async function GET() {
       data: { messages?: TwilioMessage[] } & TwilioError;
       credential: string;
     }>;
-    if (!outbound.response.ok) throw new Error(twilioMessage(outbound.data));
-    if (!inbound.response.ok) throw new Error(twilioMessage(inbound.data));
+    if (!outbound.response.ok) throw new Error(smsFailureMessage(outbound.data.code));
+    if (!inbound.response.ok) throw new Error(smsFailureMessage(inbound.data.code));
     const unique = new Map<string, TwilioMessage>();
     for (const message of [
       ...(outbound.data.messages || []),
@@ -162,7 +142,7 @@ export async function GET() {
       {
         configured: false,
         error:
-          error instanceof Error ? error.message : "Unable to load messages",
+          "Pacifica CRM: Messages could not be loaded. Refresh or check Settings → Integrations.",
       },
       { status: 500 },
     );
@@ -295,7 +275,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error:
-          error instanceof Error ? error.message : "Unable to send message",
+          error instanceof Error && !/twilio/i.test(error.message) ? error.message : "Pacifica CRM: This text could not be submitted. Check Settings → Integrations before trying again.",
       },
       { status: 500 },
     );

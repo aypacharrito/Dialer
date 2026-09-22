@@ -102,21 +102,12 @@ html[data-theme] .logo {
 }
 
 html[data-theme] .logo b {
-  font-size: calc(13px * var(--workspace-text-scale, 1)) !important;
   letter-spacing: .15em !important;
-}
-
-html[data-theme] .sidebar nav {
-  gap: 3px !important;
 }
 
 html[data-theme] .sidebar nav button {
   height: 45px !important;
   min-height: 45px !important;
-  padding: 0 12px !important;
-  gap: 11px !important;
-  border-radius: 10px !important;
-  font-size: calc(13px * var(--workspace-text-scale, 1)) !important;
   font-weight: 700 !important;
 }
 
@@ -129,19 +120,13 @@ html[data-theme] .sidebar nav em,
 html[data-theme] .message-unread {
   height: 23px !important;
   min-width: 23px !important;
-  padding: 0 7px !important;
-  font-size: calc(12px * var(--workspace-text-scale, 1)) !important;
   font-weight: 800 !important;
 }
-
-html[data-theme] .agent b { font-size: calc(12px * var(--workspace-text-scale, 1)) !important; }
-html[data-theme] .agent small { font-size: calc(12px * var(--workspace-text-scale, 1)) !important; }
 
 /* Header: fewer competing sizes, same control family. */
 html[data-theme] .topbar {
   height: 72px !important;
   min-height: 72px !important;
-  padding: 0 22px !important;
   gap: 14px !important;
 }
 
@@ -156,7 +141,6 @@ html[data-theme] .caller-id small {
 }
 
 html[data-theme] .caller-id b {
-  font-size: calc(13px * var(--workspace-text-scale, 1)) !important;
   font-weight: 800 !important;
 }
 
@@ -184,23 +168,12 @@ html[data-theme] :is(
 }
 
 html[data-theme] .lead-line-switch {
-  min-height: 42px !important;
-  height: 42px !important;
-  padding: 4px !important;
   border-radius: 11px !important;
 }
 
 html[data-theme] .lead-line-switch button {
-  min-height: 32px !important;
-  height: 32px !important;
-  padding: 0 15px !important;
-  border-radius: 8px !important;
   font-size: calc(12px * var(--workspace-text-scale, 1)) !important;
   font-weight: 750 !important;
-}
-
-html[data-theme] .top-actions {
-  gap: 7px !important;
 }
 
 html[data-theme] .top-actions > button,
@@ -226,7 +199,6 @@ html[data-theme] .workspace-sync,
 html[data-theme] .connection {
   min-height: 32px !important;
   padding: 0 8px !important;
-  font-size: calc(12px * var(--workspace-text-scale, 1)) !important;
 }
 
 /* Main desktop canvas */
@@ -236,23 +208,11 @@ html[data-theme] .dialer-view {
 }
 
 html[data-theme] .dialer-main-grid {
-  gap: 14px !important;
   grid-template-columns: minmax(500px, 1.34fr) minmax(365px, .94fr) minmax(300px, .72fr) !important;
 }
 
 html[data-theme] :is(.hero-call,.lead-file,.side-pad,.queue-card,.table-card) {
   border-radius: var(--p-card-radius) !important;
-}
-
-html[data-theme] .hero-call,
-html[data-theme] .lead-file,
-html[data-theme] .side-pad {
-  min-height: 500px !important;
-}
-
-html[data-theme] .call-grid {
-  min-height: 500px !important;
-  padding: 26px !important;
 }
 
 html[data-theme] .call-status-line {
@@ -278,7 +238,6 @@ html[data-theme] .contact-card {
   min-height: 104px !important;
   padding: 17px 18px !important;
   gap: 14px !important;
-  border-radius: 14px !important;
 }
 
 html[data-theme] .avatar {
@@ -316,9 +275,7 @@ html[data-theme] .signal {
 html[data-theme] .start-call,
 html[data-theme] .end-call {
   min-width: 150px !important;
-  min-height: 48px !important;
   height: 48px !important;
-  border-radius: 12px !important;
   font-size: calc(12px * var(--workspace-text-scale, 1)) !important;
   font-weight: 750 !important;
 }
@@ -378,13 +335,11 @@ html[data-theme] .lead-file-grid {
 
 html[data-theme] .lead-file-grid label {
   min-height: 49px !important;
-  padding: 9px 10px !important;
   border-radius: 9px !important;
 }
 
 html[data-theme] .lead-file-grid label b {
   margin-top: 4px !important;
-  font-size: calc(12px * var(--workspace-text-scale, 1)) !important;
   font-weight: 700 !important;
 }
 
@@ -423,13 +378,11 @@ html[data-theme] .key-grid button {
 }
 
 html[data-theme] .key-grid button b {
-  font-size: calc(17px * var(--workspace-text-scale, 1)) !important;
   font-weight: 620 !important;
 }
 
 html[data-theme] .key-grid button small {
   margin-top: 3px !important;
-  font-size: calc(12px * var(--workspace-text-scale, 1)) !important;
   letter-spacing: .07em !important;
 }
 
@@ -444,32 +397,18 @@ html[data-theme] .phone-call span { font-size: calc(12px * var(--workspace-text-
 /* Bottom section: KPI cards no longer stretch into giant empty boxes. */
 html[data-theme] .bottom-grid {
   margin-top: 14px !important;
-  gap: 14px !important;
-  align-items: start !important;
   grid-template-columns: minmax(390px, .72fr) minmax(600px, 1.28fr) !important;
-}
-
-html[data-theme] .stats-row {
-  gap: 9px !important;
-  align-self: start !important;
 }
 
 html[data-theme] .stats-row article {
   height: 112px !important;
   min-height: 112px !important;
-  padding: 15px 16px !important;
-  border-radius: 14px !important;
 }
 
 html[data-theme] .stats-row article b {
-  margin-top: auto !important;
   font-size: var(--p-kpi) !important;
   line-height: 1 !important;
   font-weight: 710 !important;
-}
-
-html[data-theme] .stats-row article .phone-stat {
-  font-size: calc(18px * var(--workspace-text-scale, 1)) !important;
 }
 
 html[data-theme] .queue-card {
@@ -531,7 +470,6 @@ html[data-theme] .crm-tools input {
 html[data-theme] .crm-summary article {
   min-height: 94px !important;
   padding: 15px 16px !important;
-  border-radius: 14px !important;
 }
 
 html[data-theme] .crm-summary article b {
@@ -541,7 +479,6 @@ html[data-theme] .crm-summary article b {
 
 html[data-theme] .crm-tools {
   margin: 12px 0 !important;
-  gap: 8px !important;
 }
 
 html[data-theme] .table-head {
@@ -554,7 +491,6 @@ html[data-theme] .table-row {
 }
 
 html[data-theme] .table-row b { font-size: calc(12.5px * var(--workspace-text-scale, 1)) !important; }
-html[data-theme] .table-row small { font-size: calc(12px * var(--workspace-text-scale, 1)) !important; }
 
 /* Drawers/settings/modals use the same control scale. */
 html[data-theme] .record-actions button,

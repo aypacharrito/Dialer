@@ -18,3 +18,14 @@ export function nextSmsDeliveryStatus(current:string,incoming:string){
 }
 
 export function isSmsOptOutError(code:string){return code==="21610"}
+
+/** Customer-facing delivery guidance. Provider codes remain in message metadata. */
+export function smsFailureMessage(code?:number|string|null){
+  const value=Number(code);
+  if(value===30003)return "Pacifica CRM: This text was not delivered because the recipient’s phone was unreachable. Verify the number or try another contact method.";
+  if([30005,30006,21211,21614].includes(value))return "Pacifica CRM: This number cannot receive texts. Check the contact’s mobile number before trying again.";
+  if(value===21610)return "Pacifica CRM: This contact opted out of texts. They must opt back in before texting can resume.";
+  if(value===30007)return "Pacifica CRM: The mobile network blocked this text. Review the message and your messaging setup before trying again.";
+  if([30032,30034,30035,21606,21608,20003].includes(value))return "Pacifica CRM: Texting setup needs attention. Check Settings → Integrations before trying again.";
+  return "Pacifica CRM: This text could not be delivered. Check the number and messaging setup before trying again.";
+}
