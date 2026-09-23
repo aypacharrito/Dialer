@@ -25,7 +25,7 @@
     "test:outreach": "node --import tsx --test tests/ai-outreach-safety.test.mjs tests/ai-sms-recipients.test.mjs && node --import tsx --import ./tests/review/outreach-api-loader.mjs --test tests/ai-outreach-server.test.mjs",
     "typecheck": "tsc --noEmit",
     "test:call-detection": "node --import tsx --test tests/call-detection.test.mjs tests/twilio-voice-route.test.ts && node --import tsx --import ./tests/review/outreach-api-loader.mjs --test tests/call-detection-webhook.test.mjs",
-    "test:routes": "node --import tsx --import ./tests/review/outreach-api-loader.mjs --test tests/ai-outreach-server.test.mjs tests/call-detection-webhook.test.mjs tests/messaging-webhooks.test.mjs && node --import tsx --import ./tests/review/provider-preflight-loader.mjs --test tests/review/provider-preflight-api.test.mjs && node --import tsx --import ./tests/review/ai-api-loader.mjs --test tests/review/ai-api.test.mjs",
+    "test:routes": "node --import tsx --import ./tests/review/outreach-api-loader.mjs --test tests/ai-outreach-server.test.mjs tests/call-detection-webhook.test.mjs tests/messaging-webhooks.test.mjs && node --import tsx --import ./tests/review/provider-preflight-loader.mjs --test tests/review/provider-preflight-api.test.mjs && node --import tsx --import ./tests/review/ai-api-loader.mjs --test tests/review/ai-api.test.mjs && node --import tsx --import ./tests/review/quote-intake-loader.mjs --test tests/review/quote-intake-api.test.mjs",
     "test:ui": "node --import tsx --import ./tests/review/crm-loader.mjs --test tests/review/*-ui.test.mjs",
     "predev:next": "npm run sync:assets",
     "dev:next": "next dev",

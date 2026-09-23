@@ -36,3 +36,15 @@ test('CRM analysis uses a completed structured response and accepts a timed call
   const data=await response.json();assert.equal(data.mode,'ai');assert.equal(data.actions[0].patch.followUp,'2026-09-10T10:30');assert.equal(data.actions[0].patch.outcome,'Call back later');
  }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
 });
+test('document scan sends a validated PDF to AI, retains printed dates, and rejects invalid uploads',async()=>{
+ const {POST:scan}=await import('../../app/api/ai/document-lead/route.ts');
+ const previousKey=process.env.OPENAI_API_KEY,previousFetch=globalThis.fetch;let calls=0;let payload;
+ process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.pacificaTestAccess=true;
+ globalThis.fetch=async(url,options)=>{calls++;payload=JSON.parse(options.body);return output(JSON.stringify({fullName:'Test Person',dateOfBirth:'1990-06-15',address:'123 Test Street',city:'Test City',state:'CA',zip:'90001',policyNumber:'TEST-1',policyExpirationDate:'2026-10-02',policyPremium:'838.58',documentType:'Policy declaration',otherFields:[{label:'Vehicle 2 VIN',value:'1HGCM82633A004352'}]}))};
+ try{
+  const pdf='data:application/pdf;base64,'+Buffer.from('%PDF-1.4\nmock document').toString('base64');
+  const response=await scan(request({pdf}));assert.equal(response.status,200);const data=await response.json();assert.equal(data.extraction.policyExpirationDate,'2026-10-02');assert.equal(data.extraction.policyPremium,'838.58');assert.equal(calls,1);assert.equal(payload.store,false);assert.equal(payload.input[0].content[1].type,'input_file');assert.equal(payload.input[0].content[1].file_data,pdf);
+  assert.equal((await scan(request({pdf:'data:application/pdf;base64,YmFk'}))).status,400);assert.equal(calls,1);
+  globalThis.pacificaTestAccess=false;assert.equal((await scan(request({pdf}))).status,403);assert.equal(calls,1);
+ }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
+});

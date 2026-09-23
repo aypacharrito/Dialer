@@ -58,7 +58,7 @@ function readableDate(value:string){const [year,month,day]=value.split("-").map(
 
 export function nextClientEvents(lead:ClientRecord,now=new Date(),timeZone="America/Los_Angeles"){
   const today=dateKeyInZone(now,timeZone);const dates=clientDates(lead);
-  const birthday=nextAnnual(dates.dateOfBirth,today);const renewal=nextAnnual(dates.renewalDate,today);
+  const birthday=nextAnnual(dates.dateOfBirth,today);const renewal=dates.renewalDate>=today?dates.renewalDate:"";
   return {today,...dates,birthday,birthdayDays:birthday?daysBetween(today,birthday):null,renewal,renewalDays:renewal?daysBetween(today,renewal):null};
 }
 

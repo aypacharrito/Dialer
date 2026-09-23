@@ -1,3 +1,4 @@
+import {cleanQuoteIntake,type QuoteIntakeState} from "./quote-intake";
 import { mergeCallDetection } from "./call-detection";
 import { mergeCloudContact } from "./contact-sync";
 import { deletionState } from "./lead-deletion";
@@ -8,6 +9,7 @@ import {
 import { applyWorkspaceChanges } from "./workspace-changes";
 
 export type StoredWorkspace = {
+  quoteIntake?: QuoteIntakeState;
   leads: unknown[];
   callLogs: unknown[];
   profile: WorkspaceProfile;
@@ -44,6 +46,7 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
     leads: records(body.leads, 5000),
     callLogs: records(body.callLogs, 1000),
     profile: cleanWorkspaceProfile(body.profile),
+    ...(body.quoteIntake?{quoteIntake:cleanQuoteIntake(body.quoteIntake)}:{}),
   };
 }
 
@@ -258,6 +261,7 @@ export function mergeStoredWorkspace(
     leads: leads.slice(0, 5000),
     callLogs: callLogs.slice(0, 1000),
     profile,
+    ...(server.quoteIntake?{quoteIntake:server.quoteIntake}:{}),
   });
 }
 

@@ -1,6 +1,6 @@
 import {mergeContactCallDetection,type ContactCallDetection} from "./call-detection";
 import {deletionState,type DeletionState} from './lead-deletion';
-type SyncedContact=DeletionState&ContactCallDetection&{id:number;phone:string;email?:string;vendorId?:string;source?:string;providerUpdatedAt?:string;queueOverride?:boolean;lastInboundAt?:string;automationUpdatedAt?:string;communications?:unknown[]};
+type SyncedContact=DeletionState&ContactCallDetection&{id:number;phone:string;email?:string;vendorId?:string;source?:string;providerUpdatedAt?:string;queueOverride?:boolean;quoteDetailsUpdatedAt?:string;lastInboundAt?:string;automationUpdatedAt?:string;communications?:unknown[]};
 const providerFields=['name','phone','email','city','source','product','vendorId','address','state','zip','territory','brand','profileName','received','importedAt','returnStatus','employeeCount','searchPro','extraFields','providerUpdatedAt'] as const;
 /** Refresh provider details while retaining local workflow and newer deletion decisions. */
 export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
@@ -11,6 +11,10 @@ export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
   const patch:Record<string,unknown>=detection===local?{}:{lastCallResult:detection.lastCallResult,lastCallStartedAt:detection.lastCallStartedAt,lastCallDetectionAt:detection.lastCallDetectionAt,lastDetectedCallSid:detection.lastDetectedCallSid};
   if(newer){const values=remote as unknown as Record<string,unknown>;for(const key of providerFields)if(values[key]!==undefined)patch[key]=values[key];if(!local.queueOverride&&values.line)patch.line=values.line}
   const values=remote as unknown as Record<string,unknown>;
+  if(Date.parse(remote.quoteDetailsUpdatedAt||'')>(Date.parse(local.quoteDetailsUpdatedAt||'')||0)){
+    for(const key of ['quoteDetailsUpdatedAt','quoteRequests','dateOfBirth','renewalDate','vin','name','phone','email','address','city','state','zip','product','extraFields'])if(values[key]!==undefined)patch[key]=values[key];
+  }
+
   if(Date.parse(remote.automationUpdatedAt||'')>(Date.parse(local.automationUpdatedAt||'')||0)){
     for(const key of ['automationEnabled','automationSequenceId','automationStep','automationNextAt','automationStatus','automationUpdatedAt'])if(values[key]!==undefined)patch[key]=values[key];
   }

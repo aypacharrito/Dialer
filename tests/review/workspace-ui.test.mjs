@@ -5,7 +5,7 @@ const {JSDOM}=createRequire(process.env.PACIFICA_UI_TEST_PACKAGE || new URL("../
 import React,{act} from 'react';
 import CRM from '../../app/CRMClient.tsx';
 import {defaultWorkspaceProfile} from '../../app/lib/workspace-profile.ts';
-async function setup(fail){
+async function setup(fail,mode=defaultWorkspaceProfile.mode){
  const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test'});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true});
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:dom.window.navigator});
@@ -16,12 +16,12 @@ async function setup(fail){
   requests.push({url,options});
   if(url==='/api/crm/workspace'){
    if(fail&&options?.method!=='PUT')return new Response('{}',{status:503});
-   return new Response(JSON.stringify({found:true,leads:[],callLogs:[],profile:{...defaultWorkspaceProfile,serverAutomationEnabled:false}}));
+   return new Response(JSON.stringify({found:true,leads:[],callLogs:[],profile:{...defaultWorkspaceProfile,mode,serverAutomationEnabled:false}}));
   }
   return new Response(JSON.stringify({configured:false,phone:'',leads:[]}));
  };
  const {createRoot}=await import('react-dom/client');const root=createRoot(document.getElementById('root'));
- await act(async()=>root.render(React.createElement(CRM,{clerkEnabled:true,workspaceId:'test-workspace'})));
+ await act(async()=>root.render(React.createElement(CRM,{clerkEnabled:true,isOwner:true,workspaceId:'test-workspace'})));
  await act(async()=>new Promise(resolve=>setTimeout(resolve,750)));
  return {dom,root,requests,cleanup:async()=>{await act(async()=>root.unmount());dom.window.close()}};
 }
@@ -47,4 +47,16 @@ test('the keypad is a sibling of the calling column while the queue stays with t
  assert.ok(primary.querySelector('.hero-call'));assert.ok(primary.querySelector('.queue-card'));assert.equal(keypad.parentElement,primary.parentElement);assert.equal(primary.contains(keypad),false);
  assert.equal(document.activeElement.id,'manual-dial-number');
  await h.cleanup();
+});
+test('video navigation merges quote preparation into Industry Tools and billing into Settings',async()=>{
+ const h=await setup(false,'insurance');
+ try{
+  const nav=label=>document.querySelector(`.sidebar nav button[aria-label="${label}"]`);
+  assert.equal(nav('Quote desk'),null);assert.equal(nav('Plans & Billing'),null);
+  assert.ok(nav('Miner').querySelector('svg'));assert.ok(nav('Pacifica AI').querySelector('svg'));
+  await act(async()=>nav('Industry Tools').click());assert.match(document.body.textContent,/Quote preparation/);assert.match(document.body.textContent,/Scan license or policy/);assert.doesNotMatch(document.querySelector('.industry-tools').textContent,/COMING SOON/);
+  await act(async()=>nav('Contacts').click());assert.ok([...document.querySelectorAll('button')].find(b=>/Export CSV/.test(b.textContent)));
+  const settings=[...document.querySelectorAll('.sidebar button')].find(b=>b.getAttribute('aria-label')==='Owner settings');await act(async()=>settings.click());
+  const billing=[...document.querySelectorAll('.settings-nav button')].find(b=>/Plans & Billing/.test(b.textContent));assert.ok(billing);await act(async()=>billing.click());assert.ok(document.querySelector('.settings-content .pricing-grid'));
+ }finally{await h.cleanup()}
 });

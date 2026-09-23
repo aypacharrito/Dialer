@@ -34,3 +34,8 @@ test("delivered reminder keys prevent duplicate sends",()=>{
   const second=planClientReminders({...lead,clientReminderKeys:first.map(item=>item.key)},profile,new Date("2026-09-02T17:00:00Z"));
   assert.equal(second.length,0);
 });
+test('expired and future multi-year policy dates are never advanced or pulled backward annually',()=>{
+ const now=new Date('2026-09-02T17:00:00Z');
+ assert.equal(nextClientEvents({...lead,renewalDate:'2025-10-02'},now).renewal,'');
+ assert.equal(nextClientEvents({...lead,renewalDate:'2027-10-02'},now).renewal,'2027-10-02');
+});

@@ -1,5 +1,6 @@
 import {registerHooks} from 'node:module';
 registerHooks({resolve(specifier,context,next){
+ if(specifier.endsWith('.module.css'))return {url:'data:text/javascript,export default {}',shortCircuit:true};
  if(specifier==='next/image'||specifier.endsWith('/components/ClerkTopAuth'))return {url:'data:text/javascript,export default function Stub(){return null}',shortCircuit:true};
  return next(specifier,context);
 }});

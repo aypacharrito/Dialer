@@ -45,7 +45,9 @@ async function identity(): Promise<Identity | null> {
 const legacyOwnerEmail = "pacificalegalinsurance@gmail.com";
 
 function cleanPayload(value: unknown): WorkspacePayload {
-  return cleanWorkspacePayload(value);
+  const clean=cleanWorkspacePayload(value);
+  delete clean.quoteIntake;
+  return clean;
 }
 
 export async function GET() {
