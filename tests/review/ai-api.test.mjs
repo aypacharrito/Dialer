@@ -48,3 +48,13 @@ test('document scan sends a validated PDF to AI, retains printed dates, and reje
   globalThis.pacificaTestAccess=false;assert.equal((await scan(request({pdf}))).status,403);assert.equal(calls,1);
  }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
 });
+test('AI chat forwards real PDF attachments and rejects malformed or oversized requests before provider calls',async()=>{
+ const key=process.env.OPENAI_API_KEY,fetch=globalThis.fetch;let calls=0,payload;process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.pacificaTestAccess=true;
+ globalThis.fetch=async(url,options)=>{calls++;payload=JSON.parse(options.body);return output(JSON.stringify({summary:'Read the document.',priorities:[],actions:[],draft:'',createLead:null}))};
+ try{const pdf='data:application/pdf;base64,'+Buffer.from('%PDF-1.4\nTest fixture').toString('base64');
+  assert.equal((await crm(request({prompt:'Summarize',documents:[{name:'policy.pdf',dataUrl:pdf}]}))).status,200);assert.equal(calls,1);assert.equal(payload.input.at(-1).content.at(-1).type,'input_file');assert.equal(payload.input.at(-1).content.at(-1).file_data,pdf);
+  assert.equal((await crm(request({documents:[{name:'bad.pdf',dataUrl:'data:application/pdf;base64,YmFk'}]}))).status,400);
+  assert.equal((await crm(request({documents:Array.from({length:5},()=>({name:'policy.pdf',dataUrl:pdf}))}))).status,400);
+  assert.equal((await crm(request({prompt:'a'.repeat(4_200_001)}))).status,413);assert.equal(calls,1);
+ }finally{globalThis.fetch=fetch;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key}
+});

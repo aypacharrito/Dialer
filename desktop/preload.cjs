@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("pacificaDesktop",{
   isDesktop:true,
   supportsDesktopWrapUp:true,
+  onOverlayError:callback=>{if(typeof callback!=="function")return ()=>{};const handler=(_event,message)=>callback(String(message||""));ipcRenderer.on("pacifica:overlay-error",handler);return ()=>ipcRenderer.removeListener("pacifica:overlay-error",handler)},
+  notifyMessage:message=>ipcRenderer.send("pacifica:message-state",message),
+  onMessageAction:callback=>{if(typeof callback!=="function")return ()=>{};const handler=(_event,message)=>callback(message);ipcRenderer.on("pacifica:message-open",handler);return ()=>ipcRenderer.removeListener("pacifica:message-open",handler)},
   platform:process.platform,
   getVersion:()=>ipcRenderer.invoke("pacifica:desktop-version"),
   setCallState:(state)=>ipcRenderer.send("pacifica:call-state",state),

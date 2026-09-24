@@ -1,3 +1,4 @@
+import {workspaceAutomationAccess} from "./clerk-access";
 import {appendCommunication,type StoredCommunication} from "./communications";
 import {isActiveClient,planClientReminders,type ClientRecord} from "./client-portfolio";
 import {logError,logEvent} from "./observability";
@@ -11,6 +12,7 @@ export async function runClientReminderAutomation(options:{workspaceId?:string;w
   const startedAt=new Date().toISOString();let workspaces=0,activeClients=0,due=0,sent=0,customerSent=0,ownerSent=0,blocked=0,failed=0;
   const records=await automationWorkspaces(options);const limit=options.sendLimit||250;
   for(const record of records){
+    if(!await workspaceAutomationAccess(record.workspaceId))continue;
     workspaces++;const profile=record.workspace.profile;if(!profile.clientRemindersEnabled)continue;
     const status=await outboundSmsStatus(record.workspaceId);let changed=false;const leads=[...(record.workspace.leads as ReminderLead[])];
     for(let index=0;index<leads.length&&sent<limit;index++){

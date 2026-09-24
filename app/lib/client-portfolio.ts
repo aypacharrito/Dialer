@@ -22,9 +22,19 @@ function isoDate(value:string){
   return "";
 }
 
+export function renewalEvidence(lead:ClientRecord){
+  if(lead.renewalDate)return {date:isoDate(lead.renewalDate),field:"Renewal date",source:"Contact record",raw:lead.renewalDate};
+  if(lead.policyExpirationDate)return {date:isoDate(lead.policyExpirationDate),field:"Policy expiration date",source:"Contact record",raw:lead.policyExpirationDate};
+  const aliases=new Set(["renewaldate","policyrenewaldate","policyexpirationdate","policyexpirydate"]);
+  for(const [source,fields] of [["Imported field",lead.importedFields],["Additional field",lead.extraFields]] as const){
+    for(const [field,raw] of Object.entries(fields||{}))if(aliases.has(normalizedKey(field))&&String(raw||"").trim())return {date:isoDate(raw),field,source,raw};
+  }
+  return null;
+}
+
 export function clientDates(lead:ClientRecord){
   const dateOfBirth=isoDate(lead.dateOfBirth||importedValue(lead,["date of birth","dob","birth date","birthdate"]));
-  const renewalDate=isoDate(lead.renewalDate||lead.policyExpirationDate||importedValue(lead,["renewal date","policy renewal date","policy expiration date","policy expiry date","expiration date"]));
+  const renewalDate=renewalEvidence(lead)?.date||"";
   const policyEffectiveDate=isoDate(lead.policyEffectiveDate||importedValue(lead,["policy effective date","effective date"]));
   const policyNumber=lead.policyNumber||importedValue(lead,["policy number","policy #","policy no"]);
   return {dateOfBirth,renewalDate,policyEffectiveDate,policyNumber};

@@ -1,3 +1,4 @@
+import {workspaceAutomationAccess} from "./clerk-access";
 import {emailWithComplianceFooter} from "./message-footer";
 import {assertAutomatedContact} from "./automated-contact";
 import {requiresPersonalText} from "./ai-sms-recipients";
@@ -108,6 +109,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
   const startedAt=new Date().toISOString();let workspaces=0,changed=0,duplicatesRemoved=0,due=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
   const records=await automationWorkspaces(options);
   for(const record of records){
+    if(!await workspaceAutomationAccess(record.workspaceId))continue;
     workspaces++;const profile=record.workspace.profile;
     let workspaceChanged=false;let currentLeads=record.workspace.leads as Array<FollowUpLead&ProviderManagedLead>;
     try{const incoming=await queuedProviderLeads(record.workspaceId);if(incoming.length){const merged=mergeProviderLeads(currentLeads,incoming,createProviderLead);if(merged.added||merged.updated){currentLeads=merged.leads as Array<FollowUpLead&ProviderManagedLead>;workspaceChanged=true}}}catch(error){logError("provider_inbox_merge_failed",error,{workspaceId:record.workspaceId})}

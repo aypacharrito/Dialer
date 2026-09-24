@@ -9,7 +9,15 @@ const appUrl=(process.env.PACIFICA_APP_URL||"https://pacificacrm.com/dashboard?d
 const appOrigin=new URL(appUrl).origin;
 let mainWindow=null;
 let overlayWindow=null;
+let messageWindow=null;
+let messageQueue=[];
+const seenMessages=new Set();
 let overlayPhase="";
+let overlayReady=false;
+let overlayPaintReady=false;
+let reloadOverlay=null;
+let overlayLoadTimer=null;
+let overlayRecoveryAttempts=0;
 let overlayLayout="horizontal";
 let overlayGeometry="";
 let overlaySizes={};
@@ -64,21 +72,43 @@ function positionOverlay(){
 
 function createOverlay(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
+  overlayReady=false;overlayPaintReady=false;
   overlayWindow=new BrowserWindow({
     width:480,height:88,minWidth:280,minHeight:88,maxWidth:1200,maxHeight:900,
     frame:false,resizable:true,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
     backgroundColor:"#ffffff",title:"Pacifica Call",icon:path.join(__dirname,"assets/pacifica.ico"),
-    webPreferences:{preload:path.join(__dirname,"overlay-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}
+    webPreferences:{preload:path.join(__dirname,"overlay-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}
   });
   overlayWindow.setAlwaysOnTop(true,"floating");
   overlayWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
-  void overlayWindow.loadFile(path.join(__dirname,"overlay.html"));
+  const overlay=overlayWindow;
+  const load=()=>{
+    overlayReady=false;overlay.hide();
+    if(overlayLoadTimer)clearTimeout(overlayLoadTimer);
+    overlayLoadTimer=setTimeout(()=>recoverOverlay("Call controls did not finish loading"),5000);
+    void overlay.loadFile(path.join(__dirname,"overlay.html")).catch(()=>recoverOverlay("Call controls could not load"));
+  };
+  const recoverOverlay=reason=>{
+    if(overlay!==overlayWindow||overlay.isDestroyed())return;
+    overlayReady=false;overlay.hide();
+    if(overlayLoadTimer){clearTimeout(overlayLoadTimer);overlayLoadTimer=null}
+    if(!lastCallState.active&&!lastCallState.incoming&&!lastCallState.wrapUp)return;
+    if(overlayRecoveryAttempts++<1){load();return}
+    mainWindow?.webContents.send("pacifica:overlay-error",reason+". Keep using the call controls in Pacifica.");
+    // Restore only the main window; reloading it would disconnect a live call.
+    if(mainWindow?.isMinimized())mainWindow.restore();mainWindow?.show();
+  };
+  reloadOverlay=load;
+  overlay.once("ready-to-show",()=>{overlayPaintReady=true;revealRenderedOverlay()});
+  overlay.webContents.on("render-process-gone",()=>recoverOverlay("The floating window stopped responding"));
+  overlay.webContents.on("unresponsive",()=>recoverOverlay("The floating window stopped responding"));
+  overlay.webContents.on("did-finish-load",()=>overlay.webContents.send("pacifica:call-state",overlayState()));
+  load();
   positionOverlay();
   overlayWindow.on("resized",()=>{if(!overlayGeometry)return;overlaySizes[overlayGeometry]=overlayWindow.getSize();saveOverlayLayout()});
   overlayWindow.on("moved",()=>{const {x,y}=overlayWindow.getBounds();overlayPosition={x,y};saveOverlayLayout()});
   overlayWindow.on("restore",()=>overlayWindow?.setSkipTaskbar(true));
-  overlayWindow.on("closed",()=>{overlayWindow=null;overlayPhase="";overlayGeometry=""});
-  overlayWindow.webContents.once("did-finish-load",()=>overlayWindow?.webContents.send("pacifica:call-state",overlayState()));
+  overlayWindow.on("closed",()=>{if(overlayLoadTimer)clearTimeout(overlayLoadTimer);overlayWindow=null;overlayReady=false;overlayPaintReady=false;reloadOverlay=null;overlayPhase="";overlayGeometry="";overlayRecoveryAttempts=0});
   return overlayWindow;
 }
 
@@ -103,19 +133,20 @@ function createWindow(){
     autoHideMenuBar:true,
     titleBarStyle:"hidden",
     titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#111614":"#f7f8fa",symbolColor:nativeTheme.shouldUseDarkColors?"#f4f7f5":"#17211d",height:36},
-    webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true}
+    webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true,backgroundThrottling:false}
   });
   mainWindow.once("ready-to-show",()=>mainWindow?.show());
   mainWindow.webContents.setWindowOpenHandler(({url})=>{
     if(isTrustedNavigation(url))return {action:"allow"};
     if(/^https?:\/\//i.test(url))void shell.openExternal(url);return {action:"deny"};
   });
+  mainWindow.webContents.on("did-navigate",(_event,url)=>{if(!isAppUrl(url)||!new URL(url).pathname.startsWith("/dashboard")){messageQueue=[];seenMessages.clear();messageWindow?.hide()}});
   mainWindow.webContents.on("will-navigate",(event,url)=>{if(!isTrustedNavigation(url)){event.preventDefault();if(/^https?:\/\//i.test(url))void shell.openExternal(url)}});
   mainWindow.webContents.on("render-process-gone",(_event,details)=>{if(details.reason!=="clean-exit")recoverMainRenderer(`renderer process gone: ${details.reason}`)});
   mainWindow.webContents.on("unresponsive",()=>recoverMainRenderer("renderer became unresponsive"));
   mainWindow.webContents.on("did-fail-load",(_event,code,description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)recoverMainRenderer(`load failed ${code}: ${description}`)});
   void mainWindow.loadURL(appUrl);
-  mainWindow.on("closed",()=>{overlayWindow?.close();overlayWindow=null;mainWindow=null});
+  mainWindow.on("closed",()=>{messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
 }
 
 function startDesktopUpdater(){
@@ -162,8 +193,9 @@ function showCallOverlay(){
     overlayPosition={x,y};saveOverlayLayout();
     overlayGeometry=geometry;
   }
-  overlayPhase=nextPhase;
   overlay.webContents.send("pacifica:call-state",overlayState());
+  if(!overlayReady||!overlayPaintReady)return;
+  overlayPhase=nextPhase;
   // Timer updates must not restore a minimized window or move a dragged window.
   // A new result is shown so wrap-up is available outside the CRM as requested.
   if(overlay.isMinimized()){
@@ -204,6 +236,7 @@ ipcMain.handle("pacifica:enter-call-overlay",(event)=>{
   const overlay=createOverlay();
   if(overlay.isMinimized())overlay.restore();
   showCallOverlay();
+  if(!overlayReady||!overlayPaintReady){if(!overlayLoadTimer&&reloadOverlay){overlayRecoveryAttempts=0;reloadOverlay()}return true;}
   if(!overlay.isVisible())overlay.show();
   overlay.setAlwaysOnTop(true,"floating");
   try{overlay.moveTop()}catch{}
@@ -221,3 +254,49 @@ ipcMain.on("pacifica:theme",(event,theme)=>{
 });
 
 ipcMain.handle("pacifica:desktop-version",event=>trustedMain(event)?app.getVersion():null);
+
+// A dedicated always-on-top window keeps messages outside the Windows notification center.
+function showMessagePopup(){
+ if(!mainWindow||mainWindow.isDestroyed())return;
+ if(!messageQueue.length){messageWindow?.hide();return}
+ if(!messageWindow||messageWindow.isDestroyed()){
+  messageWindow=new BrowserWindow({width:400,height:260,frame:false,resizable:false,show:false,alwaysOnTop:true,skipTaskbar:true,backgroundColor:"#ffffff",title:"Pacifica message",webPreferences:{preload:path.join(__dirname,"message-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  messageWindow.setAlwaysOnTop(true,"floating");messageWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+  messageWindow.webContents.setWindowOpenHandler(()=>({action:"deny"}));
+  messageWindow.webContents.on("will-navigate",event=>event.preventDefault());
+  messageWindow.on("closed",()=>{messageWindow=null});
+  messageWindow.webContents.once("did-finish-load",()=>showMessagePopup());
+  void messageWindow.loadFile(path.join(__dirname,"message.html"));return;
+ }
+ const area=screen.getDisplayMatching(mainWindow.getBounds()).workArea;
+ messageWindow.setPosition(area.x+Math.max(0,area.width-420),area.y+Math.max(0,area.height-280));
+ messageWindow.webContents.send("pacifica:message-state",messageQueue[0]);messageWindow.showInactive();
+}
+ipcMain.on("pacifica:message-state",(event,input)=>{
+ if(!trustedMain(event)||!input||typeof input!=="object"||!Number.isSafeInteger(input.leadId))return;
+ const id=String(input.id||"").slice(0,180);if(!id||seenMessages.has(id))return;
+ seenMessages.add(id);if(seenMessages.size>500)seenMessages.delete(seenMessages.values().next().value);
+ messageQueue.push({id,leadId:input.leadId,name:String(input.name||"New message").slice(0,100),body:String(input.body||"").slice(0,240),channel:input.channel==="email"?"email":"sms",theme:input.theme==="dark"?"dark":"light"});
+ if(messageQueue.length>10)messageQueue.splice(1,1);showMessagePopup();
+});
+ipcMain.on("pacifica:message-action",(event,action)=>{
+ if(!messageWindow||event.sender!==messageWindow.webContents||!messageQueue.length||!["open","dismiss"].includes(action))return;
+ const message=messageQueue.shift();
+ if(action==="open"&&mainWindow&&!mainWindow.isDestroyed()){if(mainWindow.isMinimized())mainWindow.restore();mainWindow.show();mainWindow.focus();mainWindow.webContents.send("pacifica:message-open",message)}
+ showMessagePopup();
+});
+
+ipcMain.handle("pacifica:overlay-state",event=>{
+ if(!overlayWindow||event.sender!==overlayWindow.webContents)return {active:false};
+ return overlayState();
+});
+ipcMain.on("pacifica:overlay-rendered",event=>{
+ if(!overlayWindow||event.sender!==overlayWindow.webContents||overlayReady)return;
+ overlayReady=true;revealRenderedOverlay();
+});
+
+function revealRenderedOverlay(){
+ if(!overlayReady||!overlayPaintReady)return;
+ if(overlayLoadTimer){clearTimeout(overlayLoadTimer);overlayLoadTimer=null}
+ showCallOverlay();
+}

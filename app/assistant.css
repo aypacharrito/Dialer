@@ -75,3 +75,9 @@ html[data-theme] .app-shell .ai-composer-row button:last-child{background:var(--
 @media(max-width:420px){.ai-contact-review{grid-template-columns:1fr}}
 .ai-draft-card>textarea{display:block;width:calc(100% - 32px);min-height:110px;margin:16px;padding:12px;font:inherit;background:var(--ai-surface);color:var(--ai-text);border:1px solid var(--ui-border-strong);border-radius:10px}
 .ai-draft-card>button{margin:0 16px;padding:12px;border:0;border-radius:10px;background:var(--ui-accent);color:white}
+
+.ai-pdf-file{display:grid;place-items:center;min-height:64px;padding:12px;font-weight:700;color:var(--ps-text-strong);background:var(--ps-surface);border-radius:10px;overflow-wrap:anywhere}
+.ai-camera-dialog{width:min(640px,94vw);border:1px solid var(--ps-line);border-radius:18px;padding:24px;background:var(--ps-surface);color:var(--ps-text-strong)}
+.ai-camera-dialog::backdrop{background:rgba(10,25,20,.45)}
+.ai-camera-dialog header,.ai-camera-dialog footer{display:flex;justify-content:space-between;gap:16px;align-items:center}
+.ai-camera-dialog video{width:100%;max-height:65vh;background:#111;border-radius:12px;margin:16px 0}

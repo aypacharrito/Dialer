@@ -80,7 +80,7 @@ export default function MinerPanel({
       <div>
         <span className="eyebrow">INSURANCE PROSPECTING</span>
         <div className="miner-title-line"><h1>Miner</h1><span className={`miner-health ${currentReady?"ready":checkingProviders?"checking":"setup"}`}><i/>{sourceState}</span></div>
-        <p>Build separate Auto, Home, and Commercial prospect queues in the background.</p>
+        <p>Search connected data sources for prospects. These records do not establish insurance interest or renewal dates.</p>
       </div>
       <div className="module-actions">
         <button className="secondary" onClick={onImport}>Import list</button>
@@ -88,6 +88,7 @@ export default function MinerPanel({
       </div>
     </header>
 
+    <section className="miner-setup-callout"><div><b>Start here</b><p>1. Enter your service ZIP codes. 2. Select a category with a connected source. 3. Run the feed, then review the resulting records. For people who have requested insurance, use Opportunities and your quote-request links.</p></div></section>
     <section className="miner-engine-card">
       <div className="miner-engine-head">
         <div>
@@ -109,7 +110,7 @@ export default function MinerPanel({
 
       {!checkingProviders&&!consumerReady&&<div className="miner-setup-callout">
         <div className="miner-setup-icon">!</div>
-        <div><b>Commercial can mine now · Personal Auto/Home still need a consumer source</b><p>Pacifica has a keyless public-business fallback for Commercial. For names + phone + VIN/property data on consumers, connect a licensed Data Axle consumer API account.</p></div>
+        <div><b>Commercial can mine now · Personal Auto/Home still need a consumer source</b><p>Pacifica has a keyless public-business fallback for Commercial. Personal Auto/Home requires a configured licensed consumer feed. Available fields depend on the provider contract; VINs and renewal intent are not assumed.</p></div>
         <button type="button" onClick={()=>window.open("https://www.data-axle.com/data-solutions/apis/","_blank","noopener,noreferrer")}>Get consumer source</button>
       </div>}
 

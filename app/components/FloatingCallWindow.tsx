@@ -9,7 +9,7 @@ import {isCallDigit} from "../lib/call-digits";
 type Result={id:number;name:string;number:string;source:string;stage:string;connected:boolean;technicalOutcome:string;draft:PostCallDraft;resume:boolean;saving:boolean;doNotCall?:boolean;error:string;onSelect:(outcome:string)=>void;onChange:(patch:Partial<PostCallDraft>)=>void;onSave:()=>void;onAgain:()=>void;onPause:()=>void};
 type Props={active:boolean;category:string;result?:Result;onWindowChange:(open:boolean)=>void;name:string;number:string;connected:boolean;muted:boolean;elapsed:string;sentDigits:string;feedback:string;onMute:()=>void;onEnd:()=>void;onDigits:(digits:string)=>void};
 type PipWindow=Window&{documentPictureInPicture?:{requestWindow:(options:{width:number;height:number})=>Promise<Window>}};
-type DesktopBridge={isDesktop:true;supportsDesktopWrapUp?:boolean;enterCallOverlay:()=>Promise<boolean>;exitCallOverlay:()=>Promise<boolean>;showMainWindow:()=>Promise<boolean>;platform:string};
+type DesktopBridge={isDesktop:true;supportsDesktopWrapUp?:boolean;onOverlayError?:(callback:(message:string)=>void)=>(()=>void);enterCallOverlay:()=>Promise<boolean>;exitCallOverlay:()=>Promise<boolean>;showMainWindow:()=>Promise<boolean>;platform:string};
 type DesktopWindow=Window&{pacificaDesktop?:DesktopBridge};
 
 function bridge(){return typeof window!=="undefined"?(window as DesktopWindow).pacificaDesktop:undefined}
@@ -42,6 +42,7 @@ export default function FloatingCallWindow(props:Props){
     };
   },[]);
 
+  useEffect(()=>bridge()?.onOverlayError?.(message=>{setDesktopOpen(false);setError(message)}),[]);
   useEffect(()=>{onWindowChange(Boolean(target)||desktopOpen)},[target,desktopOpen,onWindowChange]);
   useEffect(()=>{
     if(desktop?.supportsDesktopWrapUp){

@@ -1,4 +1,5 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
+import {managedAccessState,type ManagedAccess} from "./account-access-policy";
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { isClerkConfigured } from "./clerk-config";
 import { getStripe } from "./stripe";
@@ -21,11 +22,12 @@ async function getClerkIdentity(){
     const user=await currentUser();
     if(!user)return null;
     const email=(user.primaryEmailAddress?.emailAddress||user.emailAddresses[0]?.emailAddress||"").toLowerCase();
-    const metadata=user.privateMetadata as {pacificaWorkspaceId?:unknown;pacificaRole?:unknown};
+    const metadata=user.privateMetadata as {pacificaWorkspaceId?:unknown;pacificaRole?:unknown}&ManagedAccess;
     const workspaceId=String(metadata.pacificaWorkspaceId||userId).replace(/[^a-zA-Z0-9_-]/g,"").slice(0,160)||userId;
     const teamRole=metadata.pacificaRole==="manager"?"manager" as const:metadata.pacificaRole==="agent"?"agent" as const:null;
     const displayName=[user.firstName,user.lastName].filter(Boolean).join(" ")||email;
-    return email?{userId:workspaceId,accountUserId:userId,email,teamRole,displayName}:null;
+    const workspaceMetadata=workspaceId!==userId?(await (await clerkClient()).users.getUser(workspaceId)).privateMetadata:metadata;
+    return email?{userId:workspaceId,accountUserId:userId,email,teamRole,displayName,accessMetadata:workspaceMetadata as ManagedAccess,memberMetadata:metadata}:null;
   }catch(error){
     console.error("[access] Clerk identity lookup failed",error instanceof Error?error.message:"unknown error");
     return null;
@@ -49,6 +51,16 @@ async function hasPaidSubscription(email:string){
 export async function getPacificaAccess(){
   const identity=await getClerkIdentity();
   if(!identity)return {allowed:false,role:"signed-out" as const,email:"",userId:"",accountUserId:"",displayName:""};
+  if(isPacificaPlatformOwnerEmail(identity.email))return {allowed:true,role:"owner" as const,...identity};
+  const state=managedAccessState(identity.accessMetadata);
+  if(state==="paused"||managedAccessState(identity.memberMetadata)==="paused")return {allowed:false,role:"access-paused" as const,...identity};
+  if(state==="trial")return {allowed:true,role:identity.teamRole||"owner" as const,...identity};
+  if(state==="expired"){
+    const owner=identity.teamRole?await (await clerkClient()).users.getUser(identity.userId):null;
+    const email=owner?.primaryEmailAddress?.emailAddress||identity.email;
+    if(await hasPaidSubscription(email))return {allowed:true,role:identity.teamRole||"owner" as const,...identity};
+    return {allowed:false,role:"trial-expired" as const,...identity};
+  }
   if(PACIFICA_ADMIN_EMAILS.has(identity.email))return {allowed:true,role:"owner" as const,...identity};
   if(identity.teamRole)return {allowed:true,role:identity.teamRole,...identity};
   if(await hasPaidSubscription(identity.email))return {allowed:true,role:"owner" as const,...identity};
@@ -69,8 +81,8 @@ export async function hasPacificaWorkspaceApiAccess(){
 
 export async function isPacificaOwnerApi(){
   if(!isClerkConfigured())return !process.env.VERCEL;
-  const role=(await getPacificaAccess()).role;
-  return role==="owner"||role==="manager";
+  const access=await getPacificaAccess();
+  return access.allowed&&(access.role==="owner"||access.role==="manager");
 }
 
 export function isPacificaPlatformOwnerEmail(email:string){return PACIFICA_PLATFORM_OWNER_EMAILS.has(email.trim().toLowerCase())}
@@ -79,4 +91,17 @@ export async function isPacificaPlatformOwnerApi(){
   if(!isClerkConfigured())return !process.env.VERCEL;
   const access=await getPacificaAccess();
   return access.allowed&&isPacificaPlatformOwnerEmail(access.email);
+}
+
+/** Cron jobs have no signed-in session; check the workspace owner before dispatch. */
+export async function workspaceAutomationAccess(workspaceId:string){
+ if(!isClerkConfigured())return !process.env.VERCEL;
+ try{const owner=await (await clerkClient()).users.getUser(workspaceId);const email=owner.primaryEmailAddress?.emailAddress||owner.emailAddresses[0]?.emailAddress||"";
+  if(isPacificaPlatformOwnerEmail(email))return true;
+  const state=managedAccessState(owner.privateMetadata);
+  if(state==="paused")return false;
+  if(state==="trial")return true;
+  if(state==="expired")return await hasPaidSubscription(email);
+  return PACIFICA_ADMIN_EMAILS.has(email.toLowerCase())||await hasPaidSubscription(email);
+ }catch{return false}
 }

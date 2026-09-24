@@ -500,3 +500,16 @@ html[data-theme] .app-shell .ai-view>.ai-workspace { flex:1; min-width:0; width:
   html[data-theme] .app-shell .message-history { max-height:45dvh; }
   html[data-theme] .app-shell .message-thread>footer { max-height:none; overflow:visible; }
 }
+
+/* Office scheduling and platform account management. */
+.office-desk,.account-access-panel{display:grid;gap:24px;max-width:1200px;margin:auto}
+.office-desk>section,.office-calendar,.account-access-panel{background:var(--ps-surface);border:1px solid var(--ps-line);border-radius:16px;padding:22px}
+.office-calendar>header,.office-list-header,.office-item{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.office-week,.office-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.office-week b{text-align:center;padding:10px;font-size:12px;color:var(--ps-muted)}
+.office-month button{min-height:76px;display:flex;flex-direction:column;align-items:flex-start;padding:12px;gap:6px;border:1px solid var(--ps-line);border-radius:10px;background:var(--ps-surface);color:var(--ps-text-strong)}
+.office-month button[aria-pressed=true]{background:var(--ps-accent-soft,#e6f4ee);border-color:var(--ps-accent,#178169)}
+.office-month .outside{opacity:.45}.office-month small{font-size:11px}
+.office-form{display:flex;flex-wrap:wrap;gap:16px;align-items:end;margin:16px 0}.office-form label{display:grid;gap:8px;min-width:180px;flex:1}.office-form label:has(input[type=checkbox]){display:flex;align-items:center}.office-form input[type=checkbox]{min-height:0}
+.office-item{padding:18px 0;border-bottom:1px solid var(--ps-line)}.office-item>div:last-child{display:flex;gap:8px;flex-wrap:wrap}.office-item p{margin:8px 0}.office-item small{color:var(--ps-muted)}
+@media(max-width:700px){.office-month button{padding:6px;min-height:60px}.office-month small{font-size:9px}.office-item{align-items:start;flex-direction:column}}

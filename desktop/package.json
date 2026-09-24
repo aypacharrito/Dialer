@@ -23,7 +23,11 @@
       "overlay-preload.cjs",
       "package.json",
       "assets/**",
-      "overlay.html"
+      "overlay.html",
+      "message-preload.cjs",
+      "message.html",
+      "message.js",
+      "overlay.js"
     ],
     "directories": {
       "output": "dist"

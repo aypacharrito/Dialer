@@ -1,0 +1,7 @@
+export type OfficeItem={id:string;leadId:number;kind:'appointment'|'payment';title:string;dueAt:string;amount:number;status:'open'|'done';reminderAt:string;reminderState:'off'|'pending'|'sending'|'sent'|'review';reminderError?:string;providerId?:string;createdAt:string};
+export function cleanOfficeItems(value:unknown):OfficeItem[]{return Array.isArray(value)?value.filter((x):x is OfficeItem=>Boolean(x&&typeof x==='object'&&typeof x.id==='string'&&Number.isFinite(x.leadId)&&['appointment','payment'].includes(x.kind)&&Number.isFinite(Date.parse(x.dueAt)))).slice(0,500):[]}
+export function officeReminderDue(item:OfficeItem,now=Date.now()){return item.status==='open'&&item.reminderState==='pending'&&Number.isFinite(Date.parse(item.reminderAt))&&Date.parse(item.reminderAt)<=now&&Date.parse(item.dueAt)+86400000>=now}
+export function officeReminderBody(item:OfficeItem,businessName:string,timeZone:string){
+ const when=new Date(item.dueAt).toLocaleString('en-US',{timeZone,month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+ return item.kind==='appointment'?`${businessName||'Your office'}: A reminder of your appointment on ${when}. Please reply if you need to reschedule. Reply STOP to opt out.`:`${businessName||'Your office'}: A reminder that your recorded payment${item.amount>0?` of $${item.amount.toFixed(2)}`:''} is due ${when}. If already paid, please reply so we can update your record. Reply STOP to opt out.`;
+}

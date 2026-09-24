@@ -1,3 +1,4 @@
+import {runOfficeReminders} from "../../../lib/office-reminder-engine";
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {isClerkConfigured} from "../../../lib/clerk-config";
 import {runFollowUpAutomation} from "../../../lib/follow-up-engine";
@@ -20,6 +21,6 @@ export async function GET(){
 
 export async function POST(){
   const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
-  try{const followUps=await runFollowUpAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});const clientReminders=await runClientReminderAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});return Response.json({ok:true,followUps,clientReminders})}
+  try{const followUps=await runFollowUpAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});const clientReminders=await runClientReminderAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});const officeReminders=await runOfficeReminders({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});return Response.json({ok:true,followUps,clientReminders,officeReminders})}
   catch(error){return Response.json({error:error instanceof Error?error.message:"Automation run failed"},{status:500})}
 }

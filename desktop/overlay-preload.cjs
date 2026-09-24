@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("pacificaOverlay",{
+  getState:()=>ipcRenderer.invoke("pacifica:overlay-state"),
+  ready:()=>ipcRenderer.send("pacifica:overlay-rendered"),
   send:(action)=>ipcRenderer.send("pacifica:call-action",String(action||"")),
   sendWrapAction:(action)=>ipcRenderer.send("pacifica:wrap-action",action),
   onState:(callback)=>{

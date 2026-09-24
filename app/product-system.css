@@ -137,24 +137,26 @@ html[data-theme] :is(input,select,textarea):focus {
   outline: none !important;
 }
 
-html[data-theme] :is(button,a,[role="button"],input,select,textarea,summary,.table-row,.queue-row,.call-log-row) {
+html[data-theme] :is(button,a,[role="button"],input,textarea,summary,.table-row,.queue-row,.call-log-row) {
   transition: background-color 140ms var(--ps-ease), border-color 140ms var(--ps-ease), color 140ms var(--ps-ease), box-shadow 140ms var(--ps-ease), scale 100ms ease-out;
 }
 
 html[data-theme] :is(button,[role="button"]):not(:disabled):active { scale: .985; }
+html[data-theme] :is(button,a,summary,[tabindex]):focus:not(:focus-visible) { outline: none; }
 
 /* Quiet text entry; a neutral ring is reserved for keyboard navigation. */
 
-html[data-theme] :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible {
+html[data-theme] :is(button,a,summary,[tabindex]):not(input,select,textarea):focus-visible {
   outline: 1px solid var(--ps-muted) !important;
   outline-offset: 2px;
 }
 
-html[data-theme] :is(input,select,textarea):focus-visible { outline: none !important; border-color: var(--ps-muted) !important; }
+html[data-theme] :is(input,select,textarea):focus-visible { outline: none !important; border-color: var(--ps-line-strong) !important; }
 
-html[data-theme] :is(.crm-tools>label,.message-contact-search,.number-input-shell,.ai-chat-composer):has(:focus-visible) {
-  border-color: var(--ps-muted) !important;
-}
+/* Native menus use the same palette on their first frame; do not animate their paint. */
+html[data-theme="light"] select { color-scheme: light; }
+html[data-theme="dark"] select { color-scheme: dark; }
+html[data-theme] select, html[data-theme] option { transition: none; background-color: var(--ps-surface); color: var(--ps-text-strong); }
 
 /* ---------- Shell + navigation ---------- */
 html[data-theme] .app-shell {
