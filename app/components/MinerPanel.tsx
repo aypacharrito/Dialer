@@ -1,6 +1,7 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from "react";
+import ContractorRenewals from "./ContractorRenewals";
 import type {MinerAutoFeedSettings} from "../lib/workspace-profile";
 
 export type MinerMode="personal-auto"|"home"|"commercial";
@@ -20,10 +21,11 @@ function modeLabel(mode:MinerMode){return mode==="personal-auto"?"Personal Auto"
 function modeShort(mode:MinerMode){return mode==="personal-auto"?"AUTO":mode==="home"?"HOME":"B2B"}
 
 export default function MinerPanel({
-  mode,onMode,prospects,dialing,activeScope,onImport,onStart,onCall,onOpen,autoFeed,onAutoFeedChange,
+  mode,onMode,prospects,dialing,activeScope,onImport,onStart,onCall,onOpen,autoFeed,onAutoFeedChange,onContractorImport,
 }:{
   mode:MinerMode;onMode:(mode:MinerMode)=>void;prospects:MinerProspect[];dialing:boolean;activeScope:string;
   onImport:()=>void;onStart:(mode:MinerMode)=>void;onCall:(id:number)=>void;onOpen:(id:number)=>void;
+  onContractorImport:(file:File)=>void;
   autoFeed:MinerAutoFeedSettings;onAutoFeedChange:(settings:MinerAutoFeedSettings)=>void;
 }){
   const byMode=useMemo(()=>({
@@ -88,7 +90,6 @@ export default function MinerPanel({
       </div>
     </header>
 
-    <section className="miner-setup-callout"><div><b>Start here</b><p>1. Enter your service ZIP codes. 2. Select a category with a connected source. 3. Run the feed, then review the resulting records. For people who have requested insurance, use Opportunities and your quote-request links.</p></div></section>
     <section className="miner-engine-card">
       <div className="miner-engine-head">
         <div>
@@ -134,6 +135,8 @@ export default function MinerPanel({
         {autoFeed.lastRunAt&&<small>Last run {new Date(autoFeed.lastRunAt).toLocaleString()} · {autoFeed.lastAdded} added</small>}
       </div>
     </section>
+
+    <ContractorRenewals onImport={onContractorImport}/>
 
     <div className="miner-mode-switch miner-pro-tabs" role="group" aria-label="Miner prospect type">
       <button className={mode==="personal-auto"?"active":""} onClick={()=>onMode("personal-auto")}><span><b>Personal Auto</b><small>VIN + contact prospects</small></span><em>{byMode["personal-auto"].length}</em></button>

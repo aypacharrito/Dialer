@@ -37,6 +37,7 @@ export async function getWorkspace(token: string): Promise<Workspace> {
   const body = (await parseResponse(response)) as Partial<Workspace>;
   return {
     found: body.found,
+    officeItems: Array.isArray(body.officeItems) ? body.officeItems : [],
     leads: Array.isArray(body.leads) ? body.leads : [],
     callLogs: Array.isArray(body.callLogs) ? body.callLogs : [],
     profile: body.profile && typeof body.profile === "object" ? body.profile : {},

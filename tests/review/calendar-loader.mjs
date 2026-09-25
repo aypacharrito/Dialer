@@ -1,0 +1,6 @@
+import {registerHooks} from 'node:module';
+const sources={
+ 'clerk-access':`export async function getPacificaAccess(){return globalThis.calendarAccess}`,
+ 'workspace-storage':`export async function readStoredWorkspace(id){return globalThis.calendarWorkspaces.get(id)||null} export async function updateStoredWorkspace(id,update){const next=update(structuredClone(globalThis.calendarWorkspaces.get(id)));globalThis.calendarWorkspaces.set(id,next);return next} export function workspaceRedisConfig(){return {url:'https://storage.test'}} export async function workspaceRedis(command){const [action,key,value,...args]=command;const store=globalThis.calendarRedis;if(action==='GET')return store.get(key)||null;if(action==='SET'){if(args.includes('NX')&&store.has(key))return null;store.set(key,value);return 'OK'}if(action==='EVAL'){const lock=command[3],owner=command[4];if(store.get(lock)===owner)store.delete(lock);return 1}throw Error('Unexpected storage operation')}`,
+};
+registerHooks({resolve(specifier,context,next){if(specifier==='next/headers')return {url:'data:text/javascript,export async function cookies(){return globalThis.calendarCookies}',shortCircuit:true};const name=specifier.split('/').at(-1)?.replace(/\.ts$/,'');return sources[name]?{url:'data:text/javascript,'+encodeURIComponent(sources[name]),shortCircuit:true}:next(specifier,context)}});

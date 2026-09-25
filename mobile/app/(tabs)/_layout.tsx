@@ -35,7 +35,7 @@ export default function TabLayout() {
       <Tabs.Screen name="inbox" options={{ title: "Messages", tabBarBadge: unreadMessages || undefined, tabBarIcon: ({ color }) => <Icon symbol="✉" color={color} /> }} />
       <Tabs.Screen name="contacts" options={{ title: "Contacts", tabBarIcon: ({ color }) => <Icon symbol="◎" color={color} /> }} />
       <Tabs.Screen name="more" options={{ title: "More", tabBarIcon: ({ color }) => <Icon symbol="•••" color={color} /> }} />
-      <Tabs.Screen name="pipeline" options={{ href: null }} />
+      <Tabs.Screen name="calendar" options={{ href: null }} />
     </Tabs>
   );
 }

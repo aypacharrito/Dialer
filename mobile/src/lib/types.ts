@@ -103,6 +103,7 @@ export type LiveCallSession = {
 };
 
 export type Workspace = {
+  officeItems?: import("./calendar-reminders").CalendarItem[];
   found?: boolean;
   leads: Lead[];
   callLogs: CallLog[];

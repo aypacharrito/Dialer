@@ -5,16 +5,16 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 function desktop(settings={}){
- const windows=[],handlers=new Map();
+ const windows=[],handlers=new Map(),external=[];
  class Window {
   constructor(options){this.options=options;this.visible=false;this.minimized=false;this.positions=0;this.bounds={x:100,y:100,width:options.width,height:options.height};this.events=new Map();this.sent=[];this.webContents={send:(...args)=>this.sent.push(args),once(){},on(){},setWindowOpenHandler(){}};windows.push(this)}
-  once(){} on(name,fn){this.events.set(name,fn)} loadURL(){} loadFile(file){this.file=file} show(){this.visible=true} showInactive(){this.visible=true} hide(){this.visible=false} isVisible(){return this.visible} isDestroyed(){return false}
+  once(name,fn){this.events.set(name,fn)} on(name,fn){this.events.set(name,fn)} loadURL(){} loadFile(file){this.file=file;return Promise.resolve()} show(){this.visible=true} showInactive(){this.visible=true} hide(){this.visible=false} isVisible(){return this.visible} isDestroyed(){return false}
   isMinimized(){return this.minimized} minimize(){this.minimized=true;this.visible=false} restore(){this.minimized=false;this.visible=true;this.events.get('restore')?.()} setSkipTaskbar(value){this.skipTaskbar=value}
   setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getPosition(){return [this.bounds.x,this.bounds.y]} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){} flashFrame(value){this.flashing=value}
  }
  const source=fs.readFileSync(new URL('../desktop/main.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('const __dirname=path.dirname(fileURLToPath(import.meta.url));','const __dirname="/desktop";');
- vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(){}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(){},setInterval(){},clearInterval(){},console});
- return {windows,handlers,event:{sender:windows[0].webContents,senderFrame:{url:'https://pacificacrm.com/dashboard'}}};
+ vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,name==='pacifica:call-state'?(...args)=>{fn(...args);const overlay=windows[1];if(overlay&&!overlay.rendered){overlay.rendered=true;overlay.events.get('ready-to-show')?.();handlers.get('pacifica:overlay-rendered')?.({sender:overlay.webContents})}}:fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(url){external.push(url)}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(){},setInterval(){},clearInterval(){},console});
+ return {windows,handlers,external,event:{sender:windows[0].webContents,senderFrame:{url:'https://pacificacrm.com/dashboard'}}};
 }
 test('floating call window keeps a dragged position across timer updates and calls',()=>{
  const {windows,handlers,event}=desktop();const update=handlers.get('pacifica:call-state');
@@ -94,4 +94,10 @@ test('ending a call replaces the rectangle with a separate result view and resto
  const {windows,handlers,event}=desktop(),update=handlers.get('pacifica:call-state');update(event,{active:true});const overlay=windows[1];overlay.setSize(700,110);overlay.events.get('resized')();
  update(event,{active:false,wrapUp:{id:'manual:1'}});assert.deepEqual(overlay.getSize(),[480,560]);assert.equal(overlay.sent.at(-1)[1].active,false);assert.equal(overlay.sent.at(-1)[1].wrapUp.id,'manual:1');
  update(event,{active:true,wrapUp:null});assert.deepEqual(overlay.getSize(),[700,110]);assert.equal(overlay.sent.at(-1)[1].wrapUp,null);
+});
+
+test('Google calendar authorization opens only the fixed CRM URL in the system browser for trusted frames',async()=>{
+ const {handlers,external,event}=desktop();const open=handlers.get('pacifica:open-calendar-browser');
+ assert.equal(await open({...event,senderFrame:{url:'https://attacker.test'}}),false);assert.equal(external.length,0);
+ assert.equal(await open(event),true);assert.equal(external[0],'https://pacificacrm.com/dashboard?calendar=open');
 });

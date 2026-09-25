@@ -300,3 +300,10 @@ function revealRenderedOverlay(){
  if(overlayLoadTimer){clearTimeout(overlayLoadTimer);overlayLoadTimer=null}
  showCallOverlay();
 }
+
+// Google OAuth must run in the system browser, with the CRM session in that browser.
+ipcMain.handle("pacifica:open-calendar-browser",async event=>{
+ if(!trustedMain(event))return false;
+ await shell.openExternal(new URL("/dashboard?calendar=open",appUrl).toString());
+ return true;
+});

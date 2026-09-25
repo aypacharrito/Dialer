@@ -89,12 +89,11 @@ test('Call again saves a result, retries the same person exactly once and leaves
   await act(async()=>FakeDevice.calls[1].disconnect());await pause(500);assert.equal(FakeDevice.calls.length,2);
  }finally{await h.cleanup()}
 });
-test('closed contacts are absent from the open pipeline and auto queue but can be manually called and remain closed',async()=>{
+test('closed contacts remain in Contacts, stay out of the auto queue, and can be manually called',async()=>{
  const closed={...base,id:2,name:'Closed Person',phone:'8185550102',stage:'Closed',status:'Closed',outcome:'Not interested',sourceDisposition:'Lost - Not Interested',automationEnabled:false,automationStatus:'complete',automationNextAt:''};
  const h=await setup([base,closed]);try{
-  await h.nav('Pipeline');assert.ok(document.querySelector('.pipeline-open'));assert.doesNotMatch(document.querySelector('.pipeline').textContent,/Closed Person/);
-  await click(byText('.pipeline-scope button','Closed'));assert.match(document.querySelector('.pipeline').textContent,/Closed Person/);
-  await click(document.querySelector('.pipeline-card'));assert.equal(byText('.record-actions button','Call').disabled,false);
+  assert.equal([...document.querySelectorAll('nav button')].some(x=>x.textContent.trim()==='Pipeline'),false);await h.nav('Contacts');
+  await click([...document.querySelectorAll('.crm-table .table-row')].find(x=>x.textContent.includes('Closed Person')));assert.equal(byText('.record-actions button','Call').disabled,false);
   await click(byText('.record-actions button','Call'));assert.match(document.querySelector('.contact-card').textContent,/Closed Person/);
   await click(document.querySelector('.start-call'));assert.equal(FakeDevice.calls[0].number,closed.phone);assert.equal(document.querySelector('.inline-pause'),null);
   await act(async()=>FakeDevice.calls[0].disconnect());assert.equal(document.querySelector('.post-call-modal select').value,'Closed');

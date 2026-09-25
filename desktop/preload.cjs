@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("pacificaDesktop",{
   isDesktop:true,
+  openCalendarBrowser:()=>ipcRenderer.invoke("pacifica:open-calendar-browser"),
   supportsDesktopWrapUp:true,
   onOverlayError:callback=>{if(typeof callback!=="function")return ()=>{};const handler=(_event,message)=>callback(String(message||""));ipcRenderer.on("pacifica:overlay-error",handler);return ()=>ipcRenderer.removeListener("pacifica:overlay-error",handler)},
   notifyMessage:message=>ipcRenderer.send("pacifica:message-state",message),

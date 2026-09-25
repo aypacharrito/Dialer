@@ -5,6 +5,8 @@ import { AppState } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
+import {router} from "expo-router";
+import {updateCalendarNotifications} from "../lib/calendar-notifications";
 import { getWorkspace, putWorkspace } from "../lib/api";
 import { createWorkspaceSync, emptyWorkspace, workspaceCacheKey, type Snapshot } from "../lib/workspace-sync";
 import type { Lead, Workspace } from "../lib/types";
@@ -16,6 +18,8 @@ type WorkspaceContextValue = {
   offline: boolean;
   error: string;
   unreadMessages: number;
+  calendarReminders: boolean;
+  setCalendarReminders: (enabled:boolean) => Promise<void>;
   refresh: () => Promise<void>;
   markMessagesRead: () => Promise<void>;
   updateLead: (id: number, patch: Partial<Lead>) => Promise<void>;
@@ -48,6 +52,26 @@ function AccountWorkspaceProvider({ children, userId }: { children: React.ReactN
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState("");
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [calendarReminders,setCalendarEnabled]=useState(false);
+  const setCalendarReminders=useCallback(async(enabled:boolean)=>{
+    if(enabled){const permission=await Notifications.requestPermissionsAsync();if(permission.status!=="granted")throw Error("Allow notifications in your phone settings first.");}
+    await AsyncStorage.setItem(`${workspaceCacheKey(userId)}:calendar`,enabled?'on':'off');
+    if(alive.current)setCalendarEnabled(enabled);
+  },[userId]);
+  useEffect(()=>{let canceled=false;void AsyncStorage.getItem(`${workspaceCacheKey(userId)}:calendar`).then(value=>{if(!canceled)setCalendarEnabled(value==='on')}).catch(()=>undefined);return()=>{canceled=true;void updateCalendarNotifications([],userId,false,true).catch(()=>undefined)}},[userId]);
+  useEffect(()=>{
+    if(!userId||loading)return;
+    void updateCalendarNotifications((workspace.officeItems||[]).filter(item=>item.leadId===0||workspace.leads.some(lead=>lead.id===item.leadId&&!lead.deletedAt)),userId,calendarReminders).catch(()=>{if(alive.current)setError("Calendar reminders could not update. Open Calendar and check notification permissions.")});
+  },[workspace,userId,loading,calendarReminders]);
+  useEffect(()=>{
+    Notifications.setNotificationHandler({handleNotification:async notification=>{
+      const account=notification.request.content.data?.accountId;
+      const show=Boolean(userId)&&(!account||account===userId);
+      return {shouldShowBanner:show,shouldShowList:show,shouldPlaySound:show,shouldSetBadge:false};
+    }});
+    const listener=Notifications.addNotificationResponseReceivedListener(response=>{const data=response.notification.request.content.data;if(data?.type==='calendar'&&data.accountId===userId)router.push('/calendar')});
+    return()=>listener.remove();
+  },[userId]);
   const operations = useRef(0);
   const sessionToken = useCallback(async () => {
     if (!alive.current || !userId) throw new Error("No active Pacifica session.");
@@ -154,7 +178,7 @@ function AccountWorkspaceProvider({ children, userId }: { children: React.ReactN
     if (alive.current) setUnreadMessages(0);
   }, [userId]);
   const visibleWorkspace = useMemo(() => ({ ...workspace, leads: workspace.leads.filter(lead => !lead.deletedAt) }), [workspace]);
-  const value = useMemo(() => ({ workspace: visibleWorkspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile }), [visibleWorkspace, loading, syncing, offline, error, unreadMessages, refresh, markMessagesRead, updateLead, updateProfile]);
+  const value = useMemo(() => ({ workspace: visibleWorkspace, loading, syncing, offline, error, unreadMessages, calendarReminders, setCalendarReminders, refresh, markMessagesRead, updateLead, updateProfile }), [visibleWorkspace, loading, syncing, offline, error, unreadMessages, calendarReminders, setCalendarReminders, refresh, markMessagesRead, updateLead, updateProfile]);
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
 

@@ -43,31 +43,13 @@ body{background:var(--vf-bg)}
 }
 .module-bar .eyebrow{letter-spacing:.08em;font-weight:800}
 
-.crm-summary article,.pipeline-col,.pipeline-card,.table-card,.messages-layout,.automation-studio,.call-report,.recording-readiness,.reputation-panel,.workspace-profile-settings,.settings-content>.settings-section{
+.crm-summary article,.table-card,.messages-layout,.automation-studio,.call-report,.recording-readiness,.reputation-panel,.workspace-profile-settings,.settings-content>.settings-section{
   border-color:var(--vf-border)!important;
   box-shadow:var(--vf-shadow)!important;
 }
-.crm-summary article,.pipeline-col,.pipeline-card,.table-card,.messages-layout,.call-report,.recording-readiness,.reputation-panel{
+.crm-summary article,.table-card,.messages-layout,.call-report,.recording-readiness,.reputation-panel{
   background:var(--vf-surface)!important;
 }
-
-.pipeline{gap:14px;align-items:flex-start}
-.pipeline-col{
-  border:1px solid var(--vf-border);
-  border-radius:16px;
-  padding:10px;
-  background:var(--vf-surface-2)!important;
-  min-width:0;
-}
-.pipeline-col>header{padding:5px 4px 11px}
-.pipeline-card{
-  border:1px solid var(--vf-border)!important;
-  border-radius:13px!important;
-  margin:0 0 9px!important;
-  padding:12px!important;
-  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
-}
-.pipeline-card:hover{transform:translateY(-1px);border-color:var(--vf-border-strong)!important}
 
 .messages-center{max-width:1500px;margin:0 auto}
 .messages-module-bar{padding-inline:0}
