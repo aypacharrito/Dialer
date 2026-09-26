@@ -25,14 +25,14 @@ test('personal desktop reminders fire once per scheduled time and open the calen
  try{await h.render(React.createElement(CalendarAlerts,{workspaceId:'a',onOpen(){opened++}}));await act(async()=>{window.dispatchEvent(new Event('pacifica:calendar-changed'));await new Promise(r=>setTimeout(r,10))});assert.equal(notifications.length,1);assert.match(document.querySelector('[role=alert]').textContent,/Quote review/);await act(async()=>button('Open calendar').click());assert.equal(opened,1);await act(async()=>{window.dispatchEvent(new Event('pacifica:calendar-changed'));await new Promise(r=>setTimeout(r,10))});assert.equal(notifications.length,1)}finally{await h.close();delete globalThis.Notification}
 });
 
-test('calendar provides month, week and agenda navigation, contact follow-ups and a personal event editor',async()=>{
+test('calendar provides month, week and agenda navigation, excludes cold follow-ups and offers a personal event editor',async()=>{
  const h=await setup();let opened;
  globalThis.fetch=async()=>Response.json({items:[]});
  try{await h.render(React.createElement(OfficeDesk,{workspaceId:'a',leads:[{id:7,name:'Saved follow-up',phone:'8185550100',followUp:new Date().toISOString()}],profile:defaultWorkspaceProfile,isOwner:true,onProfile(){},onOpen:id=>{opened=id}}));
  assert.equal(document.querySelectorAll('[aria-label^="Create event on"]').length,42);
- await act(async()=>[...document.querySelectorAll('button')].find(x=>x.title.startsWith('Saved follow-up')).click());await act(async()=>button('Edit').click());assert.equal(opened,7);
+ assert.equal([...document.querySelectorAll('button')].some(x=>x.title.startsWith('Saved follow-up')),false);assert.equal(opened,undefined);
  const select=document.querySelector('[aria-label="Calendar view"]');await act(async()=>{select.value='week';select.dispatchEvent(new Event('change',{bubbles:true}))});assert.equal(document.querySelectorAll('[aria-label^="Create event on"]').length,7);
- await act(async()=>{select.value='agenda';select.dispatchEvent(new Event('change',{bubbles:true}))});assert.match(document.body.textContent,/Saved follow-up/);
+ await act(async()=>{select.value='agenda';select.dispatchEvent(new Event('change',{bubbles:true}))});assert.doesNotMatch(document.body.textContent,/Saved follow-up/);
  await act(async()=>button('+ Create').click());assert.ok(document.querySelector('[role=dialog]'));const labels=[...document.querySelectorAll('#calendar-editor label')];assert.equal(labels.find(x=>x.textContent.startsWith('Contact')).querySelector('select').value,'0');assert.equal(document.querySelector('#calendar-editor input[type=checkbox]').disabled,true);
  await act(async()=>document.querySelector('[aria-label="Close calendar dialog"]').click());assert.equal(document.querySelector('[role=dialog]'),null);
  }finally{await h.close()}

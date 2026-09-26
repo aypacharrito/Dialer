@@ -25,7 +25,7 @@ export async function outboundSmsStatus(workspaceId:string,email=""){
   return smsReadiness(assignment,sendingEnabled,credentialError);
 }
 
-export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean;officeReminderId?:string;mediaUrls?:string[]}){
+export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean;scheduled?:boolean;officeReminderId?:string;mediaUrls?:string[]}){
   const requestedAt=Date.now();
   const status=await outboundSmsStatus(input.workspaceId,input.workspaceEmail);
   if(!status.configured)throw new Error(status.message);
@@ -37,7 +37,7 @@ export async function sendOutboundSms(input:{workspaceId:string;to:string;body:s
   const assignment=await phoneAssignmentForWorkspace(input.workspaceId,input.workspaceEmail);const form=new URLSearchParams({To:to,From:status.from,StatusCallback:`${callbackBase}/api/twilio/messages/status?workspace=${encodeURIComponent(input.workspaceId)}`});if(body)form.set("Body",body);for(const mediaUrl of mediaUrls)form.append("MediaUrl",mediaUrl);
   if(assignment?.messagingServiceSid)form.set("MessagingServiceSid",assignment.messagingServiceSid);
   if(input.officeReminderId){const {assertOfficeReminder}=await import("./office-reminder-permission");await assertOfficeReminder(input.workspaceId,input.officeReminderId,to)}
-  if(input.automated){const workspace=await assertAutomatedContact(input.workspaceId,to,"sms");form.set("Body",automatedSmsBody(body,workspace.profile.businessName))}
+  if(input.automated){const workspace=await assertAutomatedContact(input.workspaceId,to,"sms",input.scheduled===true);form.set("Body",automatedSmsBody(body,workspace.profile.businessName))}
   // Read delivery results before creating another message, including failures from older clients.
   const history=await twilioApiRequest<{messages?:SmsDeliveryRecord[]}>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?${new URLSearchParams({From:status.from,To:to,PageSize:"20"})}`,{},credentials);
   if(!history.response.ok||!Array.isArray(history.data.messages))throw new SmsPreflightError("delivery history could not be checked. Try again after the connection recovers.");

@@ -52,7 +52,7 @@ button{cursor:pointer}
 .contact-card span{font-size: calc(12px * var(--workspace-text-scale, 1));letter-spacing:.13em;color:#84919b;font-weight:800}
 .contact-card h2{margin:4px 0 2px;font-size: calc(18px * var(--workspace-text-scale, 1))}
 .contact-card a{color:#45708e;text-decoration:none;font-size: calc(12px * var(--workspace-text-scale, 1))}
-.contact-card p{display:inline;margin-left:9px;color:#87929b;font-size: calc(12px * var(--workspace-text-scale, 1))}
+.contact-card p{display:block;margin:4px 0;color:#87929b;font-size: calc(12px * var(--workspace-text-scale, 1))}
 .timer{margin-left:auto;font-size: calc(25px * var(--workspace-text-scale, 1));letter-spacing:.08em;font-variant-numeric:tabular-nums}
 .signal{height:72px;display:flex;align-items:center;justify-content:center;gap:4px;overflow:hidden}
 .signal i{display:block;width:3px;max-height:44px;border-radius:2px;background:#cad4d7;transform:scaleY(.35);transition:.3s}
@@ -2636,3 +2636,5 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 .calendar-alerts button{margin-right:8px}
 @keyframes calendar-alert-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.calendar-alerts>div{animation:none}}
+
+.ai-control-panel{margin:16px 0;padding:18px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);font-size:13px;line-height:1.65}.ai-control-panel h3{margin:0 0 10px}.ai-control-panel ul{padding-left:20px}.ai-control-panel button{padding:10px 16px;border:0;border-radius:9px;background:var(--ui-accent);color:var(--ui-text);font-weight:700;cursor:pointer}.ai-control-panel button:disabled{opacity:.55}.ai-control-panel details{margin-top:12px}.ai-control-panel summary{cursor:pointer;font-weight:600}.ai-control-panel small{color:var(--ui-muted)}

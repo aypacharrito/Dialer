@@ -300,11 +300,19 @@ function categoryMatches(flat:Record<string,string>,categories:string[]){
   return categories.some(item=>text.includes(item.toLowerCase()));
 }
 
-async function prospectsForKind(kind:"personal-auto"|"home"|"commercial",settings:MinerAutoFeedSettings,zip:string,offset:number,signal:AbortSignal){
+async function prospectsForKind(kind:"personal-auto"|"home"|"commercial",settings:MinerAutoFeedSettings,zip:string,offset:number,signal:AbortSignal,knownPhones=new Set<string>()){
   const documentType=kind==="commercial"?"places":"people";
-  const records=kind==="commercial"&&!dataAxleKey()
-    ?await publicBusinessSearch(zip,settings.batchSize,signal)
-    :await dataAxleSearch(documentType,zip,settings.batchSize,offset,signal);
+  let records:UnknownRecord[]=[];
+  if(kind!=="commercial")records=await dataAxleSearch(documentType,zip,settings.batchSize,offset,signal);
+  else {
+    // Waterfall: licensed businesses first when connected, then public businesses.
+    try{records=await dataAxleSearch("places",zip,settings.batchSize,offset,signal)}catch(error){if(signal.aborted)throw error}
+    const callable=records.filter(record=>{const flat=flatten(record);return businessName(flat)&&contactPhone(flat)&&!knownPhones.has(contactPhone(flat))&&!/^(true|yes|1)$/i.test(pick(flat,["do_not_call","donotcall","dnc"]))&&categoryMatches(flat,settings.commercialCategories)});
+    records=callable;
+    if(records.length<settings.batchSize&&!signal.aborted){
+      try{records.push(...await publicBusinessSearch(zip,settings.batchSize-records.length,signal))}catch(error){if(!records.length)throw error}
+    }
+  }
   const sorted=records.map(record=>({record,score:score(kind,record)})).sort((a,b)=>b.score-a.score);
   const output:UnknownRecord[]=[];
   for(const {record} of sorted){
@@ -339,7 +347,9 @@ async function prospectsForKind(kind:"personal-auto"|"home"|"commercial",setting
     }
 
     if(kind==="commercial"){
+      if(knownPhones.has(phone))continue;
       if(!categoryMatches(flat,settings.commercialCategories))continue;
+      knownPhones.add(phone);
       output.push(createLead(kind,record,{
         "Business category":category(flat),
         "Website":website(flat),
@@ -393,7 +403,7 @@ export async function runMinerAutoFeedForWorkspace(workspaceId:string,workspace:
   await Promise.all((["personal-auto","home","commercial"] as const).map(async kind=>{
     if(kind==="personal-auto"&&!settings.personalAuto||kind==="home"&&!settings.home||kind==="commercial"&&!settings.commercial)return;
     if(!status.dataAxle&&kind!=="commercial"){errors.push(`${kind}: licensed consumer source required`);return}
-    try{prospects.push(...await prospectsForKind(kind,settings,zip,providerOffset,signal))}
+    try{prospects.push(...await prospectsForKind(kind,settings,zip,providerOffset,signal,new Set(workspace.leads.map(raw=>normalizePhone(String((raw as UnknownRecord).phone||""))))))}
     catch(error){errors.push(`${kind}: ${error instanceof Error?error.message:"provider error"}`)}
   }));
   if(signal.aborted)errors.push("Time budget reached; partial batch saved");

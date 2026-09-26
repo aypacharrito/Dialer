@@ -1,5 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
+import AiControlPanel from "./AiControlPanel";
+import type {ControlCommand} from "../lib/ai-control";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import AiCamera from "./AiCamera";
@@ -19,7 +21,7 @@ type RecentCall={name:string;startedAt:string;duration:number;outcome:string;sta
 
 type AiAction={leadId:number;leadName:string;title:string;reason:string;patch:{stage:string|null;outcome:string|null;followUp:string|null;notesToAppend:string|null}};
 export type AiCreateLead={name:string;phone:string;email:string;city:string;state:string;product:string;line:"life"|"home-auto";source:string;notes:string;otherFields:Array<{label:string;value:string}>};
-type AiResult={summary:string;priorities:Array<{leadId:number;leadName:string;score:number;reason:string;nextStep:string}>;actions:AiAction[];draft:string;subject?:string;channel?:"sms"|"email";recipientIds?:number[];createLead?:AiCreateLead|null;mode?:"ai"|"smart-fallback";notice?:string};
+type AiResult={controlCommands?:ControlCommand[];controlRevision?:number;controlChanges?:string[];controlError?:string;summary:string;priorities:Array<{leadId:number;leadName:string;score:number;reason:string;nextStep:string}>;actions:AiAction[];draft:string;subject?:string;channel?:"sms"|"email";recipientIds?:number[];createLead?:AiCreateLead|null;mode?:"ai"|"smart-fallback";notice?:string};
 type AiImage={id:string;name:string;dataUrl:string};
 const isPdf=(file:AiImage)=>file.dataUrl.startsWith("data:application/pdf;");
 async function attachmentForAi(file:File){
@@ -57,7 +59,7 @@ async function imageForAi(file:File){
   }finally{bitmap.close()}
 }
 
-export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,onOpen,onCall,workspaceId,activeLine,profile,onActivity,visible=false}:{visible?:boolean;onActivity:(state:"idle"|"working"|"sending"|"ready")=>void;workspaceId:string;activeLine:"life"|"home-auto";profile:WorkspaceProfile;leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
+export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,onOpen,onCall,workspaceId,profile,onActivity,visible=false}:{visible?:boolean;onActivity:(state:"idle"|"working"|"sending"|"ready")=>void;workspaceId:string;activeLine:"life"|"home-auto";profile:WorkspaceProfile;leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
   const [prompt,setPrompt]=useState("");const [submittedPrompt,setSubmittedPrompt]=useState("");const [submittedImages,setSubmittedImages]=useState<AiImage[]>([]);const [includeNotes,setIncludeNotes]=useState(false);const [loading,setLoading]=useState(false);const [result,setResult]=useState<AiResult|null>(null);const [error,setError]=useState("");const [applied,setApplied]=useState<number[]>([]);const [service,setService]=useState("Checking AI connection…");
   const [images,setImages]=useState<AiImage[]>([]);const [dragging,setDragging]=useState(false);const [created,setCreated]=useState(false);const imageInputRef=useRef<HTMLInputElement>(null);const [cameraOpen,setCameraOpen]=useState(false);
   const [sending,setSending]=useState(false);const [sendReport,setSendReport]=useState("");const submittedSms=useRef(new Set<string>());
@@ -70,14 +72,14 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
   const currentLeads=useRef(leads);
   const stopSending=useRef(false);
   const sendLock=useRef(false);
-  const requestId=useRef("");
+  const [requestId,setRequestId]=useState("");
   useEffect(()=>{currentLeads.current=leads},[leads]);
   const recipients=useMemo(()=>{
     const available=draftChannel==="sms"?smsRecipients(leads):emailRecipients(leads).filter(lead=>hasContactPermission(lead,profile,"email"));
     return available.filter(lead=>requestLeadIds.includes(lead.id));
   },[leads,profile,draftChannel,requestLeadIds]);
   const targets=recipients.filter(lead=>selectedRecipients.includes(lead.id));
-  const eligible=useMemo(()=>leads.filter(lead=>lead.line===activeLine&&!lead.deletedAt&&!lead.doNotCall&&lead.stage!=="Closed"),[leads,activeLine]);
+  const eligible=useMemo(()=>leads.filter(lead=>!lead.deletedAt&&!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
   useEffect(()=>{void fetch("/api/email/messages",{credentials:"same-origin",cache:"no-store"}).then(response=>response.json()).then(data=>setEmailReady({configured:Boolean(data.configured),message:data.message||data.error||"Email is not connected"})).catch(()=>setEmailReady({configured:false,message:"Could not check email. Open Messages → Email to reconnect."}))},[]);
 
   useEffect(()=>{void fetch("/api/ai/crm",{cache:"no-store",credentials:"same-origin"}).then(async response=>{const data=await response.json().catch(()=>({})) as {providerConfigured?:boolean;error?:string};if(!response.ok)throw new Error(data.error||"AI service check failed");setService(data.providerConfigured?"AI enabled":"Local suggestions")}).catch(error=>setService(error instanceof Error?error.message:"AI connection unavailable"))},[]);
@@ -94,7 +96,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
 
   async function run(nextPrompt=prompt){
     const typed=nextPrompt.trim();const question=typed||images.length?typed||"Read the attached files and summarize their contents. Do not create a contact unless I ask.":"";if(!question||loading||sending)return;
-    const requestImages=[...images];setPrompt(typed);setLoading(true);setError("");setApplied([]);setCreated(false);setSendReport("");submittedSms.current.clear();setSelectedRecipients([]);setRequestLeadIds(eligible.map(lead=>lead.id));requestId.current=crypto.randomUUID();const channel=messageChannel(question,result?draftChannel:"sms");setDraftChannel(channel);
+    const requestImages=[...images];setPrompt(typed);setLoading(true);setError("");setApplied([]);setCreated(false);setSendReport("");submittedSms.current.clear();setSelectedRecipients([]);setRequestLeadIds(eligible.map(lead=>lead.id));setRequestId(crypto.randomUUID());const channel=messageChannel(question,result?draftChannel:"sms");setDraftChannel(channel);
     try{
       const response=await fetch("/api/ai/crm",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,images:images.filter(image=>!isPdf(image)).map(image=>image.dataUrl),documents:images.filter(isPdf).map(({name,dataUrl})=>({name,dataUrl})),leads:eligible.slice(0,100),recentCalls:recentCalls.slice(0,100),history:history.slice(-6)})});
       const data=await response.json().catch(()=>({})) as AiResult&{error?:string};if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");setSubmittedPrompt(question);setSubmittedImages(requestImages);setResult({...data,draft:channel==="sms"?cleanSmsDraft(data.draft||""):data.draft||""});setPrompt("");setImages([]);
@@ -126,7 +128,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
         // Mark attempts before dispatch. A lost response must not cause an automatic duplicate.
         submittedSms.current.add(key);
         try{
-          const payload=channel==="sms"?{to:contact.phone,body,permissionDocumented:true,sendMode:"ai"}:{to:contact.email,leadId:contact.id,subject:result.subject,text:body,sendMode:"ai",fromName:profile.businessName||profile.agentName,replyTo:profile.replyToEmail,idempotencyKey:`ai:${workspaceId}:${requestId.current}:${contact.id}`};
+          const payload=channel==="sms"?{to:contact.phone,body,permissionDocumented:true,sendMode:"ai"}:{to:contact.email,leadId:contact.id,subject:result.subject,text:body,sendMode:"ai",fromName:profile.businessName||profile.agentName,replyTo:profile.replyToEmail,idempotencyKey:`ai:${workspaceId}:${requestId}:${contact.id}`};
           const response=await fetch(channel==="sms"?"/api/twilio/messages":"/api/email/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
           const data=await response.json();if(!response.ok)throw new Error(data.error||"Send failed");
           submitted++;
@@ -144,7 +146,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
     onActivity(loading?"working":sending?"sending":result&&seenResult.current!==result?"ready":"idle");
   },[loading,sending,result,visible,onActivity]);
   const displayPrompt=submittedPrompt;
-  const hasDetails=Boolean(result&&(result.createLead||result.priorities.length||result.actions.length||result.draft));
+  const hasDetails=Boolean(result&&(result.controlCommands?.length||result.controlError||result.createLead||result.priorities.length||result.actions.length||result.draft));
   return <div className={`ai-workspace ${hasDetails?"has-details":""}`} onDragEnter={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();setDragging(true)}}} onDragOver={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();event.dataTransfer.dropEffect="copy"}}} onDragLeave={event=>{if(event.currentTarget===event.target)setDragging(false)}} onDrop={event=>{event.preventDefault();setDragging(false);void addFiles(event.dataTransfer.files)}}>
     {dragging&&<div className="ai-drop-overlay"><div><b>Drop photos or PDFs into Pacifica AI</b><span>I’ll read it together with your instructions.</span></div></div>}
     <header className="ai-shell-header"><div className="ai-shell-brand"><i>P</i><span><b>Pacifica AI</b><small role="status">{loading?"Working — you can switch CRM tabs":sending?"Sending — you can switch CRM tabs":service}</small></span></div><label className="ai-notes-control"><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/><span><b>Use CRM notes</b></span></label></header>
@@ -161,7 +163,8 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
         <input ref={imageInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple onChange={event=>{if(event.currentTarget.files)void addFiles(event.currentTarget.files);event.currentTarget.value=""}}/>
 
       </section>
-      {!result&&!eligible.length&&!images.length&&<p className="ai-error">Import contacts for pipeline analysis, or attach a photo or PDF to read.</p>}{error&&<p className="ai-error">{error}</p>}
+      {!result&&!eligible.length&&!images.length&&<p className="ai-error">Import contacts for contact analysis, or attach a photo or PDF to read.</p>}{error&&<p className="ai-error">{error}</p>}
+      <AiControlPanel key={requestId} requestKey={requestId} commands={loading?[]:result?.controlCommands} revision={result?.controlRevision} changes={result?.controlChanges} error={result?.controlError}/>
     </main>
 
     {hasDetails&&result&&<aside className="ai-results" aria-label="CRM suggestions">

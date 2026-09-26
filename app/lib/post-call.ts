@@ -54,6 +54,6 @@ export function selectPostCallOutcome(draft:PostCallDraft,source:string,outcome:
     crmOutcome:outcome,
     crmStage:closed?"Closed":appointment?"Appointment":"Follow-up",
     sourceDisposition:keepClosed?draft.sourceDisposition:sourceDispositionForPostCall(source,outcome,draft.sourceDisposition),
-    appointmentAt:closed?"":retry?(draft.appointmentAt||retryAt(now)):draft.appointmentAt,
+    appointmentAt:closed?"":(["Interested","Appointment set"].includes(outcome)&&!["Interested","Appointment set"].includes(draft.crmOutcome))?"":retry?(draft.appointmentAt||retryAt(now)):draft.appointmentAt,
   };
 }

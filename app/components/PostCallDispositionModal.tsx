@@ -28,9 +28,9 @@ export default function PostCallDispositionModal({lead,draft,technicalOutcome,co
       <header><div><span>CALL COMPLETE · RESULT REQUIRED</span><h2 id="post-call-title">What happened with {lead.name}?</h2><p>{lead.phone} · {connected?"Connected conversation":technicalOutcome}</p></div><em>{lead.source||"Lead source"}</em></header>
       <div className="post-call-outcomes" aria-label="Choose call result">{outcomes.map(outcome=><button type="button" key={outcome} className={draft.crmOutcome===outcome?"active":""} aria-pressed={draft.crmOutcome===outcome} onClick={()=>onSelect(outcome)}><span>{outcome}</span>{draft.crmOutcome===outcome&&<span aria-hidden="true">✓</span>}</button>)}</div>
       {lead.stage==="Closed"&&<p className="post-call-context">This contact stays closed unless you change the stage.</p>}
-      {draft.crmOutcome==="Call back later"&&<p className="post-call-context">A neutral callback. Choose when to try again; no interest is assumed.</p>}
+      {draft.crmOutcome==="Call back later"&&<p className="post-call-context">A cold follow-up stays in Contacts and does not appear on your calendar.</p>}
       <div className="post-call-modal-fields">
-        <label><span>{draft.crmOutcome==="Call back later"?"Call back at":"Next follow-up / appointment"}</span><input type="datetime-local" value={draft.appointmentAt} onChange={event=>onChange({appointmentAt:event.target.value})}/></label>
+        <label><span>{["Interested","Appointment set"].includes(draft.crmOutcome)?"Agreed date & time · adds to calendar":"Next attempt · Contacts only"}</span><input type="datetime-local" value={draft.appointmentAt} onChange={event=>onChange({appointmentAt:event.target.value})}/></label>
         <label><span>Stage</span><select value={draft.crmStage} onChange={event=>onChange({crmStage:event.target.value})}><option>New lead</option><option>Follow-up</option><option>Appointment</option><option>Closed</option></select></label>
         <label className="post-call-modal-notes"><span>Notes</span><textarea autoFocus value={draft.notes} onChange={event=>onChange({notes:event.target.value})} placeholder="Needs, objections, quote details, and the next step…"/></label>
       </div>

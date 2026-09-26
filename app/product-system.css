@@ -558,7 +558,7 @@ html[data-theme] .contact-card h2 {
   font-weight: 700 !important;
   color: var(--ps-text-strong) !important;
 }
-html[data-theme] .contact-card a { font-size: calc(13px * var(--workspace-text-scale, 1)) !important; color: var(--ps-accent-hover) !important; }
+html[data-theme] .contact-card a { display:block; margin-top:5px; font-size: calc(13px * var(--workspace-text-scale, 1)) !important; color: var(--ps-accent-hover) !important; }
 html[data-theme] .contact-card p { font-size: calc(12px * var(--workspace-text-scale, 1)) !important; color: var(--ps-muted) !important; }
 
 html[data-theme] .start-call,
@@ -1559,3 +1559,8 @@ html[data-theme] .app-shell .workspace-copy-row { display:flex; flex-wrap:wrap; 
 html[data-theme] .app-shell .workspace-copy-row code { min-width:0; flex:1 1 200px; overflow-wrap:anywhere; user-select:all; }
 html[data-theme] .app-shell .workspace-copy-row button { min-height:40px; }
 html[data-theme] .app-shell .integration-details>p:empty { display:none; }
+
+/* Dialog surfaces paint in the active theme before their contents animate. */
+html[data-theme] :is([role="dialog"],[role="menu"],[role="listbox"]){background-color:var(--ps-surface);color:var(--ps-text-strong);transition-property:transform,opacity;}
+html[data-theme] .contact-card-open-hint{display:block;margin-top:7px;}
+html[data-theme] :is(.post-call-save,.start-call,.miner-run-button):hover:not(:disabled){box-shadow:0 0 0 3px var(--ui-accent-soft),0 5px 18px var(--ui-focus);}

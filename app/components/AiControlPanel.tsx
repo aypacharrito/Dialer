@@ -1,0 +1,14 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {describeRule,type AiControl,type ControlCommand} from '../lib/ai-control';
+type Status={control:AiControl;counts:{sms:number;email:number};salesEnabled:boolean;canManage:boolean;schedule:string};
+export default function AiControlPanel({commands=[],revision=0,changes=[],error='',requestKey=''}:{commands?:ControlCommand[];revision?:number;changes?:string[];error?:string;requestKey?:string}){
+ const [status,setStatus]=useState<Status|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false),[id]=useState(()=>crypto.randomUUID());
+ useEffect(()=>{let active=true;fetch('/api/ai/control',{cache:'no-store'}).then(async response=>{const data=await response.json();if(response.ok&&active&&data.control)setStatus(data)}).catch(()=>undefined);return()=>{active=false}},[requestKey,saved]);
+ async function save(){if(busy||saved)return;setBusy(true);setMessage('');try{const response=await fetch('/api/ai/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,revision,commands})});const data=await response.json();if(!response.ok)throw Error(data.error||'No changes were saved.');setSaved(true);setMessage(`Saved. ${(data.changes||[]).join(' ')}`);window.dispatchEvent(new Event('pacifica:calendar-changed'));window.dispatchEvent(new Event('pacifica:ai-control-changed'))}catch(e){setMessage(e instanceof Error?e.message:'No changes were saved.')}finally{setBusy(false)}}
+ return <section className="ai-control-panel">
+ {commands.length>0&&<div><h3>Requested CRM changes</h3><ul>{changes.map((change,i)=><li key={i}>{change}</li>)}</ul><p>Saved audience rules apply to AI outreach across this workspace. Calendar changes sync to Google when connected. Personal handoff and opt-out protections remain active.</p><button type="button" disabled={busy||saved||status?.canManage===false} onClick={()=>void save()}>{saved?'Changes saved':busy?'Saving…':'Save these changes'}</button></div>}
+ {(message||error)&&<p role="status">{message||error}</p>}
+ {status&&<details><summary>Saved AI outreach rules</summary><p>Scheduled sales sequences: {status.salesEnabled?'enabled':'paused'}</p>{(['sms','email'] as const).map(channel=><p key={channel}>{status.control.rules[channel]?describeRule(channel,status.control.rules[channel]!):`${channel==='sms'?'Texts':'Emails'}: existing eligible audience and sequence timing`}. {status.counts[channel]} contacts currently pass audience and permission checks.</p>)}<p>{status.schedule}</p><p>Daily windows control when existing sequence steps may send; they do not repeat completed sequences every day. Customer appointment/payment reminders are configured separately in Calendar.</p>{status.control.receipts.slice(-3).reverse().map(receipt=><p key={receipt.id}><small>{new Date(receipt.at).toLocaleString()} · {receipt.changes.join(' ')}</small></p>)}</details>}
+ </section>;
+}

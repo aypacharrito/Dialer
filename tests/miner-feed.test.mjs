@@ -49,3 +49,13 @@ test('background save retries concurrent changes and preserves newest notes/prof
  try{const saved=await saveMinerRun('a',before,run);assert.equal(attempts,2);assert.equal(saved.workspace.leads.find(x=>x.id===1).notes,'edited');assert.equal(saved.workspace.profile.businessName,'Updated name');assert.equal(saved.result.added,1)}
  finally{global.fetch=original;for(const [key,value] of [['KV_REST_API_URL',oldUrl],['KV_REST_API_TOKEN',oldToken]]){if(value===undefined)delete process.env[key];else process.env[key]=value}}
 });
+test('commercial waterfall falls through a failed licensed provider to callable public businesses',async()=>{
+ const original=global.fetch,old=process.env.DATA_AXLE_API_KEY;process.env.DATA_AXLE_API_KEY='test';const calls=[];
+ global.fetch=async url=>{calls.push(String(url));if(String(url).includes('data-axle'))throw Error('Provider unavailable');if(String(url).includes('nominatim'))return Response.json([{lat:'34.2',lon:'-118.4'}]);if(String(url).includes('overpass'))return Response.json({elements:[{type:'node',id:123,tags:{name:'Test Contractor',phone:'8185551234',craft:'contractor','addr:postcode':'91405'}}]});throw Error('Unexpected request')};
+ try{const run=await runMinerAutoFeedForWorkspace('a',workspace(),{enabled:true,personalAuto:false,home:false,commercial:true,zipCodes:['91405'],commercialCategories:[]});assert.equal(run.result.added,1);assert.equal(run.workspace.leads[0].automationEnabled,false);assert.match(run.workspace.leads[0].vendorId,/openstreetmap/);assert.equal(calls.length,3)}finally{global.fetch=original;if(old===undefined)delete process.env.DATA_AXLE_API_KEY;else process.env.DATA_AXLE_API_KEY=old}
+});
+test('public business batches skip existing numbers before filling the next calling queue',async()=>{
+ const original=global.fetch,old=process.env.DATA_AXLE_API_KEY;delete process.env.DATA_AXLE_API_KEY;
+ global.fetch=async url=>String(url).includes('nominatim')?Response.json([{lat:'34.2',lon:'-118.4'}]):Response.json({elements:Array.from({length:6},(_,i)=>({type:'node',id:i+1,tags:{name:`Business ${i}`,phone:`818555010${i}`,shop:'repair','addr:postcode':'91405'}}))});
+ try{const settings={enabled:true,personalAuto:false,home:false,commercial:true,zipCodes:['91405'],commercialCategories:[],batchSize:5};const first=await runMinerAutoFeedForWorkspace('a',workspace(),settings);assert.equal(first.result.added,5);const second=await runMinerAutoFeedForWorkspace('a',first.workspace,settings);assert.equal(second.result.added,1);assert.equal(new Set(second.workspace.leads.map(x=>x.phone)).size,6)}finally{global.fetch=original;if(old===undefined)delete process.env.DATA_AXLE_API_KEY;else process.env.DATA_AXLE_API_KEY=old}
+});

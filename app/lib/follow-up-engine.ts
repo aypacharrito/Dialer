@@ -1,3 +1,4 @@
+import {cleanAiControl,matchesOutreach,inOutreachWindow} from "./ai-control";
 import {workspaceAutomationAccess} from "./clerk-access";
 import {emailWithComplianceFooter} from "./message-footer";
 import {assertAutomatedContact} from "./automated-contact";
@@ -32,7 +33,7 @@ function timestamp(value?:string){const result=new Date(value||"").getTime();ret
 function isoAfter(minutes:number,now=Date.now()){return new Date(now+Math.max(0,minutes)*60_000).toISOString()}
 function leadArrival(lead:FollowUpLead){const received=timestamp(lead.received);if(Number.isFinite(received))return received;const imported=timestamp(lead.importedAt);return Number.isFinite(imported)?imported:Date.now()}
 function triggerFor(lead:FollowUpLead){const outcome=lead.outcome.toLowerCase();return outcome==="no answer"||outcome==="voicemail"?"no-answer":outcome==="interested"?"interested":"new-lead"}
-function sequenceFor(lead:FollowUpLead,profile:WorkspaceProfile){return profile.automationSequences.find(sequence=>sequence.id===lead.automationSequenceId&&sequence.active)||profile.automationSequences.find(sequence=>sequence.trigger===triggerFor(lead)&&sequence.active)}
+function sequenceFor(lead:FollowUpLead,profile:WorkspaceProfile){return lead.automationSequenceId?profile.automationSequences.find(sequence=>sequence.id===lead.automationSequenceId&&sequence.active):profile.automationSequences.find(sequence=>sequence.trigger===triggerFor(lead)&&sequence.active)}
 function enabledSteps(sequence:AutomationSequence){return sequence.steps.filter(step=>step.enabled)}
 function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return requiresPersonalText(lead)||Boolean(lead.deletedAt)||!sequence||lead.automationEnabled===false||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||closedOutcomes.has(lead.outcome.toLowerCase())||humanHandoffOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
 
@@ -70,12 +71,12 @@ async function deliver(workspaceId:string,lead:FollowUpLead,profile:WorkspacePro
   const rendered=await personalizeAutomationMessage({profile,lead:lead as unknown as Record<string,unknown>,channel,subject:baseRendered.subject,body:baseRendered.body});
   const sentAt=new Date().toISOString();
   if(channel==="sms"){
-    const result=await sendOutboundSms({workspaceId,to:lead.phone,body:rendered.body,automated:true});
+    const result=await sendOutboundSms({workspaceId,to:lead.phone,body:rendered.body,automated:true,scheduled:true});
     return {channel,communication:communication({channel,direction:"outbound",body:rendered.body,status:result.status,sentAt,provider:result.provider,providerId:result.id})};
   }
   if(!profile.businessAddress)throw new Error("Business mailing address is required for automated email");
   const text=emailWithComplianceFooter(rendered.body,profile);
-  await assertAutomatedContact(workspaceId,lead.email||"","email");
+  await assertAutomatedContact(workspaceId,lead.email||"","email",true);
   const result=await sendOutboundEmail({to:lead.email||"",subject:rendered.subject||`Following up about your ${lead.product||"request"}`,text,fromName:profile.businessName||profile.agentName,replyTo:inboundReplyAddress(workspaceId)||profile.replyToEmail,idempotencyKey:`auto:${workspaceId}:${lead.id}:${lead.automationSequenceId}:${lead.automationStep}`});
   return {channel,communication:communication({channel,direction:"outbound",subject:rendered.subject,body:text,status:"sent",sentAt,provider:result.provider,providerId:result.id})};
 }
@@ -115,7 +116,8 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
     try{const incoming=await queuedProviderLeads(record.workspaceId);if(incoming.length){const merged=mergeProviderLeads(currentLeads,incoming,createProviderLead);if(merged.added||merged.updated){currentLeads=merged.leads as Array<FollowUpLead&ProviderManagedLead>;workspaceChanged=true}}}catch(error){logError("provider_inbox_merge_failed",error,{workspaceId:record.workspaceId})}
     const deduplicated=deduplicateCsvLeads(currentLeads as unknown as CsvManagedLead[]);if(deduplicated.removed){currentLeads=deduplicated.leads as unknown as Array<FollowUpLead&ProviderManagedLead>;duplicatesRemoved+=deduplicated.removed;workspaceChanged=true}
     const assigned=assignRoundRobin(currentLeads,profile);if(assigned!==currentLeads){currentLeads=assigned;workspaceChanged=true}
-    if(!profile.serverAutomationEnabled){if(workspaceChanged){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads:currentLeads});changed++}continue}
+    const control=cleanAiControl(record.workspace.aiControl);
+    if(!(control.salesEnabled??profile.serverAutomationEnabled)){if(workspaceChanged){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads:currentLeads});changed++}continue}
     const leads=currentLeads.map(raw=>{const prepared=prepareAutomationLead(raw,profile);if(JSON.stringify(prepared)!==JSON.stringify(raw))workspaceChanged=true;return prepared});
     for(let index=0;index<leads.length&&due<(options.sendLimit||250);index++){
       const lead=leads[index];if(lead.automationStatus!=="action due")continue;due++;
@@ -125,6 +127,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
         leads[index]=nextState({...lead,followUp:new Date().toISOString(),communications:appendCommunication(lead.communications,communication({channel:"email",direction:"outbound",subject:"Sales task",body:taskNote,status:"task",sentAt:new Date().toISOString(),provider:"pacifica"}))},sequence);
         tasksCreated++;workspaceChanged=true;continue;
       }
+      if(!matchesOutreach(lead,control.rules[step.channel])||!inOutreachWindow(control.rules[step.channel])){blocked++;continue}
       const dailyLimit=Math.min(3,Math.max(1,Number(profile.maxAutomatedTouchesPerLeadPerDay)||1));
       if(automatedTouchesToday(lead,profile.automationTimezone)>=dailyLimit){
         leads[index]={...lead,automationStatus:"scheduled",automationNextAt:isoAfter(1440),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue;
@@ -133,6 +136,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
       if(!candidates.length){blocked++;leads[index]={...lead,automationStatus:"blocked",automationLastError:"No consented, configured delivery channel is ready",automationNextAt:isoAfter(60),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue}
       let delivered=false;let lastError="";
       for(const channel of candidates){
+        if(!matchesOutreach(lead,control.rules[channel])||!inOutreachWindow(control.rules[channel]))continue;
         try{
           const result=await deliver(record.workspaceId,lead,profile,channel,step);
           if(channel!==step.channel)fallbacks++;

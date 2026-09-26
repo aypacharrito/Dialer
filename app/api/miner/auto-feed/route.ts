@@ -26,7 +26,8 @@ export async function POST(request:Request){
   let body:{settings?:unknown};try{body=await request.json();if(!body||typeof body!=="object"||Array.isArray(body))throw new Error()}catch{return Response.json({error:"Invalid request"},{status:400})}
   const settings=cleanMinerAutoFeed(body.settings,workspace.profile.minerAutoFeed);
   try{
-    const run=await runMinerAutoFeedForWorkspace(user.userId,workspace,settings);
+    const run=await runMinerAutoFeedForWorkspace(user.userId,workspace,{...settings,enabled:true});
+    run.workspace.profile.minerAutoFeed.enabled=settings.enabled;
     const saved=await saveMinerRun(user.userId,workspace,run);
     return Response.json({ok:true,...saved.result,settings:saved.workspace.profile.minerAutoFeed});
   }catch(error){

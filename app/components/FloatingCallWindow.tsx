@@ -51,6 +51,7 @@ export default function FloatingCallWindow(props:Props){
       void operation.then(opened=>{
         if(canceled)return;
         setDesktopOpen(Boolean(opened));
+        if(opened)setError("");
         if(phase!=="idle"&&!opened)setError("Could not open the desktop window.");
       }).catch(()=>{if(!canceled){setDesktopOpen(false);setError("Could not open the desktop window.")}});
       return()=>{canceled=true};
@@ -71,6 +72,7 @@ export default function FloatingCallWindow(props:Props){
       try{
         const opened=await desktop.enterCallOverlay();
         setDesktopOpen(Boolean(opened));
+        if(opened)setError("");
         if(opened)document.documentElement.dataset.pacificaDesktopCall="true";
         else setError("The desktop overlay could not open. Keep using the call controls in Pacifica.");
       }catch{setDesktopOpen(false);setError("The desktop overlay could not open. Keep using the call controls in Pacifica.")}

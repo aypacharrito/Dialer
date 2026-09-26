@@ -111,7 +111,7 @@ export default function MinerPanel({
 
       {!checkingProviders&&!consumerReady&&<div className="miner-setup-callout">
         <div className="miner-setup-icon">!</div>
-        <div><b>Commercial can mine now · Personal Auto/Home still need a consumer source</b><p>Pacifica has a keyless public-business fallback for Commercial. Personal Auto/Home requires a configured licensed consumer feed. Available fields depend on the provider contract; VINs and renewal intent are not assumed.</p></div>
+        <div><b>Commercial can mine now · Personal Auto/Home still need a consumer source</b><p>Commercial waterfall: connected business provider → free public business listings → phone checks and deduplication → calling queue. Personal Auto/Home requires a configured licensed consumer feed. Available fields depend on the provider contract; VINs and renewal intent are not assumed.</p></div>
         <button type="button" onClick={()=>window.open("https://www.data-axle.com/data-solutions/apis/","_blank","noopener,noreferrer")}>Get consumer source</button>
       </div>}
 
@@ -127,7 +127,7 @@ export default function MinerPanel({
           <button className={autoFeed.home?"active":""} onClick={()=>patchAutoFeed({home:!autoFeed.home})}><span>Home</span>{autoFeed.home&&<b>✓</b>}</button>
           <button className={autoFeed.commercial?"active":""} onClick={()=>patchAutoFeed({commercial:!autoFeed.commercial})}><span>Commercial</span>{autoFeed.commercial&&<b>✓</b>}</button>
         </div>
-        <button className="miner-run-button" disabled={feedBusy||!autoFeed.enabled||!autoFeed.zipCodes.length||!runReady} onClick={()=>void runNow()}>{feedBusy?<><i/>Searching…</>:"Run now"}</button>
+        <button className="miner-run-button" disabled={feedBusy||!autoFeed.zipCodes.length||!runReady} onClick={()=>void runNow()}>{feedBusy?<><i/>Searching…</>:"Run now"}</button>
       </div>
 
       <div className={`miner-run-status ${!consumerReady&&!checkingProviders?"warning":""}`}>
@@ -141,12 +141,12 @@ export default function MinerPanel({
     <div className="miner-mode-switch miner-pro-tabs" role="group" aria-label="Miner prospect type">
       <button className={mode==="personal-auto"?"active":""} onClick={()=>onMode("personal-auto")}><span><b>Personal Auto</b><small>VIN + contact prospects</small></span><em>{byMode["personal-auto"].length}</em></button>
       <button className={mode==="home"?"active":""} onClick={()=>onMode("home")}><span><b>Homeowners</b><small>Property + owner prospects</small></span><em>{byMode.home.length}</em></button>
-      <button className={mode==="commercial"?"active":""} onClick={()=>onMode("commercial")}><span><b>Commercial</b><small>Businesses + decision makers</small></span><em>{byMode.commercial.length}</em></button>
+      <button className={mode==="commercial"?"active":""} onClick={()=>onMode("commercial")}><span><b>Commercial</b><small>Businesses with listed phones</small></span><em>{byMode.commercial.length}</em></button>
     </div>
 
     <section className="miner-mode-context">
       <div><span>{modeShort(mode)}</span><div><b>{modeLabel(mode)}</b><small>{mode==="personal-auto"?"Licensed vehicle/contact data · VIN decoded by NHTSA":mode==="home"?"Licensed property/contact data · Regrid verification optional":"Public business listings + licensed provider when connected"}</small></div></div>
-      <p>{mode==="personal-auto"?"VINs are decoded automatically before prospects are stored.":mode==="home"?"Property records can be cross-checked against parcel ownership when Regrid is connected.":"Commercial can use the public OpenStreetMap business fallback now; a licensed provider adds broader coverage and contacts."}</p>
+      <p>{mode==="personal-auto"?"VINs are decoded automatically before prospects are stored.":mode==="home"?"Property records can be cross-checked against parcel ownership when Regrid is connected.":"The waterfall uses your connected business provider first, then public OpenStreetMap listings to fill the batch. These are business prospects; interest is recorded after your conversation."}</p>
     </section>
 
     <div className="crm-summary miner-stats">

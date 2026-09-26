@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {createQuoteToken,readQuoteToken} from '../../app/lib/quote-intake-token.ts';
 import assert from 'node:assert/strict';
 import {GET as list,POST as manage} from '../../app/api/crm/opportunities/route.ts';
 import {GET as publicInfo,POST as submit} from '../../app/api/quote-intake/route.ts';
@@ -35,14 +36,14 @@ test('new referral submissions stay pending, deduplicate, and retain the issued 
  const submission=workspace().quoteIntake.submissions[0];assert.equal(submission.source,'Realtor referral');
  await manage(request({action:'accept',id:submission.id}));const lead=workspace().leads.find(l=>l.phone==='8185550199');assert.ok(lead);assert.equal(lead.outcome,'Interested');assert.equal(lead.automationEnabled,false);assert.equal(lead.smsConsent,false);
 });
-test('tenant isolation, link revocation, expiration, auth, and validation fail closed',async()=>{
- setup();const token=await link(1);await submit(request({dateOfBirth:details.dateOfBirth,contactPermission:true},token));const id=workspace().quoteIntake.submissions[0].id,linkId=workspace().quoteIntake.links[0].id;
+test('tenant isolation, temporary links, expiration, auth, and validation fail closed',async()=>{
+ setup();const token=await link(1);await submit(request({dateOfBirth:details.dateOfBirth,contactPermission:true},token));const id=workspace().quoteIntake.submissions[0].id,linkId=readQuoteToken(token).linkId;
  store.set(workspaceKey('b'),JSON.stringify({leads:[],callLogs:[],profile:defaultWorkspaceProfile}));globalThis.intakeTestAccess.userId='b';assert.equal((await manage(request({action:'accept',id}))).status,400);assert.equal(workspace().quoteIntake.submissions[0].status,'pending');
  globalThis.intakeTestAccess={allowed:false};assert.equal((await list()).status,401);assert.equal((await manage(request({action:'create-link'}))).status,401);
  globalThis.intakeTestAccess={allowed:true,userId:'a',role:'owner'};
- await manage(request({action:'revoke-link',id:linkId}));assert.equal((await publicInfo(request(null,token,'GET'))).status,404);assert.equal((await submit(request(details,token))).status,400);
+ assert.ok(linkId);assert.deepEqual(workspace().quoteIntake.links,[]);assert.deepEqual((await (await list()).json()).links,[]);
  const fresh=await link();assert.equal((await submit(request({...details,dateOfBirth:'1983-01'},fresh))).status,400);assert.equal((await submit(request({...details,contactPermission:false},fresh))).status,400);
- const w=workspace();w.quoteIntake.links.at(-1).expiresAt='2020-01-01';store.set(workspaceKey('a'),JSON.stringify(w));assert.equal((await publicInfo(request(null,fresh,'GET'))).status,404);
+ const credentials=readQuoteToken(fresh);const expired=createQuoteToken(credentials.workspaceId,credentials.linkId,{...credentials.link,expiresAt:'2020-01-01'});assert.equal((await publicInfo(request(null,expired,'GET'))).status,404);const second=await link();assert.notEqual(second,fresh);assert.deepEqual(workspace().quoteIntake.links,[]);
  assert.equal((await publicInfo(request(null,'malformed-token','GET'))).status,404);
 });
 test('review never resurrects an opted-out or deleted contact',async()=>{
@@ -56,4 +57,19 @@ test('growth planning sends only pipeline aggregates to AI and degrades to a lab
  globalThis.intakeTestAi=async value=>{input=value;return {status:'completed',output_text:'Review submitted requests first.'}};
  const generated=await (await manage(request({action:'plan'}))).json();assert.equal(generated.mode,'ai');assert.equal(input.store,false);assert.doesNotMatch(JSON.stringify(input),/Known Person|8185550123|1990-06-15/);
  globalThis.intakeTestAi=async()=>{throw Error('provider unavailable')};assert.equal((await (await manage(request({action:'plan'}))).json()).mode,'standard');
+});
+test('owner AI commands persist atomically, retry idempotently, reject stale changes and cannot cross workspaces',async()=>{
+ setup();const {POST:control}=await import('../../app/api/ai/control/route.ts');
+ const command={kind:'outreach',channel:'sms',enabled:false};const body={id:'control-request-1234',revision:0,commands:[command]};
+ assert.equal((await control(request(body))).status,200);assert.equal(workspace().aiControl.rules.sms.enabled,false);
+ assert.equal((await control(request(body))).status,200);assert.equal(workspace().aiControl.revision,1);
+ assert.equal((await control(request({...body,id:'control-request-5678'}))).status,400);
+ globalThis.intakeTestAccess.role='agent';assert.equal((await control(request({...body,revision:1}))).status,403);
+ globalThis.intakeTestAccess={allowed:true,userId:'b',role:'owner'};store.set(workspaceKey('b'),JSON.stringify({leads:[],callLogs:[],profile:defaultWorkspaceProfile}));
+ assert.equal((await control(request({...body,commands:[{kind:'outreach',channel:'sms',audience:'selected',ids:[1]}]}))).status,400);assert.equal(workspace().aiControl.revision,1);
+});
+test('post-call interested date persists a real office event through ordinary workspace saves',async()=>{
+ setup();const w=workspace();w.leads[0]={...w.leads[0],outcome:'Interested',stage:'Follow-up',followUp:'2026-09-26T09:00',followUpUtc:'2026-09-26T16:00:00Z'};
+ assert.equal((await save(request(w,'','PUT'))).status,200);assert.equal(workspace().officeItems.length,1);
+ const again=workspace();again.leads[0].outcome='Call back later';await save(request(again,'','PUT'));assert.equal(workspace().officeItems.length,0);
 });

@@ -1,3 +1,5 @@
+import {reconcileCallCalendar} from "./call-calendar";
+import {cleanAiControl,type AiControl} from "./ai-control";
 import {cleanOfficeItems,type OfficeItem} from "./office-schedule";
 import {cleanQuoteIntake,type QuoteIntakeState} from "./quote-intake";
 import { mergeCallDetection } from "./call-detection";
@@ -10,6 +12,7 @@ import {
 import { applyWorkspaceChanges } from "./workspace-changes";
 
 export type StoredWorkspace = {
+  aiControl?: AiControl;
   quoteIntake?: QuoteIntakeState;
   officeItems?: OfficeItem[];
   leads: unknown[];
@@ -48,6 +51,7 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
     leads: records(body.leads, 5000),
     callLogs: records(body.callLogs, 1000),
     profile: cleanWorkspaceProfile(body.profile),
+    ...(body.aiControl?{aiControl:cleanAiControl(body.aiControl)}:{}),
     ...(body.officeItems?{officeItems:cleanOfficeItems(body.officeItems)}:{}),
     ...(body.quoteIntake?{quoteIntake:cleanQuoteIntake(body.quoteIntake)}:{}),
   };
@@ -139,7 +143,7 @@ export function mergeStoredWorkspace(
   server: StoredWorkspace | null,
   incoming: StoredWorkspace,
 ): StoredWorkspace {
-  if (!server) return cleanWorkspacePayload(incoming);
+  if (!server) return cleanWorkspacePayload({...incoming,officeItems:reconcileCallCalendar([],incoming.leads as Record<string,unknown>[],[])});
   const rawServerLeads = server.leads as Array<Record<string, unknown>>,
     rawIncomingLeads = incoming.leads as Array<Record<string, unknown>>,
     identityDecisions = workspaceDeletionDecisions([
@@ -264,7 +268,8 @@ export function mergeStoredWorkspace(
     leads: leads.slice(0, 5000),
     callLogs: callLogs.slice(0, 1000),
     profile,
-    ...(server.officeItems?{officeItems:server.officeItems}:{}),
+    ...(server.aiControl?{aiControl:server.aiControl}:{}),
+    officeItems:reconcileCallCalendar(rawServerLeads,leads,server.officeItems),
     ...(server.quoteIntake?{quoteIntake:server.quoteIntake}:{}),
   });
 }

@@ -14,7 +14,7 @@ export async function GET(){
  try{
   const workspace=await readStoredWorkspace(owner.userId);if(!workspace)return json({error:'Save the workspace before creating quote links.'},409);
   const intake=cleanQuoteIntake(workspace.quoteIntake);
-  return json({submissions:intake.submissions,links:intake.links.map(link=>({...link,path:!link.revoked&&Date.parse(link.expiresAt)>Date.now()?`/quote-request#${createQuoteToken(owner.userId,link.id)}`:''}))});
+  return json({submissions:intake.submissions,links:[]});
  }catch{return json({error:'Quote requests could not be loaded. Check secure quote-link setup and workspace storage.'},503)}
 }
 export async function POST(request:Request){
@@ -36,14 +36,13 @@ export async function POST(request:Request){
   }
 
   if(body.action==='create-link'){
-   const id=randomUUID();path=`/quote-request#${createQuoteToken(owner.userId,id)}`;
+   const id=randomUUID();
    await updateStoredWorkspace(owner.userId,current=>{
     const intake=cleanQuoteIntake(current.quoteIntake),leadId=body.leadId??null;
     if(leadId!==null){const lead=current.leads.find(raw=>(raw as {id:number}).id===leadId) as Record<string,unknown>|undefined;if(!lead||lead.deletedAt||lead.doNotCall)throw Error('Select an available contact first.')}
-    const active=intake.links.filter(l=>!l.revoked&&Date.parse(l.expiresAt)>now.getTime());
-    if(active.length>=100)throw Error('Revoke an unused quote link before creating another.');
-    const link:QuoteLink={id,leadId,source:leadId!==null?'Quote details':String(body.source||'Website quote request').trim().slice(0,80),createdAt:now.toISOString(),expiresAt:new Date(now.getTime()+(leadId===null?90:7)*86400000).toISOString()};
-    return {...current,quoteIntake:{...intake,links:[...active,link]}};
+    const link:QuoteLink={id,leadId,source:leadId!==null?'Quote details':String(body.source||'Website quote request').trim().slice(0,80),createdAt:now.toISOString(),expiresAt:new Date(now.getTime()+7*86400000).toISOString()};
+    path=`/quote-request#${createQuoteToken(owner.userId,id,link)}`;
+    return {...current,quoteIntake:{...intake,links:[]}};
    });
   }else if(body.action==='revoke-link'){
    await updateStoredWorkspace(owner.userId,current=>({...current,quoteIntake:{...cleanQuoteIntake(current.quoteIntake),links:cleanQuoteIntake(current.quoteIntake).links.map(l=>l.id===body.id?{...l,revoked:true}:l)}}));

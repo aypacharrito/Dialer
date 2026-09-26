@@ -85,7 +85,7 @@ function createOverlay(){
   const load=()=>{
     overlayReady=false;overlay.hide();
     if(overlayLoadTimer)clearTimeout(overlayLoadTimer);
-    overlayLoadTimer=setTimeout(()=>recoverOverlay("Call controls did not finish loading"),5000);
+    overlayLoadTimer=setTimeout(()=>recoverOverlay("Call controls did not finish loading"),12000);
     void overlay.loadFile(path.join(__dirname,"overlay.html")).catch(()=>recoverOverlay("Call controls could not load"));
   };
   const recoverOverlay=reason=>{
@@ -292,6 +292,7 @@ ipcMain.handle("pacifica:overlay-state",event=>{
 });
 ipcMain.on("pacifica:overlay-rendered",event=>{
  if(!overlayWindow||event.sender!==overlayWindow.webContents||overlayReady)return;
+ if(overlayLoadTimer){clearTimeout(overlayLoadTimer);overlayLoadTimer=null}
  overlayReady=true;revealRenderedOverlay();
 });
 

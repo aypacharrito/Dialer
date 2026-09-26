@@ -1,6 +1,6 @@
 # Connect Google Calendar to Pacifica
 
-The Calendar screen is available to every workspace. The workspace owner can connect one Google account. Pacifica creates a separate **Pacifica CRM** calendar, with private events for saved appointments and payment due dates. This is one-way synchronization: edit these events in Pacifica. Saved contact follow-ups appear in the CRM calendar and open the contact record for editing; they are not automatically synced to Google. Personal appointments can be saved without a contact.
+The Calendar screen is available to every workspace. The workspace owner can connect one Google account. Pacifica creates a separate **Pacifica CRM** calendar, with private events for saved appointments and payment due dates. This is one-way synchronization: edit these events in Pacifica. When call wrap-up is saved as Interested or Appointment set with an agreed date/time, Pacifica creates a saved appointment and syncs it to Google. Cold follow-ups never appear on the calendar. Existing older interested records need their date saved again to capture the correct time zone. Personal appointments can be saved without a contact.
 
 ## One-time administrator setup
 
