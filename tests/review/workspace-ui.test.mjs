@@ -60,3 +60,10 @@ test('video navigation merges quote preparation into Industry Tools and billing 
   const billing=[...document.querySelectorAll('.settings-nav button')].find(b=>/Plans & Billing/.test(b.textContent));assert.ok(billing);await act(async()=>billing.click());assert.ok(document.querySelector('.settings-content .pricing-grid'));
  }finally{await h.cleanup()}
 });
+test('PDF drops in a message conversation never activate the global lead scanner',async()=>{
+ const h=await setup(false);globalThis.Element=h.dom.window.Element;
+ try{const thread=document.createElement('section');thread.className='message-thread';thread.innerHTML='<footer><textarea></textarea></footer>';document.querySelector('.app-shell').appendChild(thread);
+ for(const type of ['dragenter','drop']){const event=new window.Event(type,{bubbles:true,cancelable:true});Object.defineProperty(event,'dataTransfer',{value:{types:['Files'],files:[new window.File(['%PDF-1.4'],'quote.pdf',{type:'application/pdf'})]}});await act(async()=>thread.querySelector('textarea').dispatchEvent(event))}
+ assert.equal(document.querySelector('.file-drop-overlay'),null);assert.equal(document.querySelector('.new-lead-modal'),null);assert.equal(h.requests.some(r=>String(r.url).includes('scan')),false);
+ }finally{await h.cleanup()}
+});

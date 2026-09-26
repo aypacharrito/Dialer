@@ -19,6 +19,7 @@
     "asar": true,
     "files": [
       "main.mjs",
+      "updater.mjs",
       "preload.cjs",
       "overlay-preload.cjs",
       "package.json",

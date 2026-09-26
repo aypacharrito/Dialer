@@ -14,6 +14,7 @@ export function reconcileCallCalendar(previous:Contact[],leads:Contact[],raw:unk
  for(const lead of leads){
   const dueAt=schedule(lead),before=old.get(lead.id),id=`call:${lead.id}`;
   if(!dueAt||before&&schedule(before)===dueAt&&before.outcome===lead.outcome)continue;
+  if(items.some(x=>x.id!==id&&x.kind==='appointment'&&x.leadId===Number(lead.id)&&Math.abs(Date.parse(x.dueAt)-Date.parse(dueAt))<900000))continue;
   const existing=items.find(x=>x.id===id);
   const item:OfficeItem={id,leadId:Number(lead.id),kind:'appointment',title:`${lead.outcome==='Interested'?'Interested callback':'Appointment'} · ${lead.name}`,dueAt,amount:0,status:'open',reminderAt:'',reminderState:'off',createdAt:existing?.createdAt||new Date().toISOString(),durationMinutes:30,staffReminderMinutes:15};
   items=items.filter(x=>x.id!==id);items.push(item);

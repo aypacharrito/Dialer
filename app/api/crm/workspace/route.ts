@@ -49,6 +49,7 @@ function cleanPayload(value: unknown): WorkspacePayload {
   delete clean.quoteIntake;
   delete clean.officeItems;
   delete clean.aiControl;
+  delete clean.conversationCalendar;
   return clean;
 }
 

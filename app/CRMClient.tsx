@@ -1141,10 +1141,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   function handleDroppedFile(file?:File){if(!file)return;if(isDocumentFile(file)){void scanDocument(file);return}if(/\.(csv|tsv|txt)$/i.test(file.name)||["text/csv","text/tab-separated-values","text/plain"].includes(file.type)){importFile(file);return}setToast("Drop a license photo, declaration PDF, CSV, TSV, or TXT file")}
   function openDocumentPicker(){const picker=document.createElement("input");picker.type="file";picker.accept="image/jpeg,image/png,image/webp,application/pdf,.pdf";picker.onchange=()=>void scanDocument(picker.files?.[0]);picker.click()}
   function hasDraggedFiles(event:React.DragEvent){return Array.from(event.dataTransfer.types).includes("Files")}
-  function onFileDragEnter(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();fileDragDepthRef.current+=1;setFileDragActive(true)}
-  function onFileDragOver(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();event.dataTransfer.dropEffect="copy"}
-  function onFileDragLeave(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();fileDragDepthRef.current=Math.max(0,fileDragDepthRef.current-1);if(!fileDragDepthRef.current)setFileDragActive(false)}
-  function onFileDrop(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();fileDragDepthRef.current=0;setFileDragActive(false);handleDroppedFile(event.dataTransfer.files?.[0])}
+  function ownsFileDrop(event:React.DragEvent){return event.target instanceof Element&&Boolean(event.target.closest(".message-thread,.ai-workspace"))}
+  function onFileDragEnter(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event)||view==="messages"||ownsFileDrop(event))return;event.preventDefault();fileDragDepthRef.current+=1;setFileDragActive(true)}
+  function onFileDragOver(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event)||ownsFileDrop(event))return;event.preventDefault();event.dataTransfer.dropEffect="copy"}
+  function onFileDragLeave(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event)||ownsFileDrop(event))return;event.preventDefault();fileDragDepthRef.current=Math.max(0,fileDragDepthRef.current-1);if(!fileDragDepthRef.current)setFileDragActive(false)}
+  function onFileDrop(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event))return;event.preventDefault();fileDragDepthRef.current=0;setFileDragActive(false);if(view==="messages"||ownsFileDrop(event))return;handleDroppedFile(event.dataTransfer.files?.[0])}
   function addManualCallContact(){setNewLead({...emptyNewLead,phone:dialNumber,source:"Manual phone call"});setShowNewLead(true)}
   // PACIFICA_AI_IMAGE_TO_CONTACT_V1
   function createAiLead(input:AiCreateLead){

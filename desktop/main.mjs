@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, shell, screen, nativeTheme } from "electron";
 import electronUpdater from "electron-updater";
+import {createDesktopUpdater} from "./updater.mjs";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -14,7 +15,6 @@ let messageQueue=[];
 const seenMessages=new Set();
 let overlayPhase="";
 let overlayReady=false;
-let overlayPaintReady=false;
 let reloadOverlay=null;
 let overlayLoadTimer=null;
 let overlayRecoveryAttempts=0;
@@ -25,6 +25,7 @@ let overlayPosition=null;
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
+let desktopUpdater=null;
 let rendererRecoveryTimer=null;
 let lastRendererRecovery=0;
 
@@ -72,7 +73,7 @@ function positionOverlay(){
 
 function createOverlay(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
-  overlayReady=false;overlayPaintReady=false;
+  overlayReady=false;
   overlayWindow=new BrowserWindow({
     width:480,height:88,minWidth:280,minHeight:88,maxWidth:1200,maxHeight:900,
     frame:false,resizable:true,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
@@ -99,7 +100,7 @@ function createOverlay(){
     if(mainWindow?.isMinimized())mainWindow.restore();mainWindow?.show();
   };
   reloadOverlay=load;
-  overlay.once("ready-to-show",()=>{overlayPaintReady=true;revealRenderedOverlay()});
+  overlay.once("ready-to-show",()=>{revealRenderedOverlay()});
   overlay.webContents.on("render-process-gone",()=>recoverOverlay("The floating window stopped responding"));
   overlay.webContents.on("unresponsive",()=>recoverOverlay("The floating window stopped responding"));
   overlay.webContents.on("did-finish-load",()=>overlay.webContents.send("pacifica:call-state",overlayState()));
@@ -108,7 +109,7 @@ function createOverlay(){
   overlayWindow.on("resized",()=>{if(!overlayGeometry)return;overlaySizes[overlayGeometry]=overlayWindow.getSize();saveOverlayLayout()});
   overlayWindow.on("moved",()=>{const {x,y}=overlayWindow.getBounds();overlayPosition={x,y};saveOverlayLayout()});
   overlayWindow.on("restore",()=>overlayWindow?.setSkipTaskbar(true));
-  overlayWindow.on("closed",()=>{if(overlayLoadTimer)clearTimeout(overlayLoadTimer);overlayWindow=null;overlayReady=false;overlayPaintReady=false;reloadOverlay=null;overlayPhase="";overlayGeometry="";overlayRecoveryAttempts=0});
+  overlayWindow.on("closed",()=>{if(overlayLoadTimer)clearTimeout(overlayLoadTimer);overlayWindow=null;overlayReady=false;reloadOverlay=null;overlayPhase="";overlayGeometry="";overlayRecoveryAttempts=0});
   return overlayWindow;
 }
 
@@ -150,15 +151,12 @@ function createWindow(){
 }
 
 function startDesktopUpdater(){
-  if(!app.isPackaged||process.platform!=="win32")return;
-  autoUpdater.autoDownload=true;
-  autoUpdater.autoInstallOnAppQuit=true;
-  autoUpdater.allowPrerelease=false;
-  autoUpdater.on("error",error=>console.warn("[Pacifica updater]",error?.message||error));
-  const check=()=>void autoUpdater.checkForUpdatesAndNotify().catch(error=>console.warn("[Pacifica updater check]",error?.message||error));
-  check();
-  updateTimer=setInterval(check,4*60*60*1000);
+ desktopUpdater=createDesktopUpdater({updater:autoUpdater,supported:app.isPackaged&&process.platform==='win32',onState:state=>mainWindow?.webContents.send('pacifica:update-state',state),isBusy:()=>Boolean(lastCallState.active||lastCallState.incoming||lastCallState.wrapUp)});
+ void desktopUpdater.check();updateTimer=setInterval(()=>void desktopUpdater.check(),4*60*60*1000);
 }
+ipcMain.handle('pacifica:update-status',event=>trustedMain(event)?desktopUpdater?.status():null);
+ipcMain.handle('pacifica:update-check',event=>trustedMain(event)?desktopUpdater?.check():null);
+ipcMain.handle('pacifica:update-install',event=>trustedMain(event)?desktopUpdater?.install():false);
 
 app.whenReady().then(()=>{
   if(process.platform==="win32")app.setAppUserModelId("com.pacificacrm.desktop");
@@ -194,7 +192,7 @@ function showCallOverlay(){
     overlayGeometry=geometry;
   }
   overlay.webContents.send("pacifica:call-state",overlayState());
-  if(!overlayReady||!overlayPaintReady)return;
+  if(!overlayReady)return;
   overlayPhase=nextPhase;
   // Timer updates must not restore a minimized window or move a dragged window.
   // A new result is shown so wrap-up is available outside the CRM as requested.
@@ -236,14 +234,14 @@ ipcMain.handle("pacifica:enter-call-overlay",(event)=>{
   const overlay=createOverlay();
   if(overlay.isMinimized())overlay.restore();
   showCallOverlay();
-  if(!overlayReady||!overlayPaintReady){if(!overlayLoadTimer&&reloadOverlay){overlayRecoveryAttempts=0;reloadOverlay()}return true;}
+  if(!overlayReady){if(!overlayLoadTimer&&reloadOverlay){overlayRecoveryAttempts=0;reloadOverlay()}return true;}
   if(!overlay.isVisible())overlay.show();
   overlay.setAlwaysOnTop(true,"floating");
   try{overlay.moveTop()}catch{}
   overlay.focus();
   return overlay.isVisible();
 });
-ipcMain.handle("pacifica:exit-call-overlay",(event)=>{if(!trustedMain(event))return false;if(!lastCallState.wrapUp)overlayWindow?.hide();return true});
+ipcMain.handle("pacifica:exit-call-overlay",(event)=>{if(!trustedMain(event))return false;if(!lastCallState.active&&!lastCallState.incoming&&!lastCallState.wrapUp)overlayWindow?.hide();return true});
 ipcMain.handle("pacifica:show-main-window",(event)=>{if(!trustedMain(event))return false;mainWindow?.show();mainWindow?.focus();return true});
 
 ipcMain.on("pacifica:theme",(event,theme)=>{
@@ -297,7 +295,7 @@ ipcMain.on("pacifica:overlay-rendered",event=>{
 });
 
 function revealRenderedOverlay(){
- if(!overlayReady||!overlayPaintReady)return;
+ if(!overlayReady)return;
  if(overlayLoadTimer){clearTimeout(overlayLoadTimer);overlayLoadTimer=null}
  showCallOverlay();
 }

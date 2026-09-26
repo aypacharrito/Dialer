@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+type Settings={enabled:boolean;lastRunAt:number;lastAdded:number;error:string;configured:boolean;canManage:boolean};
+export default function ConversationCalendarSettings(){
+ const [state,setState]=useState<Settings|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function load(){const r=await fetch('/api/calendar/conversations',{cache:'no-store'});if(!r.ok)throw Error('Text review settings could not load.');setState(await r.json())}
+ useEffect(()=>{let active=true;fetch('/api/calendar/conversations',{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('Text review settings could not load.');const data=await r.json();if(active)setState(data)}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[]);
+ async function toggle(){setBusy(true);setError('');try{const r=await fetch('/api/calendar/conversations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'settings',enabled:!state?.enabled})});if(!r.ok)throw Error('Could not save text review.');await load();window.dispatchEvent(new Event('pacifica:text-review-changed'))}catch(e){setError(e instanceof Error?e.message:'Could not save.')}finally{setBusy(false)}}
+ return <section><h3>Appointments from texts</h3><p>Pacifica reviews changed SMS conversations about hourly for interest and a definite callback time you sent. It skips existing appointments and cold follow-ups. Ambiguous times and reschedules need manual review. This does not send texts.</p><button disabled={busy||!state?.canManage||!state?.configured} onClick={()=>void toggle()}>{busy?'Saving…':state?.enabled?'Turn off text review':'Enable text review'}</button><small>{state?.lastRunAt?`Last checked ${new Date(state.lastRunAt).toLocaleString()} · ${state.lastAdded} added`:'Not checked yet'} · Uses your configured AI account.</small><small>Runs while Pacifica is open. An hourly server scheduler is needed when the app is closed.</small>{(error||state?.error)&&<p role="alert">{error||state?.error}</p>}</section>;
+}

@@ -1,3 +1,4 @@
+import {cleanConversationCalendar,type ConversationCalendar} from "./conversation-calendar";
 import {reconcileCallCalendar} from "./call-calendar";
 import {cleanAiControl,type AiControl} from "./ai-control";
 import {cleanOfficeItems,type OfficeItem} from "./office-schedule";
@@ -12,6 +13,7 @@ import {
 import { applyWorkspaceChanges } from "./workspace-changes";
 
 export type StoredWorkspace = {
+  conversationCalendar?: ConversationCalendar;
   aiControl?: AiControl;
   quoteIntake?: QuoteIntakeState;
   officeItems?: OfficeItem[];
@@ -51,6 +53,7 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
     leads: records(body.leads, 5000),
     callLogs: records(body.callLogs, 1000),
     profile: cleanWorkspaceProfile(body.profile),
+    ...(body.conversationCalendar?{conversationCalendar:cleanConversationCalendar(body.conversationCalendar)}:{}),
     ...(body.aiControl?{aiControl:cleanAiControl(body.aiControl)}:{}),
     ...(body.officeItems?{officeItems:cleanOfficeItems(body.officeItems)}:{}),
     ...(body.quoteIntake?{quoteIntake:cleanQuoteIntake(body.quoteIntake)}:{}),
@@ -269,6 +272,7 @@ export function mergeStoredWorkspace(
     callLogs: callLogs.slice(0, 1000),
     profile,
     ...(server.aiControl?{aiControl:server.aiControl}:{}),
+    conversationCalendar:server.conversationCalendar,
     officeItems:reconcileCallCalendar(rawServerLeads,leads,server.officeItems),
     ...(server.quoteIntake?{quoteIntake:server.quoteIntake}:{}),
   });

@@ -35,3 +35,8 @@ test('native overlay renderer paints call, incoming and wrap-up controls and ack
   listener({active:false,wrapUp:{id:'w1',name:'Caller One',outcomes:['Interested'],draft:{crmOutcome:'Interested',crmStage:'Follow-up',notes:'',appointmentAt:''},resume:true}});assert.equal(dom.window.document.getElementById('wrap').hidden,false);dom.window.document.getElementById('save').click();assert.equal(actions[1].kind,'save');assert.equal(actions[1].id,'w1');assert.equal(ready,3);
  }finally{dom.window.close()}
 });
+test('AI batch continues past a blocked destination without retrying it',async()=>{
+ const h=await setup();const sent=[];const leads=[1,2,3].map(id=>({id,name:`Person ${id}`,phone:`818555010${id}`,email:'',stage:'New lead',outcome:'Not contacted',line:'home-auto',smsConsent:true}));
+ globalThis.fetch=async(url,options)=>{if(url==='/api/ai/crm')return Response.json({summary:'Ready',draft:'Hello, following up on your request.',recipientIds:[1,2,3],priorities:[],actions:[]});if(url==='/api/twilio/messages'&&options?.method==='POST'){const p=JSON.parse(options.body);sent.push(p.to);return sent.length===2?Response.json({error:'Invalid destination'},{status:400}):Response.json({ok:true})}return Response.json({configured:true,providerConfigured:true})};
+ try{await h.render(React.createElement(AiCommandCenter,{...aiProps,leads}));await click([...document.querySelectorAll('button')].find(b=>b.textContent.includes('Write a follow-up')));await click(button('Send text to 3 selected contacts'));assert.deepEqual(sent,leads.map(l=>l.phone));assert.match(document.body.textContent,/2 submitted · 1 failed\/unconfirmed/)}finally{await h.cleanup()}
+});

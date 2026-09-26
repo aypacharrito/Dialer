@@ -32,8 +32,12 @@ window.addEventListener("DOMContentLoaded",()=>{
   const style=document.createElement("style");
   style.textContent=`html{padding-top:36px!important}#pacifica-window-bar{position:fixed;inset:0 0 auto;height:36px;z-index:2147483647;background:#f7f8fa;color:#17211d;-webkit-app-region:drag;display:flex;align-items:center;padding:0 150px 0 16px;font:600 12px system-ui;letter-spacing:.04em}html[data-theme="dark"] #pacifica-window-bar{background:#111614;color:#f4f7f5}`;
   document.head.appendChild(style);
-  const bar=document.createElement("div");bar.id="pacifica-window-bar";bar.textContent="Pacifica";document.body.appendChild(bar);
-  ipcRenderer.invoke("pacifica:desktop-version").then(version=>{if(version)bar.textContent=`Pacifica · ${version}`}).catch(()=>{});
+  const bar=document.createElement("div");bar.id="pacifica-window-bar";const label=document.createElement("span");label.textContent="Pacifica";bar.appendChild(label);document.body.appendChild(bar);
+  ipcRenderer.invoke("pacifica:desktop-version").then(version=>{if(version)label.textContent=`Pacifica · ${version}`}).catch(()=>{});
+  const update=document.createElement('button');update.textContent='Check for updates';update.style.cssText='margin-left:auto;-webkit-app-region:no-drag;border:0;border-radius:5px;padding:4px 9px;background:#e4f3ec;color:#176b50;cursor:pointer;font:inherit';bar.appendChild(update);
+  let phase='idle';const render=state=>{if(!state)return;phase=state.phase;update.hidden=phase==='unavailable';update.disabled=['checking','downloading'].includes(phase);update.textContent=phase==='ready'?'Restart to update':phase==='downloading'?`Downloading ${state.percent}%`:phase==='checking'?'Checking…':phase==='error'?'Retry update':'Check for updates';update.title=state.message||'Updates replace app files and keep your workspace data';};
+  ipcRenderer.on('pacifica:update-state',(_event,state)=>render(state));ipcRenderer.invoke('pacifica:update-status').then(render).catch(()=>{});
+  update.onclick=()=>ipcRenderer.invoke(phase==='ready'?'pacifica:update-install':'pacifica:update-check').catch(()=>{});
   const syncTheme=()=>ipcRenderer.send("pacifica:theme",document.documentElement.dataset.theme==="dark"?"dark":"light");
   new MutationObserver(syncTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
   syncTheme();

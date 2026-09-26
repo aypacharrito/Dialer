@@ -7,6 +7,12 @@ export default function CalendarAlerts({workspaceId,onOpen}:{workspaceId:string;
  const [alerts,setAlerts]=useState<OfficeItem[]>([]);
  const openCalendar=useEffectEvent(onOpen);
  useEffect(()=>{
+  let running=false;
+  async function review(){if(running)return;running=true;try{const r=await fetch('/api/calendar/conversations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'run'})});if(r.ok&&(await r.json()).added)window.dispatchEvent(new Event('pacifica:calendar-changed'))}catch{}finally{running=false}}
+  const initial=setTimeout(()=>void review(),5000),timer=setInterval(()=>void review(),3600000),changed=()=>void review();window.addEventListener('pacifica:text-review-changed',changed);
+  return()=>{clearTimeout(initial);clearInterval(timer);window.removeEventListener('pacifica:text-review-changed',changed)};
+ },[workspaceId]);
+ useEffect(()=>{
   let canceled=false,running=false,syncing=false;
   const notified=new Set<string>();
   const seenKey=`pacifica:${workspaceId}:calendar-seen`;

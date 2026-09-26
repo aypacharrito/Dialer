@@ -25,6 +25,7 @@ export async function POST(request:Request){
     if(body.amount!==undefined&&(!Number.isFinite(body.amount)||body.amount<0||body.amount>10000000))throw Error('Enter a valid payment amount.');
     if(body.staffReminderMinutes!==undefined&&![ -1,0,5,15,30,60,1440].includes(body.staffReminderMinutes))throw Error('Choose a valid staff reminder.');
     if(body.durationMinutes!==undefined&&![15,30,45,60,90,120].includes(body.durationMinutes))throw Error('Choose a valid appointment duration.');
+    if(body.action==='create'&&body.kind==='appointment'&&body.leadId&&items.some(x=>x.kind==='appointment'&&x.leadId===body.leadId&&Math.abs(Date.parse(x.dueAt)-Date.parse(body.dueAt!))<900000))throw Error('An appointment already exists for this contact at that time. Open the existing event.');
     const reminder=body.reminderState==='pending';
     if(reminder&&body.leadId===0)throw Error('Choose a contact for a customer text reminder.');
     if(reminder&&(!Number.isFinite(Date.parse(body.reminderAt||''))||Date.parse(body.reminderAt!)<now.getTime()||Date.parse(body.reminderAt!)>Date.parse(body.dueAt!)))throw Error('Choose a future reminder time before the appointment or payment is due.');

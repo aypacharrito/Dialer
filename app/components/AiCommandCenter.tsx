@@ -116,7 +116,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
     if(draftChannel==="sms"&&body.length>1400){setSendReport("Shorten this text to 1,400 characters before sending.");return}
     if(draftChannel==="email"&&(!result.subject?.trim()||!emailReady.configured)){setSendReport("Add a subject and connect email in Messages before sending.");return}
     sendLock.current=true;stopSending.current=false;setSending(true);
-    let submitted=0,failed=0,skipped=0;const planned=[...targets];const channel=draftChannel;
+    let submitted=0,failed=0,skipped=0;const failures:string[]=[];const planned=[...targets];const channel=draftChannel;
     try{
       for(const contact of planned){
         if(stopSending.current)break;
@@ -129,13 +129,13 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
         submittedSms.current.add(key);
         try{
           const payload=channel==="sms"?{to:contact.phone,body,permissionDocumented:true,sendMode:"ai"}:{to:contact.email,leadId:contact.id,subject:result.subject,text:body,sendMode:"ai",fromName:profile.businessName||profile.agentName,replyTo:profile.replyToEmail,idempotencyKey:`ai:${workspaceId}:${requestId}:${contact.id}`};
-          const response=await fetch(channel==="sms"?"/api/twilio/messages":"/api/email/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+          const response=await fetch(channel==="sms"?"/api/twilio/messages":"/api/email/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(25000)});
           const data=await response.json();if(!response.ok)throw new Error(data.error||"Send failed");
           submitted++;
-        }catch(reason){failed++;setSendReport(`${submitted} submitted · stopped at ${contact.name}: ${reason instanceof Error?reason.message:"Could not confirm submission; check Messages before retrying."}`);stopSending.current=true;break}
-        setSendReport(`${submitted} of ${planned.length} submitted${skipped?` · ${skipped} skipped`:""}`);
+        }catch(reason){failed++;failures.push(`${contact.name}: ${reason instanceof Error?reason.message:"Submission unconfirmed; check Messages before retrying."}`)}
+        setSendReport(`${submitted} of ${planned.length} submitted · ${failed} failed/unconfirmed · ${skipped} skipped`);
       }
-      if(!failed)setSendReport(`${submitted} submitted · ${skipped} skipped${stopSending.current?" · remaining messages cancelled":""}. Check Messages for delivery status.`);
+      setSendReport(`${submitted} submitted · ${failed} failed/unconfirmed · ${skipped} skipped${stopSending.current?" · remaining messages cancelled":""}. Check Messages for delivery status.${failures.length?" Issues: "+failures.slice(0,5).join("; "):""}`);
     }finally{sendLock.current=false;setSending(false)}
   }
 
@@ -147,7 +147,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
   },[loading,sending,result,visible,onActivity]);
   const displayPrompt=submittedPrompt;
   const hasDetails=Boolean(result&&(result.controlCommands?.length||result.controlError||result.createLead||result.priorities.length||result.actions.length||result.draft));
-  return <div className={`ai-workspace ${hasDetails?"has-details":""}`} onDragEnter={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();setDragging(true)}}} onDragOver={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();event.dataTransfer.dropEffect="copy"}}} onDragLeave={event=>{if(event.currentTarget===event.target)setDragging(false)}} onDrop={event=>{event.preventDefault();setDragging(false);void addFiles(event.dataTransfer.files)}}>
+  return <div className={`ai-workspace ${hasDetails?"has-details":""}`} onDragEnter={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();setDragging(true)}}} onDragOver={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();event.dataTransfer.dropEffect="copy"}}} onDragLeave={event=>{if(event.currentTarget===event.target)setDragging(false)}} onDrop={event=>{event.preventDefault();event.stopPropagation();setDragging(false);void addFiles(event.dataTransfer.files)}}>
     {dragging&&<div className="ai-drop-overlay"><div><b>Drop photos or PDFs into Pacifica AI</b><span>I’ll read it together with your instructions.</span></div></div>}
     <header className="ai-shell-header"><div className="ai-shell-brand"><i>P</i><span><b>Pacifica AI</b><small role="status">{loading?"Working — you can switch CRM tabs":sending?"Sending — you can switch CRM tabs":service}</small></span></div><label className="ai-notes-control"><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/><span><b>Use CRM notes</b></span></label></header>
     <div className="ai-content-layout">

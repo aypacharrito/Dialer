@@ -73,3 +73,20 @@ test('post-call interested date persists a real office event through ordinary wo
  assert.equal((await save(request(w,'','PUT'))).status,200);assert.equal(workspace().officeItems.length,1);
  const again=workspace();again.leads[0].outcome='Call back later';await save(request(again,'','PUT'));assert.equal(workspace().officeItems.length,0);
 });
+test('hourly text review deduplicates a concurrently saved manual appointment and preserves settings through stale autosave',async()=>{
+ setup();globalThis.intakeTestAccess.accountUserId='a';
+ const {POST:settings}=await import('../../app/api/calendar/conversations/route.ts');
+ const {reviewConversationCalendar}=await import('../../app/lib/conversation-calendar-engine.ts');
+ const now=Date.now(),dueAt=new Date(now+86400000).toISOString();const w=workspace();w.leads[0].communications=[{id:'in',channel:'sms',direction:'inbound',body:'I am interested',status:'received',sentAt:new Date(now-60000).toISOString()},{id:'out',channel:'sms',direction:'outbound',body:'Tomorrow at 10 AM',status:'sent',sentAt:new Date(now-30000).toISOString()}];store.set(workspaceKey('a'),JSON.stringify(w));
+ await settings(request({action:'settings',enabled:true}));let calls=0;
+ globalThis.intakeTestAi=async()=>{calls++;const fresh=workspace();fresh.officeItems=[{id:'manual',leadId:1,kind:'appointment',title:'Manual appointment',dueAt,status:'open',reminderState:'off'}];store.set(workspaceKey('a'),JSON.stringify(fresh));return {output_text:JSON.stringify({appointments:[{leadId:1,dueAt,interestId:'in',interestQuote:'interested',scheduleId:'out',scheduleQuote:'Tomorrow at 10 AM'}]})}};
+ await Promise.all([reviewConversationCalendar('a'),reviewConversationCalendar('a')]);assert.equal(calls,1);assert.equal(workspace().officeItems.length,1);
+ await save(request({...w,conversationCalendar:{enabled:false}},'','PUT'));assert.equal(workspace().conversationCalendar.enabled,true);
+ globalThis.intakeTestAccess.role='agent';assert.equal((await settings(request({action:'settings',enabled:false}))).status,403);
+});
+test('text review rejects a proposal if the conversation changes during extraction',async()=>{
+ setup();globalThis.intakeTestAccess.accountUserId='a';const {reviewConversationCalendar}=await import('../../app/lib/conversation-calendar-engine.ts');
+ const now=Date.now(),dueAt=new Date(now+86400000).toISOString(),w=workspace();w.conversationCalendar={enabled:true};w.leads[0].communications=[{id:'in',channel:'sms',direction:'inbound',body:'I am interested',status:'received',sentAt:new Date(now-60000).toISOString()},{id:'out',channel:'sms',direction:'outbound',body:'Tomorrow at 10 AM',status:'sent',sentAt:new Date(now-30000).toISOString()}];store.set(workspaceKey('a'),JSON.stringify(w));
+ globalThis.intakeTestAi=async()=>{const fresh=workspace();fresh.leads[0].communications.push({id:'cancel',channel:'sms',direction:'inbound',body:'Cancel please',status:'received',sentAt:new Date().toISOString()});store.set(workspaceKey('a'),JSON.stringify(fresh));return {output_text:JSON.stringify({appointments:[{leadId:1,dueAt,interestId:'in',interestQuote:'interested',scheduleId:'out',scheduleQuote:'Tomorrow at 10 AM'}]})}};
+ await reviewConversationCalendar('a');assert.equal((workspace().officeItems||[]).length,0);
+});

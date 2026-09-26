@@ -47,9 +47,9 @@ export default function MessageAttachmentBridge(){
   },[]);
 
   useEffect(()=>{
-    const over=(event:DragEvent)=>{const footer=document.querySelector(".message-thread footer");if(footer&&event.target instanceof Node&&footer.contains(event.target)&&event.dataTransfer?.types.includes("Files")){event.preventDefault();setDragging(true)}};
-    const leave=(event:DragEvent)=>{const footer=document.querySelector(".message-thread footer");if(footer&&event.target instanceof Node&&footer.contains(event.target))setDragging(false)};
-    const drop=(event:DragEvent)=>{const footer=document.querySelector(".message-thread footer");if(footer&&event.target instanceof Node&&footer.contains(event.target)&&event.dataTransfer?.files?.length){event.preventDefault();setDragging(false);void addFiles(Array.from(event.dataTransfer.files))}};
+    const over=(event:DragEvent)=>{const footer=document.querySelector(".message-thread");if(footer&&event.target instanceof Node&&footer.contains(event.target)&&event.dataTransfer?.types.includes("Files")){event.preventDefault();event.stopPropagation();setDragging(true)}};
+    const leave=(event:DragEvent)=>{const footer=document.querySelector(".message-thread");if(footer&&event.target instanceof Node&&footer.contains(event.target))setDragging(false)};
+    const drop=(event:DragEvent)=>{const footer=document.querySelector(".message-thread");if(footer&&event.target instanceof Node&&footer.contains(event.target)&&event.dataTransfer?.files?.length){event.preventDefault();event.stopPropagation();setDragging(false);void addFiles(Array.from(event.dataTransfer.files))}};
     document.addEventListener("dragover",over);document.addEventListener("dragleave",leave);document.addEventListener("drop",drop);return()=>{document.removeEventListener("dragover",over);document.removeEventListener("dragleave",leave);document.removeEventListener("drop",drop)};
   });
 
@@ -79,7 +79,7 @@ export default function MessageAttachmentBridge(){
   },[]);
 
   async function addFiles(files:File[]){
-    const channel=activeChannel();setError("");
+    const channel=activeChannel();const uploadContext=contextKey.current;setError("");
     const existing=attachmentRef.current.filter(item=>item.channel===channel);
     const room=Math.max(0,(channel==="sms"?10:8)-existing.length);const selected=files.slice(0,room);
     if(!selected.length){setError(`You already have the maximum number of ${channel==="sms"?"MMS":"email"} attachments.`);return}
@@ -95,6 +95,7 @@ export default function MessageAttachmentBridge(){
         const response=await fetch("/api/message-media",{method:"POST",credentials:"same-origin",body:form});const data=await response.json() as {attachment?:Omit<Attachment,"channel">;error?:string};
         if(!response.ok||!data.attachment)throw new Error(data.error||`Could not upload ${file.name}`);uploaded.push({...data.attachment,channel});
       }
+      if(contextKey.current!==uploadContext)return;
       setAttachments(current=>[...current.filter(item=>item.channel===channel),...uploaded]);
       const textarea=document.querySelector(".message-thread footer textarea") as HTMLTextAreaElement|null;if(textarea&&!textarea.value.trim())setTextareaValue(`Attached: ${uploaded.map(item=>item.name).join(", ")}`);
     }catch(reason){setError(reason instanceof Error?reason.message:"Attachment upload failed")}

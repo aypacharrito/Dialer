@@ -172,21 +172,19 @@ async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
   const lat=Number(geoRows[0]?.lat),lon=Number(geoRows[0]?.lon);
   if(!Number.isFinite(lat)||!Number.isFinite(lon))throw new Error("Could not locate target ZIP for public business search");
 
-  const keys=["shop","office","craft","amenity","industrial","tourism","healthcare"];
-  const clauses=keys.flatMap(key=>[
-    `nwr(around:6500,${lat},${lon})["${key}"]["name"]["phone"];`,
-    `nwr(around:6500,${lat},${lon})["${key}"]["name"]["contact:phone"];`,
-  ]).join("\n");
-  const query=`[out:json][timeout:14];(\n${clauses}\n);out tags center ${Math.min(180,Math.max(40,limit*6))};`;
-  const response=await fetch("https://overpass-api.de/api/interpreter",{
-    method:"POST",
-    headers:{...headers,"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-    body:`data=${encodeURIComponent(query)}`,
-    cache:"no-store",
-    signal:AbortSignal.any([signal,AbortSignal.timeout(18000)]),
-  });
-  if(!response.ok)throw new Error(`Public business source failed (${response.status})`);
-  const payload=await response.json() as {elements?:Array<{type?:string;id?:number;tags?:Record<string,string>} >};
+  // One spatial search for each phone tag, rather than fourteen repeated scans.
+  const query=`[out:json][timeout:10];(nwr(around:4000,${lat},${lon})["name"]["phone"][~"^(shop|office|craft|amenity|industrial|tourism|healthcare)$"~"."];nwr(around:4000,${lat},${lon})["name"]["contact:phone"][~"^(shop|office|craft|amenity|industrial|tourism|healthcare)$"~"."];);out tags ${Math.min(180,Math.max(40,limit*6))};`;
+  let payload:{elements?:Array<{type?:string;id?:number;tags?:Record<string,string>}>}|undefined;
+  for(const endpoint of ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter"]){
+    if(signal.aborted)break;
+    try{
+      const response=await fetch(endpoint,{method:"POST",headers:{...headers,"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:`data=${encodeURIComponent(query)}`,cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(12000)])});
+      if(!response.ok)continue;
+      const data=await response.json();if(!Array.isArray(data.elements)||data.remark)continue;
+      payload=data;break;
+    }catch{/* Try the alternate public server within the overall run budget. */}
+  }
+  if(!payload)throw new Error("Public business servers timed out or are busy. No records were added from this ZIP. Try again shortly or connect a business provider.");
   const seen=new Set<string>();
   const records:UnknownRecord[]=[];
   for(const element of payload.elements||[]){
