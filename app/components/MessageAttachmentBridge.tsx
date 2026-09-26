@@ -39,11 +39,16 @@ export default function MessageAttachmentBridge(){
   useEffect(()=>{
     const sync=()=>{
       const next=document.querySelector(".message-thread footer") as HTMLElement|null;setHost(next);
-      const label=(document.querySelector(".thread-contact b")?.textContent||"").trim();const key=`${activeChannel()}:${label}`;
+      const label=(document.querySelector(".thread-contact")?.textContent||"").trim();const key=`${activeChannel()}:${label}`;
       if(contextKey.current&&key!==contextKey.current){setAttachments([]);setEmojiOpen(false);setError("")}
       contextKey.current=key;
     };
-    sync();const observer=new MutationObserver(sync);observer.observe(document.body,{subtree:true,childList:true,attributes:true,characterData:true});return()=>observer.disconnect();
+    let frame=0;
+    const schedule=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;sync()})};
+    sync();const observer=new MutationObserver(records=>{
+      if(records.some(record=>record.type==='childList'||record.type==='attributes'||record.target.parentElement?.closest('.thread-contact')))schedule();
+    });observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-selected']});
+    return()=>{observer.disconnect();if(frame)cancelAnimationFrame(frame)};
   },[]);
 
   useEffect(()=>{

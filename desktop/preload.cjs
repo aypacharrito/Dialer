@@ -4,11 +4,14 @@ contextBridge.exposeInMainWorld("pacificaDesktop",{
   isDesktop:true,
   openCalendarBrowser:()=>ipcRenderer.invoke("pacifica:open-calendar-browser"),
   supportsDesktopWrapUp:true,
+  supportsAtomicCallState:true,
   onOverlayError:callback=>{if(typeof callback!=="function")return ()=>{};const handler=(_event,message)=>callback(String(message||""));ipcRenderer.on("pacifica:overlay-error",handler);return ()=>ipcRenderer.removeListener("pacifica:overlay-error",handler)},
   notifyMessage:message=>ipcRenderer.send("pacifica:message-state",message),
   onMessageAction:callback=>{if(typeof callback!=="function")return ()=>{};const handler=(_event,message)=>callback(message);ipcRenderer.on("pacifica:message-open",handler);return ()=>ipcRenderer.removeListener("pacifica:message-open",handler)},
   platform:process.platform,
   getVersion:()=>ipcRenderer.invoke("pacifica:desktop-version"),
+  syncCallState:state=>ipcRenderer.invoke("pacifica:sync-call-state",state),
+  onOverlayStatus:callback=>{if(typeof callback!=="function")return ()=>{};const handler=(_event,state)=>callback(state);ipcRenderer.on("pacifica:overlay-status",handler);return ()=>ipcRenderer.removeListener("pacifica:overlay-status",handler)},
   setCallState:(state)=>ipcRenderer.send("pacifica:call-state",state),
   onCallAction:(callback)=>{
     if(typeof callback!=="function")return ()=>{};

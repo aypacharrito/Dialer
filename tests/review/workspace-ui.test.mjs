@@ -36,6 +36,7 @@ test('a successful cloud load unlocks the workspace and permits autosave',async(
  const h=await setup(false);
  assert.equal(document.querySelector('.workspace-load-card'),null);
  assert.equal(h.requests.filter(r=>r.options?.method==='PUT').length,1);
+ assert.equal(localStorage.getItem('pacifica:test-workspace:leads'),null,'cloud workspace must not synchronously serialize duplicate contacts into browser storage');
  await h.cleanup();
 });
 test('the keypad is a sibling of the calling column while the queue stays with the call',async()=>{

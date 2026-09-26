@@ -9,7 +9,7 @@ import {isCallDigit} from "../lib/call-digits";
 type Result={id:number;name:string;number:string;source:string;stage:string;connected:boolean;technicalOutcome:string;draft:PostCallDraft;resume:boolean;saving:boolean;doNotCall?:boolean;error:string;onSelect:(outcome:string)=>void;onChange:(patch:Partial<PostCallDraft>)=>void;onSave:()=>void;onAgain:()=>void;onPause:()=>void};
 type Props={active:boolean;category:string;result?:Result;onWindowChange:(open:boolean)=>void;name:string;number:string;connected:boolean;muted:boolean;elapsed:string;sentDigits:string;feedback:string;onMute:()=>void;onEnd:()=>void;onDigits:(digits:string)=>void};
 type PipWindow=Window&{documentPictureInPicture?:{requestWindow:(options:{width:number;height:number})=>Promise<Window>}};
-type DesktopBridge={isDesktop:true;supportsDesktopWrapUp?:boolean;onOverlayError?:(callback:(message:string)=>void)=>(()=>void);enterCallOverlay:()=>Promise<boolean>;exitCallOverlay:()=>Promise<boolean>;showMainWindow:()=>Promise<boolean>;platform:string};
+type DesktopBridge={isDesktop:true;supportsAtomicCallState?:boolean;onOverlayStatus?:(callback:(state:{open:boolean;error:string})=>void)=>(()=>void);supportsDesktopWrapUp?:boolean;onOverlayError?:(callback:(message:string)=>void)=>(()=>void);enterCallOverlay:()=>Promise<boolean>;exitCallOverlay:()=>Promise<boolean>;showMainWindow:()=>Promise<boolean>;platform:string};
 type DesktopWindow=Window&{pacificaDesktop?:DesktopBridge};
 
 function bridge(){return typeof window!=="undefined"?(window as DesktopWindow).pacificaDesktop:undefined}
@@ -28,7 +28,7 @@ export default function FloatingCallWindow(props:Props){
   const phaseRef=useRef("");
   const callSizeRef=useRef({width:540,height:110});
   const desktop=bridge();
-  const legacyDesktop=Boolean(desktop?.isDesktop&&!desktop.supportsDesktopWrapUp);
+  const legacyDesktop=Boolean(desktop?.isDesktop&&!desktop.supportsAtomicCallState);
 
   useEffect(()=>{
     mountedRef.current=true;
@@ -42,9 +42,11 @@ export default function FloatingCallWindow(props:Props){
     };
   },[]);
 
+  useEffect(()=>bridge()?.onOverlayStatus?.(state=>{setDesktopOpen(state.open);setError(state.error||"")}),[]);
   useEffect(()=>bridge()?.onOverlayError?.(message=>{setDesktopOpen(false);setError(message)}),[]);
   useEffect(()=>{onWindowChange(Boolean(target)||desktopOpen)},[target,desktopOpen,onWindowChange]);
   useEffect(()=>{
+    if(desktop?.supportsAtomicCallState)return; // The parent syncs state; native visibility events confirm the result.
     if(desktop?.supportsDesktopWrapUp){
       let canceled=false;
       const operation=phase==="idle"?desktop.exitCallOverlay().then(()=>false):desktop.enterCallOverlay();
@@ -113,7 +115,7 @@ export default function FloatingCallWindow(props:Props){
   </section>}
 
   return <>
-    {legacyDesktop&&<div className="desktop-update-notice" role="status">This installed Pacifica uses the old overlay. <a href="/api/desktop/download?platform=windows" target="_blank" rel="noreferrer">Install the current desktop app</a></div>}
+    {legacyDesktop&&<div className="desktop-update-notice" role="status">This installed Pacifica needs the call-window update. <a href="/api/desktop/download?platform=windows" target="_blank" rel="noreferrer">Install the current desktop app</a></div>}
     {(props.active||props.result)&&<div className="float-call-launch"><button type="button" onClick={()=>void open()}>{target||desktopOpen?"Show floating call":"Float call ↗"}</button>{error&&<p role="status">{error}</p>}</div>}
     {target&&createPortal(props.active?callCard():props.result?<PostCallDispositionModal lead={{name:props.result.name,phone:props.result.number,source:props.result.source,stage:props.result.stage,doNotCall:props.result.doNotCall}} draft={props.result.draft} technicalOutcome={props.result.technicalOutcome} connected={props.result.connected} resume={props.result.resume} saving={props.result.saving} onSelect={props.result.onSelect} onChange={props.result.onChange} onSave={props.result.onSave} onCallAgain={props.result.onAgain} onPause={props.result.onPause}/>:<p>Result saved</p>,target.document.body)}
   </>;

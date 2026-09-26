@@ -51,6 +51,8 @@ function isTrustedNavigation(url){return isAppUrl(url)||isAuthUrl(url)}
 function loadOverlayLayout(){
   try{const value=JSON.parse(fs.readFileSync(path.join(app.getPath("userData"),"overlay-settings.json"),"utf8"));if(value.layout==="vertical")overlayLayout="vertical";if(value.sizes&&typeof value.sizes==="object")overlaySizes=value.sizes;if(Number.isFinite(value.position?.x)&&Number.isFinite(value.position?.y))overlayPosition=value.position}catch{/* First launch or invalid preferences: use the compact horizontal bar. */}
 }
+let saveLayoutTimer;
+function scheduleOverlayLayoutSave(){clearTimeout(saveLayoutTimer);saveLayoutTimer=setTimeout(saveOverlayLayout,250)}
 function saveOverlayLayout(){
   try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({layout:overlayLayout,sizes:overlaySizes,position:overlayPosition}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
 }
@@ -95,6 +97,7 @@ function createOverlay(){
     if(overlayLoadTimer){clearTimeout(overlayLoadTimer);overlayLoadTimer=null}
     if(!lastCallState.active&&!lastCallState.incoming&&!lastCallState.wrapUp)return;
     if(overlayRecoveryAttempts++<1){load();return}
+    publishOverlayStatus(false,reason);
     mainWindow?.webContents.send("pacifica:overlay-error",reason+". Keep using the call controls in Pacifica.");
     // Restore only the main window; reloading it would disconnect a live call.
     if(mainWindow?.isMinimized())mainWindow.restore();mainWindow?.show();
@@ -106,8 +109,8 @@ function createOverlay(){
   overlay.webContents.on("did-finish-load",()=>overlay.webContents.send("pacifica:call-state",overlayState()));
   load();
   positionOverlay();
-  overlayWindow.on("resized",()=>{if(!overlayGeometry)return;overlaySizes[overlayGeometry]=overlayWindow.getSize();saveOverlayLayout()});
-  overlayWindow.on("moved",()=>{const {x,y}=overlayWindow.getBounds();overlayPosition={x,y};saveOverlayLayout()});
+  overlayWindow.on("resized",()=>{if(!overlayGeometry)return;overlaySizes[overlayGeometry]=overlayWindow.getSize();scheduleOverlayLayoutSave()});
+  overlayWindow.on("moved",()=>{const {x,y}=overlayWindow.getBounds();overlayPosition={x,y};scheduleOverlayLayoutSave()});
   overlayWindow.on("restore",()=>overlayWindow?.setSkipTaskbar(true));
   overlayWindow.on("closed",()=>{if(overlayLoadTimer)clearTimeout(overlayLoadTimer);overlayWindow=null;overlayReady=false;reloadOverlay=null;overlayPhase="";overlayGeometry="";overlayRecoveryAttempts=0});
   return overlayWindow;
@@ -173,7 +176,7 @@ app.on("window-all-closed",()=>{if(updateTimer){clearInterval(updateTimer);updat
 
 function showCallOverlay(){
   const nextPhase=lastCallState.incoming?"incoming":lastCallState.active?"call":lastCallState.wrapUp?"wrap":"";
-  if(!nextPhase){overlayWindow?.hide();overlayPhase="";return}
+  if(!nextPhase){overlayWindow?.hide();overlayPhase="";publishOverlayStatus(false);return}
   const overlay=createOverlay();
   const phaseChanged=overlayPhase!==nextPhase;
   const geometry=nextPhase==="incoming"?"incoming":nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}`;
@@ -188,7 +191,7 @@ function showCallOverlay(){
     const x=Math.max(area.x,Math.min(oldX,area.x+area.width-width));
     const y=Math.max(area.y,Math.min(oldY,area.y+area.height-height));
     overlay.setPosition(x,y,false);
-    overlayPosition={x,y};saveOverlayLayout();
+    overlayPosition={x,y};scheduleOverlayLayoutSave();
     overlayGeometry=geometry;
   }
   overlay.webContents.send("pacifica:call-state",overlayState());
@@ -203,14 +206,23 @@ function showCallOverlay(){
   }
   if(nextPhase==="incoming"&&phaseChanged){overlay.show();overlay.focus();overlay.flashFrame(true)}
   else if(!overlay.isVisible())overlay.showInactive();
+  publishOverlayStatus(overlay.isVisible());
 }
 
-ipcMain.on("pacifica:call-state",(event,state)=>{
-  if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||"")||!state||typeof state!=="object")return;
-  lastCallState={...state,active:Boolean(state.active)};
-  mainWindow.setTitleBarOverlay({color:state.theme==="dark"?"#111614":"#f7f8fa",symbolColor:state.theme==="dark"?"#f4f7f5":"#17211d"});
-  showCallOverlay();
-});
+function publishOverlayStatus(open,error=''){
+ mainWindow?.webContents.send('pacifica:overlay-status',{open,error});
+}
+function applyCallState(event,state){
+ if(!trustedMain(event)||!state||typeof state!=='object')return false;
+ lastCallState={...state,active:Boolean(state.active)};
+ try{showCallOverlay();return true}catch(error){
+  const reason=`Floating call could not open: ${error?.message||'native window error'}`;
+  console.warn('[Pacifica overlay]',reason);publishOverlayStatus(false,reason);return false;
+ }
+}
+ipcMain.on('pacifica:call-state',applyCallState);
+// One ordered request supplies the call state and creates its window.
+ipcMain.handle('pacifica:sync-call-state',applyCallState);
 
 ipcMain.on("pacifica:call-action",(event,action)=>{
   if(!overlayWindow||event.sender!==overlayWindow.webContents||typeof action!=="string")return;
@@ -246,6 +258,7 @@ ipcMain.handle("pacifica:show-main-window",(event)=>{if(!trustedMain(event))retu
 
 ipcMain.on("pacifica:theme",(event,theme)=>{
   if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||""))return;
+  nativeTheme.themeSource=theme==="dark"?"dark":"light";
   mainWindow.setTitleBarOverlay({color:theme==="dark"?"#111614":"#f7f8fa",symbolColor:theme==="dark"?"#f4f7f5":"#17211d"});
   lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
   overlayWindow?.webContents.send("pacifica:call-state",overlayState());

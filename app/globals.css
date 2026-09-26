@@ -2638,3 +2638,9 @@ html[data-theme] .ai-draft-card textarea{font-size:16px;line-height:1.6;min-heig
 @media(prefers-reduced-motion:reduce){.calendar-alerts>div{animation:none}}
 
 .ai-control-panel{margin:16px 0;padding:18px;border:1px solid var(--ui-border);border-radius:14px;background:var(--ui-surface);font-size:13px;line-height:1.65}.ai-control-panel h3{margin:0 0 10px}.ai-control-panel ul{padding-left:20px}.ai-control-panel button{padding:10px 16px;border:0;border-radius:9px;background:var(--ui-accent);color:var(--ui-text);font-weight:700;cursor:pointer}.ai-control-panel button:disabled{opacity:.55}.ai-control-panel details{margin-top:12px}.ai-control-panel summary{cursor:pointer;font-weight:600}.ai-control-panel small{color:var(--ui-muted)}
+
+/* Native popup colors must be available before the operating system opens a menu. */
+html[data-theme="light"] select,html[data-theme="light"] option,html[data-theme="light"] optgroup{color-scheme:light;background-color:#fff;color:#16342b}
+html[data-theme="dark"] select,html[data-theme="dark"] option,html[data-theme="dark"] optgroup{color-scheme:dark;background-color:#131b18;color:#edf5f1}
+/* Skip offscreen contact painting without removing keyboard/search access. */
+.crm-table .table-row{content-visibility:auto;contain-intrinsic-size:auto 100px}
