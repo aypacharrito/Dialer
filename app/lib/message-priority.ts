@@ -27,7 +27,7 @@ const digits=(value:string)=>value.replace(/\D/g,"").slice(-10);
 
 function channelActivity(lead:MessagePriorityLead,messages:SmsPriorityMessage[],channel:MessageChannel){
   const activity=channel==="sms"
-    ?messages.filter(message=>digits(message.from)===digits(lead.phone)||digits(message.to)===digits(lead.phone)).map(message=>({direction:/inbound/i.test(message.direction)?"inbound" as const:"outbound" as const,sentAt:message.sentAt}))
+    ?messages.filter(message=>Boolean(digits(lead.phone))&&(digits(message.from)===digits(lead.phone)||digits(message.to)===digits(lead.phone))).map(message=>({direction:/inbound/i.test(message.direction)?"inbound" as const:"outbound" as const,sentAt:message.sentAt}))
     :(lead.communications||[]).filter(message=>message.channel==="email").map(message=>({direction:message.direction,sentAt:message.sentAt}));
   return activity.reduce((current,message)=>{
     const timestamp=dateValue(message.sentAt);
@@ -62,10 +62,21 @@ export function messagePriority(lead:MessagePriorityLead,messages:SmsPriorityMes
   return {tier:1,score:base.score,label:"OPEN",tone:"normal",detail:base.detail,latestAt:0,waitingForReply:false};
 }
 
+export function indexSmsByPhone<T extends SmsPriorityMessage>(messages:T[]){
+  const index=new Map<string,T[]>();
+  for(const message of messages)for(const phone of new Set([digits(message.from),digits(message.to)])){
+    if(!phone)continue;
+    const list=index.get(phone);if(list)list.push(message);else index.set(phone,[message]);
+  }
+  return index;
+}
+
 export function rankMessageLeads<T extends MessagePriorityLead>(leads:T[],messages:SmsPriorityMessage[],channel:MessageChannel,now=Date.now()){
+  const index=indexSmsByPhone(messages);
+  const priorities=new Map(leads.map(lead=>[lead.id,messagePriority(lead,index.get(digits(lead.phone))||[],channel,now)]));
   return leads.toSorted((left,right)=>{
-    const leftPriority=messagePriority(left,messages,channel,now);
-    const rightPriority=messagePriority(right,messages,channel,now);
+    const leftPriority=priorities.get(left.id)!;
+    const rightPriority=priorities.get(right.id)!;
     return rightPriority.tier-leftPriority.tier||rightPriority.score-leftPriority.score||rightPriority.latestAt-leftPriority.latestAt||leadCreatedAt(right)-leadCreatedAt(left)||right.id-left.id;
   });
 }

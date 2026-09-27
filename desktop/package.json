@@ -28,7 +28,8 @@
       "message-preload.cjs",
       "message.html",
       "message.js",
-      "overlay.js"
+      "overlay.js",
+      "splash.html"
     ],
     "directories": {
       "output": "dist"

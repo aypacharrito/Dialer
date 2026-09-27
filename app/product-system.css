@@ -242,8 +242,6 @@ html[data-theme] .topbar {
   background: color-mix(in srgb, var(--ps-surface) 94%, transparent) !important;
   border-bottom: 1px solid var(--ps-line) !important;
   box-shadow: 0 1px 0 rgba(14,42,33,.025) !important;
-  backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
 }
 
 html[data-theme] .caller-id small { font-size: calc(12px * var(--workspace-text-scale, 1)) !important; color: var(--ps-muted) !important; }
@@ -671,8 +669,6 @@ html[data-theme] .drawer-backdrop {
   display: flex !important;
   justify-content: flex-end !important;
   background: rgba(14, 30, 24, .22) !important;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 html[data-theme] .contact-drawer {
@@ -684,7 +680,7 @@ html[data-theme] .contact-drawer {
   background: var(--ps-surface) !important;
   box-shadow: -20px 0 60px rgba(10,35,27,.15) !important;
   overflow-y: auto !important;
-  animation: ps-sheet-in .22s var(--ps-ease) both;
+  animation: ps-sheet-in .12s var(--ps-ease) both;
 }
 
 html[data-theme] .contact-drawer>header {
@@ -696,8 +692,6 @@ html[data-theme] .contact-drawer>header {
   background: color-mix(in srgb, var(--ps-surface) 95%, transparent) !important;
   border-bottom: 1px solid var(--ps-line) !important;
   color: var(--ps-text) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
 html[data-theme] .drawer-person>i {
@@ -825,8 +819,6 @@ html[data-theme] .contact-drawer>footer {
   padding: 12px 20px 16px !important;
   border-top: 1px solid var(--ps-line) !important;
   background: color-mix(in srgb, var(--ps-surface) 94%, transparent) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 html[data-theme] .contact-drawer>footer button {
   width: 100% !important;
@@ -847,8 +839,6 @@ html[data-theme] .quote-modal-backdrop {
   place-items: center !important;
   padding: 24px !important;
   background: rgba(13, 29, 23, .34) !important;
-  backdrop-filter: blur(9px) saturate(.9);
-  -webkit-backdrop-filter: blur(9px) saturate(.9);
   animation: ps-fade-in .18s ease both;
 }
 
@@ -861,7 +851,7 @@ html[data-theme] .quote-modal-shell {
   border-radius: var(--ps-radius-xl) !important;
   background: var(--ps-surface) !important;
   box-shadow: var(--ps-shadow-sheet) !important;
-  animation: ps-modal-in .22s var(--ps-ease) both;
+  animation: ps-modal-in .14s var(--ps-ease) both;
 }
 
 html[data-theme] .quote-modal-close {
@@ -1009,7 +999,6 @@ html[data-theme] .quote-workspace>footer {
   gap: 8px !important;
   border-top: 1px solid var(--ps-line) !important;
   background: color-mix(in srgb,var(--ps-surface) 96%,transparent) !important;
-  backdrop-filter: blur(14px);
 }
 html[data-theme] .quote-workspace>footer button {
   min-height: 42px !important;
@@ -1031,7 +1020,6 @@ html[data-theme] .quote-workspace>footer .won {
 html[data-theme] .new-lead-backdrop {
   z-index: 100 !important;
   background: rgba(13,29,23,.34) !important;
-  backdrop-filter: blur(8px);
 }
 html[data-theme] .new-lead-modal {
   width: min(860px,calc(100vw - 40px)) !important;

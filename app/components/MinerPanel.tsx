@@ -1,7 +1,6 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from "react";
-import ContractorRenewals from "./ContractorRenewals";
 import type {MinerAutoFeedSettings} from "../lib/workspace-profile";
 
 export type MinerMode="personal-auto"|"home"|"commercial";
@@ -18,14 +17,13 @@ function isMode(lead:MinerProspect,mode:MinerMode){
 }
 function arrived(lead:MinerProspect){return Date.parse(lead.received||lead.importedAt||"")||lead.id}
 function modeLabel(mode:MinerMode){return mode==="personal-auto"?"Personal Auto":mode==="home"?"Homeowners":"Commercial"}
-function modeShort(mode:MinerMode){return mode==="personal-auto"?"AUTO":mode==="home"?"HOME":"B2B"}
 
 export default function MinerPanel({
-  mode,onMode,prospects,dialing,activeScope,onImport,onStart,onCall,onOpen,autoFeed,onAutoFeedChange,onContractorImport,
+  mode,onMode,prospects,dialing,activeScope,onStart,onCall,onOpen,autoFeed,onAutoFeedChange,onResults,
 }:{
   mode:MinerMode;onMode:(mode:MinerMode)=>void;prospects:MinerProspect[];dialing:boolean;activeScope:string;
-  onImport:()=>void;onStart:(mode:MinerMode)=>void;onCall:(id:number)=>void;onOpen:(id:number)=>void;
-  onContractorImport:(file:File)=>void;
+  onStart:(mode:MinerMode)=>void;onCall:(id:number)=>void;onOpen:(id:number)=>void;
+  onResults:(prospects:unknown[])=>void;
   autoFeed:MinerAutoFeedSettings;onAutoFeedChange:(settings:MinerAutoFeedSettings)=>void;
 }){
   const byMode=useMemo(()=>({
@@ -39,6 +37,8 @@ export default function MinerPanel({
   const [feedBusy,setFeedBusy]=useState(false);
   const feedInFlight=useRef(false);
   const [feedMessage,setFeedMessage]=useState("");
+  const [zipDraft,setZipDraft]=useState(autoFeed.zipCodes.join(", "));
+  const [categoryDraft,setCategoryDraft]=useState(autoFeed.commercialCategories.join(", "));
 
   useEffect(()=>{
     let active=true;
@@ -51,111 +51,55 @@ export default function MinerPanel({
   const consumerReady=providerStatus?.dataAxle===true;
   const commercialReady=providerStatus?.publicBusiness===true||consumerReady;
   const checkingProviders=providerStatus===null;
-  const zips=autoFeed.zipCodes.join(", ");
   const currentReady=mode==="commercial"?commercialReady:consumerReady;
-  const runReady=(autoFeed.commercial&&commercialReady)||((autoFeed.personalAuto||autoFeed.home)&&consumerReady);
-  const sourceState=checkingProviders?"Checking sources…":currentReady?(mode==="commercial"?"Commercial source ready":"Consumer source connected"):"Auto/Home source required";
-  const scheduleState=runReady&&autoFeed.enabled?"Background feed active":runReady?"Background feed off":"Waiting for eligible source";
+  const sourceState=checkingProviders?"Checking sources…":currentReady?"Ready":"Source required";
 
   function patchAutoFeed(patch:Partial<MinerAutoFeedSettings>){onAutoFeedChange({...autoFeed,...patch})}
 
   async function runNow(){
     if(feedInFlight.current)return;
-    if(!runReady){setFeedMessage("Enable Commercial for the public business source, or connect Data Axle for Personal Auto/Home.");return}
-    if(!autoFeed.zipCodes.length){setFeedMessage("Add at least one target ZIP code first.");return}
+    if(!currentReady){setFeedMessage("This category needs a connected data source. Commercial can use public business listings.");return}
+    const zipCodes=zipDraft.split(",").map(value=>value.trim()).filter(Boolean);
+    if(!zipCodes.length||zipCodes.some(value=>!/^\d{5}(?:-\d{4})?$/.test(value))){setFeedMessage("Enter valid ZIP codes, separated by commas.");return}
+    const settings={...autoFeed,zipCodes,batchSize:50,commercialCategories:categoryDraft.split(",").map(value=>value.trim()).filter(Boolean),personalAuto:mode==="personal-auto",home:mode==="home",commercial:mode==="commercial"};
     feedInFlight.current=true;setFeedBusy(true);setFeedMessage("Searching connected prospect data…");
     try{
       const response=await fetch("/api/miner/auto-feed",{
-        method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings:autoFeed}),
+        method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings}),
       });
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"Auto Feed failed");
       setProviderStatus(data.providerStatus||providerStatus);
       setFeedMessage(data.message||`Added ${data.added||0} new prospects`);
       if(data.settings)onAutoFeedChange(data.settings);
+      if(Array.isArray(data.prospects))onResults(data.prospects);
     }catch(error){setFeedMessage(error instanceof Error?error.message:"Auto Feed failed")}
     finally{feedInFlight.current=false;setFeedBusy(false)}
   }
 
   return <div className="page-view miner-view miner-pro">
     <header className="module-bar miner-pro-header">
-      <div>
-        <span className="eyebrow">INSURANCE PROSPECTING</span>
-        <div className="miner-title-line"><h1>Miner</h1><span className={`miner-health ${currentReady?"ready":checkingProviders?"checking":"setup"}`}><i/>{sourceState}</span></div>
-        <p>Search connected data sources for prospects. These records do not establish insurance interest or renewal dates.</p>
-      </div>
-      <div className="module-actions">
-        <button className="secondary" onClick={onImport}>Import list</button>
-        <button className="primary" disabled={!visible.length||running} onClick={()=>onStart(mode)}>{running?"Dialing…":"Start dialer"}</button>
-      </div>
+      <div><span className="eyebrow">PROSPECTING</span><div className="miner-title-line"><h1>Miner</h1><span className={`miner-health ${currentReady?"ready":checkingProviders?"checking":"setup"}`}><i/>{sourceState}</span></div></div>
+      <button className="primary" disabled={!visible.length||running} onClick={()=>onStart(mode)}>{running?"Dialing…":`Start dialer · ${visible.length}`}</button>
     </header>
-
-    <section className="miner-engine-card">
-      <div className="miner-engine-head">
-        <div>
-          <span className="miner-kicker">PROSPECT ENGINE</span>
-          <h2>Automatic lead feed</h2>
-          <p>Pacifica checks connected sources once daily and routes new records into Miner. {scheduleState}</p>
-        </div>
-        <button type="button" className={`miner-master-toggle ${autoFeed.enabled?"on":""}`} onClick={()=>patchAutoFeed({enabled:!autoFeed.enabled})} aria-pressed={autoFeed.enabled}>
-          <i/><span>{autoFeed.enabled?"Background feed on":"Background feed off"}</span>
-        </button>
+    <section className="miner-engine-card miner-simple">
+      <div className={`miner-signal ${feedBusy?"searching":""}`} aria-hidden="true">⌁</div>
+      <h2>Find your next conversation</h2>
+      <p>Business prospects. Interest is confirmed when you speak.</p>
+      <div className="miner-simple-fields">
+        <label className="miner-field"><span>Prospect type</span><select aria-label="Prospect type" value={mode} disabled={feedBusy} onChange={event=>onMode(event.target.value as MinerMode)}><option value="commercial">Commercial · {byMode.commercial.length}</option><option value="personal-auto">Personal Auto · {byMode["personal-auto"].length}</option><option value="home">Homeowners · {byMode.home.length}</option></select></label>
+        <label className="miner-field"><span>ZIP codes</span><input aria-label="Target ZIP codes" value={zipDraft} onChange={event=>setZipDraft(event.target.value)} placeholder="91405, 91335" disabled={feedBusy}/></label>
+        <button className="miner-run-button" disabled={feedBusy||checkingProviders||!currentReady} onClick={()=>void runNow()}>{feedBusy?"Searching…":"Find prospects"}</button>
       </div>
-
-      <div className="miner-provider-row">
-        <div className={consumerReady?"ok":"missing"}><i/><span><b>Consumer data</b><small>{checkingProviders?"Checking…":consumerReady?"Data Axle connected":"Auto/Home source needed"}</small></span></div>
-        <div className={commercialReady?"ok":"missing"}><i/><span><b>Public business</b><small>{checkingProviders?"Checking…":providerStatus?.publicBusiness?"OpenStreetMap ready":consumerReady?"Data Axle ready":"Unavailable"}</small></span></div>
-        <div className={providerStatus?.nhtsa?"ok":"missing"}><i/><span><b>VIN decode</b><small>{providerStatus?.nhtsa?"NHTSA ready":"Unavailable"}</small></span></div>
-        <div className={providerStatus?.regrid?"ok":"optional"}><i/><span><b>Property verify</b><small>{providerStatus?.regrid?"Regrid connected":"Optional"}</small></span></div>
-      </div>
-
-      {!checkingProviders&&!consumerReady&&<div className="miner-setup-callout">
-        <div className="miner-setup-icon">!</div>
-        <div><b>Commercial can mine now · Personal Auto/Home still need a consumer source</b><p>Commercial waterfall: connected business provider → free public business listings → phone checks and deduplication → calling queue. Personal Auto/Home requires a configured licensed consumer feed. Available fields depend on the provider contract; VINs and renewal intent are not assumed.</p></div>
-        <button type="button" onClick={()=>window.open("https://www.data-axle.com/data-solutions/apis/","_blank","noopener,noreferrer")}>Get consumer source</button>
-      </div>}
-
-      <div className="miner-config-grid">
-        <label className="miner-field miner-zip-field"><span>Target ZIP codes</span><input defaultValue={zips} onBlur={event=>patchAutoFeed({zipCodes:event.target.value.split(",").map(item=>item.trim()).filter(Boolean)})} placeholder="91405, 91335, 90012"/><small>Comma-separated service areas</small></label>
-        <label className="miner-field"><span>Batch size</span><select value={autoFeed.batchSize} onChange={event=>patchAutoFeed({batchSize:Number(event.target.value)})}><option value="10">10 per category</option><option value="20">20 per category</option><option value="30">30 per category</option><option value="50">50 per category</option></select><small>Maximum records per category/run</small></label>
-        <label className="miner-field miner-categories"><span>Commercial categories</span><input defaultValue={autoFeed.commercialCategories.join(", ")} onBlur={event=>patchAutoFeed({commercialCategories:event.target.value.split(",").map(item=>item.trim()).filter(Boolean)})} placeholder="contractor, body shop, restaurant, trucking"/><small>Optional · leave blank for all businesses</small></label>
-      </div>
-
-      <div className="miner-engine-footer">
-        <div className="miner-feed-modes">
-          <button className={autoFeed.personalAuto?"active":""} onClick={()=>patchAutoFeed({personalAuto:!autoFeed.personalAuto})}><span>Auto</span>{autoFeed.personalAuto&&<b>✓</b>}</button>
-          <button className={autoFeed.home?"active":""} onClick={()=>patchAutoFeed({home:!autoFeed.home})}><span>Home</span>{autoFeed.home&&<b>✓</b>}</button>
-          <button className={autoFeed.commercial?"active":""} onClick={()=>patchAutoFeed({commercial:!autoFeed.commercial})}><span>Commercial</span>{autoFeed.commercial&&<b>✓</b>}</button>
-        </div>
-        <button className="miner-run-button" disabled={feedBusy||!autoFeed.zipCodes.length||!runReady} onClick={()=>void runNow()}>{feedBusy?<><i/>Searching…</>:"Run now"}</button>
-      </div>
-
-      <div className={`miner-run-status ${!consumerReady&&!checkingProviders?"warning":""}`}>
-        <span>{feedMessage||(!consumerReady&&!checkingProviders?"Commercial public source ready · Auto/Home waiting for consumer data":autoFeed.lastRunStatus||"Ready")}</span>
-        {autoFeed.lastRunAt&&<small>Last run {new Date(autoFeed.lastRunAt).toLocaleString()} · {autoFeed.lastAdded} added</small>}
-      </div>
+      <div className="miner-run-status" role="status" aria-live="polite">{feedMessage||autoFeed.lastRunStatus||"Up to 50 prospects per search"}</div>
+      <details className="miner-options"><summary>Search settings & sources</summary>
+        <label className="miner-field"><span>Commercial categories (optional)</span><input value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value)} placeholder="contractor, restaurant"/></label>
+        <label><input type="checkbox" checked={autoFeed.enabled} onChange={event=>patchAutoFeed({enabled:event.target.checked,batchSize:50,zipCodes:zipDraft.split(",").map(value=>value.trim()).filter(Boolean),commercialCategories:categoryDraft.split(",").map(value=>value.trim()).filter(Boolean),personalAuto:mode==="personal-auto",home:mode==="home",commercial:mode==="commercial"})}/> Search daily in the background</label>
+        <p>Commercial uses your business provider, then public OpenStreetMap listings. Auto and Home require a connected licensed consumer source. Public listings do not confirm renewal dates or buying interest.</p>
+        <small>{consumerReady?"Consumer source connected":"Consumer source not connected"} · {commercialReady?"Commercial source available":"Commercial source unavailable"}</small>
+      </details>
     </section>
-
-    <ContractorRenewals onImport={onContractorImport}/>
-
-    <div className="miner-mode-switch miner-pro-tabs" role="group" aria-label="Miner prospect type">
-      <button className={mode==="personal-auto"?"active":""} onClick={()=>onMode("personal-auto")}><span><b>Personal Auto</b><small>VIN + contact prospects</small></span><em>{byMode["personal-auto"].length}</em></button>
-      <button className={mode==="home"?"active":""} onClick={()=>onMode("home")}><span><b>Homeowners</b><small>Property + owner prospects</small></span><em>{byMode.home.length}</em></button>
-      <button className={mode==="commercial"?"active":""} onClick={()=>onMode("commercial")}><span><b>Commercial</b><small>Businesses with listed phones</small></span><em>{byMode.commercial.length}</em></button>
-    </div>
-
-    <section className="miner-mode-context">
-      <div><span>{modeShort(mode)}</span><div><b>{modeLabel(mode)}</b><small>{mode==="personal-auto"?"Licensed vehicle/contact data · VIN decoded by NHTSA":mode==="home"?"Licensed property/contact data · Regrid verification optional":"Public business listings + licensed provider when connected"}</small></div></div>
-      <p>{mode==="personal-auto"?"VINs are decoded automatically before prospects are stored.":mode==="home"?"Property records can be cross-checked against parcel ownership when Regrid is connected.":"The waterfall uses your connected business provider first, then public OpenStreetMap listings to fill the batch. These are business prospects; interest is recorded after your conversation."}</p>
-    </section>
-
-    <div className="crm-summary miner-stats">
-      <article><span>READY</span><b>{visible.length}</b><small>callable prospects</small></article>
-      <article><span>UNTOUCHED</span><b>{visible.filter(item=>!item.attempts).length}</b><small>not attempted</small></article>
-      <article><span>ATTEMPTED</span><b>{visible.filter(item=>(item.attempts||0)>0).length}</b><small>worked records</small></article>
-      <article><span>QUEUE</span><b>{modeShort(mode)}</b><small>{running?"dialer active":"ready when loaded"}</small></article>
-    </div>
-
+    <h2 className="miner-results-heading">{modeLabel(mode)} <small>{visible.length} ready to call</small></h2>
     <div className="table-card crm-table miner-table miner-pro-table">
       <div className="table-head"><span>PROSPECT</span><span>PRODUCT / SOURCE</span><span>STATUS</span><span>ACTIONS</span></div>
       {visible.map(lead=><div className="table-row" key={lead.id}>
@@ -167,7 +111,7 @@ export default function MinerPanel({
       {!visible.length&&<div className="miner-empty">
         <div className="miner-empty-icon">⌁</div>
         <b>{!currentReady&&!checkingProviders?(mode==="commercial"?"Commercial source unavailable":"Connect Auto/Home consumer data"):"No prospects in this queue yet"}</b>
-        <span>{!currentReady&&!checkingProviders?(mode==="commercial"?"Try again later or connect a licensed business provider.":"Personal Auto/Home need an authorized consumer source that provides callable contact data."):autoFeed.enabled?"The next feed run will place matching records here automatically.":"Turn Background feed on or import an existing list."}</span>
+        <span>{!currentReady&&!checkingProviders?(mode==="commercial"?"Try again later or connect a licensed business provider.":"Personal Auto/Home need an authorized consumer source that provides callable contact data."):"Enter ZIP codes above and select Find prospects."}</span>
       </div>}
     </div>
   </div>;

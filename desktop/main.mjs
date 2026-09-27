@@ -9,6 +9,7 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const appUrl=(process.env.PACIFICA_APP_URL||"https://pacificacrm.com/dashboard?desktop=1").trim();
 const appOrigin=new URL(appUrl).origin;
 let mainWindow=null;
+let splashWindow=null;
 let overlayWindow=null;
 let messageWindow=null;
 let messageQueue=[];
@@ -131,6 +132,12 @@ function recoverMainRenderer(reason="renderer unavailable"){
 }
 
 function createWindow(){
+  splashWindow=new BrowserWindow({width:220,height:180,frame:false,transparent:true,resizable:false,show:false,skipTaskbar:true,alwaysOnTop:true,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  const splash=splashWindow;
+  splash.once("ready-to-show",()=>{if(!splash.isDestroyed())splash.showInactive()});
+  void splash.loadFile(path.join(__dirname,"splash.html"));
+  const finishSplash=()=>{if(splashWindow&&!splashWindow.isDestroyed())splashWindow.close();splashWindow=null;mainWindow?.show()};
+  const splashTimeout=setTimeout(finishSplash,12000);
   mainWindow=new BrowserWindow({
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
     backgroundColor:"#f7f8fa",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
@@ -139,7 +146,7 @@ function createWindow(){
     titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#111614":"#f7f8fa",symbolColor:nativeTheme.shouldUseDarkColors?"#f4f7f5":"#17211d",height:36},
     webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true,backgroundThrottling:false}
   });
-  mainWindow.once("ready-to-show",()=>mainWindow?.show());
+  mainWindow.once("ready-to-show",()=>{clearTimeout(splashTimeout);finishSplash()});
   mainWindow.webContents.setWindowOpenHandler(({url})=>{
     if(isTrustedNavigation(url))return {action:"allow"};
     if(/^https?:\/\//i.test(url))void shell.openExternal(url);return {action:"deny"};
@@ -150,8 +157,17 @@ function createWindow(){
   mainWindow.webContents.on("unresponsive",()=>recoverMainRenderer("renderer became unresponsive"));
   mainWindow.webContents.on("did-fail-load",(_event,code,description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)recoverMainRenderer(`load failed ${code}: ${description}`)});
   void mainWindow.loadURL(appUrl);
-  mainWindow.on("closed",()=>{messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
+  mainWindow.on("closed",()=>{clearTimeout(splashTimeout);if(splashWindow&&!splashWindow.isDestroyed())splashWindow.close();splashWindow=null;messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
 }
+
+// Navigation is restricted to the main window and the existing trusted auth origins.
+ipcMain.handle("pacifica:navigate",(event,action)=>{
+  if(event.sender!==mainWindow?.webContents||!isTrustedNavigation(event.senderFrame?.url||event.sender.getURL()))return false;
+  if(lastCallState.active||lastCallState.incoming||lastCallState.wrapUp)return false;
+  if(action==="back"&&mainWindow.webContents.navigationHistory.canGoBack())mainWindow.webContents.navigationHistory.goBack();
+  else if(action==="home"||action==="back")void mainWindow.loadURL(appUrl);
+  return true;
+});
 
 function startDesktopUpdater(){
  desktopUpdater=createDesktopUpdater({updater:autoUpdater,supported:app.isPackaged&&process.platform==='win32',onState:state=>mainWindow?.webContents.send('pacifica:update-state',state),isBusy:()=>Boolean(lastCallState.active||lastCallState.incoming||lastCallState.wrapUp)});

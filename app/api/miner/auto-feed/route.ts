@@ -29,7 +29,7 @@ export async function POST(request:Request){
     const run=await runMinerAutoFeedForWorkspace(user.userId,workspace,{...settings,enabled:true});
     run.workspace.profile.minerAutoFeed.enabled=settings.enabled;
     const saved=await saveMinerRun(user.userId,workspace,run);
-    return Response.json({ok:true,...saved.result,settings:saved.workspace.profile.minerAutoFeed});
+    return Response.json({ok:true,...saved.result,settings:saved.workspace.profile.minerAutoFeed,prospects:saved.workspace.leads.filter(lead=>/Pacifica Miner/i.test(String((lead as {source?:string}).source||"")))});
   }catch(error){
     return Response.json({error:error instanceof Error?error.message:"Miner Auto Feed failed",providerStatus:minerProviderStatus()},{status:500});
   }

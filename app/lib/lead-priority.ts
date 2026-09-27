@@ -115,10 +115,11 @@ export function leadPriority(lead:LeadPriorityInput,now=Date.now()):LeadPriority
 }
 
 export function rankLeads<T extends LeadPriorityInput>(leads:T[],now=Date.now()){
+  const scores=new Map(leads.map(lead=>[lead.id,leadPriority(lead,now).score]));
   return leads.toSorted((left,right)=>{
     const untouchedDifference=Number(untouchedDialerLead(right))-Number(untouchedDialerLead(left));
     if(untouchedDifference)return untouchedDifference;
-    const scoreDifference=leadPriority(right,now).score-leadPriority(left,now).score;
+    const scoreDifference=scores.get(right.id)!-scores.get(left.id)!;
     if(scoreDifference)return scoreDifference;
     return leadCreatedAt(right)-leadCreatedAt(left)||right.id-left.id;
   });

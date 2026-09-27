@@ -32,7 +32,6 @@ body{background:var(--vf-bg)}
   background:color-mix(in srgb,var(--vf-surface) 96%,transparent);
   border-bottom:1px solid var(--vf-border);
   box-shadow:none;
-  backdrop-filter:blur(14px);
 }
 .page-view,.messages-view,.report-view,.clients-view{max-width:1600px;margin:0 auto}
 .module-bar{

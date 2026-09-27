@@ -61,7 +61,7 @@ html[data-theme] .app-shell :is(button,input,select,textarea) {
 }
 html[data-theme] .app-shell .workspace :is(b,strong) { font-weight:650 !important; }
 html[data-theme] .app-shell :is(.sidebar nav button,.topbar button,.module-actions button,.record-actions button) { font-weight:600 !important; }
-html[data-theme] .app-shell .workspace :is(.eyebrow,.module-bar>span) { font-size:calc(17px * var(--workspace-text-scale,1)) !important; letter-spacing:-.015em !important; font-weight:650 !important; }
+html[data-theme] .app-shell .workspace :is(.eyebrow,.module-bar>span) { font-size:calc(17px * var(--workspace-text-scale,1)) !important; letter-spacing:-.015em !important; font-weight:700 !important; }
 html[data-theme] .app-shell .workspace :is(.crm-summary,.today-metrics,.report-metrics)>article>span { letter-spacing:.025em !important; }
 html[data-theme] .app-shell .workspace :is(.table-row,.focus-person,.message-contacts>button,.pipeline-card,.client-row-main) b { font-size:calc(14px * var(--workspace-text-scale,1)) !important; }
 html[data-theme] .app-shell .workspace :is(.table-row,.focus-person,.message-contacts>button,.pipeline-card,.client-row-main) small { color:var(--ps-muted) !important; }
@@ -72,7 +72,7 @@ html[data-theme] .app-shell .workspace>.messages-view { display:flex; overflow:h
 html[data-theme] .app-shell .workspace .messages-center {
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:6px;
   flex:1;
   min-height:0;
   min-width:0;
@@ -81,7 +81,7 @@ html[data-theme] .app-shell .workspace .messages-center {
   padding:0 !important;
   margin:0 !important;
 }
-html[data-theme] .app-shell .messages-center>.module-bar { flex:0 0 auto; margin:0 !important; padding:0 0 12px !important; min-height:44px; gap:12px; flex-wrap:wrap; }
+html[data-theme] .app-shell .messages-center>.module-bar { flex:0 0 auto; margin:0 !important; padding:0 0 4px !important; min-height:32px; gap:12px; flex-wrap:wrap; }
 html[data-theme] .app-shell .messages-center>.channel-tabs { flex:0 0 auto; margin:0 !important; gap:6px; border-bottom:1px solid var(--ps-line); }
 html[data-theme] .app-shell .channel-tabs>button {
   flex:0 1 auto !important; min-width:110px; min-height:44px;
@@ -131,7 +131,7 @@ html[data-theme] .app-shell .message-thread>footer {
   min-height:0; max-height:50dvh; overflow:auto; overscroll-behavior:contain;
   padding:12px 16px; background:var(--ps-surface);
 }
-html[data-theme] .app-shell .message-thread>footer textarea { min-height:72px !important; height:88px; max-height:180px; padding:10px 12px; }
+html[data-theme] .app-shell .message-thread>footer textarea { min-height:52px !important; height:56px; max-height:140px; padding:10px 12px; }
 html[data-theme] .app-shell .message-thread>footer .composer-permission { min-height:0; padding:8px 10px; margin:8px 0; gap:8px; border-radius:6px; }
 html[data-theme] .app-shell .composer-permission small { font-size:calc(12px * var(--workspace-text-scale,1)) !important; }
 html[data-theme] .app-shell .message-thread>footer>.composer-actions { margin:8px 0 0; align-items:center; }

@@ -2484,7 +2484,7 @@ html[data-theme] .client-table-row{min-height:calc(62px * var(--ui-control-scale
 /* Conversation workspace: one inbox, readable previews, and contact actions in context. */
 [hidden]{display:none!important}
 html[data-theme] .messages-center{max-width:1480px}
-html[data-theme] .messages-layout{grid-template-columns:minmax(280px,340px) minmax(0,1fr);border-radius:16px;min-height:540px;height:calc(100dvh - 185px)}
+html[data-theme] .messages-layout{grid-template-columns:minmax(280px,340px) minmax(0,1fr);border-radius:16px;min-height:540px;height:calc(100dvh - 145px)}
 html[data-theme] .message-contacts>header{position:sticky;top:0;z-index:1;background:var(--surface,#1d2022)}
 html[data-theme="light"] .message-contacts>header{background:#fff}
 .inbox-filters{display:flex;gap:4px;flex-wrap:wrap}
@@ -2508,7 +2508,7 @@ html[data-theme] .message-history article.outgoing{border-bottom-right-radius:4p
 html[data-theme] .message-history p{font-size:16px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 html[data-theme] .message-history small{font-size:12px;line-height:1.5}
 html[data-theme] .message-thread>footer{padding:12px 18px;max-height:48dvh;overflow:auto}
-html[data-theme] .message-thread>footer textarea{min-height:84px;max-height:170px}
+html[data-theme] .message-thread>footer textarea{min-height:56px;max-height:140px}
 .personal-text-note,.email-setup-note{padding:10px 12px;border-radius:8px;background:#2b8c7618;font-size:14px;line-height:1.5;margin:0 0 10px}
 .ai-channel-choice{display:flex;gap:8px;margin:12px 0}
 .ai-channel-choice button[aria-pressed="true"]{background:#167d69;color:white}
@@ -2644,3 +2644,29 @@ html[data-theme="light"] select,html[data-theme="light"] option,html[data-theme=
 html[data-theme="dark"] select,html[data-theme="dark"] option,html[data-theme="dark"] optgroup{color-scheme:dark;background-color:#131b18;color:#edf5f1}
 /* Skip offscreen contact painting without removing keyboard/search access. */
 .crm-table .table-row{content-visibility:auto;contain-intrinsic-size:auto 100px}
+
+/* Compact, opaque surfaces avoid costly full-screen blur when opening controls. */
+.drawer-backdrop,.keypad-backdrop,.post-call-modal-backdrop,.incoming-call-backdrop{backdrop-filter:none}
+.miner-simple{max-width:900px;margin:20px auto 28px;padding:28px;text-align:center}
+.miner-simple h2{margin:12px 0 6px;font-size:26px;letter-spacing:-.025em}
+.miner-simple>p{color:var(--ui-muted);font-size:13px}
+.miner-signal{display:grid;place-items:center;margin:auto;width:64px;height:64px;border-radius:20px;background:#16836414;color:var(--ui-accent);font-size:44px}
+.miner-signal.searching{animation:minerPulse 1.2s ease-in-out infinite}
+.miner-simple-fields{display:grid;grid-template-columns:1fr 1.4fr auto;align-items:end;gap:12px;margin:26px 0 18px;text-align:left}
+.miner-simple-fields .miner-run-button{height:42px}
+.miner-options{text-align:left;margin-top:12px;font-size:13px;line-height:1.6}
+.miner-options summary{cursor:pointer;color:var(--ui-muted)}
+.miner-options>label{display:block;margin-top:14px}
+.miner-options .miner-field input{margin-top:6px}
+.miner-results-heading{display:flex;gap:12px;align-items:baseline;font-size:20px;letter-spacing:-.02em}
+.miner-results-heading small{font-size:13px;font-weight:500;color:var(--ui-muted)}
+html[data-theme] .compact-channel-tabs{margin:0 0 8px;gap:6px}
+html[data-theme] .compact-channel-tabs button{padding:6px 14px;min-height:32px;width:auto}
+html[data-theme] .compact-channel-tabs button small{display:none}
+html[data-theme] .messages-center .messages-module-bar{margin-bottom:6px;min-height:28px}
+html[data-theme] .message-contacts>button{content-visibility:auto;contain-intrinsic-size:auto 96px}
+.workspace-tour-help{width:28px;height:28px;border-radius:50%;border:1px solid var(--ui-border);background:var(--ui-surface);color:var(--ui-text);cursor:pointer}
+.workspace-tour{position:fixed;right:24px;bottom:24px;z-index:70;width:min(350px,calc(100vw - 48px));padding:22px;border:1px solid var(--ui-border);border-radius:16px;background:var(--ui-surface);color:var(--ui-text);box-shadow:0 12px 35px #0002}
+.workspace-tour h2{font-size:19px;margin:10px 0}.workspace-tour p{font-size:14px;line-height:1.6;color:var(--ui-muted)}.workspace-tour small{font-size:10px;letter-spacing:.08em}.workspace-tour>div{display:flex;justify-content:flex-end;gap:8px}.workspace-tour button{padding:8px 12px;cursor:pointer}
+@media(max-width:680px){.miner-simple{padding:18px}.miner-simple-fields{grid-template-columns:1fr}.miner-simple-fields .miner-run-button{width:100%}}
+@media(prefers-reduced-motion:reduce){.miner-signal.searching{animation:none}}
