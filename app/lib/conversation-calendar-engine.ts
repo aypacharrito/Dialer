@@ -1,3 +1,4 @@
+import {syncOutlookCalendar} from './outlook-calendar';
 import {randomUUID} from 'node:crypto';
 import {aiClient,aiConfigured,aiModel,aiReasoning} from './ai-provider';
 import {workspaceAutomationAccess} from './clerk-access';
@@ -25,7 +26,7 @@ export async function reviewConversationCalendar(workspaceId:string){
    const result=applyCandidates(leads,current.officeItems,candidates.filter(c=>unchanged.some(t=>t.leadId===c.leadId)),latest.remembered,now);
    return {...current,officeItems:result.items,conversationCalendar:{...latest,lease:'',lastRunAt:now,lastAdded:result.added,remembered:result.remembered,checked:{...latest.checked,...Object.fromEntries(unchanged.map(t=>[t.leadId,hash(t.messages)]))}}};
   });
-  if(saved.conversationCalendar?.enabled)await syncGoogleCalendar(workspaceId).catch(()=>undefined);
+  if(saved.conversationCalendar?.enabled)await Promise.allSettled([syncGoogleCalendar(workspaceId),syncOutlookCalendar(workspaceId)]).catch(()=>undefined);
   return {added:saved.conversationCalendar?.lastRunAt===now?saved.conversationCalendar.lastAdded:0};
  }catch{
   await updateStoredWorkspace(workspaceId,current=>{const latest=cleanConversationCalendar(current.conversationCalendar);return latest.lease!==lease?current:{...current,conversationCalendar:{...latest,lease:'',error:'Text review could not finish. It will retry at the next hourly check.'}}});return {added:0};

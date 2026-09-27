@@ -4,7 +4,8 @@ import {cleanOfficeItems,type OfficeItem} from './office-schedule';
 import {readCalendarSecret,writeCalendarSecret,withCalendarLock} from './calendar-vault';
 
 export const calendarScope='https://www.googleapis.com/auth/calendar.app.created';
-export type GoogleConnection={refreshToken:string;calendarId:string;connectedBy:string;lastSyncAt:string;error:string;pending:number;events:Record<string,string>};
+export const calendarReadScope='https://www.googleapis.com/auth/calendar.events.readonly';
+export type GoogleConnection={refreshToken:string;calendarId:string;connectedBy:string;lastSyncAt:string;error:string;pending:number;showExternal?:boolean;canReadExternal?:boolean;events:Record<string,string>};
 export function calendarConfig(){
  const clientId=process.env.GOOGLE_CALENDAR_CLIENT_ID||'',secret=process.env.GOOGLE_CALENDAR_CLIENT_SECRET||'',redirectUri=process.env.GOOGLE_CALENDAR_REDIRECT_URI||'';
  let validRedirect=false;try{const url=new URL(redirectUri);validRedirect=url.pathname==='/api/calendar/google/callback'&&(url.protocol==='https:'||url.protocol==='http:'&&url.hostname==='localhost')}catch{}

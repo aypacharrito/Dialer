@@ -1,0 +1,5 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {quoteLinkIntent} from '../app/lib/quote-link-intent.ts';
+const leads=[{id:1,name:'Sam Jones',phone:'8185550100'},{id:2,name:'Sam James',phone:'8185550101'},{id:3,name:'Deleted Contact',deletedAt:'today'}];
+test('quote links match full names/numbers, reject ambiguity and respect cancellation',()=>{assert.deepEqual(quoteLinkIntent('Make a quote link for Sam Jones',leads),{leadId:1});assert.deepEqual(quoteLinkIntent('quote link for (818) 555-0101',leads),{leadId:2});assert.ok(quoteLinkIntent('quote link for Sam',leads).error);assert.ok(quoteLinkIntent('quote link for Sam Jones and Sam James',leads).error);assert.ok(quoteLinkIntent('quote link for Deleted Contact',leads).error);assert.deepEqual(quoteLinkIntent('Give me a general quote link',leads),{leadId:null});assert.equal(quoteLinkIntent('Do not make a quote link for Sam Jones',leads),null);assert.equal(quoteLinkIntent('Write a follow-up to Sam Jones',leads),null)});

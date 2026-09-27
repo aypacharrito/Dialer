@@ -2653,7 +2653,7 @@ html[data-theme="dark"] select,html[data-theme="dark"] option,html[data-theme="d
 .miner-signal{display:grid;place-items:center;margin:auto;width:64px;height:64px;border-radius:20px;background:#16836414;color:var(--ui-accent);font-size:44px}
 .miner-signal.searching{animation:minerPulse 1.2s ease-in-out infinite}
 .miner-simple-fields{display:grid;grid-template-columns:1fr 1.4fr auto;align-items:end;gap:12px;margin:26px 0 18px;text-align:left}
-.miner-simple-fields .miner-run-button{height:42px}
+.miner-simple-fields .miner-run-button{height:44px;min-width:150px;padding:0 20px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;white-space:nowrap}
 .miner-options{text-align:left;margin-top:12px;font-size:13px;line-height:1.6}
 .miner-options summary{cursor:pointer;color:var(--ui-muted)}
 .miner-options>label{display:block;margin-top:14px}
@@ -2670,3 +2670,5 @@ html[data-theme] .message-contacts>button{content-visibility:auto;contain-intrin
 .workspace-tour h2{font-size:19px;margin:10px 0}.workspace-tour p{font-size:14px;line-height:1.6;color:var(--ui-muted)}.workspace-tour small{font-size:10px;letter-spacing:.08em}.workspace-tour>div{display:flex;justify-content:flex-end;gap:8px}.workspace-tour button{padding:8px 12px;cursor:pointer}
 @media(max-width:680px){.miner-simple{padding:18px}.miner-simple-fields{grid-template-columns:1fr}.miner-simple-fields .miner-run-button{width:100%}}
 @media(prefers-reduced-motion:reduce){.miner-signal.searching{animation:none}}
+
+.miner-run-status{display:flex;align-items:center;justify-content:space-between;gap:12px}.miner-run-status>button{flex:none;border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer}

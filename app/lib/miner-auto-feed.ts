@@ -172,13 +172,14 @@ async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
   const lat=Number(geoRows[0]?.lat),lon=Number(geoRows[0]?.lon);
   if(!Number.isFinite(lat)||!Number.isFinite(lon))throw new Error("Could not locate target ZIP for public business search");
 
-  // One spatial search for each phone tag, rather than fourteen repeated scans.
-  const query=`[out:json][timeout:10];(nwr(around:4000,${lat},${lon})["name"]["phone"][~"^(shop|office|craft|amenity|industrial|tourism|healthcare)$"~"."];nwr(around:4000,${lat},${lon})["name"]["contact:phone"][~"^(shop|office|craft|amenity|industrial|tourism|healthcare)$"~"."];);out tags ${Math.min(180,Math.max(40,limit*6))};`;
+  // Use a bounded spatial query; filter business tags locally instead of repeated key-regex scans.
+  const queryFor=(radius:number,seconds:number)=>{const dy=radius/111320,dx=radius/(111320*Math.max(.1,Math.cos(lat*Math.PI/180))),box=[lat-dy,lon-dx,lat+dy,lon+dx].join(',');return `[out:json][timeout:${seconds}];(nwr(${box})["name"]["phone"];nwr(${box})["name"]["contact:phone"];);out tags ${Math.min(180,Math.max(40,limit*6))};`};
   let payload:{elements?:Array<{type?:string;id?:number;tags?:Record<string,string>}>}|undefined;
-  for(const endpoint of ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter"]){
+  for(const [index,endpoint] of ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter"].entries()){
+    const query=queryFor(index===0?4000:1500,index===0?18:8);
     if(signal.aborted)break;
     try{
-      const response=await fetch(endpoint,{method:"POST",headers:{...headers,"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:`data=${encodeURIComponent(query)}`,cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(12000)])});
+      const response=await fetch(endpoint,{method:"POST",headers:{...headers,"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:`data=${encodeURIComponent(query)}`,cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(index===0?20000:10000)])});
       if(!response.ok)continue;
       const data=await response.json();if(!Array.isArray(data.elements)||data.remark)continue;
       payload=data;break;
@@ -190,6 +191,7 @@ async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
   for(const element of payload.elements||[]){
     if(records.length>=Math.max(limit*4,40))break;
     const tags=element.tags||{};
+    if(!["shop","office","craft","amenity","industrial","tourism","healthcare"].some(key=>tags[key]))continue;
     const phone=tags.phone||tags["contact:phone"]||"";
     const name=tags.name||"";
     const normalized=normalizePhone(phone);

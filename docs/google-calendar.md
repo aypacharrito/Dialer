@@ -25,7 +25,7 @@ The Calendar screen is available to every workspace. The workspace owner can con
 6. Sign in as the workspace owner, open **Calendar → Calendar settings → Connect Google Calendar**, choose your Google account, and grant calendar access. In the desktop app, this opens the web CRM first; Google authorization runs in the system browser. Sign in there with the same Pacifica account if prompted.
 7. Return to Calendar and use **Sync now**. Enable the new Pacifica CRM calendar and its notifications in Google Calendar on your computer and phone. Create a short test appointment to verify your device permissions and delivery.
 
-The only requested Google scope is `https://www.googleapis.com/auth/calendar.app.created`. Pacifica uses it for a calendar created by this app. OAuth is tied to the initiating user, workspace, short-lived encrypted state, and an HTTP-only cookie. Only the workspace owner can connect, disconnect, or sync.
+Requested scopes are `https://www.googleapis.com/auth/calendar.app.created` for the managed calendar and `https://www.googleapis.com/auth/calendar.events.readonly` for optional primary-calendar display. Reconnect older accounts for read access; the owner separately enables display to the workspace. See [calendar-integrations.md](calendar-integrations.md) for Google, Outlook and private subscriptions. OAuth is tied to the initiating user, workspace, short-lived encrypted state, and an HTTP-only cookie. Only the workspace owner can connect, disconnect, or sync.
 
 ## What sync does
 
@@ -33,7 +33,7 @@ The only requested Google scope is `https://www.googleapis.com/auth/calendar.app
 - Removes the synced event when an item is completed, removed, or its contact is deleted. Completed items remain in Pacifica's list.
 - Automatically checks at startup, after a calendar change, and every five minutes while the authenticated web/desktop CRM remains open. Manual **Sync now** is available. Large batches drain over multiple runs; the panel shows remaining changes. These syncs do not depend on the customer-text automation switch.
 - Google handles alerts for events already synced even when Pacifica is closed. Device/browser notification permission is still required.
-- Google changes do not come back to Pacifica. Don't delete or reschedule managed events in Google; make those changes in the CRM. A Google-side deletion may require removing and recreating the CRM appointment.
+- Primary-calendar events can display read-only after opting in. Changes to the managed Pacifica calendar do not come back to Pacifica. Don't delete or reschedule managed events in Google; make those changes in the CRM. A Google-side deletion may require removing and recreating the CRM appointment.
 - Reconnect can reuse the existing calendar when the selected Google account still has access. Disconnect forgets the CRM credentials and leaves Google's existing calendar/events in place. Remove that calendar in Google to stop its remaining reminders. You can also revoke Pacifica access in your Google account's connected-app settings.
 
 ## CRM and phone reminders without Google

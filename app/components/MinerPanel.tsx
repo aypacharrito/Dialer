@@ -37,6 +37,7 @@ export default function MinerPanel({
   const [feedBusy,setFeedBusy]=useState(false);
   const feedInFlight=useRef(false);
   const [feedMessage,setFeedMessage]=useState("");
+  const [dismissedStatus,setDismissedStatus]=useState("");
   const [zipDraft,setZipDraft]=useState(autoFeed.zipCodes.join(", "));
   const [categoryDraft,setCategoryDraft]=useState(autoFeed.commercialCategories.join(", "));
 
@@ -52,7 +53,6 @@ export default function MinerPanel({
   const commercialReady=providerStatus?.publicBusiness===true||consumerReady;
   const checkingProviders=providerStatus===null;
   const currentReady=mode==="commercial"?commercialReady:consumerReady;
-  const sourceState=checkingProviders?"Checking sources…":currentReady?"Ready":"Source required";
 
   function patchAutoFeed(patch:Partial<MinerAutoFeedSettings>){onAutoFeedChange({...autoFeed,...patch})}
 
@@ -61,8 +61,8 @@ export default function MinerPanel({
     if(!currentReady){setFeedMessage("This category needs a connected data source. Commercial can use public business listings.");return}
     const zipCodes=zipDraft.split(",").map(value=>value.trim()).filter(Boolean);
     if(!zipCodes.length||zipCodes.some(value=>!/^\d{5}(?:-\d{4})?$/.test(value))){setFeedMessage("Enter valid ZIP codes, separated by commas.");return}
-    const settings={...autoFeed,zipCodes,batchSize:50,commercialCategories:categoryDraft.split(",").map(value=>value.trim()).filter(Boolean),personalAuto:mode==="personal-auto",home:mode==="home",commercial:mode==="commercial"};
-    feedInFlight.current=true;setFeedBusy(true);setFeedMessage("Searching connected prospect data…");
+    const settings={...autoFeed,enabled:true,zipCodes,batchSize:50,commercialCategories:categoryDraft.split(",").map(value=>value.trim()).filter(Boolean),personalAuto:mode==="personal-auto",home:mode==="home",commercial:mode==="commercial"};
+    feedInFlight.current=true;setDismissedStatus("");setFeedBusy(true);setFeedMessage("Searching connected prospect data…");
     try{
       const response=await fetch("/api/miner/auto-feed",{
         method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({settings}),
@@ -79,7 +79,7 @@ export default function MinerPanel({
 
   return <div className="page-view miner-view miner-pro">
     <header className="module-bar miner-pro-header">
-      <div><span className="eyebrow">PROSPECTING</span><div className="miner-title-line"><h1>Miner</h1><span className={`miner-health ${currentReady?"ready":checkingProviders?"checking":"setup"}`}><i/>{sourceState}</span></div></div>
+      <div><span className="eyebrow">PROSPECTING</span><div className="miner-title-line"><h1>Miner</h1></div></div>
       <button className="primary" disabled={!visible.length||running} onClick={()=>onStart(mode)}>{running?"Dialing…":`Start dialer · ${visible.length}`}</button>
     </header>
     <section className="miner-engine-card miner-simple">
@@ -91,7 +91,7 @@ export default function MinerPanel({
         <label className="miner-field"><span>ZIP codes</span><input aria-label="Target ZIP codes" value={zipDraft} onChange={event=>setZipDraft(event.target.value)} placeholder="91405, 91335" disabled={feedBusy}/></label>
         <button className="miner-run-button" disabled={feedBusy||checkingProviders||!currentReady} onClick={()=>void runNow()}>{feedBusy?"Searching…":"Find prospects"}</button>
       </div>
-      <div className="miner-run-status" role="status" aria-live="polite">{feedMessage||autoFeed.lastRunStatus||"Up to 50 prospects per search"}</div>
+      <div className="miner-run-status" role="status" aria-live="polite">{(feedMessage||autoFeed.lastRunStatus)!==dismissedStatus&&(feedMessage||autoFeed.lastRunStatus)?<><span>{feedMessage||autoFeed.lastRunStatus}</span>{!feedBusy&&<button aria-label="Dismiss search status" onClick={()=>{setDismissedStatus(feedMessage||autoFeed.lastRunStatus);setFeedMessage("")}}>×</button>}</>:"Up to 50 prospects per search"}</div>
       <details className="miner-options"><summary>Search settings & sources</summary>
         <label className="miner-field"><span>Commercial categories (optional)</span><input value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value)} placeholder="contractor, restaurant"/></label>
         <label><input type="checkbox" checked={autoFeed.enabled} onChange={event=>patchAutoFeed({enabled:event.target.checked,batchSize:50,zipCodes:zipDraft.split(",").map(value=>value.trim()).filter(Boolean),commercialCategories:categoryDraft.split(",").map(value=>value.trim()).filter(Boolean),personalAuto:mode==="personal-auto",home:mode==="home",commercial:mode==="commercial"})}/> Search daily in the background</label>

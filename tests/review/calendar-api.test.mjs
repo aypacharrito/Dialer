@@ -4,7 +4,7 @@ import {GET,POST} from '../../app/api/calendar/google/route.ts';
 import {GET as callback} from '../../app/api/calendar/google/callback/route.ts';
 import {GET as officeGet,POST as office} from '../../app/api/crm/office/route.ts';
 import {readCalendarSecret,writeCalendarSecret,withCalendarLock} from '../../app/lib/calendar-vault.ts';
-import {calendarScope} from '../../app/lib/google-calendar.ts';
+import {calendarScope,calendarReadScope} from '../../app/lib/google-calendar.ts';
 const request=(body,origin='https://crm.test')=>new Request('https://crm.test/api/calendar/google',{method:'POST',headers:{'Content-Type':'application/json',origin},body:JSON.stringify(body)});
 function setup(){
  Object.assign(process.env,{GOOGLE_CALENDAR_CLIENT_ID:'client-test',GOOGLE_CALENDAR_CLIENT_SECRET:'secret-test',GOOGLE_CALENDAR_ENCRYPTION_KEY:'cd'.repeat(32),GOOGLE_CALENDAR_REDIRECT_URI:'https://crm.test/api/calendar/google/callback'});
@@ -23,7 +23,7 @@ test('Google routes enforce tenant ownership, origin and configuration without l
  globalThis.calendarAccess.allowed=false;assert.equal((await GET()).status,403);
 });
 test('OAuth callback rejects changed account, bad state and missing calendar permission',async()=>{
- setup();let result=await (await POST(request({action:'connect'}))).json();let state=new URL(result.url).searchParams.get('state');assert.equal(new URL(result.url).searchParams.get('scope'),calendarScope);
+ setup();let result=await (await POST(request({action:'connect'}))).json();let state=new URL(result.url).searchParams.get('state');assert.equal(new URL(result.url).searchParams.get('scope'),`${calendarScope} ${calendarReadScope}`);
  globalThis.calendarAccess.accountUserId='another-user';assert.match((await callback(new Request(`https://crm.test/api/calendar/google/callback?code=test&state=${state}`))).headers.get('location'),/calendar=failed/);assert.equal(await readCalendarSecret('workspace-a'),null);
  setup();assert.match((await callback(new Request('https://crm.test/api/calendar/google/callback?code=test&state=bad'))).headers.get('location'),/calendar=failed/);
  result=await (await POST(request({action:'connect'}))).json();state=new URL(result.url).searchParams.get('state');globalThis.fetch=async()=>Response.json({access_token:'access-test',refresh_token:'refresh-test',scope:'unrelated'});

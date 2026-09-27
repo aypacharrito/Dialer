@@ -11,6 +11,6 @@ test('Miner runs only the visible category at maximum batch and immediately hand
  try{await act(async()=>{root.render(React.createElement(MinerPanel,{mode:'commercial',onMode(){},prospects:[],dialing:false,activeScope:'crm',onStart(){},onCall(){},onOpen(){},onResults:items=>{results=items},autoFeed:{...defaultWorkspaceProfile.minerAutoFeed,zipCodes:['91405'],batchSize:10},onAutoFeedChange(){}}));});await act(async()=>new Promise(r=>setTimeout(r,20)));
  assert.doesNotMatch(document.body.textContent,/Import list|Batch size|VIN decode|Property verify/);
  await act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent==='Find prospects').click());
- assert.equal(posted.settings.batchSize,50);assert.equal(posted.settings.commercial,true);assert.equal(posted.settings.personalAuto,false);assert.equal(posted.settings.home,false);assert.equal(results[0].id,77);assert.match(document.querySelector('[role=status]').textContent,/Added 1/);
+ assert.equal(posted.settings.enabled,true);assert.equal(posted.settings.batchSize,50);assert.equal(posted.settings.commercial,true);assert.equal(posted.settings.personalAuto,false);assert.equal(posted.settings.home,false);assert.equal(results[0].id,77);assert.match(document.querySelector('[role=status]').textContent,/Added 1/);
  }finally{await act(async()=>root.unmount());dom.window.close()}
 });

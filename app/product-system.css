@@ -37,16 +37,16 @@ html[data-theme] {
 }
 
 html[data-theme="dark"] {
-  --ps-bg: #0d1512;
-  --ps-surface: #121d18;
-  --ps-surface-2: #16231e;
-  --ps-surface-3: #1a2a23;
+  --ps-bg: #111519;
+  --ps-surface: #191e23;
+  --ps-surface-2: #20272d;
+  --ps-surface-3: #283138;
   --ps-text: #dcebe5;
   --ps-text-strong: #f4fbf8;
-  --ps-muted: #9bafa6;
+  --ps-muted: #a6b4b7;
   --ps-subtle: #738b81;
-  --ps-line: #293d35;
-  --ps-line-strong: #385248;
+  --ps-line: #303c43;
+  --ps-line-strong: #46575d;
   --ps-accent: #55c9a6;
   --ps-accent-hover: #72d7b7;
   --ps-accent-soft: #16372c;

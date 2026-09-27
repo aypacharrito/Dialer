@@ -4,7 +4,7 @@ const steps=[
   ["today","Your day at a glance","Start here for contacts that need attention."],
   ["dialer","Call and record the result","After a call, mark Interested or Appointment and enter the agreed date to add it to Calendar. Routine follow-ups stay out."],
   ["messages","Keep the conversation together","Read and reply here. Select the contact name or info button for their details."],
-  ["office","Your calendar","Appointments, interested callbacks, payments, and events you add. Connect Google in calendar settings."],
+  ["office","Your calendar","Appointments, interested callbacks, payments, and events you add. Connect Google or Outlook in calendar settings."],
   ["ai","Ask Pacifica","Draft messages, organize leads, and manage your outreach instructions here."],
 ] as const;
 export default function WorkspaceTour({workspaceId,onNavigate}:{workspaceId:string;onNavigate:(view:string)=>void}){

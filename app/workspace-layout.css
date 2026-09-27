@@ -187,7 +187,7 @@ html[data-theme] .app-shell .template-library .template-card-main { font-weight:
 
 html[data-theme] .app-shell .send-feedback.has-feedback { opacity:1; transform:none; }
 html[data-theme] .app-shell .workspace-load-backdrop { position:fixed; inset:0; z-index:250; display:grid; place-items:center; padding:24px; background:var(--ps-bg); }
-html[data-theme] .app-shell .workspace-load-card { width:min(440px,100%); text-align:center; color:var(--ps-text); outline:none; }
+html[data-theme] .app-shell .workspace-load-card { background:transparent!important; border:0!important; box-shadow:none!important; width:min(440px,100%); text-align:center; color:var(--ps-text); outline:none; }
 html[data-theme] .app-shell .workspace-load-mark { display:grid; place-items:center; width:48px; height:48px; margin:0 auto 24px; object-fit:contain; background:transparent; }
 html[data-theme] .app-shell .workspace-load-card h1 { font-size:calc(22px * var(--workspace-text-scale,1)); margin:0 0 12px; }
 html[data-theme] .app-shell .workspace-load-card p { color:var(--ps-muted); line-height:1.6; }

@@ -190,6 +190,7 @@ html[data-theme] .inbound-availability {
 }
 
 html[data-theme] .notification {
+  display:grid!important;place-items:center;flex:none;line-height:1;
   width: var(--p-control-h) !important;
   min-width: var(--p-control-h) !important;
   padding: 0 !important;

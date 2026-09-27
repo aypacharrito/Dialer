@@ -7,7 +7,7 @@ type Channel="sms"|"email";
 type Attachment={url:string;name:string;type:string;size:number;expiresAt:number;channel:Channel};
 
 const smsTypes=new Set(["image/jpeg","image/jpg","image/png","image/gif","image/heic","image/heif","application/pdf","text/vcard","text/x-vcard","text/csv"]);
-const emojis=["😀","😂","😊","😍","🔥","👍","🙏","🎉","❤️","✅","📞","📩","🚗","🏠","💰","⭐","😎","🤝","💯","👋","🙂","😉","🥳","📎"];
+const emojis=["😀","😂","😊","😍","🔥","👍","🙏","🎉","❤️","✅","📞","📩","🚗","🏠","💰","⭐","😎","🤝","💯","👋","🙂","😉","🥳","📎","😄","😁","😅","🤣","😇","🥰","😘","🤔","😬","😔","😢","😭","😮","🤩","🙌","👏","👌","✌️","💪","🤞","🫶","💚","💙","💜","💛","🧡","💔","✨","🌟","🎈","🎂","🎁","☀️","🌈","☕","🏡","🚙","🚘","🛻","🏢","🛡️","📅","⏰","📋","📝","📄","📧","🔔","🔑","💵","✔️","❌","❗","❓","➡️","⬅️","📍","🔗","💬"];
 const shortSize=(bytes:number)=>bytes<1024?`${bytes} B`:bytes<1024*1024?`${Math.round(bytes/1024)} KB`:`${(bytes/1024/1024).toFixed(1)} MB`;
 const activeChannel=():Channel=>document.querySelector('#message-tab-email[aria-selected="true"]')?"email":"sms";
 
@@ -31,8 +31,11 @@ export default function MessageAttachmentBridge(){
   const [dragging,setDragging]=useState(false);
   const [emojiOpen,setEmojiOpen]=useState(false);
   const [error,setError]=useState("");
+  const [emojiPosition,setEmojiPosition]=useState({left:12,top:12});
+  const emojiRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLInputElement>(null);
   const attachmentRef=useRef<Attachment[]>([]);const busyRef=useRef(false);const armedUntil=useRef(0);const contextKey=useRef("");
+  useEffect(()=>{if(!emojiOpen)return;const close=(e:PointerEvent)=>{if(e.target instanceof Element&&!emojiRef.current?.contains(e.target)&&!e.target.closest('[data-emoji-toggle]'))setEmojiOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setEmojiOpen(false);document.querySelector<HTMLButtonElement>('[data-emoji-toggle]')?.focus()}};const resize=()=>setEmojiOpen(false);const scroll=(e:Event)=>{if(e.target instanceof Node&&!emojiRef.current?.contains(e.target))setEmojiOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',key);document.addEventListener('scroll',scroll,true);window.addEventListener('resize',resize);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',key);document.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',resize)}},[emojiOpen]);
   useEffect(()=>{attachmentRef.current=attachments},[attachments]);
   useEffect(()=>{busyRef.current=busy},[busy]);
 
@@ -114,10 +117,10 @@ export default function MessageAttachmentBridge(){
     <input ref={inputRef} type="file" hidden multiple accept={channel==="sms"?"image/jpeg,image/png,image/gif,image/heic,image/heif,application/pdf,text/vcard,text/csv":"*/*"} onChange={event=>{const files=Array.from(event.target.files||[]);event.target.value="";void addFiles(files)}}/>
     <div className="message-attachment-toolbar">
       <button type="button" disabled={busy} onClick={()=>inputRef.current?.click()}>📎 {busy?"Uploading…":"Attach file"}</button>
-      <button type="button" className={emojiOpen?"active":""} aria-expanded={emojiOpen} onClick={()=>setEmojiOpen(open=>!open)}>😊 Emoji</button>
+      <button type="button" data-emoji-toggle className={emojiOpen?"active":""} aria-expanded={emojiOpen} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();setEmojiPosition({left:Math.max(12,Math.min(rect.left,window.innerWidth-402)),top:Math.max(12,rect.top-256)});setEmojiOpen(open=>!open)}}>😊 Emoji</button>
       <small>{channel==="sms"?"Twilio MMS: JPG, PNG and GIF get the larger media allowance; HEIC/HEIF and document types use the smaller safety limit.":"Drag photos, GIFs, or files directly into this composer."}</small>
     </div>
-    {emojiOpen&&<div className="message-emoji-picker" role="group" aria-label="Emoji picker">{emojis.map(emoji=><button key={emoji} type="button" aria-label={`Insert ${emoji}`} onClick={()=>insertEmoji(emoji)}>{emoji}</button>)}</div>}
+    {emojiOpen&&createPortal(<div ref={emojiRef} style={emojiPosition} className="message-emoji-picker" role="group" aria-label="Emoji picker">{emojis.map(emoji=><button key={emoji} type="button" aria-label={`Insert ${emoji}`} onMouseDown={e=>e.preventDefault()} onClick={()=>insertEmoji(emoji)}>{emoji}</button>)}</div>,document.body)}
     {visible.length>0&&<div className="message-attachment-chips">{visible.map(item=><span key={item.url}><b>{item.type==="image/gif"?"GIF":item.type.startsWith("image/")?"IMG":"FILE"}</b>{item.name}<small>{shortSize(item.size)}</small><button type="button" aria-label={`Remove ${item.name}`} onClick={()=>setAttachments(current=>current.filter(file=>file.url!==item.url))}>×</button></span>)}</div>}
     {error&&<p className="message-attachment-error" role="alert">{error}</p>}
   </div>,host);

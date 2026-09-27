@@ -39,9 +39,7 @@ export default function CalendarAlerts({workspaceId,onOpen}:{workspaceId:string;
   }
   async function sync(){
    if(syncing)return;syncing=true;
-   try{const response=await fetch('/api/calendar/google',{cache:'no-store'});if(!response.ok||canceled)return;const status=await response.json();if(!status.connected||!status.canManage||canceled)return;
-    await fetch('/api/calendar/google',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync'})});
-    if(!canceled)window.dispatchEvent(new Event('pacifica:calendar-synced'));
+   try{await Promise.allSettled(['google','outlook'].map(async provider=>{const response=await fetch(`/api/calendar/${provider}`,{cache:'no-store'});if(!response.ok||canceled)return;const status=await response.json();if(!status.connected||!status.canManage||canceled)return;await fetch(`/api/calendar/${provider}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sync'})})}));if(!canceled)window.dispatchEvent(new Event('pacifica:calendar-synced'));
    }catch{/* Connection panel displays server errors on the next refresh. */}finally{syncing=false}
   }
   const changed=()=>{void check();void sync()},initial=setTimeout(changed,1000),poll=setInterval(()=>void check(),30000),syncPoll=setInterval(()=>void sync(),300000);
