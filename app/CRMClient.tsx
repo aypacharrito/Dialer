@@ -200,6 +200,9 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const minerLeads=useMemo(()=>allLeads.filter(item=>!item.deletedAt&&/^Pacifica Miner\b/i.test(item.source)),[allLeads]);
   const leads=useMemo(()=>allLeads.filter(item=>!item.deletedAt&&!/^Pacifica Miner\b/i.test(item.source)),[allLeads]);
   const [deletedLead,setDeletedLead]=useState<Lead|null>(null);
+  const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
+  useEffect(()=>{const frame=requestAnimationFrame(()=>{try{setSidebarCollapsed(localStorage.getItem("pacifica:sidebar-collapsed")==="true")}catch{}});return()=>cancelAnimationFrame(frame)},[]);
+  function toggleSidebar(){setSidebarCollapsed(value=>{const next=!value;try{localStorage.setItem("pacifica:sidebar-collapsed",String(next))}catch{}return next})}
   const [dialing,setDialing]=useState(false);
   const [connected,setConnected]=useState(false);
   const [index,setIndex]=useState(0);
@@ -1225,11 +1228,12 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     switchLine(leadItem.line);setMessageTarget({leadId:leadItem.id,channel});setSelectedLead(null);setView("messages");
   }
 
-  return <main className="app-shell" onDragEnter={onFileDragEnter} onDragOver={onFileDragOver} onDragLeave={onFileDragLeave} onDrop={onFileDrop}>
+  return <main className={`app-shell${sidebarCollapsed?" sidebar-collapsed":""}`} onDragEnter={onFileDragEnter} onDragOver={onFileDragOver} onDragLeave={onFileDragLeave} onDrop={onFileDrop}>
     {!workspaceHydrated&&<WorkspaceLoadGate failed={workspaceSyncStatus.startsWith("Offline")}/>}
     {workspaceHydrated&&isOwner&&!workspaceProfile.onboardingCompleted&&<BusinessOnboarding profile={workspaceProfile} onComplete={setWorkspaceProfile}/>}
     {fileDragActive&&<div className="file-drop-overlay" role="status" aria-live="polite"><div><Icon name="upload"/><span>DROP TO IMPORT</span><b>License, policy, or lead file</b><small>Images create a reviewable lead · CSV, TSV, and TXT merge into Contacts</small></div></div>}
     <aside className="sidebar">
+      <button type="button" className="sidebar-toggle" aria-label={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"} aria-expanded={!sidebarCollapsed} onClick={toggleSidebar} title={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"}>{sidebarCollapsed?"»":"«"}</button>
       <div className="logo"><span className="brand-mark"><Image src="/pacifica-mark.png" width={32} height={32} alt="" priority/></span><div><b>PACIFICA</b></div></div>
       <nav>{nav.map(([id,label,icon])=><button key={id} className={view===id?"active":""} aria-label={id==="messages"&&messageUnreadCount?`${label}, ${messageUnreadCount} unread`:label} title={label} aria-current={view===id?"page":undefined} onMouseEnter={()=>preloadView(id)} onFocus={()=>preloadView(id)} onClick={()=>openView(id)}><Icon name={icon}/><span>{label}</span>{id==="leads"&&<em>{leads.length}</em>}{id==="messages"&&messageUnreadCount>0&&<em className="message-unread">{Math.min(99,messageUnreadCount)}</em>}</button>)}</nav>
       <div className="sidebar-install"><PwaInstallButton/></div>

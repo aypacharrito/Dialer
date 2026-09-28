@@ -1,6 +1,7 @@
 import {runOfficeReminders} from "../../../lib/office-reminder-engine";
 import {runFollowUpAutomation} from "../../../lib/follow-up-engine";
 import {runClientReminderAutomation} from "../../../lib/client-reminder-engine";
+import {workspaceRedis} from "../../../lib/workspace-storage";
 import {logError} from "../../../lib/observability";
 
 export const runtime="nodejs";
@@ -13,6 +14,7 @@ function authorized(request:Request){
 
 export async function GET(request:Request){
   if(!authorized(request))return Response.json({error:process.env.CRON_SECRET?"Unauthorized":"CRON_SECRET is not configured"},{status:process.env.CRON_SECRET?401:503});
+  await workspaceRedis(["SET","pacifica:v2:automation:cloud-heartbeat",JSON.stringify({startedAt:new Date().toISOString()})]);
   try{const followUps=await runFollowUpAutomation();const clientReminders=await runClientReminderAutomation();const officeReminders=await runOfficeReminders();return Response.json({ok:true,followUps,clientReminders,officeReminders})}
   catch(error){logError("follow_up_automation_failed",error);return Response.json({error:error instanceof Error?error.message:"Automation run failed"},{status:500})}
 }

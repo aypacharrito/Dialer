@@ -15,8 +15,9 @@ async function access(){
 
 export async function GET(){
   const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
-  const stored=await workspaceRedis(["GET","pacifica:v2:automation:last-run"]);
-  return Response.json({configured:Boolean(process.env.CRON_SECRET),browserSchedule:"Runs every five minutes while Pacifica is open",serverSchedule:"daily at 16:00 UTC",lastRun:typeof stored==="string"?JSON.parse(stored):null},{headers:{"Cache-Control":"no-store"}});
+  const stored=await workspaceRedis(["GET","pacifica:v2:automation:cloud-heartbeat"]);
+  let heartbeat=null;try{heartbeat=typeof stored==="string"?JSON.parse(stored):null}catch{}
+  return Response.json({configured:Boolean(process.env.CRON_SECRET),browserSchedule:"Runs every five minutes while Pacifica is open",serverSchedule:"Cloud scheduler must call /api/cron/follow-ups every five minutes; a secret alone does not activate it",lastRun:null,cloudLastStartedAt:heartbeat?.startedAt||null},{headers:{"Cache-Control":"no-store"}});
 }
 
 export async function POST(){

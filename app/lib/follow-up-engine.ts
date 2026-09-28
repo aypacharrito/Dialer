@@ -107,7 +107,7 @@ function assignRoundRobin<T extends {assignedTo?:string;stage?:string;doNotCall?
 }
 
 export async function runFollowUpAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number}={}):Promise<AutomationRun>{
-  const startedAt=new Date().toISOString();let workspaces=0,changed=0,duplicatesRemoved=0,due=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
+  const startedAt=new Date().toISOString();let workspaces=0,changed=0,duplicatesRemoved=0,due=0,attempted=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
   const records=await automationWorkspaces(options);
   for(const record of records){
     if(!await workspaceAutomationAccess(record.workspaceId))continue;
@@ -119,10 +119,11 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
     const control=cleanAiControl(record.workspace.aiControl);
     if(!(control.salesEnabled??profile.serverAutomationEnabled)){if(workspaceChanged){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads:currentLeads});changed++}continue}
     const leads=currentLeads.map(raw=>{const prepared=prepareAutomationLead(raw,profile);if(JSON.stringify(prepared)!==JSON.stringify(raw))workspaceChanged=true;return prepared});
-    for(let index=0;index<leads.length&&due<(options.sendLimit||250);index++){
+    for(let index=0;index<leads.length&&attempted<(options.sendLimit||250);index++){
       const lead=leads[index];if(lead.automationStatus!=="action due")continue;due++;
       const sequence=sequenceFor(lead,profile);if(!sequence){blocked++;continue}const steps=enabledSteps(sequence);const step=steps[lead.automationStep||0];if(!step){leads[index]={...lead,automationStatus:"complete",automationNextAt:""};workspaceChanged=true;continue}
       if(step.channel==="task"){
+        attempted++;
         const taskNote=`Pacifica automation task: personally follow up with ${lead.name}.`;
         leads[index]=nextState({...lead,followUp:new Date().toISOString(),communications:appendCommunication(lead.communications,communication({channel:"email",direction:"outbound",subject:"Sales task",body:taskNote,status:"task",sentAt:new Date().toISOString(),provider:"pacifica"}))},sequence);
         tasksCreated++;workspaceChanged=true;continue;
@@ -132,6 +133,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
       if(automatedTouchesToday(lead,profile.automationTimezone)>=dailyLimit){
         leads[index]={...lead,automationStatus:"scheduled",automationNextAt:isoAfter(1440),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue;
       }
+      attempted++;
       const candidates=await availableChannels(record.workspaceId,lead,profile,step.channel);
       if(!candidates.length){blocked++;leads[index]={...lead,automationStatus:"blocked",automationLastError:"No consented, configured delivery channel is ready",automationNextAt:isoAfter(60),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue}
       let delivered=false;let lastError="";
