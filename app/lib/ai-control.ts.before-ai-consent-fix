@@ -1,7 +1,7 @@
 import type {OfficeItem} from './office-schedule';
 export type OutreachRule={enabled:boolean;audience:'all-eligible'|'new-leads'|'follow-ups'|'selected';ids:number[];excludeIds:number[];sources:string[];excludeSources:string[];dailyAt:string;timeZone:string;startDate:string};
 export type AiControl={revision:number;salesEnabled:boolean|null;rules:Partial<Record<'sms'|'email',OutreachRule>>;receipts:Array<{id:string;at:string;changes:string[]}>};
-export type ControlCommand={kind:'outreach'|'calendar'|'consent';channel:'sms'|'email'|null;enabled:boolean|null;audience:OutreachRule['audience']|null;ids:number[]|null;excludeIds:number[]|null;sources:string[]|null;excludeSources:string[]|null;dailyAt:string|null;timeZone:string|null;startDate:string|null;salesEnabled:boolean|null;calendarAction:'create'|'edit'|'complete'|'delete'|null;eventId:string|null;leadId:number|null;title:string|null;dueAt:string|null;durationMinutes:number|null;staffReminderMinutes:number|null};
+export type ControlCommand={kind:'outreach'|'calendar';channel:'sms'|'email'|null;enabled:boolean|null;audience:OutreachRule['audience']|null;ids:number[]|null;excludeIds:number[]|null;sources:string[]|null;excludeSources:string[]|null;dailyAt:string|null;timeZone:string|null;startDate:string|null;salesEnabled:boolean|null;calendarAction:'create'|'edit'|'complete'|'delete'|null;eventId:string|null;leadId:number|null;title:string|null;dueAt:string|null;durationMinutes:number|null;staffReminderMinutes:number|null};
 export const defaultRule=():OutreachRule=>({enabled:true,audience:'all-eligible',ids:[],excludeIds:[],sources:[],excludeSources:[],dailyAt:'',timeZone:'America/Los_Angeles',startDate:''});
 const list=(v:unknown)=>Array.isArray(v)?v:[];
 export function cleanAiControl(value:unknown):AiControl{
@@ -37,9 +37,9 @@ export function validateRule(rule:OutreachRule,leads:Record<string,unknown>[]){
  if(rule.startDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(rule.startDate)||!Number.isFinite(Date.parse(rule.startDate))||new Date(rule.startDate).toISOString().slice(0,10)!==rule.startDate))throw Error('Use a valid start date.');
  try{new Intl.DateTimeFormat('en',{timeZone:rule.timeZone}).format()}catch{throw Error('Choose a valid time zone.')}
 }
-export function applyControlCommands<T extends {leads:unknown[];officeItems?:OfficeItem[];aiControl?:AiControl;profile?:{smsConsentSources?:string[];emailConsentSources?:string[]}}>(workspace:T,commands:ControlCommand[],requestId:string,now=new Date()){
+export function applyControlCommands<T extends {leads:unknown[];officeItems?:OfficeItem[];aiControl?:AiControl}>(workspace:T,commands:ControlCommand[],requestId:string,now=new Date()){
  if(!Array.isArray(commands)||!commands.length||commands.length>10)throw Error('Choose between one and ten changes.');
- const control=cleanAiControl(workspace.aiControl),changes:string[]=[],leads=workspace.leads as Record<string,unknown>[];let items=[...(workspace.officeItems||[])],profile=workspace.profile?{...workspace.profile}:undefined;
+ const control=cleanAiControl(workspace.aiControl),changes:string[]=[],leads=workspace.leads as Record<string,unknown>[];let items=[...(workspace.officeItems||[])];
  for(const [index,c] of commands.entries()){
   if(c.kind==='outreach'){
    if(c.channel!=='sms'&&c.channel!=='email')throw Error('Choose text or email.');
@@ -48,19 +48,6 @@ export function applyControlCommands<T extends {leads:unknown[];officeItems?:Off
    if(typeof rule.enabled!=='boolean')throw Error('Choose whether sending is enabled.');validateRule(rule,leads);control.rules[c.channel]=rule;
    if(c.salesEnabled!==null&&c.salesEnabled!==undefined){if(typeof c.salesEnabled!=='boolean')throw Error('Invalid automation setting.');control.salesEnabled=c.salesEnabled;changes.push(`Automated sales sequences ${c.salesEnabled?'enabled':'paused'}.`)}
    changes.push(describeRule(c.channel,rule));
-  }else if(c.kind==='consent'){
-   if(c.channel!=='sms'&&c.channel!=='email')throw Error('Choose text or email.');
-   if(typeof c.enabled!=='boolean')throw Error('Choose whether this source has documented consent.');
-   if(!profile)throw Error('Workspace profile is unavailable.');
-   const requested=Array.isArray(c.sources)?Array.from(new Set(c.sources.map(x=>String(x).trim()).filter(Boolean))):[];
-   if(!requested.length)throw Error('Choose at least one existing lead source.');
-   const sourceMap=new Map(leads.map(x=>String(x.source||'').trim()).filter(Boolean).map(source=>[source.toLowerCase(),source] as const));
-   const resolved=requested.map(source=>sourceMap.get(source.toLowerCase())||'');
-   if(resolved.some(source=>!source))throw Error('Choose an existing source name.');
-   const canonical=Array.from(new Set(resolved)),field=c.channel==='sms'?'smsConsentSources':'emailConsentSources';
-   const current=Array.isArray(profile[field])?profile[field]!.map(String):[];
-   profile[field]=c.enabled?Array.from(new Set([...current,...canonical])):current.filter(source=>!canonical.some(item=>item.toLowerCase()===source.toLowerCase()));
-   changes.push(`${c.channel==='sms'?'SMS':'Email'} consent ${c.enabled?'documented for':'source trust removed for'}: ${canonical.join(', ')}. ${c.enabled?'Current and future contacts from these sources pass permission checks unless they are opted out, DNC, deleted, or otherwise protected.':'Individual contact consent records are unchanged.'}`);
   }else if(c.kind==='calendar'){
    const old=items.find(x=>x.id===c.eventId);
    if(c.calendarAction!=='create'&&!old)throw Error('Calendar item no longer exists.');
@@ -79,5 +66,5 @@ export function applyControlCommands<T extends {leads:unknown[];officeItems?:Off
   }else throw Error('Unsupported CRM action.');
  }
  control.revision++;control.receipts=[...control.receipts,{id:requestId,at:now.toISOString(),changes}].slice(-100);
- return {workspace:{...workspace,...(profile?{profile}:{}),officeItems:items,aiControl:control},changes};
+ return {workspace:{...workspace,officeItems:items,aiControl:control},changes};
 }
