@@ -1,12 +1,13 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from "react";
+import {assessCommercial} from "../lib/commercial-qualification";
 import type {MinerAutoFeedSettings} from "../lib/workspace-profile";
 
 export type MinerMode="personal-auto"|"home"|"commercial";
 export type MinerProspect={
   id:number;name:string;phone:string;email?:string;city:string;state?:string;source:string;product:string;stage:string;outcome:string;
-  received?:string;importedAt?:string;attempts?:number;doNotCall:boolean;vin?:string;vehicle?:string;address?:string;
+  extraFields?:Record<string,string>;received?:string;importedAt?:string;attempts?:number;doNotCall:boolean;vin?:string;vehicle?:string;address?:string;
 };
 type ProviderStatus={dataAxle:boolean;regrid:boolean;nhtsa:boolean;publicBusiness:boolean};
 
@@ -29,7 +30,7 @@ export default function MinerPanel({
   const byMode=useMemo(()=>({
     "personal-auto":prospects.filter(lead=>isMode(lead,"personal-auto")&&!lead.doNotCall&&lead.stage!=="Closed").sort((a,b)=>arrived(b)-arrived(a)),
     home:prospects.filter(lead=>isMode(lead,"home")&&!lead.doNotCall&&lead.stage!=="Closed").sort((a,b)=>arrived(b)-arrived(a)),
-    commercial:prospects.filter(lead=>isMode(lead,"commercial")&&!lead.doNotCall&&lead.stage!=="Closed").sort((a,b)=>arrived(b)-arrived(a)),
+    commercial:prospects.filter(lead=>isMode(lead,"commercial")&&assessCommercial(lead).priority>=0).sort((a,b)=>assessCommercial(b).priority-assessCommercial(a).priority||arrived(b)-arrived(a)),
   }),[prospects]);
   const visible=byMode[mode];
   const running=activeScope===`miner-${mode}`&&dialing;
@@ -95,17 +96,17 @@ export default function MinerPanel({
       <details className="miner-options"><summary>Search settings & sources</summary>
         <label className="miner-field"><span>Commercial categories (optional)</span><input value={categoryDraft} onChange={event=>setCategoryDraft(event.target.value)} placeholder="contractor, restaurant"/></label>
         <label><input type="checkbox" checked={autoFeed.enabled} onChange={event=>patchAutoFeed({enabled:event.target.checked,batchSize:50,zipCodes:zipDraft.split(",").map(value=>value.trim()).filter(Boolean),commercialCategories:categoryDraft.split(",").map(value=>value.trim()).filter(Boolean),personalAuto:mode==="personal-auto",home:mode==="home",commercial:mode==="commercial"})}/> Search daily in the background</label>
-        <p>Commercial uses your business provider, then public OpenStreetMap listings. Auto and Home require a connected licensed consumer source. Public listings do not confirm renewal dates or buying interest.</p>
+        <p>Commercial uses your business provider, then public OpenStreetMap listings. Auto and Home require a connected licensed consumer source. City registrations are matched by exact name and address when available. Public listings do not confirm renewal dates, phone ownership, or buying interest. No automatic texts or emails are enabled for mined records.</p>
         <small>{consumerReady?"Consumer source connected":"Consumer source not connected"} · {commercialReady?"Commercial source available":"Commercial source unavailable"}</small>
       </details>
     </section>
-    <h2 className="miner-results-heading">{modeLabel(mode)} <small>{visible.length} ready to call</small></h2>
+    <h2 className="miner-results-heading">{modeLabel(mode)} <small>{visible.length} prospects</small></h2>
     <div className="table-card crm-table miner-table miner-pro-table">
       <div className="table-head"><span>PROSPECT</span><span>PRODUCT / SOURCE</span><span>STATUS</span><span>ACTIONS</span></div>
       {visible.map(lead=><div className="table-row" key={lead.id}>
         <button className="miner-person" onClick={()=>onOpen(lead.id)}><i>{lead.name.split(" ").map(part=>part[0]).slice(0,2).join("")}</i><span><b>{lead.name}</b><small>{lead.phone||"No phone"} · {[lead.city,lead.state].filter(Boolean).join(", ")}</small>{lead.vin&&<small>VIN {lead.vin} · {lead.vehicle||"decode pending"}</small>}</span></button>
-        <span><b>{lead.product||"Insurance prospect"}</b><small>{lead.source}</small></span>
-        <span><em className="stage">{lead.attempts?`${lead.attempts} attempt${lead.attempts===1?"":"s"}`:"New prospect"}</em></span>
+        <span><b>{lead.product||"Insurance prospect"}</b><small>{lead.source}</small>{mode==="commercial"&&<small title={assessCommercial(lead).nextStep}>{assessCommercial(lead).reason}</small>}</span>
+        <span><em className="stage">{mode==="commercial"?assessCommercial(lead).label:lead.attempts?`${lead.attempts} attempt${lead.attempts===1?"":"s"}`:"New prospect"}</em></span>
         <span className="miner-actions"><button disabled={!lead.phone} onClick={()=>onCall(lead.id)}>Call</button><button onClick={()=>onOpen(lead.id)}>Open</button></span>
       </div>)}
       {!visible.length&&<div className="miner-empty">

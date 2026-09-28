@@ -1,3 +1,4 @@
+import {assessCommercial,loadCityRegistrations,matchRegistration} from "./commercial-qualification";
 import {randomInt} from "node:crypto";
 import {cleanWorkspaceProfile,type MinerAutoFeedSettings} from "./workspace-profile";
 import {listStoredWorkspaces,type StoredWorkspace,updateStoredWorkspace} from "./workspace-storage";
@@ -210,7 +211,10 @@ async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
       address:[tags["addr:housenumber"],tags["addr:street"]].filter(Boolean).join(" "),
       city:tags["addr:city"]||"",
       state:tags["addr:state"]||"",
-      zip:tags["addr:postcode"]||zip.slice(0,5),
+      zip:tags["addr:postcode"]||"",
+      listing_url:`https://www.openstreetmap.org/${element.type}/${element.id}`,
+      operator:tags.operator||"",
+      brand:tags.brand||"",
       category:categoryValue,
       description:[categoryValue,tags.description||""].filter(Boolean).join(" "),
     });
@@ -313,7 +317,18 @@ async function prospectsForKind(kind:"personal-auto"|"home"|"commercial",setting
       try{records.push(...await publicBusinessSearch(zip,settings.batchSize-records.length,signal))}catch(error){if(!records.length)throw error}
     }
   }
-  const sorted=records.map(record=>({record,score:score(kind,record)})).sort((a,b)=>b.score-a.score);
+  let registrations:Record<string,unknown>[]=[];
+  let registrationStatus="Not checked";
+  if(kind==="commercial"&&!signal.aborted){
+    try{registrations=await loadCityRegistrations(zip.slice(0,5),signal);registrationStatus="Checked city records; no exact unique match"}
+    catch{registrationStatus="City records unavailable; retry before relying on registration"}
+  }
+  const sorted=records.map(record=>{
+    const flat=flatten(record);
+    const match=kind==="commercial"?matchRegistration({name:businessName(flat),address:address(flat),zip:postal(flat)},registrations):undefined;
+    const priority=match?assessCommercial({extraFields:{"Business evidence checked":new Date().toISOString(),"Registered business start":String(match.location_start_date||"")}}).priority:0;
+    return {record,score:priority*100+score(kind,record)};
+  }).sort((a,b)=>b.score-a.score);
   const output:UnknownRecord[]=[];
   for(const {record} of sorted){
     if(output.length>=settings.batchSize||signal.aborted)break;
@@ -350,9 +365,27 @@ async function prospectsForKind(kind:"personal-auto"|"home"|"commercial",setting
       if(knownPhones.has(phone))continue;
       if(!categoryMatches(flat,settings.commercialCategories))continue;
       knownPhones.add(phone);
+      const match=matchRegistration({name,address:address(flat),zip:postal(flat)},registrations);
       output.push(createLead(kind,record,{
         "Business category":category(flat),
         "Website":website(flat),
+        "Listing source URL":pick(flat,["listing_url"]),
+        "Listing retrieved":new Date().toISOString(),
+        "Phone verification":"Format only; ownership and reachability unconfirmed",
+        "Insurance contact":"Unconfirmed",
+        "Renewal date":"Unknown; never inferred from license or registration dates",
+        "Buying interest":"Not established by public records",
+        "Operator listed":pick(flat,["operator"]),
+        "Brand listed":pick(flat,["brand"]),
+        "Franchise ownership":"Unconfirmed; brand does not establish local operator",
+        "Registration check":match?"Exact name and street address match":registrationStatus,
+        ...(match?{
+          "Business evidence checked":new Date().toISOString(),
+          "Business evidence URL":"https://data.lacity.org/Administration-Finance/Listing-of-Active-Businesses/6rrh-rzua",
+          "Registration ID":String(match.location_account||""),
+          "Registered business":String(match.business_name||""),
+          "Registered business start":String(match.location_start_date||""),
+        }:{}),
       }));
     }
   }

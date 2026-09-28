@@ -52,7 +52,7 @@ test('background save retries concurrent changes and preserves newest notes/prof
 test('commercial waterfall falls through a failed licensed provider to callable public businesses',async()=>{
  const original=global.fetch,old=process.env.DATA_AXLE_API_KEY;process.env.DATA_AXLE_API_KEY='test';const calls=[];
  global.fetch=async url=>{calls.push(String(url));if(String(url).includes('data-axle'))throw Error('Provider unavailable');if(String(url).includes('nominatim'))return Response.json([{lat:'34.2',lon:'-118.4'}]);if(String(url).includes('overpass'))return Response.json({elements:[{type:'node',id:123,tags:{name:'Test Contractor',phone:'8185551234',craft:'contractor','addr:postcode':'91405'}}]});throw Error('Unexpected request')};
- try{const run=await runMinerAutoFeedForWorkspace('a',workspace(),{enabled:true,personalAuto:false,home:false,commercial:true,zipCodes:['91405'],commercialCategories:[]});assert.equal(run.result.added,1);assert.equal(run.workspace.leads[0].automationEnabled,false);assert.match(run.workspace.leads[0].vendorId,/openstreetmap/);assert.equal(calls.length,3)}finally{global.fetch=original;if(old===undefined)delete process.env.DATA_AXLE_API_KEY;else process.env.DATA_AXLE_API_KEY=old}
+ try{const run=await runMinerAutoFeedForWorkspace('a',workspace(),{enabled:true,personalAuto:false,home:false,commercial:true,zipCodes:['91405'],commercialCategories:[]});assert.equal(run.result.added,1);assert.equal(run.workspace.leads[0].automationEnabled,false);assert.match(run.workspace.leads[0].vendorId,/openstreetmap/);assert.equal(calls.length,4)}finally{global.fetch=original;if(old===undefined)delete process.env.DATA_AXLE_API_KEY;else process.env.DATA_AXLE_API_KEY=old}
 });
 test('public business batches skip existing numbers before filling the next calling queue',async()=>{
  const original=global.fetch,old=process.env.DATA_AXLE_API_KEY;delete process.env.DATA_AXLE_API_KEY;
@@ -63,4 +63,16 @@ test('commercial public source retries another server after a timeout',async()=>
  const original=global.fetch,old=process.env.DATA_AXLE_API_KEY;delete process.env.DATA_AXLE_API_KEY;const calls=[];
  global.fetch=async url=>{calls.push(String(url));if(String(url).includes('nominatim'))return Response.json([{lat:'34.2',lon:'-118.4'}]);if(String(url).includes('overpass-api.de'))throw new DOMException('Timeout','TimeoutError');return Response.json({elements:[{type:'node',id:555,tags:{name:'Local Shop',phone:'8185551234',shop:'car_repair','addr:postcode':'91405'}}]})};
  try{const run=await runMinerAutoFeedForWorkspace('a',workspace(),{enabled:true,personalAuto:false,home:false,commercial:true,zipCodes:['91405'],commercialCategories:[]});assert.equal(run.result.added,1);assert.ok(calls.some(x=>x.includes('overpass.private.coffee')))}finally{global.fetch=original;if(old!==undefined)process.env.DATA_AXLE_API_KEY=old}
+});
+test('city evidence enriches exact matches without enabling outreach',async()=>{
+ const original=global.fetch,old=process.env.DATA_AXLE_API_KEY;delete process.env.DATA_AXLE_API_KEY;
+ global.fetch=async url=>{
+  if(String(url).includes('nominatim'))return Response.json([{lat:'34.2',lon:'-118.4'}]);
+  if(String(url).includes('data.lacity.org'))return Response.json([{business_name:'Local Plumbing',street_address:'123 MAIN ST',zip_code:'91405',location_account:'123',location_start_date:new Date().toISOString()}]);
+  return Response.json({elements:[{type:'node',id:999,tags:{name:'Local Plumbing',phone:'8185551234',craft:'plumber','addr:housenumber':'123','addr:street':'Main St','addr:postcode':'91405'}}]});
+ };
+ try{
+  const run=await runMinerAutoFeedForWorkspace('a',workspace(),{enabled:true,personalAuto:false,home:false,commercial:true,zipCodes:['91405']});
+  const lead=run.workspace.leads[0];assert.equal(lead.extraFields['Registration ID'],'123');assert.match(lead.extraFields['Listing source URL'],/openstreetmap.org\/node\/999/);assert.match(lead.extraFields['Renewal date'],/^Unknown/);assert.equal(lead.automationEnabled,false);assert.equal(lead.smsConsent,false);
+ }finally{global.fetch=original;if(old===undefined)delete process.env.DATA_AXLE_API_KEY;else process.env.DATA_AXLE_API_KEY=old}
 });
