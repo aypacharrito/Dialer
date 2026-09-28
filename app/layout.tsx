@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkConfigured } from "./lib/clerk-config";
-import MessageAttachmentBridge from "./components/MessageAttachmentBridge";
 import "./globals.css";
 import "./professional-polish.css";
 import "./professional-v2.css";
@@ -45,7 +44,7 @@ export default function RootLayout({
   const clerkEnabled = isClerkConfigured();
   return (
     <html lang="en" data-theme="light">
-      <body>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}<MessageAttachmentBridge/></body>
+      <body>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</body>
     </html>
   );
 }

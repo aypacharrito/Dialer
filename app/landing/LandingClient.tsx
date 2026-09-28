@@ -3,15 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import PlanComparison from "../components/PlanComparison";
 import ClerkNavAuth from "../components/ClerkNavAuth";
 import { pacificaPlans } from "../lib/plans";
 import styles from "./landing.module.css";
 
-const plans=[
-  {id:"solo",...pacificaPlans.solo,features:["1 user and assigned calling number","Universal lead CRM","Sequential browser dialer","Pacifica ClearVoice","Reports included · Pacifica AI coming soon"],popular:false},
-  {id:"team",...pacificaPlans.team,features:["Up to 5 users and numbers","Everything in Solo","Shared lead operations","Priority onboarding","Team reporting"],popular:true},
-  {id:"agency",...pacificaPlans.agency,features:["Up to 15 users and numbers","Everything in Team","Campaign capacity","Number-health monitoring","White-glove setup"],popular:false},
-] as const;
+const plans=Object.entries(pacificaPlans).map(([id,plan])=>({id:id as keyof typeof pacificaPlans,...plan,features:[plan.seats,"Contacts, calendar and reports","Power dialer, SMS and email","AI drafts and document intake","Industry-specific workspace settings"],popular:id==="team"}));
 
 const industries=[
   ["Insurance","Quote requests, renewals, cross-sells"],["Home services","Roofing, solar, HVAC, remodeling"],
@@ -60,7 +57,7 @@ export default function LandingClient({clerkEnabled=false}:{clerkEnabled?:boolea
 
     <section className={styles.industries} id="industries"><div className={styles.sectionIntro}><p className={styles.kicker}>ONE SYSTEM · MANY INDUSTRIES</p><h2>If leads drive the business, Pacifica fits.</h2><p>Use the same fast follow-up engine with the services, scripts, pipeline, and lead sources your company already uses.</p></div><div className={styles.industryGrid}>{industries.map(([name,detail])=><article key={name}><span>✓</span><div><h3>{name}</h3><p>{detail}</p></div></article>)}</div></section>
 
-    <section className={styles.pricing} id="pricing"><div className={styles.sectionIntro}><p className={styles.kicker}>STRAIGHTFORWARD PRICING</p><h2>Start below Netflix Premium.</h2><p>No sales call and no hidden platform fee. Choose the size that fits your operation.</p></div><div className={styles.planGrid}>{plans.map(plan=><article className={plan.popular?styles.popular:""} key={plan.id}>{plan.popular&&<em>MOST POPULAR</em>}<span>{plan.name.toUpperCase()}</span><h3><sup>$</sup>{plan.monthlyPrice}<small>/month</small></h3><p>{plan.description}</p><button disabled={Boolean(checkout)} onClick={()=>void subscribe(plan.id)}>{checkout===plan.id?"Opening checkout…":`Choose ${plan.name}`}</button><ul>{plan.features.map(feature=><li key={feature}><i>✓</i><span>{feature}</span></li>)}</ul>{plan.id==="solo"&&<small className={styles.netflixNote}>Netflix Premium is $26.99/month as of August 2026.</small>}</article>)}</div>{error&&<p className={styles.checkoutError}>{error}</p>}<p className={styles.priceNote}>Month-to-month. Prices exclude Twilio calling/SMS usage and taxes. Secure recurring billing is handled by Stripe.</p></section>
+    <section className={styles.pricing} id="pricing"><div className={styles.sectionIntro}><p className={styles.kicker}>STRAIGHTFORWARD PRICING</p><h2>A clear plan for every team.</h2><p>No sales call and no hidden platform fee. Choose the size that fits your operation.</p></div><div className={styles.planGrid}>{plans.map(plan=><article className={plan.popular?styles.popular:""} key={plan.id}>{plan.popular&&<em>MOST POPULAR</em>}<span>{plan.name.toUpperCase()}</span><h3><sup>$</sup>{plan.monthlyPrice}<small>/month</small></h3><p>{plan.description}</p><button disabled={Boolean(checkout)} onClick={()=>void subscribe(plan.id)}>{checkout===plan.id?"Opening checkout…":`Choose ${plan.name}`}</button><ul>{plan.features.map(feature=><li key={feature}><i>✓</i><span>{feature}</span></li>)}</ul></article>)}</div>{error&&<p className={styles.checkoutError}>{error}</p>}<PlanComparison/><p className={styles.priceNote}>Month-to-month. Prices exclude Twilio calling/SMS usage and taxes. Secure recurring billing is handled by Stripe.</p></section>
 
     <section className={styles.compare} id="compare"><div className={styles.sectionIntro}><p className={styles.kicker}>BUILT TO PAY FOR ITSELF</p><h2>One recovered lead can cover the month.</h2><p>Pacifica gives small teams the daily sales workflow they need without enterprise software pricing.</p></div><div className={styles.compareTable}><div><b>WORKFLOW</b><b>WITHOUT PACIFICA</b><b>WITH PACIFICA</b></div><div className={styles.ours}><span>New lead arrives</span><strong>Buried in inbox</strong><em>Added to a live calling queue</em></div><div><span>First contact</span><strong>Whenever someone notices</strong><em>Call while interest is fresh</em></div><div><span>No answer</span><strong>Often forgotten</strong><em>Outcome and follow-up stay visible</em></div><div><span>Manager visibility</span><strong>Ask around or count sheets</strong><em>Live calls, outcomes, and pipeline</em></div></div></section>
 

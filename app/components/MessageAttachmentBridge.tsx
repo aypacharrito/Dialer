@@ -4,12 +4,11 @@ import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 
 type Channel="sms"|"email";
-type Attachment={url:string;name:string;type:string;size:number;expiresAt:number;channel:Channel};
+export type ComposerAttachment={url:string;name:string;type:string;size:number;expiresAt:number;channel:Channel};
 
 const smsTypes=new Set(["image/jpeg","image/jpg","image/png","image/gif","image/heic","image/heif","application/pdf","text/vcard","text/x-vcard","text/csv"]);
 const emojis=["😀","😂","😊","😍","🔥","👍","🙏","🎉","❤️","✅","📞","📩","🚗","🏠","💰","⭐","😎","🤝","💯","👋","🙂","😉","🥳","📎","😄","😁","😅","🤣","😇","🥰","😘","🤔","😬","😔","😢","😭","😮","🤩","🙌","👏","👌","✌️","💪","🤞","🫶","💚","💙","💜","💛","🧡","💔","✨","🌟","🎈","🎂","🎁","☀️","🌈","☕","🏡","🚙","🚘","🛻","🏢","🛡️","📅","⏰","📋","📝","📄","📧","🔔","🔑","💵","✔️","❌","❗","❓","➡️","⬅️","📍","🔗","💬"];
 const shortSize=(bytes:number)=>bytes<1024?`${bytes} B`:bytes<1024*1024?`${Math.round(bytes/1024)} KB`:`${(bytes/1024/1024).toFixed(1)} MB`;
-const activeChannel=():Channel=>document.querySelector('#message-tab-email[aria-selected="true"]')?"email":"sms";
 
 function setTextareaValue(value:string,cursor?:number){
   const textarea=document.querySelector(".message-thread footer textarea") as HTMLTextAreaElement|null;if(!textarea)return;
@@ -24,9 +23,8 @@ function insertEmoji(emoji:string){
   setTextareaValue(next,start+emoji.length);
 }
 
-export default function MessageAttachmentBridge(){
-  const [host,setHost]=useState<HTMLElement|null>(null);
-  const [attachments,setAttachments]=useState<Attachment[]>([]);
+export default function MessageAttachmentBridge({channel,onChange}:{channel:Channel;onChange:(files:ComposerAttachment[],busy:boolean)=>void}){
+  const [attachments,setAttachments]=useState<ComposerAttachment[]>([]);
   const [busy,setBusy]=useState(false);
   const [dragging,setDragging]=useState(false);
   const [emojiOpen,setEmojiOpen]=useState(false);
@@ -34,25 +32,11 @@ export default function MessageAttachmentBridge(){
   const [emojiPosition,setEmojiPosition]=useState({left:12,top:12});
   const emojiRef=useRef<HTMLDivElement>(null);
   const inputRef=useRef<HTMLInputElement>(null);
-  const attachmentRef=useRef<Attachment[]>([]);const busyRef=useRef(false);const armedUntil=useRef(0);const contextKey=useRef("");
+  const attachmentRef=useRef<ComposerAttachment[]>([]);const mountedRef=useRef(true);
   useEffect(()=>{if(!emojiOpen)return;const close=(e:PointerEvent)=>{if(e.target instanceof Element&&!emojiRef.current?.contains(e.target)&&!e.target.closest('[data-emoji-toggle]'))setEmojiOpen(false)};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setEmojiOpen(false);document.querySelector<HTMLButtonElement>('[data-emoji-toggle]')?.focus()}};const resize=()=>setEmojiOpen(false);const scroll=(e:Event)=>{if(e.target instanceof Node&&!emojiRef.current?.contains(e.target))setEmojiOpen(false)};document.addEventListener('pointerdown',close);document.addEventListener('keydown',key);document.addEventListener('scroll',scroll,true);window.addEventListener('resize',resize);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',key);document.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',resize)}},[emojiOpen]);
   useEffect(()=>{attachmentRef.current=attachments},[attachments]);
-  useEffect(()=>{busyRef.current=busy},[busy]);
-
-  useEffect(()=>{
-    const sync=()=>{
-      const next=document.querySelector(".message-thread footer") as HTMLElement|null;setHost(next);
-      const label=(document.querySelector(".thread-contact")?.textContent||"").trim();const key=`${activeChannel()}:${label}`;
-      if(contextKey.current&&key!==contextKey.current){setAttachments([]);setEmojiOpen(false);setError("")}
-      contextKey.current=key;
-    };
-    let frame=0;
-    const schedule=()=>{if(!frame)frame=requestAnimationFrame(()=>{frame=0;sync()})};
-    sync();const observer=new MutationObserver(records=>{
-      if(records.some(record=>record.type==='childList'||record.type==='attributes'||record.target.parentElement?.closest('.thread-contact')))schedule();
-    });observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-selected']});
-    return()=>{observer.disconnect();if(frame)cancelAnimationFrame(frame)};
-  },[]);
+  useEffect(()=>{onChange(attachments,busy)},[attachments,busy,onChange]);
+  useEffect(()=>{mountedRef.current=true;return()=>{mountedRef.current=false}},[]);
 
   useEffect(()=>{
     const over=(event:DragEvent)=>{const footer=document.querySelector(".message-thread");if(footer&&event.target instanceof Node&&footer.contains(event.target)&&event.dataTransfer?.types.includes("Files")){event.preventDefault();event.stopPropagation();setDragging(true)}};
@@ -61,33 +45,8 @@ export default function MessageAttachmentBridge(){
     document.addEventListener("dragover",over);document.addEventListener("dragleave",leave);document.addEventListener("drop",drop);return()=>{document.removeEventListener("dragover",over);document.removeEventListener("dragleave",leave);document.removeEventListener("drop",drop)};
   });
 
-  useEffect(()=>{
-    const click=(event:MouseEvent)=>{if(event.target instanceof Element&&event.target.closest(".message-thread .send-message"))armedUntil.current=Date.now()+5000};document.addEventListener("click",click,true);
-    const original=window.fetch.bind(window);
-    window.fetch=async(input,init)=>{
-      const url=typeof input==="string"?input:input instanceof URL?input.toString():input instanceof Request?input.url:String(input);
-      const sms=url.includes("/api/twilio/messages");const email=url.includes("/api/email/messages");const armed=(sms||email)&&Date.now()<armedUntil.current;
-      let attached=false;let nextInit=init;
-      if(armed&&busyRef.current)throw new Error("Your attachment is still uploading. Try Send again when the upload finishes.");
-      if(armed&&attachmentRef.current.length&&typeof init?.body==="string"){
-        try{
-          const body=JSON.parse(init.body) as Record<string,unknown>;const channel:Channel=email?"email":"sms";const files=attachmentRef.current.filter(item=>item.channel===channel);
-          if(files.length){
-            if(sms)body.mediaUrls=files.map(item=>item.url);
-            else body.attachments=files.map(item=>({path:item.url,filename:item.name,contentType:item.type}));
-            nextInit={...init,body:JSON.stringify(body)};attached=true;
-          }
-        }catch{}
-      }
-      const response=await original(input,nextInit);
-      if(armed&&attached&&response.ok){setAttachments([]);setError("");armedUntil.current=0}
-      return response;
-    };
-    return()=>{document.removeEventListener("click",click,true);window.fetch=original};
-  },[]);
-
   async function addFiles(files:File[]){
-    const channel=activeChannel();const uploadContext=contextKey.current;setError("");
+    if(busy)return;setError("");
     const existing=attachmentRef.current.filter(item=>item.channel===channel);
     const room=Math.max(0,(channel==="sms"?10:8)-existing.length);const selected=files.slice(0,room);
     if(!selected.length){setError(`You already have the maximum number of ${channel==="sms"?"MMS":"email"} attachments.`);return}
@@ -97,22 +56,21 @@ export default function MessageAttachmentBridge(){
     }
     setBusy(true);
     try{
-      const uploaded:Attachment[]=[];
+      const uploaded:ComposerAttachment[]=[];
       for(const file of selected){
         const form=new FormData();form.append("file",file);form.append("channel",channel);
-        const response=await fetch("/api/message-media",{method:"POST",credentials:"same-origin",body:form});const data=await response.json() as {attachment?:Omit<Attachment,"channel">;error?:string};
+        const response=await fetch("/api/message-media",{method:"POST",credentials:"same-origin",body:form});const data=await response.json() as {attachment?:Omit<ComposerAttachment,"channel">;error?:string};
         if(!response.ok||!data.attachment)throw new Error(data.error||`Could not upload ${file.name}`);uploaded.push({...data.attachment,channel});
       }
-      if(contextKey.current!==uploadContext)return;
+      if(!mountedRef.current)return;
       setAttachments(current=>[...current.filter(item=>item.channel===channel),...uploaded]);
       const textarea=document.querySelector(".message-thread footer textarea") as HTMLTextAreaElement|null;if(textarea&&!textarea.value.trim())setTextareaValue(`Attached: ${uploaded.map(item=>item.name).join(", ")}`);
     }catch(reason){setError(reason instanceof Error?reason.message:"Attachment upload failed")}
     finally{setBusy(false)}
   }
 
-  if(!host)return null;
-  const channel=activeChannel();const visible=attachments.filter(item=>item.channel===channel);
-  return createPortal(<div className={`message-attachment-panel ${dragging?"dragging":""}`}>
+  const visible=attachments.filter(item=>item.channel===channel);
+  return (<div className={`message-attachment-panel ${dragging?"dragging":""}`}>
     {dragging&&<div className="message-drop-overlay">Drop files to attach</div>}
     <input ref={inputRef} type="file" hidden multiple accept={channel==="sms"?"image/jpeg,image/png,image/gif,image/heic,image/heif,application/pdf,text/vcard,text/csv":"*/*"} onChange={event=>{const files=Array.from(event.target.files||[]);event.target.value="";void addFiles(files)}}/>
     <div className="message-attachment-toolbar">
@@ -123,5 +81,5 @@ export default function MessageAttachmentBridge(){
     {emojiOpen&&createPortal(<div ref={emojiRef} style={emojiPosition} className="message-emoji-picker" role="group" aria-label="Emoji picker">{emojis.map(emoji=><button key={emoji} type="button" aria-label={`Insert ${emoji}`} onMouseDown={e=>e.preventDefault()} onClick={()=>insertEmoji(emoji)}>{emoji}</button>)}</div>,document.body)}
     {visible.length>0&&<div className="message-attachment-chips">{visible.map(item=><span key={item.url}><b>{item.type==="image/gif"?"GIF":item.type.startsWith("image/")?"IMG":"FILE"}</b>{item.name}<small>{shortSize(item.size)}</small><button type="button" aria-label={`Remove ${item.name}`} onClick={()=>setAttachments(current=>current.filter(file=>file.url!==item.url))}>×</button></span>)}</div>}
     {error&&<p className="message-attachment-error" role="alert">{error}</p>}
-  </div>,host);
+  </div>);
 }

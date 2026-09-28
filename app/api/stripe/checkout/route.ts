@@ -23,7 +23,7 @@ async function resolveMonthlyPrice(plan:StripePlan,configuredPriceId:string){
     unit_amount:expectedAmount,
     recurring:{interval:"month"},
     nickname:`Pacifica ${pacificaPlans[plan].name} · $${pacificaPlans[plan].monthlyPrice}/month`,
-    metadata:{pacifica_plan:plan,pacifica_price_version:"2026-08-25"},
+    metadata:{pacifica_plan:plan,pacifica_price_version:"2026-09-28"},
   },{idempotencyKey:`pacifica-${plan}-${expectedAmount}-monthly-v1`});
   return created.id;
 }

@@ -20,6 +20,7 @@ export const runtime = "nodejs";
 
 type TwilioMessage = {
   sid: string;
+  num_media?: string;
   direction: string;
   from: string;
   to: string;
@@ -73,6 +74,7 @@ function safe(message: TwilioMessage) {
     message.status === "failed" || message.status === "undelivered";
   return {
     id: message.sid,
+    mediaCount: Math.min(10,Math.max(0,Number(message.num_media)||0)),
     direction: message.direction,
     from: message.from,
     to: message.to,
@@ -251,6 +253,7 @@ export async function POST(request: Request) {
     });
     const message: TwilioMessage = {
       sid: result.id,
+      num_media: String(mediaUrls.length),
       direction: "outbound-api",
       from: result.from,
       to,

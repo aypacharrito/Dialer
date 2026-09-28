@@ -1,6 +1,8 @@
+import {cleanMessageAttachments,type MessageAttachment} from "./message-attachments";
 export type CommunicationChannel="sms"|"email";
 
 export type StoredCommunication={
+  attachments?:MessageAttachment[];
   id:string;
   channel:CommunicationChannel;
   direction:"outbound"|"inbound";
@@ -27,6 +29,7 @@ export function cleanCommunications(value:unknown):StoredCommunication[]{
       direction:item.direction==="inbound"?"inbound":"outbound",
       subject:String(item.subject||"").trim().slice(0,200)||undefined,
       body,
+      attachments:cleanMessageAttachments(item.attachments),
       status:String(item.status||"sent").slice(0,60),
       sentAt:String(item.sentAt||new Date().toISOString()),
       provider:String(item.provider||"pacifica").slice(0,60),

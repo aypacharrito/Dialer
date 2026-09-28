@@ -1,3 +1,4 @@
+import {archiveMessageFiles} from "../../../lib/message-media-archive";
 import {emailWithComplianceFooter} from "../../../lib/message-footer";
 import {assertAutomatedContact} from "../../../lib/automated-contact";
 import {hasContactPermission} from "../../../lib/contact-permission";
@@ -33,8 +34,9 @@ export async function POST(request:Request){
     const idempotencyKey=String(body.idempotencyKey||`manual-${workspace.userId}-${leadId}-${Date.now()}`).replace(/[^a-zA-Z0-9:_-]/g,"-").slice(0,200);
     if(body.sendMode==="ai")await assertAutomatedContact(workspace.userId,String(body.to||""),"email");
     const attachments=(Array.isArray(body.attachments)?body.attachments:[]).flatMap(item=>item?.path&&item?.filename?[{path:String(item.path),filename:String(item.filename).slice(0,120),contentType:String(item.contentType||"").slice(0,100)}]:[]).slice(0,10);
+    const savedAttachments=await archiveMessageFiles(workspace.userId,attachments,new URL(request.url).origin);
     const result=await sendOutboundEmail({to:String(body.to||""),subject:String(body.subject||""),text,fromName:String(body.fromName||""),replyTo:inboundReplyAddress(workspace.userId)||String(body.replyTo||""),idempotencyKey,attachments});const sentAt=new Date().toISOString();
-    const leads=stored.leads.map(raw=>Number((raw as Record<string,unknown>).id)===leadId?{...(raw as Record<string,unknown>),lastEmailAt:sentAt,...(body.permissionDocumented===true?{emailConsent:true}:{}),communications:appendCommunication((raw as Record<string,unknown>).communications,{id:crypto.randomUUID(),channel:"email",direction:"outbound",subject:String(body.subject||"").slice(0,200),body:text,status:"sent",sentAt,provider:result.provider,providerId:result.id})}:raw);await saveWorkspaceChanges(workspace.userId,stored,{...stored,leads});
-    return Response.json({ok:true,message:{id:result.id,provider:result.provider,status:"sent",sentAt}});
+    const leads=stored.leads.map(raw=>Number((raw as Record<string,unknown>).id)===leadId?{...(raw as Record<string,unknown>),lastEmailAt:sentAt,...(body.permissionDocumented===true?{emailConsent:true}:{}),communications:appendCommunication((raw as Record<string,unknown>).communications,{id:crypto.randomUUID(),channel:"email",direction:"outbound",subject:String(body.subject||"").slice(0,200),body:text,attachments:savedAttachments,status:"sent",sentAt,provider:result.provider,providerId:result.id})}:raw);await saveWorkspaceChanges(workspace.userId,stored,{...stored,leads});
+    return Response.json({ok:true,message:{id:result.id,provider:result.provider,status:"sent",sentAt,attachments:savedAttachments}});
   }catch(error){return Response.json({error:error instanceof Error?error.message:"Email could not be sent"},{status:503})}
 }

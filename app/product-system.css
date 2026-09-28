@@ -1173,8 +1173,8 @@ html[data-theme] .toast {
    Legacy pixel declarations above use this same scale exactly once. */
 html[data-theme] {
   --workspace-text-scale: 1.08;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: var(--font-ui);
+  --font-ui: "Aptos", "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Aptos Display", var(--font-ui);
   --ps-radius-lg: 10px;
   --ps-radius-xl: 12px;
   --ps-shadow-card: 0 1px 2px rgba(12,38,29,.035);
@@ -1552,3 +1552,30 @@ html[data-theme] .app-shell .integration-details>p:empty { display:none; }
 html[data-theme] :is([role="dialog"],[role="menu"],[role="listbox"]){background-color:var(--ps-surface);color:var(--ps-text-strong);transition-property:transform,opacity;}
 html[data-theme] .contact-card-open-hint{display:block;margin-top:7px;}
 html[data-theme] :is(.post-call-save,.start-call,.miner-run-button):hover:not(:disabled){box-shadow:0 0 0 3px var(--ui-accent-soft),0 5px 18px var(--ui-focus);}
+
+/* Shared rhythm and selective accents; system fonts require no font download. */
+html[data-theme] .app-shell :is(h1,h2,h3){font-family:var(--font-display)!important;line-height:1.2}
+html[data-theme] .app-shell .module-bar{gap:16px;flex-wrap:wrap;margin-bottom:22px}
+html[data-theme] .app-shell .pricing-grid{gap:24px;align-items:stretch}
+html[data-theme] .app-shell .pricing-grid article{padding:28px;border-radius:16px}
+html[data-theme] .app-shell .pricing-grid li{line-height:1.6;margin:8px 0}
+html[data-theme] .app-shell .message-history{padding:24px;gap:18px}
+html[data-theme] .app-shell .message-history article{line-height:1.55;border-radius:16px}
+html[data-theme] .app-shell .message-contacts>button{min-height:82px;padding:14px 16px;content-visibility:auto;contain-intrinsic-size:auto 82px}
+html[data-theme] .app-shell .message-contacts>button.active{border-inline-start:3px solid #2eb68a}
+html[data-theme] .app-shell .message-contacts>button i{background:color-mix(in srgb,#428be0 15%,var(--ps-surface));color:var(--ps-text)}
+.plan-comparison{overflow-x:auto;margin:28px 0;color:inherit}
+.plan-comparison table{width:100%;border-collapse:collapse;min-width:540px;font-size:14px}
+.plan-comparison caption{text-align:left;font-size:20px;font-weight:700;padding:0 0 18px}
+.plan-comparison th,.plan-comparison td{padding:15px 18px;border-bottom:1px solid color-mix(in srgb,currentColor 14%,transparent);text-align:center}
+.plan-comparison th:first-child{text-align:left;font-weight:500}
+.plan-comparison thead th{font-weight:700}.plan-comparison small{display:block;opacity:.7;margin-top:5px}
+.plan-comparison p{font-size:12px;line-height:1.6;opacity:.75;max-width:850px}
+.plan-included{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#19996d20;color:#249b73;font-weight:800}
+.plan-excluded{opacity:.35}
+html[data-theme] .app-shell .crm-summary{gap:16px;margin-block:20px 24px}
+html[data-theme] .app-shell .crm-summary article{padding:20px;border-radius:14px;border-top:3px solid color-mix(in srgb,#428be0 60%,transparent)}
+html[data-theme] .app-shell .crm-summary article:nth-child(3){border-top-color:#d69b42}
+html[data-theme] .app-shell .crm-summary article:nth-child(4){border-top-color:#7f79cf}
+html[data-theme] .app-shell .crm-summary article:last-child{border-top-color:#2eb68a}
+html[data-theme] .app-shell .crm-summary b{font-variant-numeric:tabular-nums;letter-spacing:-.04em}
