@@ -35,10 +35,12 @@ async function click(element){assert.ok(element,'expected interactive element');
 const byText=(selector,text)=>[...document.querySelectorAll(selector)].find(element=>element.textContent.trim()===text);
 async function setup(leads=[base],options={}){
  FakeDevice.calls=[];FakeDevice.alreadyOpen=Boolean(options.alreadyOpen);
- const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test'});
+ const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test',pretendToBeVisual:true});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true});
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:dom.window.navigator});
+ Object.assign(globalThis,{requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});
  dom.window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
+ if(options.desktop)dom.window.pacificaDesktop=options.desktop;
  dom.window.HTMLElement.prototype.getClientRects=function(){return [{width:30,height:30}]};
  Object.defineProperty(dom.window.navigator,'mediaDevices',{value:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})}});
  localStorage.setItem('pacific-audio-preferences',JSON.stringify({clearVoiceEnabled:false}));
@@ -235,4 +237,22 @@ for(const mode of [20,30])test(`SmartFinancial auto-skipped attempts report Atte
   assert.equal(payload.event,'call-ended');assert.equal(payload.disposition,'Attempted Contact');assert.equal(payload.vendorId,'sf-1');
   assert.equal(FakeDevice.calls.length,2);
  }finally{await h.cleanup()}
+});
+
+test('desktop elapsed state and saved duration catch up without a workspace timer',async()=>{
+ const states=[];
+ const desktop={isDesktop:true,supportsDesktopWrapUp:true,supportsAtomicCallState:true,setCallState:state=>states.push(state),syncCallState:async state=>{states.push(state);return true},exitCallOverlay:async()=>true};
+ const h=await setup([base],{desktop});const originalNow=Date.now;
+ try{
+  await h.nav('Dialer');await click(document.querySelector('.start-call'));
+  await act(async()=>FakeDevice.calls[0].answer());
+  const connectedAt=Date.now();Date.now=()=>connectedAt+65000;
+  await pause(1100);
+  assert.equal(states.at(-1).elapsed,'01:05');
+  assert.equal(document.querySelector('.timer time').textContent,'01:05');
+  await act(async()=>FakeDevice.calls[0].disconnect());await pause(450);
+  const logs=JSON.parse(localStorage.getItem('pacifica:test-call:call-logs'));
+  assert.equal(logs[0].duration,65);
+  assert.equal(states.at(-1).active,false);
+ }finally{Date.now=originalNow;await h.cleanup()}
 });

@@ -1,46 +1,86 @@
-/* Pacifica: ink-edged panels, restrained signal colors and an open-sky dialer. */
-html[data-theme] .app-shell {
- --frontier-ink:#263d45; --frontier-paper:#fffefa; --frontier-panel:#f4f6f5;
- --frontier-amber:#936018; --frontier-amber-soft:#fff3d7; --frontier-cyan:#176c82;
- --frontier-edge:#cdd6d7; --frontier-shadow:0 3px 0 #263d450b;
+/* Obsidian surfaces and restrained orbital detail. Replaces the former frontier theme. */
+html[data-theme="dark"] {
+ color-scheme:dark;
+ --ps-bg:#101112; --ps-surface:#181a1d; --ps-surface-2:#1e2024; --ps-surface-3:#25282d;
+ --ps-text:#e0e3e7; --ps-text-strong:#f5f6f8; --ps-muted:#a7adb7; --ps-subtle:#868d98;
+ --ps-line:#2c3036; --ps-line-strong:#434952; --ps-accent:#63d9b1; --ps-accent-hover:#81e5c3; --ps-accent-soft:#18372d;
+ --ps-info:#98c9e9; --ps-info-soft:#1c2d39;
+ --ps-shadow-card:0 2px 8px #0000001f; --ps-shadow-sheet:0 24px 64px #00000066;
+ --ui-bg:var(--ps-bg); --ui-surface:var(--ps-surface); --ui-surface-2:var(--ps-surface-2);
+ --ui-surface-soft:var(--ps-surface-2); --ui-surface-hover:var(--ps-surface-3);
+ --ui-border:var(--ps-line); --ui-border-strong:var(--ps-line-strong); --ui-text:var(--ps-text); --ui-muted:var(--ps-muted);
+ --vf-bg:var(--ps-bg); --vf-surface:var(--ps-surface); --vf-surface-2:var(--ps-surface-2);
+ --vf-border:var(--ps-line); --vf-border-strong:var(--ps-line-strong); --vf-text:var(--ps-text); --vf-muted:var(--ps-muted);
+ --pro-bg:var(--ps-bg); --pro-surface:var(--ps-surface); --pro-surface-soft:var(--ps-surface-2); --pro-surface-hover:var(--ps-surface-3);
+ --pro-border:var(--ps-line); --pro-border-strong:var(--ps-line-strong); --pro-text:var(--ps-text); --pro-muted:var(--ps-muted);
 }
-html[data-theme="dark"] .app-shell {
- --frontier-ink:#e4edf0; --frontier-paper:#19232c; --frontier-panel:#121b23;
- --frontier-amber:#f1bd61; --frontier-amber-soft:#342b20; --frontier-cyan:#75c9dc;
- --frontier-edge:#34444f; --frontier-shadow:0 3px 0 #060c1280;
-}
-html[data-theme] .app-shell :is(.page-view,.today-workspace,.ai-workspace) { background:var(--frontier-panel)!important; }
-html[data-theme] .app-shell>.sidebar { background:var(--frontier-panel)!important; border-right:1px solid var(--frontier-edge)!important; }
-html[data-theme] .app-shell .sidebar nav button { border-radius:5px 12px 5px 5px!important; text-transform:none!important; letter-spacing:0!important; }
-html[data-theme] .app-shell .sidebar nav button.active { background:var(--frontier-amber-soft)!important; color:var(--frontier-amber)!important; border-color:var(--frontier-amber)!important; box-shadow:inset 3px 0 var(--frontier-amber)!important; }
-html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article { background:var(--frontier-paper)!important; border:1px solid var(--frontier-edge)!important; border-top:3px solid var(--frontier-cyan)!important; border-radius:6px 16px 6px 6px!important; box-shadow:var(--frontier-shadow)!important; }
-html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article:nth-child(2) { border-top-color:var(--frontier-amber)!important; }
-html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article:nth-child(3) { border-top-color:var(--ps-accent)!important; }
-html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article:nth-child(4) { border-top-color:#927ac5!important; }
-html[data-theme] .app-shell :is(.module-bar,.dialer-toolbar) h1 { font-weight:800; letter-spacing:-.035em; text-transform:none!important; }
-html[data-theme] .app-shell :is(.module-bar,.dialer-toolbar) { border-bottom:1px solid var(--frontier-edge); padding-bottom:12px; }
-html[data-theme] .app-shell :is(.table-card,.client-table,.message-contacts,.message-thread,.ai-chat-composer) { border-color:var(--frontier-edge)!important; border-radius:8px 16px 8px 8px!important; box-shadow:var(--frontier-shadow); }
-html[data-theme] .app-shell :is(.table-card,.client-table) thead { background:var(--frontier-panel)!important; }
-html[data-theme] .app-shell :is(.table-card,.client-table) tbody tr:hover { background:color-mix(in srgb,var(--frontier-cyan) 6%,var(--frontier-paper))!important; }
-html[data-theme] .app-shell :is(.primary,.send-message) { border-radius:6px 12px 6px 6px!important; }
-html[data-theme] .app-shell .message-contacts>button.active { box-shadow:inset 3px 0 var(--frontier-cyan); }
+html[data-theme="light"] { color-scheme:light; }
+html[data-theme] .app-shell :is(.page-view,.today-workspace,.ai-workspace) { background:var(--ps-bg)!important; }
+html[data-theme] .app-shell>.sidebar { background:var(--ps-bg)!important; border-right:1px solid var(--ps-line)!important; }
+html[data-theme] .app-shell .sidebar nav button { border-radius:9px!important; text-transform:none!important; letter-spacing:0!important; }
+html[data-theme] .app-shell .sidebar nav button.active { background:var(--ps-accent-soft)!important; color:var(--ps-accent)!important; border-color:transparent!important; box-shadow:inset 2px 0 var(--ps-accent)!important; }
+html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article { background:var(--ps-surface)!important; border:1px solid var(--ps-line)!important; border-radius:12px!important; box-shadow:none!important; }
+html[data-theme] .app-shell :is(.module-bar,.dialer-toolbar) h1 { font-weight:650; letter-spacing:-.03em; text-transform:none!important; }
+html[data-theme] .app-shell :is(.table-card,.client-table,.message-contacts,.message-thread,.ai-chat-composer) { border-color:var(--ps-line)!important; border-radius:12px!important; box-shadow:none; }
+html[data-theme] .app-shell :is(.table-card,.client-table) thead { background:var(--ps-surface-2)!important; }
+html[data-theme] .app-shell :is(.table-card,.client-table) tbody tr:hover { background:var(--ps-surface-2)!important; }
+html[data-theme] .app-shell .message-contacts>button.active { box-shadow:inset 2px 0 var(--ps-accent); }
+html[data-theme] .app-shell :is(.primary,.send-message) { border-radius:9px!important; }
 html[data-theme] .app-shell :is(.contact-drawer h2,.lead-file-identity h2,.thread-contact b) { text-transform:none!important; letter-spacing:-.015em; }
+/* Native menus receive their final opaque palette immediately. */
+html[data-theme] .app-shell select,
+html[data-theme] .app-shell select :is(option,optgroup) { background-color:var(--ps-surface)!important; color:var(--ps-text)!important; }
 
-html[data-theme] .app-shell .workspace>.conversation-workspace { position:relative; isolation:isolate; background:#e9f0f4!important; }
-html[data-theme="dark"] .app-shell .workspace>.conversation-workspace { background:#0a1420!important; }
-.dialer-cosmos { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:-1; --space-x:0px; --space-y:0px; }
-.cosmos-stars,.cosmos-nebula { position:absolute; inset:-28px; width:calc(100% + 56px); height:calc(100% + 56px); }
-.cosmos-stars { fill:#4c6a89; }
-html[data-theme="dark"] .cosmos-stars { fill:#d9edff; }
-.cosmos-far { transform:translate(calc(var(--space-x)*.35),calc(var(--space-y)*.35)); opacity:.7; }
-.cosmos-near { transform:translate(var(--space-x),var(--space-y)); opacity:.6; }
-.cosmos-nebula { background:radial-gradient(ellipse at 85% 20%,#599fc92b,transparent 55%),radial-gradient(ellipse at 15% 85%,#967ac91c,transparent 55%); }
-.cosmos-planet { position:absolute; border-radius:50%; transform:translate(calc(var(--space-x)*1.7),calc(var(--space-y)*1.7)); }
-.cosmos-planet-ring { right:3%; top:12%; width:clamp(110px,18vw,250px); aspect-ratio:1; background:radial-gradient(circle at 28% 25%,#f1d4a3,#c18c6655 48%,#34486d44 72%); box-shadow:inset -24px -14px 32px #192c4633; opacity:.5; }
-.cosmos-planet-ring::after { content:""; position:absolute; inset:30% -35%; border:9px solid #a99c8755; border-left-color:#d1b79388; border-radius:50%; transform:rotate(-25deg); }
-.cosmos-moon { left:5%; bottom:9%; width:85px; aspect-ratio:1; background:radial-gradient(circle at 25% 25%,#94bedc,#435c8940 65%); opacity:.65; }
-html[data-theme="dark"] .cosmos-planet-ring { opacity:.7; background:radial-gradient(circle at 28% 25%,#bd9865,#575c7a 48%,#152237 75%); }
-html[data-theme] .app-shell .conversation-workspace :is(.hero-call,.lead-file,.saved-dialer-queue,.side-pad) { background:var(--frontier-paper)!important; border:1px solid var(--frontier-edge)!important; border-radius:8px 18px 8px 8px!important; box-shadow:var(--frontier-shadow)!important; }
-html[data-theme] .app-shell .conversation-workspace .dialer-toolbar { background:var(--frontier-paper); border:1px solid var(--frontier-edge); border-left:3px solid var(--frontier-amber); border-radius:6px; padding:12px 16px!important; }
-@media(prefers-reduced-motion:reduce),(pointer:coarse) { .cosmos-stars,.cosmos-planet { transform:none!important; } }
-@media(max-width:650px) { .cosmos-planet-ring { right:-45px; opacity:.3; }.cosmos-moon { display:none; } }
+/* The photograph lives behind a compact work column, with room for the planet on the right. */
+html[data-theme] .app-shell .workspace>.conversation-workspace {
+ position:relative; isolation:isolate; background:#06090e!important; padding:28px!important;
+ --ps-surface:#151b23; --ps-surface-2:#1d2530; --ps-surface-3:#26313e;
+ --ps-text:#e5ebf2; --ps-text-strong:#f7f9fc; --ps-muted:#a9b9c9; --ps-line:#ffffff21;
+ --ps-accent:#77dfbb; --ps-accent-hover:#92ebcc; --ps-accent-soft:#1b382f; --ps-subtle:#9bacbc;
+ --ui-surface:#151b23; --ui-text:#e5ebf2; --ui-border-strong:#ffffff30; --ui-accent:#77dfbb;
+ color:var(--ps-text)!important;
+}
+.dialer-cosmos { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:-1; contain:strict; }
+.dialer-cosmos img { position:absolute; inset:-24px; width:calc(100% + 48px); height:calc(100% + 48px); max-width:none; object-fit:cover; object-position:70% center; }
+.dialer-cosmos::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,#05080db3,transparent 80%); }
+html[data-theme] .app-shell .conversation-workspace .dialer-toolbar {
+ max-width:none; margin-bottom:28px; padding:0 0 18px!important; background:transparent!important;
+ border:0; border-bottom:1px solid #ffffff26; border-radius:0; color:var(--ps-text);
+}
+html[data-theme] .app-shell .conversation-workspace .dialer-toolbar h1 { color:#f7f9fc!important; }
+html[data-theme] .app-shell .conversation-workspace .dialer-main-grid { max-width:660px; gap:18px!important; }
+html[data-theme] .app-shell .conversation-workspace.has-keypad .dialer-main-grid { max-width:940px; grid-template-columns:minmax(0,1fr) 260px!important; }
+html[data-theme] .app-shell .conversation-workspace :is(.hero-call,.lead-file,.side-pad,.queue-card) {
+ background:#131922ed!important; border:1px solid #ffffff26!important; border-radius:14px!important;
+ box-shadow:0 10px 30px #00000026!important; backdrop-filter:none!important;
+}
+html[data-theme] .app-shell .conversation-workspace .hero-call { border-top-color:#9ec8df80!important; }
+html[data-theme] .app-shell .conversation-workspace .call-grid { grid-template-columns:minmax(0,1fr)!important; padding:24px!important; gap:18px!important; }
+html[data-theme] .app-shell .conversation-workspace .call-controls { justify-content:flex-start!important; }
+html[data-theme] .app-shell .conversation-workspace .contact-card h2 { font-size:calc(26px * var(--workspace-text-scale,1))!important; line-height:1.2; color:#f7f9fc!important; }
+html[data-theme] .app-shell .conversation-workspace .contact-card .avatar { width:50px!important; height:50px!important; min-width:50px!important; background:#243947!important; color:#b9deef!important; }
+html[data-theme] .app-shell .conversation-workspace .contact-card a { color:#c0d7e8!important; }
+html[data-theme] .app-shell .conversation-workspace .start-call { background:#77dfbb!important; color:#10251e!important; border:1px solid #94eccd!important; box-shadow:0 0 18px #77dfbb1f!important; }
+html[data-theme] .app-shell .conversation-workspace .start-call:hover { background:#92ebcc!important; box-shadow:0 0 24px #77dfbb33!important; }
+html[data-theme] .app-shell .conversation-workspace .dialer-timeout-control button.active { color:#10251e; }
+html[data-theme] .app-shell .conversation-workspace .inline-pause { justify-self:start; }
+html[data-theme] .app-shell .conversation-workspace .lead-file-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
+html[data-theme] .app-shell .conversation-workspace .stats-row { gap:8px!important; border:0; }
+html[data-theme] .app-shell .conversation-workspace .stats-row article { margin:0; padding:12px!important; flex:1 1 110px; background:#101720db!important; border:1px solid #ffffff1c!important; border-radius:10px!important; gap:10px; }
+html[data-theme] .app-shell .conversation-workspace .stats-row article span { color:#a9b9c9!important; }
+html[data-theme] .app-shell .conversation-workspace .stats-row article b { color:#e5ebf2!important; }
+@media(min-width:1200px) {
+ html[data-theme] .app-shell .conversation-workspace:not(.has-keypad) .dialer-main-grid { max-width:min(660px,68%); }
+}
+@media(max-width:900px) {
+ html[data-theme] .app-shell .workspace>.conversation-workspace { padding:18px!important; }
+ html[data-theme] .app-shell .conversation-workspace.has-keypad .dialer-main-grid { grid-template-columns:minmax(0,1fr)!important; }
+ html[data-theme] .app-shell .conversation-workspace .side-pad { grid-column:1!important; grid-row:2!important; justify-self:start; }
+ .dialer-cosmos img { object-position:78% center; }
+}
+@media(max-width:600px) {
+ html[data-theme] .app-shell .conversation-workspace .dialer-toolbar { flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+ html[data-theme] .app-shell .conversation-workspace .call-grid { padding:18px!important; }
+ html[data-theme] .app-shell .conversation-workspace .lead-file-grid { grid-template-columns:minmax(0,1fr)!important; }
+}
+@media(prefers-reduced-motion:reduce),(pointer:coarse) { .dialer-cosmos img { transform:none!important; } }

@@ -5,16 +5,17 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 function desktop(settings={}){
- const windows=[],handlers=new Map(),external=[];
+ const windows=[],handlers=new Map(),external=[],timers=new Map();let timerId=0;
+ const flushLayout=()=>{for(const [id,timer] of timers)if(timer.delay===250){timers.delete(id);timer.fn()}};
  class Window {
-  constructor(options){this.options=options;this.visible=false;this.minimized=false;this.positions=0;this.bounds={x:100,y:100,width:options.width,height:options.height};this.events=new Map();this.sent=[];this.webContents={send:(...args)=>this.sent.push(args),once(){},on(){},setWindowOpenHandler(){}};windows.push(this)}
-  once(name,fn){this.events.set(name,fn)} on(name,fn){this.events.set(name,fn)} loadURL(){} loadFile(file){this.file=file;return Promise.resolve()} show(){this.visible=true} showInactive(){this.visible=true} hide(){this.visible=false} isVisible(){return this.visible} isDestroyed(){return false}
+  constructor(options){this.options=options;this.visible=false;this.minimized=false;this.positions=0;this.bounds={x:100,y:100,width:options.width,height:options.height};this.events=new Map();this.sent=[];this.webContents={send:(...args)=>this.sent.push(args),once(){},on(){},setWindowOpenHandler(){}};if(options.webPreferences?.preload)windows.push(this)}
+  once(name,fn){this.events.set(name,fn)} on(name,fn){this.events.set(name,fn)} loadURL(){} loadFile(file){this.file=file;return Promise.resolve()} close(){this.visible=false} show(){this.visible=true} showInactive(){this.visible=true} hide(){this.visible=false} isVisible(){return this.visible} isDestroyed(){return false}
   isMinimized(){return this.minimized} minimize(){this.minimized=true;this.visible=false} restore(){this.minimized=false;this.visible=true;this.events.get('restore')?.()} setSkipTaskbar(value){this.skipTaskbar=value}
   setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getPosition(){return [this.bounds.x,this.bounds.y]} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){} flashFrame(value){this.flashing=value}
  }
  const source=fs.readFileSync(new URL('../desktop/main.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('const __dirname=path.dirname(fileURLToPath(import.meta.url));','const __dirname="/desktop";');
- vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,name==='pacifica:call-state'?(...args)=>{fn(...args);const overlay=windows[1];if(overlay&&!overlay.rendered){overlay.rendered=true;overlay.events.get('ready-to-show')?.();handlers.get('pacifica:overlay-rendered')?.({sender:overlay.webContents})}}:fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(url){external.push(url)}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(){},setInterval(){},clearInterval(){},console});
- return {windows,handlers,external,event:{sender:windows[0].webContents,senderFrame:{url:'https://pacificacrm.com/dashboard'}}};
+ vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,name==='pacifica:call-state'?(...args)=>{fn(...args);const overlay=windows[1];if(overlay&&!overlay.rendered){overlay.rendered=true;overlay.events.get('ready-to-show')?.();handlers.get('pacifica:overlay-rendered')?.({sender:overlay.webContents})}}:fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){}}},shell:{openExternal(url){external.push(url)}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},setInterval(){},clearInterval(){},console});
+ return {windows,handlers,external,flushLayout,event:{sender:windows[0].webContents,senderFrame:{url:'https://pacificacrm.com/dashboard'}}};
 }
 test('floating call window keeps a dragged position across timer updates and calls',()=>{
  const {windows,handlers,event}=desktop();const update=handlers.get('pacifica:call-state');
@@ -34,10 +35,10 @@ test('minimize survives call timer updates; call results appear outside the CRM'
 });
 test('desktop result actions require the current result and the native sender',()=>{
  const {windows,handlers,event}=desktop(),update=handlers.get('pacifica:call-state');
- update(event,{active:false,wrapUp:{id:'1:10'}});const action=handlers.get('pacifica:wrap-action');
- action({sender:windows[0].webContents},{id:'1:10',kind:'save'});action({sender:windows[1].webContents},{id:'old',kind:'save'});assert.equal(windows[0].sent.length,0);
- action({sender:windows[1].webContents},{id:'1:10',kind:'save'});assert.equal(windows[0].sent[0][0],'pacifica:wrap-action');
- update(event,{active:true});action({sender:windows[1].webContents},{id:'1:10',kind:'save'});assert.equal(windows[0].sent.length,1);
+ update(event,{active:false,wrapUp:{id:'1:10'}});const action=handlers.get('pacifica:wrap-action');const decisions=()=>windows[0].sent.filter(([name])=>name==='pacifica:wrap-action');
+ action({sender:windows[0].webContents},{id:'1:10',kind:'save'});action({sender:windows[1].webContents},{id:'old',kind:'save'});assert.equal(decisions().length,0);
+ action({sender:windows[1].webContents},{id:'1:10',kind:'save'});assert.equal(decisions()[0][0],'pacifica:wrap-action');
+ update(event,{active:true});action({sender:windows[1].webContents},{id:'1:10',kind:'save'});assert.equal(decisions().length,1);
 });
 test('untrusted frames cannot create native call windows',()=>{
  const {windows,handlers,event}=desktop();handlers.get('pacifica:call-state')({...event,senderFrame:{url:'https://example.com'}},{active:true});assert.equal(windows.length,1);
@@ -51,7 +52,7 @@ test('layout changes preserve position, clamp to screen and persist across launc
  update(first.event,{active:true});const overlay=first.windows[1];overlay.setPosition(100,150);
  const toggle=()=>first.handlers.get('pacifica:call-action')({sender:overlay.webContents},'toggle-layout');
  toggle();assert.deepEqual(overlay.getSize(),[280,180]);assert.equal(overlay.bounds.x,100);assert.equal(overlay.bounds.y,150);
- assert.equal(JSON.parse(settings.value).layout,'vertical');assert.equal(overlay.sent.at(-1)[1].layout,'vertical');
+ first.flushLayout();assert.equal(JSON.parse(settings.value).layout,'vertical');assert.equal(overlay.sent.at(-1)[1].layout,'vertical');
  update(first.event,{active:false,wrapUp:{id:'1:10'}});assert.deepEqual(overlay.getSize(),[480,560]);
  toggle();assert.deepEqual(overlay.getSize(),[480,560]);
  update(first.event,{active:true});overlay.setPosition(1100,800);toggle();assert.deepEqual(overlay.getSize(),[480,88]);assert.equal(overlay.bounds.x,920);assert.equal(overlay.bounds.y,800);

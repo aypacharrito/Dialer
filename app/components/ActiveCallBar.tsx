@@ -1,12 +1,15 @@
 "use client";
 
+import CallTimer from "./CallTimer";
+
 type Props = {
   name: string;
   number: string;
   product?: string;
   connected: boolean;
   muted: boolean;
-  elapsed: string;
+  elapsed?: string;
+  connectedAt?: number|null;
   queueRunning: boolean;
   onOpen: () => void;
   onKeypad: () => void;
@@ -23,7 +26,7 @@ export default function ActiveCallBar(props: Props) {
       <span className="active-call-state" role="status"><i aria-hidden="true"/>{status}</span>
       <b>{props.name || props.number}</b>{props.product&&<strong className="lead-product-label">{props.product}</strong>}
       {props.name && <span className="active-call-number">{props.number}</span>}
-      {props.connected && <time aria-label="Call duration">{props.elapsed}</time>}
+      {props.connected && <CallTimer startedAt={props.connectedAt} fallback={props.elapsed}/>}
     </div>
     <div className="active-call-actions">
       <button type="button" onClick={props.onOpen}>Open dialer</button>
