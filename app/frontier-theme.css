@@ -1,0 +1,46 @@
+/* Pacifica: ink-edged panels, restrained signal colors and an open-sky dialer. */
+html[data-theme] .app-shell {
+ --frontier-ink:#263d45; --frontier-paper:#fffefa; --frontier-panel:#f4f6f5;
+ --frontier-amber:#936018; --frontier-amber-soft:#fff3d7; --frontier-cyan:#176c82;
+ --frontier-edge:#cdd6d7; --frontier-shadow:0 3px 0 #263d450b;
+}
+html[data-theme="dark"] .app-shell {
+ --frontier-ink:#e4edf0; --frontier-paper:#19232c; --frontier-panel:#121b23;
+ --frontier-amber:#f1bd61; --frontier-amber-soft:#342b20; --frontier-cyan:#75c9dc;
+ --frontier-edge:#34444f; --frontier-shadow:0 3px 0 #060c1280;
+}
+html[data-theme] .app-shell :is(.page-view,.today-workspace,.ai-workspace) { background:var(--frontier-panel)!important; }
+html[data-theme] .app-shell>.sidebar { background:var(--frontier-panel)!important; border-right:1px solid var(--frontier-edge)!important; }
+html[data-theme] .app-shell .sidebar nav button { border-radius:5px 12px 5px 5px!important; text-transform:none!important; letter-spacing:0!important; }
+html[data-theme] .app-shell .sidebar nav button.active { background:var(--frontier-amber-soft)!important; color:var(--frontier-amber)!important; border-color:var(--frontier-amber)!important; box-shadow:inset 3px 0 var(--frontier-amber)!important; }
+html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article { background:var(--frontier-paper)!important; border:1px solid var(--frontier-edge)!important; border-top:3px solid var(--frontier-cyan)!important; border-radius:6px 16px 6px 6px!important; box-shadow:var(--frontier-shadow)!important; }
+html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article:nth-child(2) { border-top-color:var(--frontier-amber)!important; }
+html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article:nth-child(3) { border-top-color:var(--ps-accent)!important; }
+html[data-theme] .app-shell :is(.crm-summary,.stats-row)>article:nth-child(4) { border-top-color:#927ac5!important; }
+html[data-theme] .app-shell :is(.module-bar,.dialer-toolbar) h1 { font-weight:800; letter-spacing:-.035em; text-transform:none!important; }
+html[data-theme] .app-shell :is(.module-bar,.dialer-toolbar) { border-bottom:1px solid var(--frontier-edge); padding-bottom:12px; }
+html[data-theme] .app-shell :is(.table-card,.client-table,.message-contacts,.message-thread,.ai-chat-composer) { border-color:var(--frontier-edge)!important; border-radius:8px 16px 8px 8px!important; box-shadow:var(--frontier-shadow); }
+html[data-theme] .app-shell :is(.table-card,.client-table) thead { background:var(--frontier-panel)!important; }
+html[data-theme] .app-shell :is(.table-card,.client-table) tbody tr:hover { background:color-mix(in srgb,var(--frontier-cyan) 6%,var(--frontier-paper))!important; }
+html[data-theme] .app-shell :is(.primary,.send-message) { border-radius:6px 12px 6px 6px!important; }
+html[data-theme] .app-shell .message-contacts>button.active { box-shadow:inset 3px 0 var(--frontier-cyan); }
+html[data-theme] .app-shell :is(.contact-drawer h2,.lead-file-identity h2,.thread-contact b) { text-transform:none!important; letter-spacing:-.015em; }
+
+html[data-theme] .app-shell .workspace>.conversation-workspace { position:relative; isolation:isolate; background:#e9f0f4!important; }
+html[data-theme="dark"] .app-shell .workspace>.conversation-workspace { background:#0a1420!important; }
+.dialer-cosmos { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:-1; --space-x:0px; --space-y:0px; }
+.cosmos-stars,.cosmos-nebula { position:absolute; inset:-28px; width:calc(100% + 56px); height:calc(100% + 56px); }
+.cosmos-stars { fill:#4c6a89; }
+html[data-theme="dark"] .cosmos-stars { fill:#d9edff; }
+.cosmos-far { transform:translate(calc(var(--space-x)*.35),calc(var(--space-y)*.35)); opacity:.7; }
+.cosmos-near { transform:translate(var(--space-x),var(--space-y)); opacity:.6; }
+.cosmos-nebula { background:radial-gradient(ellipse at 85% 20%,#599fc92b,transparent 55%),radial-gradient(ellipse at 15% 85%,#967ac91c,transparent 55%); }
+.cosmos-planet { position:absolute; border-radius:50%; transform:translate(calc(var(--space-x)*1.7),calc(var(--space-y)*1.7)); }
+.cosmos-planet-ring { right:3%; top:12%; width:clamp(110px,18vw,250px); aspect-ratio:1; background:radial-gradient(circle at 28% 25%,#f1d4a3,#c18c6655 48%,#34486d44 72%); box-shadow:inset -24px -14px 32px #192c4633; opacity:.5; }
+.cosmos-planet-ring::after { content:""; position:absolute; inset:30% -35%; border:9px solid #a99c8755; border-left-color:#d1b79388; border-radius:50%; transform:rotate(-25deg); }
+.cosmos-moon { left:5%; bottom:9%; width:85px; aspect-ratio:1; background:radial-gradient(circle at 25% 25%,#94bedc,#435c8940 65%); opacity:.65; }
+html[data-theme="dark"] .cosmos-planet-ring { opacity:.7; background:radial-gradient(circle at 28% 25%,#bd9865,#575c7a 48%,#152237 75%); }
+html[data-theme] .app-shell .conversation-workspace :is(.hero-call,.lead-file,.saved-dialer-queue,.side-pad) { background:var(--frontier-paper)!important; border:1px solid var(--frontier-edge)!important; border-radius:8px 18px 8px 8px!important; box-shadow:var(--frontier-shadow)!important; }
+html[data-theme] .app-shell .conversation-workspace .dialer-toolbar { background:var(--frontier-paper); border:1px solid var(--frontier-edge); border-left:3px solid var(--frontier-amber); border-radius:6px; padding:12px 16px!important; }
+@media(prefers-reduced-motion:reduce),(pointer:coarse) { .cosmos-stars,.cosmos-planet { transform:none!important; } }
+@media(max-width:650px) { .cosmos-planet-ring { right:-45px; opacity:.3; }.cosmos-moon { display:none; } }

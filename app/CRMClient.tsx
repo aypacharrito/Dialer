@@ -1,4 +1,5 @@
 "use client";
+import DialerBackdrop from "./components/DialerBackdrop";
 import {hasContactPermission} from "./lib/contact-permission";
 import {policyMoney} from "./lib/policy-money";
 import dynamic from "next/dynamic";
@@ -1251,10 +1252,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       {view==="today"&&<TodayWorkspace leads={leads} onOpen={id=>setSelectedLead(id)} onCall={callLeadById} onImport={()=>inputRef.current?.click()} onAdd={openNewLead}/>}
 
       {view==="dialer"&&<div className={`dialer-view conversation-workspace ${connected||postCallLeadId?"has-conversation":"is-waiting"} ${keypadOpen?"has-keypad":""}`}>
+        <DialerBackdrop/>
         <header className="dialer-toolbar"><div><h1>Dialer</h1><span>{dialerQueueLabel()} · {callableLeads.length} remaining</span></div><div className="dialer-toolbar-actions"><label className="quiet-dialing-toggle" title="Controls ringback only. Voicemail, Google/call screening, IVRs and humans still play after answer."><input type="checkbox" checked={!workspaceProfile.quietDialing} onChange={event=>setWorkspaceProfile(profile=>({...profile,quietDialing:!event.target.checked}))}/>Hear ringing</label><button type="button" aria-expanded={keypadOpen} aria-controls="dialer-keypad" onClick={()=>setKeypadOpen(open=>!open)}><Icon name="keypad"/>{keypadOpen?"Hide keypad":"Keypad"}</button></div></header>
         <div className="dialer-main-grid">
         <div className="dialer-primary">
-        <section data-call-active={dialing||connected} onPointerMove={event=>{if(!(dialing||connected)||window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;const rect=event.currentTarget.getBoundingClientRect();event.currentTarget.style.setProperty("--orbit-x",`${(event.clientX-rect.left)/rect.width*100}%`);event.currentTarget.style.setProperty("--orbit-y",`${(event.clientY-rect.top)/rect.height*100}%`)}} className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
+        <section className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
           <div className="call-grid">
             <div className="call-status-line"><span><i/>{postCallLeadId?"CALL COMPLETE":connected?"LIVE":dialing?"CONNECTING":"NEXT UP"}</span>{!postCallLeadId&&autoDialing&&<em>{leadQueueRemaining} REMAINING</em>}</div>
             {!postCallLeadId&&<div className="dialer-timeout-control"><span>Call mode</span><div role="group" aria-label="Call mode"><button type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===20?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===20} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:20}))}>Fast skip</button><button type="button" disabled={dialing} className={workspaceProfile.dialerRingTimeoutSeconds===30?"active":""} aria-pressed={workspaceProfile.dialerRingTimeoutSeconds===30} onClick={()=>setWorkspaceProfile(profile=>({...profile,dialerRingTimeoutSeconds:30}))}>Listen through</button></div><small>{workspaceProfile.dialerRingTimeoutSeconds===20?"Fast skip · move through true no-answers sooner":"Listen through · 45-second ring window · hear voicemail, Google/call-screening assistants, IVRs and answered audio · only true no-answer auto-skips"}</small></div>}
