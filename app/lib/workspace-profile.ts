@@ -49,6 +49,7 @@ export type WorkspaceProfile={
   quietDialing:boolean;
   dialerRingTimeoutSeconds:20|30;
   smsConsentSources:string[];
+  smsConsentPolicyVersion:number;
   emailConsentSources:string[];
   businessName:string;
   agentName:string;
@@ -96,6 +97,7 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   quietDialing:true,
   dialerRingTimeoutSeconds:20,
   smsConsentSources:[],
+  smsConsentPolicyVersion:0,
   emailConsentSources:[],
   businessName:"",
   agentName:"",
@@ -171,7 +173,10 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
     quietDialing:profile.quietDialing!==false,
     dialerRingTimeoutSeconds:Number(profile.dialerRingTimeoutSeconds)===30?30:20,
-    smsConsentSources:cleanConsentSources(profile.smsConsentSources),
+    smsConsentSources:!profile.smsConsentPolicyVersion&&String(profile.businessName||'').toLowerCase().replace(/[^a-z]/g,'')==='davidsinsurance'
+      ?Array.from(new Set([...cleanConsentSources(profile.smsConsentSources),'SmartFinancial',"David's Insurance",'Website']))
+      :cleanConsentSources(profile.smsConsentSources),
+    smsConsentPolicyVersion:1,
     emailConsentSources:cleanConsentSources(profile.emailConsentSources),
     businessName:String(profile.businessName||"").trim().slice(0,100),
     agentName:String(profile.agentName||"").trim().slice(0,80),
