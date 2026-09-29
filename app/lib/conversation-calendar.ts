@@ -14,8 +14,8 @@ export function applyCandidates(leads:ConversationLead[],raw:unknown,candidates:
  for(const c of candidates.slice(0,20)){
   const lead=leads.find(l=>l.id===c.leadId);if(!lead||!eligible(lead))continue;
   const date=Date.parse(c.dueAt);if(!/(Z|[+-]\d\d:\d\d)$/.test(c.dueAt)||!Number.isFinite(date)||date<=now||date>now+180*86400000)continue;
-  const messages=thread(lead,now),interest=messages.find(m=>m.id===c.interestId&&m.direction==='inbound'),schedule=messages.find(m=>m.id===c.scheduleId&&m.direction==='outbound');
-  if(!interest||!schedule||!c.interestQuote||!c.scheduleQuote||!interest.body.includes(c.interestQuote)||!schedule.body.includes(c.scheduleQuote)||Date.parse(interest.sentAt)>Date.parse(schedule.sentAt))continue;
+  const messages=thread(lead,now),interest=messages.find(m=>m.id===c.interestId&&m.direction==='inbound'),schedule=messages.find(m=>m.id===c.scheduleId);
+  if(!interest||!schedule||!c.interestQuote||!c.scheduleQuote||!interest.body.includes(c.interestQuote)||!schedule.body.includes(c.scheduleQuote))continue;
   const key=hash([phone(lead)||lead.id,Math.floor(date/60000)]);if(seen.has(key))continue;
   const same=(x:OfficeItem)=>x.leadId===lead.id||Boolean(phone(lead)&&leads.some(l=>l.id===x.leadId&&phone(l)===phone(lead)))||Boolean(x.leadId===0&&lead.name.length>3&&x.title.toLowerCase().includes(lead.name.toLowerCase()));
   if(items.some(x=>x.kind==='appointment'&&same(x)&&Math.abs(Date.parse(x.dueAt)-date)<15*60000)){seen.add(key);continue}
@@ -24,4 +24,12 @@ export function applyCandidates(leads:ConversationLead[],raw:unknown,candidates:
   items.push({id:`sms-calendar:${key}`,leadId:lead.id,kind:'appointment',title:`Interested callback · ${lead.name}`,dueAt:new Date(date).toISOString(),amount:0,status:'open',reminderAt:'',reminderState:'off',createdAt:new Date(now).toISOString(),durationMinutes:30,staffReminderMinutes:15});seen.add(key);added++;
  }
  return {items,remembered:[...seen].slice(-5000),added};
+}
+
+export function pendingConversationThreads(leads:ConversationLead[],checked:Record<string,string>,now=Date.now()){
+ return leads.filter(eligible).map(l=>({leadId:l.id,messages:thread(l,now)})).filter(t=>t.messages.some(m=>m.direction==='inbound')&&checked[t.leadId]!=='v2:'+hash(t.messages)).sort((a,b)=>Number(Boolean(checked[a.leadId]))-Number(Boolean(checked[b.leadId])));
+}
+export function conversationBatch(pending:ReturnType<typeof pendingConversationThreads>){
+ let budget=0;
+ return pending.filter(t=>{const size=JSON.stringify(t).length;if(size+budget>48000)return false;budget+=size;return true}).slice(0,20);
 }

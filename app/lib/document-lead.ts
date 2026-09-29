@@ -1,3 +1,4 @@
+import {policyMoney} from "./policy-money";
 export type DocumentLeadField={label:string;value:string};
 
 export type DocumentLeadExtraction={
@@ -52,6 +53,7 @@ export function cleanDocumentLeadExtraction(value:unknown):DocumentLeadExtractio
     const field=raw as Record<string,unknown>;const label=text(field.label,80);const value=text(field.value,300);
     return label&&value?[{label,value}]:[];
   }):[];
+  for(const key of ["policyPremium","installmentAmount"] as const){const amount=policyMoney(result[key]);result[key]=amount===null?"":String(amount)}
   return {...result,otherFields};
 }
 

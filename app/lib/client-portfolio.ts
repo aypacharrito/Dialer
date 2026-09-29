@@ -1,3 +1,4 @@
+import {policyMoney} from "./policy-money";
 import type {WorkspaceProfile} from "./workspace-profile";
 
 export type ClientRecord={
@@ -41,7 +42,7 @@ export function clientDates(lead:ClientRecord){
 }
 
 export function clientPolicyMetrics(lead:ClientRecord){
-  const premium=Math.max(0,Number(lead.policyPremium||importedValue(lead,["policy premium","term premium","total policy premium"]))||0);
+  const premium=policyMoney(lead.policyPremium||importedValue(lead,["policy premium","term premium","total policy premium","total premium"]))??0;
   const termMonths=Math.max(0,Number(lead.policyTermMonths||importedValue(lead,["policy term months","term months"]))||0);
   return {premium,termMonths};
 }

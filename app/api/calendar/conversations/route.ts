@@ -1,10 +1,10 @@
 import {getPacificaAccess} from '../../../lib/clerk-access';
 import {readStoredWorkspace,updateStoredWorkspace} from '../../../lib/workspace-storage';
-import {cleanConversationCalendar} from '../../../lib/conversation-calendar';
+import {pendingConversationThreads,type ConversationLead,cleanConversationCalendar} from '../../../lib/conversation-calendar';
 import {reviewConversationCalendar} from '../../../lib/conversation-calendar-engine';
 import {aiConfigured} from '../../../lib/ai-provider';
 export const runtime='nodejs';export const maxDuration=60;
-export async function GET(){const access=await getPacificaAccess();if(!access.allowed)return Response.json({error:'Sign in required'},{status:403});const w=await readStoredWorkspace(access.userId),s=cleanConversationCalendar(w?.conversationCalendar);return Response.json({enabled:s.enabled,lastRunAt:s.lastRunAt,lastAdded:s.lastAdded,error:s.error,configured:aiConfigured(),canManage:access.role==='owner'&&access.accountUserId===access.userId},{headers:{'Cache-Control':'no-store'}})}
+export async function GET(){const access=await getPacificaAccess();if(!access.allowed)return Response.json({error:'Sign in required'},{status:403});const w=await readStoredWorkspace(access.userId),s=cleanConversationCalendar(w?.conversationCalendar);return Response.json({pendingConversations:pendingConversationThreads((w?.leads||[]) as ConversationLead[],s.checked).length,nextRunAt:s.nextRunAt,enabled:s.enabled,lastRunAt:s.lastRunAt,lastAdded:s.lastAdded,error:s.error,configured:aiConfigured(),canManage:access.role==='owner'&&access.accountUserId===access.userId},{headers:{'Cache-Control':'no-store'}})}
 export async function POST(request:Request){
  const access=await getPacificaAccess();if(!access.allowed)return Response.json({error:'Sign in required'},{status:403});
  const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return Response.json({error:'Invalid origin'},{status:403});

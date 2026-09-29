@@ -513,3 +513,9 @@ html[data-theme] .app-shell .ai-view>.ai-workspace { flex:1; min-width:0; width:
 .office-form{display:flex;flex-wrap:wrap;gap:16px;align-items:end;margin:16px 0}.office-form label{display:grid;gap:8px;min-width:180px;flex:1}.office-form label:has(input[type=checkbox]){display:flex;align-items:center}.office-form input[type=checkbox]{min-height:0}
 .office-item{padding:18px 0;border-bottom:1px solid var(--ps-line)}.office-item>div:last-child{display:flex;gap:8px;flex-wrap:wrap}.office-item p{margin:8px 0}.office-item small{color:var(--ps-muted)}
 @media(max-width:700px){.office-month button{padding:6px;min-height:60px}.office-month small{font-size:9px}.office-item{align-items:start;flex-direction:column}}
+
+/* Keep the conversation close to its navigation, without a spare title row. */
+html[data-theme] .app-shell .workspace .messages-center { position:relative; padding-top:8px !important; gap:6px; }
+html[data-theme] .app-shell .messages-center>.messages-module-bar { position:absolute; right:24px; top:12px; min-height:0; padding:0 !important; }
+html[data-theme] .app-shell .messages-center>.channel-tabs { padding-right:160px; }
+@media(max-width:650px){html[data-theme] .app-shell .messages-center>.messages-module-bar { position:static; }html[data-theme] .app-shell .messages-center>.channel-tabs { padding-right:0; }}

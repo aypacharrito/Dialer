@@ -1581,7 +1581,6 @@ html[data-theme] .app-shell .crm-summary article:last-child{border-top-color:#2e
 html[data-theme] .app-shell .crm-summary b{font-variant-numeric:tabular-nums;letter-spacing:-.04em}
 
 /* Explicit desktop rail; avoid animating layout width on every frame. */
-html[data-theme] .app-shell .sidebar-toggle { align-self:flex-end; min-width:36px; min-height:32px; border:1px solid var(--ps-border); border-radius:10px; color:var(--ps-muted); background:transparent; cursor:pointer; }
 @media(min-width:1281px){
 html[data-theme] .app-shell.sidebar-collapsed { --navigation-width:72px; }
 html[data-theme] .app-shell.sidebar-collapsed>.sidebar { padding:12px 8px !important; }
@@ -1591,7 +1590,6 @@ html[data-theme] .app-shell.sidebar-collapsed .sidebar nav button { position:rel
 html[data-theme] .app-shell.sidebar-collapsed .sidebar nav button>em.message-unread { display:block !important; position:absolute; right:0; top:0; font-size:10px; }
 html[data-theme] .app-shell.sidebar-collapsed .sidebar-foot { flex-direction:column; gap:8px; }
 }
-@media(max-width:1280px){html[data-theme] .app-shell .sidebar-toggle { display:none; }}
 html[data-theme] .app-shell .message-contacts>button>i { border-radius:14px; background:color-mix(in srgb,var(--ps-accent) 14%,var(--ps-surface)); color:var(--ps-accent); }
 html[data-theme] .app-shell .message-contacts>button { border-radius:12px; margin:3px 6px; width:calc(100% - 12px); }
 html[data-theme] .app-shell .message-history article { border-radius:18px; padding:12px 16px; box-shadow:0 2px 6px #00000008; max-width:min(78%,640px); }
@@ -1601,3 +1599,6 @@ html[data-theme] .app-shell .message-history article p { line-height:1.55; overf
 html[data-theme] .app-shell .message-history article small { display:block; margin-top:7px; font-size:11px; opacity:.75; }
 html[data-theme] .app-shell .send-message:not(:disabled) { box-shadow:0 3px 12px color-mix(in srgb,var(--ps-accent) 22%,transparent); }
 html[data-theme] .app-shell .message-contacts>button { content-visibility:auto; contain-intrinsic-size:auto 90px; }
+
+html[data-theme] .app-shell .sidebar-logo-toggle { border:0; background:transparent; color:inherit; width:100%; text-align:left; cursor:pointer; }
+html[data-theme] .app-shell .sidebar-logo-toggle:focus-visible { outline:2px solid var(--ps-accent); outline-offset:2px; }
