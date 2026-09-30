@@ -9,7 +9,8 @@ export async function assertAutomatedContact(workspaceId:string,address:string,c
   const contacts=workspace?.leads.filter(raw=>key((raw as Record<string,unknown>)[channel==="sms"?"phone":"email"])===key(address)) as Array<Record<string,unknown>>|undefined;
   if(!workspace||!contacts?.length)throw new Error("Save this contact before automated outreach.");
   const conservative=scheduled||channel==="email";
-  if(contacts.some(lead=>(conservative?blocksAutomatedText(lead):blocksAiText(lead))||!hasContactPermission(lead,workspace.profile,channel)))throw new Error("Automated outreach is paused for this contact. Follow up personally from Messages.");
+  if(contacts.some(lead=>(conservative?blocksAutomatedText(lead):blocksAiText(lead))||lead.deletedAt||lead.doNotCall||(channel==="sms"?lead.smsOptOut:lead.emailOptOut)))throw new Error("Automated outreach is paused for this contact. Follow up personally from Messages.");
+  if(!contacts.some(lead=>hasContactPermission(lead,workspace.profile,channel)))throw new Error("Document permission before automated outreach.");
   const control=cleanAiControl(workspace.aiControl),rule=control.rules[channel];
   if(conservative&&contacts.some(lead=>!matchesOutreach(lead,rule)))throw new Error("This contact is excluded by the saved AI outreach rules.");
   if(scheduled&&(!(control.salesEnabled??workspace.profile.serverAutomationEnabled)||!inOutreachWindow(rule)))throw new Error("Automated sales sending is paused or outside its saved time window.");

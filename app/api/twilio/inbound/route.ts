@@ -1,3 +1,4 @@
+import {archiveInboundSmsMedia} from "../../../lib/incoming-message-media";
 import { appendCommunication } from "../../../lib/communications";
 import { phoneAssignmentForNumber } from "../../../lib/phone-assignments";
 import { logError, logEvent } from "../../../lib/observability";
@@ -59,6 +60,8 @@ export async function POST(request: Request) {
     const isHelp=optOutType==="HELP"||help.test(body);
     const phone = digits(from);
     if (!phone) return twiml();
+    const mediaCount=Math.min(10,Math.max(0,Number(form.get("NumMedia"))||0));
+    const attachments=await archiveInboundSmsMedia(assignment.workspaceId,sid,mediaCount);
     let matched = false;
     let duplicate = false;
     await updateStoredWorkspace(assignment.workspaceId, (current) => {
@@ -81,13 +84,13 @@ export async function POST(request: Request) {
           return {
             ...raw,
             lastInboundAt: sentAt,
-            automationEnabled: false,
+            automationEnabled: isStop?false:raw.automationEnabled,
             automationUpdatedAt: sentAt,
             lastContact: optedOut
               ? "STOP received · outreach closed"
               : "Text reply received",
             automationNextAt: "",
-            automationStatus: optedOut ? "opted out" : "replied",
+            automationStatus: optedOut ? "opted out" : raw.automationEnabled===false&&raw.automationStatus!=="replied"?raw.automationStatus:"replied",
             ...(optedOut
               ? {
                   smsOptOut: true,
@@ -106,7 +109,7 @@ export async function POST(request: Request) {
               id: sid,
               channel: "sms",
               direction: "inbound",
-              body,
+              body,from,to,mediaCount,attachments,
               status: "received",
               sentAt,
               provider: "twilio",
@@ -152,7 +155,7 @@ export async function POST(request: Request) {
               id: sid,
               channel: "sms",
               direction: "inbound",
-              body,
+              body,from,to,mediaCount,attachments,
               status: "received",
               sentAt,
               provider: "twilio",

@@ -20,9 +20,9 @@ export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
   }
   if(Date.parse(remote.lastInboundAt||'')>(Date.parse(local.lastInboundAt||'')||0)){
     patch.lastInboundAt=remote.lastInboundAt;
-    patch.automationEnabled=false;patch.automationNextAt='';patch.automationStatus='replied';
     for(const key of ['smsOptOut','emailOptOut'])if(values[key]!==undefined)patch[key]=values[key];
     if(values.smsOptOut===true){
+      patch.automationEnabled=false;patch.automationNextAt='';patch.automationStatus='opted out';
       for(const key of ['doNotCall','stage','status','outcome','sourceDisposition','followUp','smsConsent'])if(values[key]!==undefined)patch[key]=values[key];
     }
   }
@@ -33,7 +33,7 @@ export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
       const message=raw as Record<string,unknown>;
       messages.set(String(message.providerId||message.id||JSON.stringify(raw)),raw);
     }
-    const communications=Array.from(messages.values()).slice(-200);
+    const communications=Array.from(messages.values());
     if(JSON.stringify(communications)!==JSON.stringify(local.communications||[]))patch.communications=communications;
   }
   if(!Object.keys(patch).length&&(local.deletedAt||'')===deletion.deletedAt&&(local.deletionUpdatedAt||local.deletedAt||'')===deletion.deletionUpdatedAt)return local;

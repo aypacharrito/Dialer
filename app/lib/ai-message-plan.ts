@@ -1,16 +1,18 @@
+import {isFollowUpContact} from "./ai-sms-recipients";
 type Contact={id:number;name:string;phone?:string;email?:string;stage?:string;outcome?:string;attempts?:number};
 export type OneTimeMessageAudience="all-eligible"|"new-leads"|"follow-ups";
 export function oneTimeMessageAudience(prompt:string):OneTimeMessageAudience|null{
   const value=prompt.trim();
+  if(/\b(?:not|never|except|exclude|only from|from source|don.t|do not)\b/i.test(value))return null;
   if(!/\b(?:text|sms|message|email|e-mail|send)\b/i.test(value))return null;
-  if(/\b(?:every|each|daily|weekly|monthly|recurring|automatically|from now on|always|schedule|scheduled)\b/i.test(value))return null;
+  if(/\b(?:(?:every|each)\s+(?:day|morning|week|month)|daily|weekly|monthly|recurring|automatically|from now on|always|schedule|scheduled)\b/i.test(value))return null;
   if(/\bfollow[- ]?ups?\b/i.test(value))return "follow-ups";
   if(/\bnew(?:\s+untouched)?\s+leads?\b/i.test(value))return "new-leads";
   if(/\b(?:everyone|everybody|all\s+(?:my\s+)?(?:leads|contacts|people|clients))\b/i.test(value))return "all-eligible";
   return null;
 }
 export function audienceMessageTargets<T extends Contact>(audience:OneTimeMessageAudience,contacts:T[]){
-  const follow=(contact:T)=>contact.stage==="Follow-up"||Number(contact.attempts)>0||["No answer","Voicemail","Call back later"].includes(String(contact.outcome||""));
+  const follow=isFollowUpContact;
   if(audience==="follow-ups")return contacts.filter(follow);
   if(audience==="new-leads")return contacts.filter(contact=>contact.stage==="New lead"&&!follow(contact));
   return contacts;

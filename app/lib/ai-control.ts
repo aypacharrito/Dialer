@@ -1,3 +1,4 @@
+import {isFollowUpContact} from "./ai-sms-recipients";
 import type {OfficeItem} from './office-schedule';
 export type OutreachRule={enabled:boolean;audience:'all-eligible'|'new-leads'|'follow-ups'|'selected';ids:number[];excludeIds:number[];sources:string[];excludeSources:string[];dailyAt:string;timeZone:string;startDate:string};
 export type AiControl={revision:number;salesEnabled:boolean|null;rules:Partial<Record<'sms'|'email',OutreachRule>>;receipts:Array<{id:string;at:string;changes:string[]}>};
@@ -11,7 +12,7 @@ export function cleanAiControl(value:unknown):AiControl{
 }
 export function matchesOutreach(lead:Record<string,unknown>,rule?:OutreachRule){
  if(!rule)return true;if(!rule.enabled)return false;
- const id=Number(lead.id),source=String(lead.source||'').toLowerCase(),follow=lead.stage==='Follow-up'||Number(lead.attempts)>0||['No answer','Voicemail','Call back later'].includes(String(lead.outcome));
+ const id=Number(lead.id),source=String(lead.source||'').toLowerCase(),follow=isFollowUpContact(lead);
  if(rule.excludeIds.includes(id)||rule.excludeSources.some(x=>x.toLowerCase()===source))return false;
  if(rule.sources.length&&!rule.sources.some(x=>x.toLowerCase()===source))return false;
  return rule.audience==='selected'?rule.ids.includes(id):rule.audience==='follow-ups'?follow:rule.audience==='new-leads'?lead.stage==='New lead'&&!follow:true;
@@ -39,7 +40,7 @@ export function validateRule(rule:OutreachRule,leads:Record<string,unknown>[]){
 }
 export function applyControlCommands<T extends {leads:unknown[];officeItems?:OfficeItem[];aiControl?:AiControl;profile?:{smsConsentSources?:string[];emailConsentSources?:string[]}}>(workspace:T,commands:ControlCommand[],requestId:string,now=new Date()){
  if(!Array.isArray(commands)||!commands.length||commands.length>10)throw Error('Choose between one and ten changes.');
- const control=cleanAiControl(workspace.aiControl),changes:string[]=[],leads=workspace.leads as Record<string,unknown>[];let items=[...(workspace.officeItems||[])],profile=workspace.profile?{...workspace.profile}:undefined;
+ const control=cleanAiControl(workspace.aiControl),changes:string[]=[],leads=workspace.leads as Record<string,unknown>[],profile=workspace.profile?{...workspace.profile}:undefined;let items=[...(workspace.officeItems||[])];
  for(const [index,c] of commands.entries()){
   if(c.kind==='outreach'){
    if(c.channel!=='sms'&&c.channel!=='email')throw Error('Choose text or email.');

@@ -1,4 +1,6 @@
 "use client";
+import {documentImageForAi} from "./lib/document-image";
+import {documentMissingFields,combineDocumentReads} from "./lib/document-review";
 import DialerBackdrop from "./components/DialerBackdrop";
 import DraggableDialerPanel from "./components/DraggableDialerPanel";
 import CallTimer from "./components/CallTimer";
@@ -112,50 +114,15 @@ function queueLabel(line:LeadLine,mode:WorkspaceMode){
   return line==="life"?"Priority leads":"General leads";
 }
 function followUpInDays(days:number){const date=new Date();date.setDate(date.getDate()+days);date.setHours(9,0,0,0);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}T${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}`}
-function isDocumentFile(file:File){return ["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type)||/\.(jpe?g|png|webp|pdf)$/i.test(file.name)}
+function isDocumentFile(file:File){return ["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type)||/\.(jpe?g|png|webp|heic|heif|pdf)$/i.test(file.name)}
 
-// PACIFICA_HYBRID_AI_DOCUMENT_SCAN_V1
-const documentScalarFields=["documentType","firstName","middleName","lastName","fullName","dateOfBirth","address","city","state","zip","licenseNumber","licenseState","licenseExpiration","policyNumber","carrier","policyEffectiveDate","policyExpirationDate","vin","vehicleYear","vehicleMake","vehicleModel","email","phone","product","policyPremium","policyTermMonths","billingFrequency","installmentAmount"] as const;
+function mergeDocumentExtractions(local:DocumentLeadExtraction,ai:DocumentLeadExtraction,localMethod:string){return localMethod==="PDF417 barcode"?combineDocumentReads(local,ai):combineDocumentReads(ai,local)}
 
-function cleanDocumentValue(value:unknown){return String(value??"").trim()}
-
-function mergeDocumentExtractions(local:DocumentLeadExtraction,ai:DocumentLeadExtraction,localMethod:string){
-  const localPreferred=localMethod==="PDF417 barcode";
-  const primary=localPreferred?local:ai;
-  const secondary=localPreferred?ai:local;
-  const merged={...secondary,...primary} as DocumentLeadExtraction;
-  const target=merged as unknown as Record<string,unknown>;
-  const first=primary as unknown as Record<string,unknown>;
-  const second=secondary as unknown as Record<string,unknown>;
-  for(const key of documentScalarFields){target[key]=cleanDocumentValue(first[key])||cleanDocumentValue(second[key])}
-  const extras=new Map<string,{label:string;value:string}>();
-  for(const item of [...(primary.otherFields||[]),...(secondary.otherFields||[])]){
-    const label=cleanDocumentValue(item?.label);const value=cleanDocumentValue(item?.value);if(!label||!value)continue;
-    const identity=label.toLowerCase().replace(/\s+/g," ");if(!extras.has(identity))extras.set(identity,{label,value});
-  }
-  merged.otherFields=Array.from(extras.values()).slice(0,80);
-  return merged;
-}
-
-async function documentImageForAi(file:File){
-  const bitmap=await createImageBitmap(file);
-  try{
-    const largest=Math.max(bitmap.width,bitmap.height);const scale=Math.min(1,2000/largest);
-    const width=Math.max(1,Math.round(bitmap.width*scale));const height=Math.max(1,Math.round(bitmap.height*scale));
-    const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
-    const context=canvas.getContext("2d");if(!context)throw new Error("AI image preparation failed");
-    context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";context.drawImage(bitmap,0,0,width,height);
-    let quality=.9;let image=canvas.toDataURL("image/jpeg",quality);
-    while(image.length>2_450_000&&quality>.55){quality-=.08;image=canvas.toDataURL("image/jpeg",quality)}
-    if(image.length>2_550_000)throw new Error("The photo is too detailed to send safely. Crop closer to the document and retry.");
-    return image;
-  }finally{bitmap.close()}
-}
-
-async function scanDocumentWithAi(file:File){
+async function scanDocumentWithAi(files:File[]){
+  const file=files[0];
   const isPdf=file.type==="application/pdf"||/\.pdf$/i.test(file.name);
   if(isPdf&&file.size>2_800_000)throw new Error("AI PDF scanning supports files up to 2.8 MB; larger PDFs use local text extraction.");
-  const payload=isPdf?{pdf:await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error("Unable to read PDF"));reader.readAsDataURL(file)})}:{image:await documentImageForAi(file)};
+  const payload=isPdf?{pdf:await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error("Unable to read PDF"));reader.readAsDataURL(file)})}:{images:await Promise.all(files.map(file=>documentImageForAi(file)))};
   const response=await fetch("/api/ai/document-lead",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,fileName:file.name})});
   const data=await response.json() as {extraction?:DocumentLeadExtraction;error?:string;detail?:string};
   if(!response.ok||!data.extraction)throw new Error(data.error||data.detail||"AI vision could not read this document");
@@ -596,7 +563,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     const markedLogId=postCallLogIdRef.current;if(markedLogId){setCallLogs(list=>list.map(log=>log.id===markedLogId?{...log,outcome:resultDraft.crmOutcome,status:"Disposition saved"}:log));postCallLogIdRef.current=""}
     setSourceSyncing(true);
     const won=resultDraft.crmOutcome==="Sold / Won";const now=new Date();
-    const missed=["No answer","Voicemail"].includes(resultDraft.crmOutcome);const terminal=resultDraft.crmStage==="Closed"||["Not interested","Wrong number","Sold / Won"].includes(resultDraft.crmOutcome);const humanFollowUp=["Interested","Appointment set","Completed","Call back later"].includes(resultDraft.crmOutcome);
+    const missed=["No answer","Voicemail"].includes(resultDraft.crmOutcome);const terminal=resultDraft.crmStage==="Closed"||["Not interested","Wrong number","Sold / Won"].includes(resultDraft.crmOutcome);const humanFollowUp=resultDraft.crmOutcome==="Interested";
     const automation:Partial<Lead>=missed&&!terminal?{automationEnabled:true,automationSequenceId:"missed-call",automationStep:0,automationNextAt:new Date(now.getTime()+120*60_000).toISOString(),automationStatus:"scheduled",automationDeliveryFailures:0,automationLastError:"",automationUpdatedAt:now.toISOString()}:terminal||humanFollowUp?{automationEnabled:!terminal,automationStatus:terminal?"complete":"waiting for salesperson",automationNextAt:"",automationUpdatedAt:now.toISOString()}:{};
     const patch:Partial<Lead>={stage:resultDraft.crmStage,outcome:resultDraft.crmOutcome,sourceDisposition:resultDraft.sourceDisposition,followUpUtc:resultDraft.appointmentAt&&Number.isFinite(Date.parse(resultDraft.appointmentAt))?new Date(resultDraft.appointmentAt).toISOString():"",followUp:resultDraft.crmStage==="Closed"?"":resultDraft.appointmentAt,notes:resultDraft.notes,status:resultDraft.crmStage==="Closed"?"Closed":"Ready",lastContact:now.toLocaleString(),closedAt:won?now.toISOString():completedLead.closedAt,...automation};
     updateLead(completedLead.id,patch);
@@ -1139,7 +1106,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     if(loadedLeadId===lead.id){activeLineRef.current=line;setActiveLine(line)}
     setToast(`${lead.name} moved to ${queueLabel(line,workspaceProfile.mode)}`);
   }
-  function openNewLead(){setNewLead(emptyNewLead);setShowNewLead(true)}
+  const [scanReview,setScanReview]=useState<string[]>([]);
+  function openNewLead(){setScanReview([]);setNewLead(emptyNewLead);setShowNewLead(true)}
   function createLead(){
     const phone=newLead.phone.trim();const email=newLead.email.trim();const name=newLead.name.trim();if(!name){setToast("Add the contact name before saving");return}
     const createdAt=new Date().toISOString();const isPolicy=/declaration|policy/i.test(newLead.documentType)&&Boolean(newLead.policyNumber||newLead.policyExpirationDate);
@@ -1150,14 +1118,18 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     else{const item:Lead={id,name,phone,email,city:newLead.city.trim()||"No city",address:newLead.address.trim(),state:newLead.state.trim(),zip:newLead.zip.trim(),status:isPolicy?"Closed":"Ready",stage:isPolicy?"Closed":"New lead",outcome:isPolicy?"Sold / Won":"Not contacted",notes:"",followUp:"",doNotCall:false,lastContact:"Never",line:activeLine,source:newLead.source.trim()||"Manual",leadCost:Number(newLead.leadCost)||0,product:newLead.product.trim()||"Service inquiry",sourceDisposition:isPolicy?"Sold":"New",importedAt:createdAt,received:createdAt,smsConsent:false,smsOptOut:false,emailConsent:false,emailOptOut:false,communications:[],automationEnabled:!isPolicy,...policyPatch};setLeads(old=>[item,...old])}
     setNewLead(emptyNewLead);setShowNewLead(false);setSelectedLead(isPolicy?null:id);setView(isPolicy?"clients":"leads");setToast(match?`${name} updated from document`:isPolicy?`${name} added to active clients`:`${name} added${phone?"":" · add a phone before dialing"}`);
   }
-  async function scanDocument(file?:File){
-    if(!file)return;if(!isDocumentFile(file)){setToast("Use a JPEG, PNG, WebP, or PDF document");return}if(file.size>20*1024*1024){setToast("Use a document smaller than 20 MB");return}
+  async function scanDocument(input?:File|File[]){
+    const files=(Array.isArray(input)?input:input?[input]:[]).slice(0,2),file=files[0];
+    if(!file)return;
+    if(files.some(file=>file.size>20*1024*1024||!isDocumentFile(file))){setToast("Choose up to two clear document photos under 20 MB each.");return}
+    if(files.length>1&&files.some(file=>file.type==="application/pdf")){setToast("Upload one PDF or the front and back photos together.");return}
+if(!isDocumentFile(file)){setToast("Use a photo or PDF document");return}if(file.size>20*1024*1024){setToast("Use a document smaller than 20 MB");return}
     setScanBusy(true);setToast("Reading document…");
     try{
       let localResult:Awaited<ReturnType<typeof scanDocumentLocally>>|null=null;let aiExtraction:DocumentLeadExtraction|null=null;let localError="";let aiError="";
       const [localAttempt,aiAttempt]=await Promise.allSettled([
-        scanDocumentLocally(file,label=>setToast(label)),
-        (async()=>{setToast("AI Enhanced Scan · reading document…");return scanDocumentWithAi(file)})(),
+        (async()=>{const reads=await Promise.allSettled(files.map(file=>scanDocumentLocally(file,label=>setToast(label))));const usable=reads.flatMap(read=>read.status==="fulfilled"?[read.value]:[]).sort((a,b)=>Number(b.method==="PDF417 barcode")-Number(a.method==="PDF417 barcode"));if(!usable.length)throw Error("Local scan could not read the document");return {...usable[0],extraction:usable.slice(1).reduce((value,item)=>combineDocumentReads(value,item.extraction),usable[0].extraction)}})(),
+        (async()=>{setToast("AI Enhanced Scan · reading document…");return scanDocumentWithAi(files)})(),
       ]);
       if(localAttempt.status==="fulfilled")localResult=localAttempt.value;else localError=localAttempt.reason instanceof Error?localAttempt.reason.message:"Local scan failed";
       if(aiAttempt.status==="fulfilled")aiExtraction=aiAttempt.value;else aiError=aiAttempt.reason instanceof Error?aiAttempt.reason.message:"AI scan failed";
@@ -1170,11 +1142,11 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
         if(aiScore>localScore&&localResult.method!=="PDF417 barcode")method="AI Enhanced Scan + local verification";
       }else if(aiExtraction){extraction=aiExtraction;method="AI Enhanced Scan"}
       else{extraction=localResult!.extraction;method=localResult!.method}
-      setNewLead({...emptyNewLead,name:documentLeadName(extraction),phone:extraction.phone,email:extraction.email,city:extraction.city,address:extraction.address,state:extraction.state,zip:extraction.zip,product:extraction.product||(/insurance|policy/i.test(extraction.documentType)?"Insurance quote":"Service inquiry"),source:/declaration|policy/i.test(extraction.documentType)?"Policy declaration":"Document scan",dateOfBirth:extraction.dateOfBirth,licenseNumber:extraction.licenseNumber,licenseState:extraction.licenseState,licenseExpiration:extraction.licenseExpiration,policyNumber:extraction.policyNumber,policyEffectiveDate:extraction.policyEffectiveDate,policyExpirationDate:extraction.policyExpirationDate,policyPremium:extraction.policyPremium,policyTermMonths:extraction.policyTermMonths,vin:extraction.vin,vehicle:[extraction.vehicleYear,extraction.vehicleMake,extraction.vehicleModel].filter(Boolean).join(" "),documentType:extraction.documentType,documentFields:documentLeadImportedFields(extraction)});setShowNewLead(true);setToast(`${method} complete${!aiExtraction&&aiError?" · AI unavailable; local extraction used":""} · verify every field`);
+      setNewLead({...emptyNewLead,name:documentLeadName(extraction),phone:extraction.phone,email:extraction.email,city:extraction.city,address:extraction.address,state:extraction.state,zip:extraction.zip,product:extraction.product||(/insurance|policy/i.test(extraction.documentType)?"Insurance quote":"Service inquiry"),source:/declaration|policy/i.test(extraction.documentType)?"Policy declaration":"Document scan",dateOfBirth:extraction.dateOfBirth,licenseNumber:extraction.licenseNumber,licenseState:extraction.licenseState,licenseExpiration:extraction.licenseExpiration,policyNumber:extraction.policyNumber,policyEffectiveDate:extraction.policyEffectiveDate,policyExpirationDate:extraction.policyExpirationDate,policyPremium:extraction.policyPremium,policyTermMonths:extraction.policyTermMonths,vin:extraction.vin,vehicle:[extraction.vehicleYear,extraction.vehicleMake,extraction.vehicleModel].filter(Boolean).join(" "),documentType:extraction.documentType,documentFields:documentLeadImportedFields(extraction)});setScanReview([...(aiError?[`AI scan unavailable: ${aiError}`]:[]),...(documentMissingFields(extraction).length?[`Please verify or enter: ${documentMissingFields(extraction).join(", ")}. Add a clear photo of the other side if needed.`]:[])]);setShowNewLead(true);setToast(`${method} read${!aiExtraction&&aiError?" · AI unavailable; local extraction used":""} · verify every field`);
     }catch(error){setToast(error instanceof Error?error.message:"Document scan failed")}finally{setScanBusy(false)}
   }
   function handleDroppedFile(file?:File){if(!file)return;if(isDocumentFile(file)){void scanDocument(file);return}if(/\.(csv|tsv|txt)$/i.test(file.name)||["text/csv","text/tab-separated-values","text/plain"].includes(file.type)){importFile(file);return}setToast("Drop a license photo, declaration PDF, CSV, TSV, or TXT file")}
-  function openDocumentPicker(){const picker=document.createElement("input");picker.type="file";picker.accept="image/jpeg,image/png,image/webp,application/pdf,.pdf";picker.onchange=()=>void scanDocument(picker.files?.[0]);picker.click()}
+  function openDocumentPicker(){const picker=document.createElement("input");picker.type="file";picker.accept="image/*,application/pdf,.pdf";picker.multiple=true;picker.onchange=()=>void scanDocument(Array.from(picker.files||[]));picker.click()}
   function hasDraggedFiles(event:React.DragEvent){return Array.from(event.dataTransfer.types).includes("Files")}
   function ownsFileDrop(event:React.DragEvent){return event.target instanceof Element&&Boolean(event.target.closest(".message-thread,.ai-workspace"))}
   function onFileDragEnter(event:React.DragEvent<HTMLElement>){if(!hasDraggedFiles(event)||view==="messages"||ownsFileDrop(event))return;event.preventDefault();fileDragDepthRef.current+=1;setFileDragActive(true)}
@@ -1254,7 +1226,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>{callerId}</b></div><div className="lead-line-switch" role="group" aria-label="Lead queue"><button className={activeLine==="life"?"active":""} aria-pressed={activeLine==="life"} disabled={dialing} onClick={()=>switchLine("life")}>{queueLabel("life",workspaceProfile.mode)}</button><button className={activeLine==="home-auto"?"active":""} aria-pressed={activeLine==="home-auto"} disabled={dialing} onClick={()=>switchLine("home-auto")}>{queueLabel("home-auto",workspaceProfile.mode)}</button></div><div className="top-actions">{workspaceHydrated&&workspaceProfile.onboardingCompleted&&<WorkspaceTour workspaceId={workspaceId} onNavigate={id=>openView(id as View)}/>}<button className={`inbound-availability ${phoneAvailable?"available":""}`} disabled={!phoneReady||dialing} title={!phoneReady?"Assign this workspace a Twilio number first":undefined} onClick={()=>void togglePhoneAvailability()}><i/>{phoneAvailable?"Calls on":"Go available"}</button><span className="workspace-sync" title="Leads, calls, and settings save automatically"><i/>{workspaceSyncStatus}</span><span className="connection" title={provider}><Icon name="wifi"/><span>{provider}</span></span><button className={`notification ${dueLeadCount?"has-alerts":""}`} aria-label={`${dueLeadCount} follow-ups due`} title={`${dueLeadCount} follow-ups due`} onClick={()=>setView("today")}><Icon name="bell"/>{dueLeadCount>0&&<em>{Math.min(99,dueLeadCount)}</em>}</button><button className="scan-action" aria-label={scanBusy?"Reading document":"Scan document"} title="Scan document" aria-busy={scanBusy} disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={scanInputRef} hidden type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";void scanDocument(file)}}/><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/></div></header>
+      <header className="topbar"><div className="caller-id"><small>CALLER ID</small><b>{callerId}</b></div><div className="lead-line-switch" role="group" aria-label="Lead queue"><button className={activeLine==="life"?"active":""} aria-pressed={activeLine==="life"} disabled={dialing} onClick={()=>switchLine("life")}>{queueLabel("life",workspaceProfile.mode)}</button><button className={activeLine==="home-auto"?"active":""} aria-pressed={activeLine==="home-auto"} disabled={dialing} onClick={()=>switchLine("home-auto")}>{queueLabel("home-auto",workspaceProfile.mode)}</button></div><div className="top-actions">{workspaceHydrated&&workspaceProfile.onboardingCompleted&&<WorkspaceTour workspaceId={workspaceId} onNavigate={id=>openView(id as View)}/>}<button className={`inbound-availability ${phoneAvailable?"available":""}`} disabled={!phoneReady||dialing} title={!phoneReady?"Assign this workspace a Twilio number first":undefined} onClick={()=>void togglePhoneAvailability()}><i/>{phoneAvailable?"Calls on":"Go available"}</button><span className="workspace-sync" title="Leads, calls, and settings save automatically"><i/>{workspaceSyncStatus}</span><span className="connection" title={provider}><Icon name="wifi"/><span>{provider}</span></span><button className={`notification ${dueLeadCount?"has-alerts":""}`} aria-label={`${dueLeadCount} follow-ups due`} title={`${dueLeadCount} follow-ups due`} onClick={()=>setView("today")}><Icon name="bell"/>{dueLeadCount>0&&<em>{Math.min(99,dueLeadCount)}</em>}</button><button className="scan-action" aria-label={scanBusy?"Reading document":"Scan document"} title="Scan document" aria-busy={scanBusy} disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/></button><button className="import" onClick={()=>inputRef.current?.click()}><Icon name="upload"/> Import CSV</button>{clerkEnabled&&<ClerkTopAuth/>}<input ref={scanInputRef} hidden type="file" multiple accept="image/*,application/pdf,.pdf" onChange={event=>{const files=Array.from(event.currentTarget.files||[]);event.currentTarget.value="";void scanDocument(files)}}/><input ref={inputRef} hidden type="file" accept=".csv,.txt,.tsv" onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";importFile(file)}}/></div></header>
 
       <FloatingCallWindow onWindowChange={setFloatingWindowOpen} category={dialerQueueLabel()} active={dialing} result={postCallLead?{id:postCallLead.id,source:postCallLead.source,stage:postCallLead.stage,connected:postCallConnected,technicalOutcome:postCallTechnicalOutcome,name:postCallLead.name,number:postCallLead.phone,draft:postCallDraft,resume:resumeAfterWrap,saving:sourceSyncing,doNotCall:postCallLead.doNotCall,error:desktopWrapError,onSelect:choosePostCallOutcome,onChange:patch=>setPostCallDraft(draft=>({...draft,...patch})),onSave:()=>void savePostCall(),onAgain:()=>void savePostCall("again"),onPause:()=>{resumeAfterWrapRef.current=false;setResumeAfterWrap(false);stopAutoDial("Queue paused")}}:undefined} name={manualCall?"Manual call":lead.name} number={manualCall?dialNumber:lead.phone} connected={connected} muted={muted} connectedAt={callConnectedAt} sentDigits={dtmfDisplay} feedback={dtmfFeedback.message} onMute={toggleMute} onEnd={hangup} onDigits={pressKey}/>
       {dialing&&view!=="dialer"&&<ActiveCallBar product={manualCall?undefined:lead.product} name={manualCall?"Manual call":lead.name} number={manualCall?dialNumber:lead.phone} connected={connected} muted={muted} connectedAt={callConnectedAt} queueRunning={autoDialing} onOpen={()=>setView("dialer")} onKeypad={openCallKeypad} onMute={toggleMute} onEnd={hangup} onPause={pauseQueue}/>}
@@ -1349,7 +1321,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
 
       {view==="miner"&&workspaceProfile.mode==="insurance"&&<MinerPanel mode={minerMode} onMode={setMinerMode} prospects={minerLeads} dialing={dialing} activeScope={dialerScope} onStart={startMinerDialer} onCall={callLeadById} onOpen={setSelectedLead} onResults={items=>setLeads(current=>mergeIncomingContacts(current,normalizeSavedLeads(items)))} autoFeed={workspaceProfile.minerAutoFeed} onAutoFeedChange={minerAutoFeed=>setWorkspaceProfile(profile=>({...profile,minerAutoFeed}))}/>}
 
-      <div hidden={view!=="messages"} className="page-view messages-view"><MessagesCenter visible={view==="messages"} key={`${workspaceId}:${activeLine}:${messageTarget?.leadId||"inbox"}:${messageTarget?.channel||"sms"}`} workspaceId={workspaceId} profile={workspaceProfile} leads={lineLeads} initialLeadId={messageTarget?.leadId} initialChannel={messageTarget?.channel} onOpenContact={id=>setSelectedLead(id)} onCloseLead={id=>updateLead(id,{stage:"Closed",status:"Closed",outcome:"Not interested",followUp:"",automationEnabled:false,automationNextAt:"",automationStatus:"complete",automationUpdatedAt:new Date().toISOString()})} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile}/></div>
+      <div hidden={view!=="messages"} className="page-view messages-view"><MessagesCenter visible={view==="messages"} key={`${workspaceId}:${messageTarget?.leadId||"inbox"}:${messageTarget?.channel||"sms"}`} workspaceId={workspaceId} profile={workspaceProfile} leads={leads} initialLeadId={messageTarget?.leadId} initialChannel={messageTarget?.channel} onOpenContact={id=>setSelectedLead(id)} onCloseLead={id=>updateLead(id,{stage:"Closed",status:"Closed",outcome:"Not interested",followUp:"",automationEnabled:false,automationNextAt:"",automationStatus:"complete",automationUpdatedAt:new Date().toISOString()})} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile}/></div>
 
       {view!=="ai"&&aiActivity!=="idle"&&<button type="button" className="ai-background-status" onClick={()=>openView("ai")}>{aiActivity==="working"?"Pacifica AI is working…":aiActivity==="sending"?"Pacifica AI is sending…":"Pacifica AI · response ready"} <span>Open →</span></button>}
       <div hidden={view!=="ai"} className="page-view ai-view"><AiCommandCenter onQuoteRequests={()=>setQuoteReviewOpen(open=>!open)} visible={view==="ai"} onActivity={setAiActivity} key={workspaceId} workspaceId={workspaceId} activeLine={activeLine} profile={workspaceProfile} leads={allLeads} recentCalls={callLogs} onApply={applyAiAction} onCreateLead={createAiLead} onOpen={id=>setSelectedLead(id)} onCall={callLeadById}>{quoteReviewOpen&&view==="ai"&&<OpportunityDesk leads={leads} initialLeadId={quoteRequestLeadId} onOpen={setSelectedLead} onMessage={id=>{const item=leads.find(l=>l.id===id);if(item)openLeadMessage(item,"sms")}} onRefresh={async()=>{const response=await fetch("/api/crm/workspace",{cache:"no-store"});if(!response.ok)throw Error("Contact refresh failed. Your reviewed request remains saved.");const data=await response.json();setLeads(current=>mergeIncomingContacts(current,normalizeSavedLeads(data.leads)));}}/>}</AiCommandCenter></div>
@@ -1401,7 +1373,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     {showNewLead&&<div className="new-lead-backdrop" onClick={()=>setShowNewLead(false)}><form ref={newLeadDialogRef} role="dialog" aria-modal="true" aria-label="Add or review a lead" tabIndex={-1} className="new-lead-modal" aria-busy={scanBusy} onSubmit={event=>{event.preventDefault();createLead()}} onClick={event=>event.stopPropagation()}>
       <header><div><span>{newLead.documentType?"DOCUMENT CAPTURE":"NEW OPPORTUNITY"}</span><h2>{newLead.documentType?"Review scanned lead":"Add a lead"}</h2></div><button type="button" aria-label="Close" onClick={()=>setShowNewLead(false)}>×</button></header>
       <div className={`scan-lead-action ${scanBusy?"busy":""}`}><button type="button" disabled={scanBusy} onClick={()=>scanInputRef.current?.click()}><Icon name="camera"/> {scanBusy?"Reading document…":newLead.documentType?"Scan another":"Scan a license or policy"}</button><span>{newLead.documentType?`${newLead.documentType} · verify before saving`:"or drag and drop an image anywhere"}</span></div>
-      <div className="new-lead-fields">
+      <div className="new-lead-fields">{scanReview.map(note=><p className="scan-review-note" role="status" key={note}>{note}</p>)}
         <label>Full name<input autoFocus value={newLead.name} onChange={event=>setNewLead(value=>({...value,name:event.target.value}))} placeholder="Maria Torres"/></label><label>Phone<input value={newLead.phone} onChange={event=>setNewLead(value=>({...value,phone:event.target.value}))} placeholder="Add a phone number"/></label>
         <label>Email<input type="email" value={newLead.email} onChange={event=>setNewLead(value=>({...value,email:event.target.value}))} placeholder="maria@example.com"/></label><label>Date of birth<input type="date" value={newLead.dateOfBirth} onChange={event=>setNewLead(value=>({...value,dateOfBirth:event.target.value}))}/></label>
         <label className="wide-field">Street address<input value={newLead.address} onChange={event=>setNewLead(value=>({...value,address:event.target.value}))} placeholder="123 Main Street"/></label><label>City<input value={newLead.city} onChange={event=>setNewLead(value=>({...value,city:event.target.value}))} placeholder="Van Nuys"/></label><label>State<input value={newLead.state} onChange={event=>setNewLead(value=>({...value,state:event.target.value}))} placeholder="CA"/></label><label>ZIP<input value={newLead.zip} onChange={event=>setNewLead(value=>({...value,zip:event.target.value}))} placeholder="91401"/></label>

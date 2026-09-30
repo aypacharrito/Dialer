@@ -7,7 +7,7 @@ type Props={appearance?:"light"|"dark";lightUrl?:string;darkUrl?:string;motion?:
 function DialerBackdrop({appearance="dark",lightUrl="",darkUrl="",motion=true}:Props){
  const root=useRef<HTMLDivElement>(null),imageRef=useRef<HTMLImageElement>(null);
  const custom=appearance==="dark"?darkUrl:lightUrl;
- const source=custom||(appearance==="dark"?"/images/orbit.webp":"/images/forest-dialer.svg");
+ const source=custom||(appearance==="dark"?"/images/orbit.webp":"/images/forest.webp");
  useEffect(()=>{
   const node=root.current,host=node?.parentElement,image=imageRef.current;
   if(!node||!host||!image)return;
@@ -39,7 +39,7 @@ function DialerBackdrop({appearance="dark",lightUrl="",darkUrl="",motion=true}:P
   return()=>{stop();host.removeEventListener("pointermove",move);host.removeEventListener("pointerleave",reset);reduced.removeEventListener("change",stop);document.removeEventListener("visibilitychange",visibility)};
  },[motion,source]);
  return <div ref={root} className={`dialer-cosmos dialer-scene-${appearance}${custom?" is-custom":""}`} aria-hidden="true">
-  {appearance==="dark"&&!custom?<picture><source media="(max-width: 700px)" srcSet="/images/orbit-small.webp"/><img ref={imageRef} src={source} width="1672" height="941" alt="" decoding="async" draggable={false}/></picture>:<img ref={imageRef} src={source} alt="" decoding="async" draggable={false}/>}
+  {!custom?<picture><source media="(max-width: 700px)" srcSet={appearance==="dark"?"/images/orbit-small.webp":"/images/forest-small.webp"}/><img ref={imageRef} src={source} width="1672" height="941" alt="" decoding="async" draggable={false}/></picture>:<img ref={imageRef} src={source} referrerPolicy="no-referrer" onError={event=>{event.currentTarget.onerror=null;event.currentTarget.src=appearance==="dark"?"/images/orbit.webp":"/images/forest.webp"}} alt="" decoding="async" draggable={false}/>}
  </div>;
 }
 

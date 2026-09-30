@@ -2,7 +2,7 @@ import {cleanAiControl,matchesOutreach,inOutreachWindow} from "./ai-control";
 import {workspaceAutomationAccess} from "./clerk-access";
 import {emailWithComplianceFooter} from "./message-footer";
 import {assertAutomatedContact} from "./automated-contact";
-import {requiresPersonalText} from "./ai-sms-recipients";
+import {blocksAutomatedText} from "./ai-sms-recipients";
 import {hasContactPermission} from "./contact-permission";
 import {appendCommunication,cleanCommunications,type StoredCommunication} from "./communications";
 import {personalizeAutomationMessage} from "./ai-outreach"; // PACIFICA_DYNAMIC_OUTREACH_V1
@@ -26,8 +26,7 @@ export type AutomationRun={ok:true;startedAt:string;completedAt:string;workspace
 
 const retryDelays=[5,15,60,240,720];
 const closedOutcomes=new Set(["not interested","wrong number","sold / won"]);
-const humanHandoffOutcomes=new Set(["interested","appointment set","completed","call back later"]);
-const finalAutomationStatuses=new Set(["complete","needs attention","replied","opted out","waiting for salesperson"]);
+const finalAutomationStatuses=new Set(["complete","needs attention","opted out"]);
 
 function timestamp(value?:string){const result=new Date(value||"").getTime();return Number.isFinite(result)?result:Number.NaN}
 function isoAfter(minutes:number,now=Date.now()){return new Date(now+Math.max(0,minutes)*60_000).toISOString()}
@@ -35,7 +34,7 @@ function leadArrival(lead:FollowUpLead){const received=timestamp(lead.received);
 function triggerFor(lead:FollowUpLead){const outcome=lead.outcome.toLowerCase();return outcome==="no answer"||outcome==="voicemail"?"no-answer":outcome==="interested"?"interested":"new-lead"}
 function sequenceFor(lead:FollowUpLead,profile:WorkspaceProfile){return lead.automationSequenceId?profile.automationSequences.find(sequence=>sequence.id===lead.automationSequenceId&&sequence.active):profile.automationSequences.find(sequence=>sequence.trigger===triggerFor(lead)&&sequence.active)}
 function enabledSteps(sequence:AutomationSequence){return sequence.steps.filter(step=>step.enabled)}
-function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return requiresPersonalText(lead)||Boolean(lead.deletedAt)||!sequence||lead.automationEnabled===false||lead.doNotCall||lead.stage==="Closed"||lead.stage==="Appointment"||closedOutcomes.has(lead.outcome.toLowerCase())||humanHandoffOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
+function stopped(lead:FollowUpLead,sequence?:AutomationSequence){return blocksAutomatedText(lead)||Boolean(lead.deletedAt)||!sequence||lead.doNotCall||lead.stage==="Closed"||closedOutcomes.has(lead.outcome.toLowerCase())||(sequence.stopOnReply&&Boolean(lead.lastInboundAt))}
 
 export function prepareAutomationLead(lead:FollowUpLead,profile:WorkspaceProfile,now=Date.now()):FollowUpLead{
   if(finalAutomationStatuses.has(String(lead.automationStatus||"").toLowerCase()))return {...lead,automationNextAt:""};

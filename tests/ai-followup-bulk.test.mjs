@@ -2,8 +2,8 @@ import test from "node:test";import assert from "node:assert/strict";
 import {smsRecipients,blocksAiText,blocksAutomatedText} from "../app/lib/ai-sms-recipients.ts";
 import {audienceMessageTargets} from "../app/lib/ai-message-plan.ts";
 const base={phone:"8185550100",stage:"Follow-up",outcome:"Call back later"};
-test("one-time Pacifica AI can select open follow-ups while scheduled automation stays conservative",()=>{
- const lead={id:1,...base};assert.equal(blocksAiText(lead),false);assert.equal(blocksAutomatedText(lead),true);assert.deepEqual(smsRecipients([lead]).map(x=>x.id),[1]);
+test("one-time and scheduled AI both select neutral follow-ups",()=>{
+ const lead={id:1,...base};assert.equal(blocksAiText(lead),false);assert.equal(blocksAutomatedText(lead),false);assert.deepEqual(smsRecipients([lead]).map(x=>x.id),[1]);
 });
 test("STOP, DNC, deletion and closed records remain hard blocked",()=>{
  for(const patch of [{smsOptOut:true},{doNotCall:true},{deletedAt:"now"},{stage:"Closed"},{outcome:"Not interested"},{outcome:"Wrong number"}])assert.deepEqual(smsRecipients([{id:1,...base,...patch}]),[],JSON.stringify(patch));

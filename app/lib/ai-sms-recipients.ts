@@ -1,27 +1,24 @@
 export type ReplyState={lastInboundAt?:unknown;automationStatus?:unknown;communications?:unknown};
-export function hasContactReplied(lead:ReplyState){
-  return Boolean(lead.lastInboundAt)||String(lead.automationStatus||"").toLowerCase()==="replied"||(Array.isArray(lead.communications)&&lead.communications.some(item=>item&&typeof item==="object"&&String(item.direction||"").toLowerCase()==="inbound"));
+type Workflow=ReplyState&{stage?:unknown;status?:unknown;outcome?:unknown;sourceDisposition?:unknown;automationEnabled?:unknown};
+const normalized=(value:unknown)=>String(value||"").trim().toLowerCase();
+export function hasContactReplied(lead:ReplyState){return Boolean(lead.lastInboundAt)||normalized(lead.automationStatus)==="replied"||(Array.isArray(lead.communications)&&lead.communications.some(item=>item&&typeof item==="object"&&normalized(item.direction)==="inbound"))}
+/** Explicit owner outcomes, never inferred merely from a reply or a completed call. */
+export function aiTextLockReason(lead:Workflow):"Closed"|"Interested"|"Paused"|null{
+ const states=[lead.stage,lead.status,lead.outcome].map(normalized),source=normalized(lead.sourceDisposition);
+ if(states.some(value=>["closed","not interested","wrong number","sold / won","sold","won"].includes(value))||/^(lost|sold)\b/.test(source))return "Closed";
+ if(states.includes("interested")||/^interested\b/.test(source))return "Interested";
+ if(lead.automationEnabled===false&&!["replied","waiting for salesperson"].includes(normalized(lead.automationStatus)))return "Paused";
+ return null;
 }
-type SmsContact={id:number;phone?:string;smsOptOut?:boolean;doNotCall?:boolean;deletedAt?:string;stage?:string;outcome?:string;status?:string;automationEnabled?:boolean};
-const normalize=(value:unknown)=>String(value||"").trim().toLowerCase();
-export function requiresPersonalText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown;sourceDisposition?:unknown}){
-  return hasContactReplied(lead)||/interested|working|quoted|appoint|sold/.test(normalize(lead.sourceDisposition))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.status))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.stage))||["interested","appointment","appointed","appointment set","quoted","working","completed","call back later"].includes(normalize(lead.outcome));
+export const blocksAiText=(lead:Workflow)=>aiTextLockReason(lead)!==null;
+export const blocksAutomatedText=blocksAiText;
+export const requiresPersonalText=blocksAiText;
+export function isFollowUpContact(lead:Workflow&{attempts?:unknown}){return [lead.stage,lead.status,lead.outcome].some(value=>["follow-up","completed","no answer","voicemail","call back later"].includes(normalized(value)))||Number(lead.attempts)>0||hasContactReplied(lead)}
+type Contact=Workflow&{id:number;phone?:string;email?:string;smsOptOut?:boolean;emailOptOut?:boolean;doNotCall?:boolean;deletedAt?:string};
+function recipients<T extends Contact>(leads:T[],channel:"sms"|"email",permitted:(lead:T)=>boolean){
+ const key=(lead:T)=>channel==="sms"?String(lead.phone||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,""):normalized(lead.email);
+ const blocked=new Set(leads.filter(lead=>lead.deletedAt||lead.doNotCall||(channel==="sms"?lead.smsOptOut:lead.emailOptOut)||blocksAiText(lead)).map(key)),seen=new Set<string>();
+ return leads.filter(lead=>{const address=key(lead),valid=channel==="sms"?address.length===10:/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);if(!valid||blocked.has(address)||seen.has(address)||!permitted(lead))return false;seen.add(address);return true});
 }
-export function blocksAiText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown;sourceDisposition?:unknown}){
-  return normalize(lead.stage)==="closed"||normalize(lead.status)==="closed"||["not interested","wrong number","sold / won"].includes(normalize(lead.outcome))||/\b(?:lost|sold)\b/.test(normalize(lead.sourceDisposition));
-}
-export function blocksAutomatedText(lead:ReplyState&{stage?:unknown;outcome?:unknown;status?:unknown;sourceDisposition?:unknown;automationEnabled?:unknown}){
-  return blocksAiText(lead)||requiresPersonalText(lead)||lead.automationEnabled===false;
-}
-export function smsRecipients<T extends SmsContact>(leads:T[]){
-  const seen=new Set<string>();
-  const phoneKey=(lead:T)=>String(lead.phone||"").replace(/\D/g,"").replace(/^1(?=\d{10}$)/,"");
-  const blocked=new Set(leads.filter(lead=>lead.deletedAt||lead.doNotCall||lead.smsOptOut||blocksAiText(lead)).map(phoneKey));
-  return leads.filter(lead=>{const phone=phoneKey(lead);if(phone.length!==10||blocked.has(phone)||seen.has(phone))return false;seen.add(phone);return true});
-}
-export function emailRecipients<T extends {id:number;email?:string;emailOptOut?:boolean;doNotCall?:boolean;deletedAt?:string;stage?:string;outcome?:string;automationEnabled?:boolean}>(leads:T[]){
-  const key=(lead:T)=>String(lead.email||"").trim().toLowerCase();
-  const blocked=new Set(leads.filter(lead=>lead.deletedAt||lead.doNotCall||lead.emailOptOut||blocksAutomatedText(lead)).map(key));
-  const seen=new Set<string>();
-  return leads.filter(lead=>{const address=key(lead);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)||blocked.has(address)||seen.has(address))return false;seen.add(address);return true});
-}
+export function smsRecipients<T extends Contact>(leads:T[],permitted:(lead:T)=>boolean=()=>true){return recipients(leads,"sms",permitted)}
+export function emailRecipients<T extends Contact>(leads:T[],permitted:(lead:T)=>boolean=()=>true){return recipients(leads,"email",permitted)}

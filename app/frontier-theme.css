@@ -99,7 +99,7 @@ html,body,.app-shell{background:var(--ps-bg)!important}
 html[data-theme] .app-shell>.sidebar,html[data-theme] .app-shell .topbar{background:var(--ps-bg)!important}
 html[data-theme] .app-shell .topbar{border-bottom-color:var(--ps-line)!important}
 
-html[data-theme] .app-shell .workspace>.conversation-workspace{min-height:calc(100vh - var(--topbar-height,0px));overflow:hidden;padding:26px!important}
+html[data-theme] .app-shell .workspace>.conversation-workspace{min-height:0;flex:1;overflow:auto;padding:clamp(16px,2vw,26px)!important}
 html[data-theme="dark"] .app-shell .workspace>.conversation-workspace{background:#05070a!important}
 html[data-theme="light"] .app-shell .workspace>.conversation-workspace{
  background:#dfe8e2!important;--ps-surface:#f6f9f7;--ps-surface-2:#e7eee9;--ps-surface-3:#dbe5de;
@@ -125,7 +125,7 @@ html[data-theme="light"] .app-shell .conversation-workspace .contact-card .avata
 html[data-theme="light"] .app-shell .conversation-workspace .start-call{background:#1f9d73!important;color:#071a13!important;border-color:#44b88f!important}
 html[data-theme="light"] .app-shell .conversation-workspace .dialer-toolbar{border-bottom-color:rgba(23,60,44,.2)!important}
 
-.dialer-panel-shell{position:relative;transform:translate3d(0,0,0);will-change:transform;z-index:1}
+.dialer-panel-shell{position:relative;transform:translate3d(0,0,0);z-index:1}
 .dialer-panel-shell.dialer-primary{min-width:0}
 .dialer-panel-grab{position:absolute;right:10px;top:10px;z-index:8;width:28px;height:24px;padding:6px;border:1px solid currentColor;border-radius:8px;background:transparent;color:var(--ps-muted);opacity:.28;display:grid;grid-template-columns:repeat(2,3px);grid-template-rows:repeat(2,3px);gap:3px;place-content:center;cursor:grab;touch-action:none;transition:opacity .15s ease,background .15s ease}
 .dialer-panel-grab span{width:3px;height:3px;border-radius:50%;background:currentColor}
@@ -141,3 +141,12 @@ html[data-theme="light"] .app-shell .conversation-workspace .dialer-toolbar{bord
 @media(max-width:900px),(pointer:coarse){.dialer-panel-shell{transform:none!important;will-change:auto}.dialer-panel-grab{display:none}.dialer-cosmos img{transform:scale(1.015)!important}}
 @media(max-width:700px){html[data-theme] .app-shell .workspace>.conversation-workspace{padding:16px!important}.dialer-scene-heading{display:grid}.dialer-scene-heading button{justify-self:start}}
 
+
+/* Conversation content stays readable at every window width. */
+.messages-center .message-history article{overflow-wrap:anywhere;min-width:0}
+.channel-email .message-history{gap:16px;padding:20px;background:var(--ps-bg)}
+.channel-email .message-history article{align-self:stretch;width:100%;max-width:100%;padding:20px 24px;border:1px solid var(--ps-line);border-radius:12px;background:var(--ps-surface)!important;color:var(--ps-text)!important;box-shadow:0 4px 16px #00000009}
+.email-message-header{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:12px}.email-message-header span{color:var(--ps-muted);font-size:12px}
+.channel-email .message-subject{display:block;margin-bottom:14px;font-size:17px}.channel-email .message-history article>p{line-height:1.65;white-space:pre-wrap}
+.scan-review-note{grid-column:1/-1;padding:12px 14px;border-radius:10px;background:var(--ps-accent-soft);line-height:1.5;color:var(--ps-text)}
+@media(max-width:700px){.channel-email .message-history{padding:10px}.channel-email .message-history article{padding:16px}}

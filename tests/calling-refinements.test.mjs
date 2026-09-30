@@ -15,7 +15,7 @@ test('personal callbacks stay out of automatic retry dialing even when due',()=>
  assert.equal(isDialerEligibleLead(callback,new Date('2026-09-08T14:00').getTime()),false);
  assert.equal(isDialerEligibleLead({...callback,followUp:''},now.getTime()),false);
  const refreshed=refreshAutomation({...callback,automationEnabled:true},now.getTime());
- assert.equal(refreshed.automationNextAt,'');assert.equal(refreshed.automationStatus,'waiting for salesperson');
+ assert.ok(refreshed.automationNextAt);assert.equal(refreshed.automationStatus,'scheduled');
 });
 test('manual call wrap-up preserves closed contacts even after an unanswered retry',()=>{
  for(const connected of [true,false]){

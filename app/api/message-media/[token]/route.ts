@@ -20,7 +20,7 @@ async function record(token:string,history=false){
 }
 
 function headers(item:MediaRecord,history=false){
-  return {"Content-Type":item.type||"application/octet-stream","Content-Length":String(item.size),"Content-Disposition":`inline; filename="${item.name.replace(/["\\\r\n]/g,"")}"`,"Cache-Control":history?"private, no-store":"public, max-age=900, immutable","Content-Security-Policy":"sandbox","X-Content-Type-Options":"nosniff"};
+  return {"Content-Type":item.type||"application/octet-stream","Content-Length":String(item.size),"Content-Disposition":`${/^(image\/(jpeg|png|gif|webp)|application\/pdf)(;|$)/i.test(item.type)?'inline':'attachment'}; filename="${item.name.replace(/["\\\r\n]/g,"")}"`,"Cache-Control":history?"private, no-store":"public, max-age=900, immutable","Content-Security-Policy":"sandbox","X-Content-Type-Options":"nosniff"};
 }
 
 export async function GET(_request:Request,{params}:{params:Promise<{token:string}>}){

@@ -1,3 +1,4 @@
+import {archiveInboundEmailMedia} from "../../../lib/incoming-message-media";
 import { Webhook } from "standardwebhooks";
 import {
   appendCommunication,
@@ -27,6 +28,7 @@ type ResendEvent = {
   };
 };
 type ReceivedEmail = {
+  attachments?:unknown[];
   id: string;
   from: string;
   to: string[];
@@ -127,6 +129,7 @@ async function saveInbound(event: ResendEvent) {
   );
   const records = selected ? [selected] : [];
   for (const record of records) {
+    const attachments=email.attachments?.length?await archiveInboundEmailMedia(record.workspaceId,email.id||String(event.data.email_id)):[];
     let matched = false;
     const body =
       String(email.text || "").trim() ||
@@ -153,7 +156,7 @@ async function saveInbound(event: ResendEvent) {
           0,
           200,
         ),
-        body,
+        body,attachments,from,to:(email.to||[]).join(", "),
         status: "received",
         sentAt,
         provider: "resend",

@@ -80,10 +80,10 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
   const [requestId,setRequestId]=useState("");
   useEffect(()=>{currentLeads.current=leads},[leads]);
   const recipients=useMemo(()=>{
-    const available=draftChannel==="sms"?smsRecipients(leads):emailRecipients(leads).filter(lead=>hasContactPermission(lead,profile,"email"));
-    return available.filter(lead=>requestLeadIds.includes(lead.id));
+    const available=draftChannel==="sms"?smsRecipients(leads,lead=>hasContactPermission(lead,profile,"sms")):emailRecipients(leads,lead=>hasContactPermission(lead,profile,"email"));
+    const ids=new Set(requestLeadIds);return available.filter(lead=>ids.has(lead.id));
   },[leads,profile,draftChannel,requestLeadIds]);
-  const targets=recipients.filter(lead=>selectedRecipients.includes(lead.id));
+  const selectedSet=new Set(selectedRecipients);const targets=recipients.filter(lead=>selectedSet.has(lead.id));
   const eligible=useMemo(()=>leads.filter(lead=>!lead.deletedAt&&!lead.doNotCall&&lead.stage!=="Closed"),[leads]);
   useEffect(()=>{void fetch("/api/email/messages",{credentials:"same-origin",cache:"no-store"}).then(response=>response.json()).then(data=>setEmailReady({configured:Boolean(data.configured),message:data.message||data.error||"Email is not connected"})).catch(()=>setEmailReady({configured:false,message:"Could not check email. Open Messages → Email to reconnect."}))},[]);
 
@@ -110,12 +110,13 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
       if(quote){if('error' in quote)throw Error(quote.error);const response=await fetch('/api/crm/opportunities',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'create-link',leadId:quote.leadId,source:'Pacifica AI quote request'})});const data=await response.json();if(!response.ok)throw Error(data.error||'Quote link could not be created.');if(typeof data.path!=='string'||!data.path.startsWith('/quote-request#'))throw Error('Quote link could not be created.');setQuoteLink(new URL(data.path,window.location.origin).href);setSubmittedPrompt(question);setSubmittedImages([]);setResult({summary:'Your new quote link is ready. Copy it to share. It expires in 7 days; this screen clears it after copying or leaving Pacifica AI.',priorities:[],actions:[],draft:''});setPrompt('');return;}
       const response=await fetch("/api/ai/crm",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:question,includeNotes,images:images.filter(image=>!isPdf(image)).map(image=>image.dataUrl),documents:images.filter(isPdf).map(({name,dataUrl})=>({name,dataUrl})),leads:eligible.slice(0,100),recentCalls:recentCalls.slice(0,100),history:history.slice(-6)})});
       const data=await response.json().catch(()=>({})) as AiResult&{error?:string};if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");setSubmittedPrompt(question);setSubmittedImages(requestImages);setResult({...data,draft:channel==="sms"?cleanSmsDraft(data.draft||""):data.draft||""});setPrompt("");setImages([]);
-      const available=(channel==="sms"?smsRecipients(leads):emailRecipients(leads).filter(lead=>hasContactPermission(lead,profile,"email"))).filter(lead=>eligible.some(item=>item.id===lead.id));
+      const available=(channel==="sms"?smsRecipients(leads,lead=>hasContactPermission(lead,profile,"sms")):emailRecipients(leads,lead=>hasContactPermission(lead,profile,"email"))).filter(lead=>eligible.some(item=>item.id===lead.id));
       const named=explicitMessageTargets(question,leads);
       const audience=oneTimeMessageAudience(question);
       const audienceTargets=audience?audienceMessageTargets(audience,leads):[];
       const proposed=named.length?available.filter(lead=>named.some(item=>item.id===lead.id)):audience?available.filter(lead=>audienceTargets.some(item=>item.id===lead.id)):available.filter(lead=>data.recipientIds?.includes(lead.id));
       setSelectedRecipients(proposed.map(lead=>lead.id));
+      if(audience){setRequestLeadIds(proposed.map(lead=>lead.id));setResult(previous=>previous?{...previous,summary:`${proposed.length} eligible ${audience==="follow-ups"?"follow-up contacts":"contacts"} selected from your full workspace. Interested, closed and paused contacts are excluded.`}:previous)}
       setHistory(items=>[...items,{role:"user" as const,content:question},{role:"assistant" as const,content:data.summary+(data.draft?`\nDraft: ${data.draft}`:"")}].slice(-6));
 
     }catch(err){const message=err instanceof Error?err.message:"Pacifica could not complete that request";setError(message);if(!quote&&eligible.length){setSubmittedPrompt(question);setSubmittedImages(requestImages);setResult(browserAnalysis(eligible.slice(0,100),"Pacifica used local suggestions because the AI service did not answer."))}}
@@ -132,7 +133,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
     try{
       for(const contact of planned){
         if(stopSending.current)break;
-        const eligibleNow=channel==="sms"?smsRecipients(currentLeads.current):emailRecipients(currentLeads.current).filter(lead=>hasContactPermission(lead,profile,"email"));
+        const eligibleNow=channel==="sms"?smsRecipients(currentLeads.current,lead=>hasContactPermission(lead,profile,"sms")):emailRecipients(currentLeads.current,lead=>hasContactPermission(lead,profile,"email"));
         const current=eligibleNow.find(lead=>lead.id===contact.id);
         if(!current||current.phone!==contact.phone||current.email!==contact.email){skipped++;continue}
         const key=`${channel}:${channel==="sms"?contact.phone:contact.email}:${result.subject||""}:${body}`;
@@ -140,7 +141,7 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
         // Mark attempts before dispatch. A lost response must not cause an automatic duplicate.
         submittedSms.current.add(key);
         try{
-          const payload=channel==="sms"?{to:contact.phone,body,permissionDocumented:true,sendMode:"ai"}:{to:contact.email,leadId:contact.id,subject:result.subject,text:body,sendMode:"ai",fromName:profile.businessName||profile.agentName,replyTo:profile.replyToEmail,idempotencyKey:`ai:${workspaceId}:${requestId}:${contact.id}`};
+          const payload=channel==="sms"?{to:contact.phone,body,sendMode:"ai"}:{to:contact.email,leadId:contact.id,subject:result.subject,text:body,sendMode:"ai",fromName:profile.businessName||profile.agentName,replyTo:profile.replyToEmail,idempotencyKey:`ai:${workspaceId}:${requestId}:${contact.id}`};
           const response=await fetch(channel==="sms"?"/api/twilio/messages":"/api/email/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(25000)});
           const data=await response.json();if(!response.ok)throw new Error(data.error||"Send failed");
           submitted++;

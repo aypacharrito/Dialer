@@ -5,12 +5,12 @@ import {explicitMessageTargets,messageChannel,cleanSmsDraft} from '../app/lib/ai
 import {hasContactPermission} from '../app/lib/contact-permission.ts';
 const contacts=[{id:1,name:'Jane Doe',phone:'8185550100',email:'jane@example.com',stage:'New lead'},{id:2,name:'John Doe',phone:'8185550101',email:'john@example.com',stage:'New lead'}];
 test('one-time AI can include open engaged leads while hard-stop records remain excluded',()=>{
- for(const patch of [{outcome:'Interested'},{stage:'Appointment'},{outcome:'Appointment set'},{stage:'Quoted'},{outcome:'Working'},{outcome:'Call back later'}]){
+ for(const patch of [{outcome:'Completed'},{stage:'Appointment'},{outcome:'Appointment set'},{stage:'Quoted'},{outcome:'Working'},{outcome:'Call back later'}]){
   assert.equal(blocksAiText(patch),false,JSON.stringify(patch));
   assert.deepEqual(smsRecipients([{...contacts[0],...patch}]).map(x=>x.id),[1]);
-  assert.equal(blocksAutomatedText(patch),true,JSON.stringify(patch));
+  assert.equal(blocksAutomatedText(patch),false,JSON.stringify(patch));
  }
- for(const patch of [{stage:'Closed'},{status:'Closed'},{outcome:'Not interested'},{outcome:'Wrong number'}]){
+ for(const patch of [{outcome:'Interested'},{stage:'Closed'},{status:'Closed'},{outcome:'Not interested'},{outcome:'Wrong number'}]){
   assert.equal(blocksAiText(patch),true,JSON.stringify(patch));
   assert.deepEqual(smsRecipients([{...contacts[0],...patch}]),[]);
  }
@@ -21,7 +21,7 @@ test('a hard-blocked duplicate blocks the same phone or email',()=>{
 });
 test('personal SMS permission remains separate from one-time AI audience selection',()=>{
  const lead={...contacts[0],outcome:'Interested',smsConsent:true};
- assert.equal(smsRecipients([lead]).length,1);
+ assert.equal(smsRecipients([lead]).length,0);
  assert.equal(hasContactPermission(lead,{smsConsentSources:[],emailConsentSources:[]},'sms'),true);
  assert.equal(hasContactPermission({...lead,smsOptOut:true},{smsConsentSources:[],emailConsentSources:[]},'sms'),false);
 });

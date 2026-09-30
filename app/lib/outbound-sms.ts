@@ -1,3 +1,6 @@
+import {appendCommunication,type StoredCommunication} from "./communications";
+import {updateStoredWorkspace} from "./workspace-storage";
+import type {MessageAttachment} from "./message-attachments";
 import {smsFailureMessage} from "./sms-delivery";
 import {assertSmsDeliveryHistory, SmsPreflightError, type SmsDeliveryRecord} from "./sms-preflight";
 import {automatedSmsBody} from "./message-footer";
@@ -25,7 +28,7 @@ export async function outboundSmsStatus(workspaceId:string,email=""){
   return smsReadiness(assignment,sendingEnabled,credentialError);
 }
 
-export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean;scheduled?:boolean;officeReminderId?:string;mediaUrls?:string[]}){
+export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean;scheduled?:boolean;officeReminderId?:string;mediaUrls?:string[];attachments?:MessageAttachment[]}){
   const requestedAt=Date.now();
   const status=await outboundSmsStatus(input.workspaceId,input.workspaceEmail);
   if(!status.configured)throw new Error(status.message);
@@ -45,5 +48,8 @@ export async function sendOutboundSms(input:{workspaceId:string;to:string;body:s
   const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
   if(!response.ok||!data.sid){logEvent("sms_provider_rejected",{workspaceId:input.workspaceId,code:data.code});throw new Error(smsFailureMessage(data.code))};
   logEvent("sms_provider_accepted",{providerId:data.sid,workspaceId:input.workspaceId,status:data.status||"queued",mediaCount:mediaUrls.length,embeddedLinks:links.length,requestedAt:new Date(requestedAt).toISOString(),elapsedMs:Date.now()-requestedAt});
-  return {id:data.sid,provider:"twilio" as const,status:data.status||"queued",from:status.from};
+  const sentAt=new Date().toISOString();let historySaved=true;
+  const communication:StoredCommunication={id:data.sid,providerId:data.sid,channel:"sms",direction:"outbound",from:status.from,to,body:form.get("Body")||"",attachments:input.attachments,mediaCount:mediaUrls.length,status:data.status||"queued",sentAt,provider:"twilio"};
+  try{await updateStoredWorkspace(input.workspaceId,current=>({...current,leads:current.leads.map(raw=>{const lead=raw as Record<string,unknown>;return normalized(String(lead.phone||""))===to?{...lead,lastSmsAt:sentAt,communications:appendCommunication(lead.communications,communication)}:lead})}))}catch{historySaved=false;logEvent("sms_history_pending",{workspaceId:input.workspaceId,providerId:data.sid})}
+  return {historySaved,communication,id:data.sid,provider:"twilio" as const,status:data.status||"queued",from:status.from};
 }

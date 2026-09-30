@@ -1,3 +1,4 @@
+import {archiveMessageFiles} from "../../../lib/message-media-archive";
 import {smsFailureMessage} from "../../../lib/sms-delivery";
 import {SmsPreflightError} from "../../../lib/sms-preflight";
 import {
@@ -200,14 +201,13 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     if (
-      body.sendMode === "ai" &&
       workspace!.leads.some((raw) => {
         const item = raw as Record<string, unknown>;
         return (
           String(item.phone || "")
             .replace(/\D/g, "")
             .slice(-10) === digits &&
-          (blocksAiText(item) ||
+          ((body.sendMode === "ai" && blocksAiText(item)) ||
             item.smsOptOut ||
             item.doNotCall ||
             item.deletedAt)
@@ -217,11 +217,11 @@ export async function POST(request: Request) {
       return Response.json(
         {
           error:
-            "AI texting is paused for this contact because it is closed, opted out, Do Not Call, deleted, or otherwise terminal.",
+            "AI texting is paused for this contact because it is interested, closed, paused, opted out, Do Not Call, or deleted.",
         },
         { status: 403 },
       );
-    if (body.permissionDocumented === true && lead.smsConsent !== true) {
+    if (body.sendMode!=="ai" && body.permissionDocumented === true && lead.smsConsent !== true) {
       await updateStoredWorkspace(access.userId, (current) => ({
         ...current,
         leads: current.leads.map((raw) => {
@@ -233,7 +233,7 @@ export async function POST(request: Request) {
       }));
     }
     const permissionLead =
-      body.permissionDocumented === true ? { ...lead, smsConsent: true } : lead;
+      body.sendMode!=="ai" && body.permissionDocumented === true ? { ...lead, smsConsent: true } : lead;
     if (!hasContactPermission(permissionLead, workspace!.profile, "sms"))
       return Response.json(
         {
@@ -243,13 +243,14 @@ export async function POST(request: Request) {
         },
         { status: 403 },
       );
+    const attachments=mediaUrls.length?await archiveMessageFiles(access.userId,mediaUrls.map(path=>({path,filename:"Attachment",contentType:""})),new URL(request.url).origin):[];
     const result = await sendOutboundSms({
       workspaceId: access.userId,
       workspaceEmail: access.email,
       to,
       body: text,
       automated: body.sendMode === "ai",
-      mediaUrls,
+      mediaUrls,attachments,
     });
     const message: TwilioMessage = {
       sid: result.id,
@@ -268,7 +269,7 @@ export async function POST(request: Request) {
       toLast4: to.slice(-4),
       credential: "tenant SMS adapter",
     });
-    return Response.json({ ok: true, message: safe(message) });
+    return Response.json({ ok: true, historySaved:result.historySaved,message: {...safe(message),body:result.communication?.body||message.body,attachments} });
   } catch (error) {
     if(error instanceof SmsPreflightError)return Response.json({error:error.message,code:error.code,submitted:false},{status:422});
     console.error(

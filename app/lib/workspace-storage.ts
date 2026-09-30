@@ -77,7 +77,7 @@ function mergeCommunications(server: unknown, client: unknown) {
     const key = String(item.providerId || item.id || JSON.stringify(raw));
     unique.set(key, raw);
   }
-  return Array.from(unique.values()).slice(-200);
+  return Array.from(unique.values());
 }
 function workspaceIdentityKeys(lead: Record<string, unknown>) {
   const phone = String(lead.phone || "")
@@ -354,7 +354,8 @@ export async function writeStoredWorkspace(
   userId: string,
   workspace: StoredWorkspace,
 ) {
-  const serialized = JSON.stringify(cleanWorkspacePayload(workspace));
+  const {archiveWorkspaceConversations}=await import("./conversation-history");
+  const serialized = JSON.stringify(await archiveWorkspaceConversations(userId,cleanWorkspacePayload(workspace)));
   const saved = await workspaceRedis(["SET", workspaceKey(userId), serialized]);
   if (saved !== null) return;
   const db = await workspaceD1();
@@ -447,7 +448,8 @@ export async function updateStoredWorkspace(
       );
       const updated = update(current);
       if (updated === current) return current;
-      const next = cleanWorkspacePayload(updated);
+      const {archiveWorkspaceConversations}=await import("./conversation-history");
+      const next = await archiveWorkspaceConversations(userId,cleanWorkspacePayload(updated),current);
       const saved = await workspaceRedis([
         "EVAL",
         "local current=redis.call('GET',KEYS[1]); if (ARGV[3]=='create' and not current) or current==ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]); return 1 else return 0 end",
@@ -470,7 +472,8 @@ export async function updateStoredWorkspace(
       const current = cleanWorkspacePayload(row ? JSON.parse(row.value) : {});
       const updated = update(current);
       if (updated === current) return current;
-      const next = cleanWorkspacePayload(updated);
+      const {archiveWorkspaceConversations}=await import("./conversation-history");
+      const next = await archiveWorkspaceConversations(userId,cleanWorkspacePayload(updated),current);
       const result = row
         ? await db
             .prepare(

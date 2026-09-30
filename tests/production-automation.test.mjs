@@ -14,9 +14,9 @@ test("production automation schedules a fresh lead five minutes after arrival",(
   assert.equal(result.automationStatus,"scheduled");
 });
 
-test("human replies, appointments, and dead letters never silently restart",()=>{
+test("explicit interested outcomes and dead letters stay blocked",()=>{
   assert.equal(prepareAutomationLead(lead({outcome:"Interested"}),profile).automationNextAt,"");
-  assert.equal(prepareAutomationLead(lead({stage:"Appointment",outcome:"Appointment set"}),profile).automationNextAt,"");
+  assert.ok(prepareAutomationLead(lead({stage:"Appointment",outcome:"Appointment set"}),profile).automationNextAt);
   const dead=prepareAutomationLead(lead({automationStatus:"needs attention",automationNextAt:"2026-08-27T17:00:00Z"}),profile);
   assert.equal(dead.automationStatus,"needs attention");
   assert.equal(dead.automationNextAt,"");
@@ -49,14 +49,14 @@ test("server reminder receipts survive a stale browser save",()=>{
   assert.deepEqual(merged.leads[0].clientReminderKeys,["renewal:2026-10-02:owner:30"]);
 });
 
-test("a neutral callback cannot restart messaging sequences on the server",()=>{
+test("a neutral callback remains eligible for messaging sequences",()=>{
   const result=prepareAutomationLead(lead({outcome:"Call back later",stage:"Follow-up",followUp:"2026-09-09T12:00",automationEnabled:true}),profile);
-  assert.equal(result.automationNextAt,"");
-  assert.notEqual(result.automationStatus,"action due");
+  assert.ok(result.automationNextAt);
 });
-test("a reply stops every sequence even when legacy stopOnReply is false",()=>{
+test("stopOnReply is respected when enabled and may be disabled by the owner",()=>{
  const legacy={...profile,automationSequences:profile.automationSequences.map(sequence=>({...sequence,stopOnReply:false}))};
- assert.equal(prepareAutomationLead(lead({lastInboundAt:"2026-09-14T16:00:00Z"}),legacy).automationNextAt,"");
+ assert.ok(prepareAutomationLead(lead({lastInboundAt:"2026-09-14T16:00:00Z"}),legacy).automationNextAt);
+ assert.equal(prepareAutomationLead(lead({lastInboundAt:"2026-09-14T16:00:00Z"}),profile).automationNextAt,"");
 });
 
 test('a stale browser cannot reopen a contact closed by an inbound STOP',()=>{

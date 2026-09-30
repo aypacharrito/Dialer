@@ -29,10 +29,10 @@ test('delayed contact snapshots preserve a delete and locally added leads',()=>{
  const local=[{...lead,deletedAt:'2026-09-14',deletionUpdatedAt:'2026-09-14'},{...lead,id:2,phone:'8185550101'}];
  const merged=mergeIncomingContacts(local,[lead]);assert.equal(merged.length,2);assert.equal(merged[0].deletedAt,'2026-09-14');
 });
-test('a reply syncs without a provider update and permanently blocks AI recipients including duplicates',()=>{
+test('a neutral reply syncs without imposing an interested lock',()=>{
  const replied={...lead,lastInboundAt:'2026-09-14',communications:[{id:'SM1',direction:'inbound',body:'Yes'}]};
- const merged=mergeIncomingContacts([lead],[replied])[0];assert.equal(merged.automationEnabled,false);assert.equal(merged.communications.length,1);
- assert.equal(blocksAiText({...lead,communications:replied.communications}),true);
- assert.deepEqual(smsRecipients([replied,{...lead,id:2}]),[]);
- assert.equal(refreshAutomation(replied).automationStatus,'replied');
+ const merged=mergeIncomingContacts([lead],[replied])[0];assert.equal(merged.automationEnabled,undefined);assert.equal(merged.communications.length,1);
+ assert.equal(blocksAiText({...lead,communications:replied.communications}),false);
+ assert.equal(smsRecipients([replied,{...lead,id:2}]).length,1);
+ assert.ok(refreshAutomation(replied).automationNextAt);
 });

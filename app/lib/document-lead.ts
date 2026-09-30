@@ -53,6 +53,13 @@ export function cleanDocumentLeadExtraction(value:unknown):DocumentLeadExtractio
     const field=raw as Record<string,unknown>;const label=text(field.label,80);const value=text(field.value,300);
     return label&&value?[{label,value}]:[];
   }):[];
+  for(const key of ["dateOfBirth","licenseExpiration","policyEffectiveDate","policyExpirationDate"] as const){
+    const value=result[key];if(!value)continue;
+    const iso=value.match(/^(\d{4})-(\d{2})-(\d{2})$/),us=value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    const normalized=iso?value:us?`${us[3]}-${us[1].padStart(2,"0")}-${us[2].padStart(2,"0")}`:"";
+    const parsed=normalized?new Date(`${normalized}T00:00:00Z`):null;
+    if(!parsed||!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==normalized){otherFields.push({label:`Review ${key}`,value});result[key]=""}else result[key]=normalized;
+  }
   for(const key of ["policyPremium","installmentAmount"] as const){const amount=policyMoney(result[key]);result[key]=amount===null?"":String(amount)}
   return {...result,otherFields};
 }
