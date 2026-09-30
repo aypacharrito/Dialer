@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import AiCamera from "./AiCamera";
 import type {WorkspaceProfile} from "../lib/workspace-profile";
 import {hasContactPermission} from "../lib/contact-permission";
-import {explicitMessageTargets,messageChannel,cleanSmsDraft} from "../lib/ai-message-plan";
+import {explicitMessageTargets,messageChannel,cleanSmsDraft,oneTimeMessageAudience,audienceMessageTargets} from "../lib/ai-message-plan";
 import {smsRecipients,emailRecipients} from "../lib/ai-sms-recipients";
 import { leadPriority, rankLeads } from "../lib/lead-priority";
 
@@ -112,7 +112,9 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
       const data=await response.json().catch(()=>({})) as AiResult&{error?:string};if(!response.ok)throw new Error(data.error||"Pacifica could not complete that request");setSubmittedPrompt(question);setSubmittedImages(requestImages);setResult({...data,draft:channel==="sms"?cleanSmsDraft(data.draft||""):data.draft||""});setPrompt("");setImages([]);
       const available=(channel==="sms"?smsRecipients(leads):emailRecipients(leads).filter(lead=>hasContactPermission(lead,profile,"email"))).filter(lead=>eligible.some(item=>item.id===lead.id));
       const named=explicitMessageTargets(question,leads);
-      const proposed=named.length?available.filter(lead=>named.some(item=>item.id===lead.id)):available.filter(lead=>data.recipientIds?.includes(lead.id));
+      const audience=oneTimeMessageAudience(question);
+      const audienceTargets=audience?audienceMessageTargets(audience,leads):[];
+      const proposed=named.length?available.filter(lead=>named.some(item=>item.id===lead.id)):audience?available.filter(lead=>audienceTargets.some(item=>item.id===lead.id)):available.filter(lead=>data.recipientIds?.includes(lead.id));
       setSelectedRecipients(proposed.map(lead=>lead.id));
       setHistory(items=>[...items,{role:"user" as const,content:question},{role:"assistant" as const,content:data.summary+(data.draft?`\nDraft: ${data.draft}`:"")}].slice(-6));
 
@@ -187,10 +189,10 @@ export default function AiCommandCenter({leads,recentCalls,onApply,onCreateLead,
         <div className="ai-channel-choice" role="group" aria-label="Send channel">{(["sms","email"] as const).map(channel=><button key={channel} type="button" disabled={sending} aria-pressed={draftChannel===channel} onClick={()=>{setDraftChannel(channel);setSelectedRecipients([])}}>{channel==="sms"?"Text":"Email"}</button>)}</div>
         {draftChannel==="email"&&<label className="ai-subject">Subject<input aria-label="Email subject" disabled={sending} value={result.subject||""} onChange={event=>setResult(current=>current?{...current,subject:event.target.value}:current)}/></label>}
         <textarea aria-label="Review message before sending" value={result.draft} disabled={sending} onChange={event=>{const draft=event.target.value;setResult(current=>current?{...current,draft}:current)}}/>
-        <div className="ai-recipient-review"><b>Recipients · {targets.length} selected</b><p>Interested, appointment, quoted, working and closed leads stay out of AI outreach.</p>
+        <div className="ai-recipient-review"><b>Recipients · {targets.length} selected</b><p>Closed, opted-out, Do Not Call, deleted, wrong-number, and not-interested records stay out. Open follow-ups can be included in one-time owner-reviewed sends.</p>
           <input aria-label="Search message recipients" placeholder="Find a recipient" value={recipientSearch} onChange={event=>setRecipientSearch(event.target.value)}/>
           <div className="ai-recipient-list">{recipients.filter(lead=>[lead.name,lead.phone,lead.email].some(value=>String(value||"").toLowerCase().includes(recipientSearch.toLowerCase()))).map(lead=><label key={lead.id}><input type="checkbox" disabled={sending} checked={selectedRecipients.includes(lead.id)} onChange={event=>setSelectedRecipients(ids=>event.target.checked?[...ids,lead.id]:ids.filter(id=>id!==lead.id))}/><span><b>{lead.name}</b><small>{draftChannel==="email"?lead.email:lead.phone}</small></span></label>)}</div>
-          {!recipients.length&&<p>No eligible recipients in this request. Personal-only leads and contacts without email permission are excluded. Use Messages for personal follow-ups.</p>}
+          {!recipients.length&&<p>No eligible recipients in this request. Closed, opted-out, DNC, deleted, terminal, and email-permission-blocked records are excluded.</p>}
         </div>
         {draftChannel==="email"&&!emailReady.configured&&<p role="status">Email needs setup. Open Messages → Email. {emailReady.message}</p>}
         <p>{draftChannel==="sms"?`${result.draft.length}/1,400 characters`:`${profile.businessAddress?"Business address will be included":"Add your business mailing address in Settings"}`}</p>

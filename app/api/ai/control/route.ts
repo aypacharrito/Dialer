@@ -1,14 +1,14 @@
 import {getPacificaAccess} from '../../../lib/clerk-access';
 import {readStoredWorkspace,updateStoredWorkspace} from '../../../lib/workspace-storage';
 import {applyControlCommands,cleanAiControl,matchesOutreach,type ControlCommand} from '../../../lib/ai-control';
-import {blocksAiText} from '../../../lib/ai-sms-recipients';
+import {blocksAutomatedText} from '../../../lib/ai-sms-recipients';
 import {hasContactPermission} from '../../../lib/contact-permission';
 export const runtime='nodejs';
 const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 export async function GET(){
  const access=await getPacificaAccess();if(!access.allowed)return json({error:'Workspace access required.'},403);
  try{const workspace=await readStoredWorkspace(access.userId);if(!workspace)return json({error:'Save your workspace first.'},404);const control=cleanAiControl(workspace.aiControl);
-  const counts=Object.fromEntries((['sms','email'] as const).map(channel=>[channel,workspace.leads.filter(raw=>{const lead=raw as Record<string,unknown>;return !lead.deletedAt&&!lead.doNotCall&&!blocksAiText(lead)&&hasContactPermission(lead,workspace.profile,channel)&&matchesOutreach(lead,control.rules[channel])}).length]));
+  const counts=Object.fromEntries((['sms','email'] as const).map(channel=>[channel,workspace.leads.filter(raw=>{const lead=raw as Record<string,unknown>;return !lead.deletedAt&&!lead.doNotCall&&!blocksAutomatedText(lead)&&hasContactPermission(lead,workspace.profile,channel)&&matchesOutreach(lead,control.rules[channel])}).length]));
   return json({control,counts,canManage:access.role==='owner',salesEnabled:control.salesEnabled??workspace.profile.serverAutomationEnabled,schedule:'Eligible steps run during the saved one-hour window. Checks run every five minutes while the CRM is open; the current server backup runs daily at 16:00 UTC.'});
  }catch{return json({error:'AI control settings could not load.'},503)}
 }

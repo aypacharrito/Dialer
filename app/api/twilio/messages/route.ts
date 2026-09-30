@@ -217,7 +217,7 @@ export async function POST(request: Request) {
       return Response.json(
         {
           error:
-            "AI texting is paused for this contact. Interested and appointment leads require a personal text.",
+            "AI texting is paused for this contact because it is closed, opted out, Do Not Call, deleted, or otherwise terminal.",
         },
         { status: 403 },
       );

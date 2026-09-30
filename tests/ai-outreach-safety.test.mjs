@@ -1,23 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {smsRecipients,emailRecipients,blocksAiText} from '../app/lib/ai-sms-recipients.ts';
+import {smsRecipients,emailRecipients,blocksAiText,blocksAutomatedText} from '../app/lib/ai-sms-recipients.ts';
 import {explicitMessageTargets,messageChannel,cleanSmsDraft} from '../app/lib/ai-message-plan.ts';
 import {hasContactPermission} from '../app/lib/contact-permission.ts';
 const contacts=[{id:1,name:'Jane Doe',phone:'8185550100',email:'jane@example.com',stage:'New lead'},{id:2,name:'John Doe',phone:'8185550101',email:'john@example.com',stage:'New lead'}];
-test('AI cannot select any engaged, appointed or closed lead',()=>{
- for(const patch of [{outcome:'Interested'},{stage:'Appointment'},{outcome:'Appointment set'},{stage:'Closed'},{status:'Closed'},{stage:'Quoted'},{outcome:'Working'},{outcome:'Not interested'},{automationEnabled:false}]){
+test('one-time AI can include open engaged leads while hard-stop records remain excluded',()=>{
+ for(const patch of [{outcome:'Interested'},{stage:'Appointment'},{outcome:'Appointment set'},{stage:'Quoted'},{outcome:'Working'},{outcome:'Call back later'}]){
+  assert.equal(blocksAiText(patch),false,JSON.stringify(patch));
+  assert.deepEqual(smsRecipients([{...contacts[0],...patch}]).map(x=>x.id),[1]);
+  assert.equal(blocksAutomatedText(patch),true,JSON.stringify(patch));
+ }
+ for(const patch of [{stage:'Closed'},{status:'Closed'},{outcome:'Not interested'},{outcome:'Wrong number'}]){
   assert.equal(blocksAiText(patch),true,JSON.stringify(patch));
   assert.deepEqual(smsRecipients([{...contacts[0],...patch}]),[]);
-  assert.deepEqual(emailRecipients([{...contacts[0],...patch}]),[]);
  }
 });
-test('a protected duplicate blocks the same phone or email',()=>{
- assert.deepEqual(smsRecipients([...contacts,{id:3,phone:'+1 (818) 555-0100',outcome:'Interested'}]).map(x=>x.id),[2]);
+test('a hard-blocked duplicate blocks the same phone or email',()=>{
+ assert.deepEqual(smsRecipients([...contacts,{id:3,phone:'+1 (818) 555-0100',stage:'Closed'}]).map(x=>x.id),[2]);
  assert.deepEqual(emailRecipients([...contacts,{id:3,email:'JANE@example.com',stage:'Closed'}]).map(x=>x.id),[2]);
 });
-test('protecting an engaged lead does not disable personal SMS',()=>{
+test('personal SMS permission remains separate from one-time AI audience selection',()=>{
  const lead={...contacts[0],outcome:'Interested',smsConsent:true};
- assert.equal(smsRecipients([lead]).length,0);
+ assert.equal(smsRecipients([lead]).length,1);
  assert.equal(hasContactPermission(lead,{smsConsentSources:[],emailConsentSources:[]},'sms'),true);
  assert.equal(hasContactPermission({...lead,smsOptOut:true},{smsConsentSources:[],emailConsentSources:[]},'sms'),false);
 });

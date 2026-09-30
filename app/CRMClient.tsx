@@ -1,5 +1,6 @@
 "use client";
 import DialerBackdrop from "./components/DialerBackdrop";
+import DraggableDialerPanel from "./components/DraggableDialerPanel";
 import CallTimer from "./components/CallTimer";
 import {callDurationSeconds,formatCallDuration} from "./lib/call-duration";
 import {hasContactPermission} from "./lib/contact-permission";
@@ -1261,10 +1262,10 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
       {view==="today"&&<TodayWorkspace leads={leads} onOpen={id=>setSelectedLead(id)} onCall={callLeadById} onImport={()=>inputRef.current?.click()} onAdd={openNewLead}/>}
 
       {view==="dialer"&&<div className={`dialer-view conversation-workspace ${connected||postCallLeadId?"has-conversation":"is-waiting"} ${keypadOpen?"has-keypad":""}`}>
-        <DialerBackdrop/>
+        <DialerBackdrop appearance={workspaceProfile.appearance} lightUrl={workspaceProfile.dialerLightBackdropUrl} darkUrl={workspaceProfile.dialerDarkBackdropUrl} motion={workspaceProfile.dialerBackdropMotion}/>
         <header className="dialer-toolbar"><div><h1>Dialer</h1><span>{dialerQueueLabel()} · {callableLeads.length} remaining</span></div><div className="dialer-toolbar-actions"><label className="quiet-dialing-toggle" title="Controls ringback only. Voicemail, Google/call screening, IVRs and humans still play after answer."><input type="checkbox" checked={!workspaceProfile.quietDialing} onChange={event=>setWorkspaceProfile(profile=>({...profile,quietDialing:!event.target.checked}))}/>Hear ringing</label><button type="button" aria-expanded={keypadOpen} aria-controls="dialer-keypad" onClick={()=>setKeypadOpen(open=>!open)}><Icon name="keypad"/>{keypadOpen?"Hide keypad":"Keypad"}</button></div></header>
         <div className="dialer-main-grid">
-        <div className="dialer-primary">
+        <DraggableDialerPanel id="primary" className="dialer-primary">
         <section className={`hero-call focused-call ${connected?"connected":""} ${postCallLeadId?"wrap-ready":""}`}>
           <div className="call-grid">
             <div className="call-status-line"><span><i/>{postCallLeadId?"CALL COMPLETE":connected?"LIVE":dialing?"CONNECTING":"NEXT UP"}</span>{!postCallLeadId&&autoDialing&&<em>{leadQueueRemaining} REMAINING</em>}</div>
@@ -1339,7 +1340,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
           <div className="stats-row"><article><span>CALLS TODAY</span><b>{callLogs.filter(log=>new Date(log.startedAt).toDateString()===new Date().toDateString()).length}</b></article><article><span>CONVERSATIONS</span><b>{callLogs.filter(log=>log.outcome==="Completed").length}</b></article><article><span>PHONE</span><b className="phone-stat" role="status">{phoneStatus}</b></article></div>
           <article className="queue-card"><header><div><span>{activeDialerRun?"SAVED CALLING RUN":"PRIORITY FLOW"} · {dialerQueueLabel().toUpperCase()}</span><b>{callableLeads.length?`${Math.max(0,leadQueueRemaining-(dialing?1:0))} ${activeDialerRun?"REMAINING":"READY"}`:"QUEUE CLEAR"}</b></div><button onClick={()=>setView("leads")}>Contacts</button></header>{upNextLeads.map((l,i)=><div className="queue-row" key={l.id}><em>{String(i+1).padStart(2,"0")}</em><span className="mini-avatar">{l.name.split(" ").map(x=>x[0]).slice(0,2).join("")}</span><div><b>{l.name}</b><small>{l.phone} · {l.city}</small></div></div>)}{!callableLeads.length&&<div className="empty-queue"><b>{lineLeads.length?"Queue clear":"No contacts"}</b>{!lineLeads.length&&<button onClick={()=>inputRef.current?.click()}>Import</button>}</div>}</article>
         </section>
-        </div>
+        </DraggableDialerPanel>
         {keypadOpen&&<DialerKeypad muted={muted} onMute={toggleMute} connected={connected} dialing={dialing} phoneReady={phoneReady} number={dialNumber} sentDigits={dtmfDisplay} feedback={dtmfFeedback} onNumberChange={setDialNumber} onDigits={pressKey} onCall={callTypedNumber}/>}
         </div>
       </div>}

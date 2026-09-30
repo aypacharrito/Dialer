@@ -45,6 +45,9 @@ export type WorkspaceProfile={
   aiPersonalizationEnabled:boolean;
   maxAutomatedTouchesPerLeadPerDay:number;
   appearance:WorkspaceAppearance;
+  dialerLightBackdropUrl:string;
+  dialerDarkBackdropUrl:string;
+  dialerBackdropMotion:boolean;
   displaySize:WorkspaceDisplaySize;
   quietDialing:boolean;
   dialerRingTimeoutSeconds:20|30;
@@ -93,6 +96,9 @@ export const defaultWorkspaceProfile:WorkspaceProfile={
   aiPersonalizationEnabled:true,
   maxAutomatedTouchesPerLeadPerDay:1,
   appearance:"light",
+  dialerLightBackdropUrl:"",
+  dialerDarkBackdropUrl:"",
+  dialerBackdropMotion:true,
   displaySize:"large",
   quietDialing:true,
   dialerRingTimeoutSeconds:20,
@@ -149,6 +155,11 @@ function cleanDialerRun(value:unknown):DialerRunState|null{
   return {ids,completed,total,startedAt:String(run.startedAt||new Date().toISOString()),updatedAt:String(run.updatedAt||new Date().toISOString())};
 }
 
+function cleanDialerBackdropUrl(value:unknown){
+  const raw=String(value||"").trim().slice(0,1200);if(!raw)return "";if(raw.startsWith("/"))return raw;
+  try{const parsed=new URL(raw);return parsed.protocol==="https:"?raw:""}catch{return ""}
+}
+
 export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
   const profile=value&&typeof value==="object"?value as Partial<WorkspaceProfile>:{};
   const rawLiveCall=profile.liveCallSession&&typeof profile.liveCallSession==="object"?profile.liveCallSession:null;
@@ -170,6 +181,9 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     aiPersonalizationEnabled:profile.aiPersonalizationEnabled!==false,
     maxAutomatedTouchesPerLeadPerDay:Math.min(3,Math.max(1,Math.round(Number(profile.maxAutomatedTouchesPerLeadPerDay)||1))),
     appearance:profile.appearance==="dark"?"dark":"light",
+    dialerLightBackdropUrl:cleanDialerBackdropUrl(profile.dialerLightBackdropUrl),
+    dialerDarkBackdropUrl:cleanDialerBackdropUrl(profile.dialerDarkBackdropUrl),
+    dialerBackdropMotion:profile.dialerBackdropMotion!==false,
     displaySize:profile.displaySize==="comfortable"?"comfortable":profile.displaySize==="extra-large"?"extra-large":"large",
     quietDialing:profile.quietDialing!==false,
     dialerRingTimeoutSeconds:Number(profile.dialerRingTimeoutSeconds)===30?30:20,
