@@ -33,6 +33,18 @@ test('saved geometry is bounded, malformed settings ignored and hidden sections 
  assert.equal(cleanDialerLayout({panels:{keypad:{x:Infinity,y:0,width:200}}}).panels.keypad,undefined);
  assert.deepEqual(constrainPanel({x:900,y:-2,width:500},800),{x:300,y:0,width:500});
  assert.equal(defaultDialerRects(1000,{},id=>id!=='contact').mode.y,0);
+ assert.equal(cleanDialerLayout({panels:{keypad:{x:0,y:0,width:250,height:100}}}).panels.keypad.height,440);
+ assert.equal(constrainPanel({x:0,y:0,width:250,height:100},1000,250,440).height,440);
+});
+test('panel background drags without a grab icon, while controls retain their normal clicks',async()=>{
+ const h=await setup();try{await act(async()=>h.root.render(React.createElement(Fixture)));
+ const panel=document.querySelector('[data-dialer-widget="contact"]'),content=panel.querySelector('p');
+ const pointer=(target,type,x,y)=>target.dispatchEvent(new window.MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y}));
+ await act(async()=>pointer(content,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',90,70));await act(async()=>new Promise(resolve=>setTimeout(resolve,25)));
+ assert.equal(panel.style.left,'0px');assert.equal(panel.style.transform,'translate3d(90px,70px,0)');
+ await act(async()=>pointer(panel,'pointerup',90,70));assert.equal(panel.style.left,'90px');assert.equal(panel.style.top,'70px');assert.equal(panel.style.transform,'');
+ const button=panel.querySelector('[aria-label="Collapse Contact & call"]');await act(async()=>pointer(button,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',150,150));await act(async()=>pointer(panel,'pointerup',150,150));assert.equal(panel.style.left,'90px');
+ }finally{await h.close()}
 });
 test('web update notice stays quiet on errors/current version, appears for a real update, and blocks refresh while busy',async()=>{
  const h=await setup();const fetchBefore=globalThis.fetch;let value=releaseVersion;globalThis.fetch=async()=>Response.json({version:value});

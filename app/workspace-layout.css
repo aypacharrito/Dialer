@@ -13,7 +13,7 @@ html[data-theme] .app-shell>.workspace {
 html[data-theme] .app-shell .workspace>.topbar,
 html[data-theme] .app-shell .workspace>.active-call-bar { flex:0 0 auto; }
 html[data-theme] .app-shell .workspace>:is(.page-view,.dialer-view,.today-workspace) {
-  background:var(--ps-surface) !important;
+  background:var(--ps-bg) !important;
   flex:1 1 0;
   min-height:0;
   width:100% !important;

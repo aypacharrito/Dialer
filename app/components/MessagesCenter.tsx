@@ -1,7 +1,8 @@
 "use client";
 
 import {useCallback,useDeferredValue,useEffect,useMemo,useRef,useState} from "react";
-import {aiTextLockReason,blocksAiText,requiresPersonalText} from "../lib/ai-sms-recipients";
+import {aiTextLockReason,blocksAiText} from "../lib/ai-sms-recipients";
+import {conversationInboxStatus,stoppedSmsPhones} from "../lib/message-inbox";
 import {emailWithComplianceFooter} from "../lib/message-footer";
 import {hasContactPermission} from "../lib/contact-permission";
 import {smsDeliveryLabel,smsFailureMessage} from "../lib/sms-delivery";
@@ -22,7 +23,6 @@ type EmailStatus={configured:boolean;provider:"resend"|"webhook"|"none";from:str
 
 const digits=(value:string)=>value.replace(/\D/g,"").slice(-10);
 const firstName=(value:string)=>value.trim().split(/\s+/)[0]||"there";
-const isSmsStopReply=(value:string)=>/^\s*(stop|stopall|unsubscribe|cancel|end|quit)\s*[.!]?\s*$/i.test(value);
 
 
 function browserDraft(lead:MessageLead,profile:WorkspaceProfile,channel:Channel){
@@ -45,7 +45,7 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
   const [smsSetupMessage,setSmsSetupMessage]=useState("Checking SMS sending setup…");
   const [rankingNow,setRankingNow]=useState(()=>Date.now());
   const [contactSearch,setContactSearch]=useState("");
-  const [inboxFilter,setInboxFilter]=useState("all");
+  const [inboxFilter,setInboxFilter]=useState(()=>{const lead=leads.find(item=>item.id===initialLeadId);return lead&&(lead.stage==="Closed"||lead.doNotCall||(initialChannel==="email"?lead.emailOptOut:lead.smsOptOut))?"closed":"all"});
   const historyRef=useRef<HTMLDivElement>(null);
   const [threadOpen,setThreadOpen]=useState(Boolean(initialLeadId));
   const deliveryTimers=useRef<number[]>([]);
@@ -56,6 +56,8 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
   const deferredSearch=useDeferredValue(contactSearch);
   const allSms=useMemo(()=>mergeConversationMessages(leads.flatMap(lead=>(lead.communications||[]).filter(message=>message.channel==="sms").map(message=>({...message,from:message.from||(message.direction==="inbound"?lead.phone:twilioNumber),to:message.to||(message.direction==="inbound"?twilioNumber:lead.phone)}))),smsMessages.map(message=>({...message,channel:"sms" as const,direction:/inbound/i.test(message.direction)?"inbound" as const:"outbound" as const,provider:"twilio",providerId:message.id,errorCode:message.errorCode??undefined,failureReason:message.failureReason||undefined}))).map(message=>({...message,from:message.from||"",to:message.to||""})),[leads,smsMessages,twilioNumber]);
   const smsByPhone=useMemo(()=>indexSmsByPhone(allSms),[allSms]);
+  const stoppedPhones=useMemo(()=>stoppedSmsPhones(allSms),[allSms]);
+  const inboxStatus=useMemo(()=>conversationInboxStatus(leads,channel,stoppedPhones),[leads,channel,stoppedPhones]);
   const emailByAddress=useMemo(()=>{const map=new Map<string,StoredCommunication[]>();for(const lead of leads){const key=lead.email?.toLowerCase();if(key)map.set(key,mergeConversationMessages(map.get(key)||[],(lead.communications||[]).filter(message=>message.channel==="email")))}return map},[leads]);
   const orderedLeads=useMemo(()=>rankMessageLeads(leads,allSms,channel,rankingNow),[leads,allSms,channel,rankingNow]);
   const latestMessages=useMemo(()=>{
@@ -70,18 +72,17 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
   const visibleLeads=useMemo(()=>{
     const query=deferredSearch.trim().toLowerCase();
     return orderedLeads.filter(lead=>{
-      if(inboxFilter==="personal"&&!requiresPersonalText(lead))return false;
-      if(inboxFilter==="closed"&&lead.stage!=="Closed")return false;
+      if(Boolean(inboxStatus.get(lead.id)?.closed)!==(inboxFilter==="closed"))return false;
       if(inboxFilter==="replies"&&!(channel==="sms"?(smsByPhone.get(digits(lead.phone))||[]):(emailByAddress.get(lead.email?.toLowerCase())||[])).some(message=>/inbound/i.test(message.direction)))return false;
       if(inboxFilter==="sent"&&!(channel==="sms"?(smsByPhone.get(digits(lead.phone))||[]):(emailByAddress.get(lead.email?.toLowerCase())||[])).some(message=>/outbound/i.test(message.direction)))return false;
       return !query||[lead.name,lead.phone,lead.email,lead.city,lead.product,lead.source].some(value=>String(value||"").toLowerCase().includes(query));
     }).sort((a,b)=>Number(b.priorityOverride==="high")-Number(a.priorityOverride==="high")||(Date.parse(latestMessages.get(b.id)?.sentAt||"")||0)-(Date.parse(latestMessages.get(a.id)?.sentAt||"")||0));
-  },[deferredSearch,orderedLeads,inboxFilter,latestMessages,smsByPhone,emailByAddress,channel]);
+  },[deferredSearch,orderedLeads,inboxFilter,latestMessages,smsByPhone,emailByAddress,channel,inboxStatus]);
   const listKey=`${channel}:${inboxFilter}:${deferredSearch}`;
   const [listWindow,setListWindow]=useState({key:"",size:60});
   const visibleCount=listWindow.key===listKey?listWindow.size:60;
   const [threadWindow,setThreadWindow]=useState({key:"",size:60});
-  const selectedCandidate=orderedLeads.find(lead=>lead.id===selectedId);
+  const selectedCandidate=visibleLeads.find(lead=>lead.id===selectedId);
   const selected=selectedCandidate||visibleLeads[0];
   const archive=useConversationHistory(selected?.id,channel,visible);
   const {subject,draft,loading,sendState,status,aiMode,setSubject,setDraft,setSendState,setStatus,setAiMode,beginRequest,endRequest}=useMessageComposer(`${selected?.id??"none"}:${channel}`);
@@ -105,7 +106,8 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
     if(!mounted.current)return;
     if(smsResult.status==="fulfilled"&&smsResult.value.response.ok){
       const incoming=smsResult.value.data.messages||[];setSmsMessages(incoming);setTwilioNumber(smsResult.value.data.phone||"");setSmsConnection(smsResult.value.data.sending?.configured?"ready":"error");setSmsSetupMessage(smsResult.value.data.sending?.message||"SMS sending readiness could not be confirmed. Refresh to check again.");
-      for(const message of incoming){if(!/inbound/i.test(message.direction)||!isSmsStopReply(message.body))continue;const match=leadSnapshot.current.find(lead=>digits(lead.phone)===digits(message.from));if(match&&!match.smsOptOut)patchLead.current(match.id,{smsOptOut:true,smsConsent:false,doNotCall:true,stage:"Closed",outcome:"Not interested",followUp:"",sourceDisposition:"Lost - Not Interested"})}
+      const stopped=stoppedSmsPhones(incoming);
+      for(const lead of leadSnapshot.current){if(stopped.has(digits(lead.phone))&&!lead.smsOptOut)patchLead.current(lead.id,{smsOptOut:true,smsConsent:false,doNotCall:true,stage:"Closed",outcome:"Not interested",followUp:"",sourceDisposition:"Lost - Not Interested"})}
     }else {setSmsConnection("error");setSmsSetupMessage(smsResult.status==="fulfilled"?smsResult.value.data.error||"SMS connection unavailable":"Could not reach SMS. Refresh to try again.");}
     if(workspaceResult.status==="fulfilled"&&workspaceResult.value.response.ok){
       const localById=new Map(leadSnapshot.current.map(lead=>[lead.id,lead]));
@@ -151,7 +153,7 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
   async function generateSelected(){if(!selected||blocksAiText(selected)||!beginRequest())return;setSelectedId(selected.id);try{setDraft(await generate());setStatus(`${channel==="email"?"Email":"Text"} draft ready for review`)}catch(error){if(selected){const fallback=browserDraft(selected,profile,channel);setDraft(fallback.body);setSubject(fallback.subject);setAiMode("smart-fallback");setStatus(`Pacifica created a safe local draft. ${error instanceof Error?error.message:""}`)}else setStatus("Choose a contact first")}finally{endRequest()}}
   async function sendSelected(){if(!selected||!beginRequest())return;setSelectedId(selected.id);setSendState("sending");setStatus(`Sending ${channel==="email"?"email":"text"} to ${selected.name}…`);try{if(selected.doNotCall)throw new Error("This contact is marked DNC. Outreach is blocked.");if(channel==="sms")await sendSms(selected,draft);else await sendEmail(selected,draft);setDraft("");setSubject("");setAttachmentVersion(value=>value+1);setSendState("sent");setStatus(channel==="email"?`Email submitted for ${selected.name}`:`Text submitted for ${selected.name}; awaiting delivery`);window.setTimeout(()=>setSendState("idle"),2600)}catch(error){setSendState("error");setStatus(error instanceof Error?error.message:"Send failed")}finally{endRequest()}}
 
-  const optedOut=channel==="sms"?selected?.smsOptOut:selected?.emailOptOut;
+  const optedOut=selected?inboxStatus.get(selected.id)?.optedOut:false;
   const consent=hasContactPermission(selected,profile,channel);
   const connectionClass=channel==="sms"?smsConnection:emailStatus.configured?"ready":"error";
   return <div className={`messages-center channel-${channel}`}>

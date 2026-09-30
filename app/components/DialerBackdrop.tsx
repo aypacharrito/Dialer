@@ -14,19 +14,20 @@ function Stars({motion}: {motion: boolean}) {
     let seed = 7391;
     const random = () => {seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646;};
     // Screen-resolution stars, without an enlarged GIF or React updates per frame.
-    const stars = Array.from({length: 660}, () => ({x: random(), y: random(), depth: .25 + random() * .75, radius: .28 + random() ** 5 * 1.15, light: .15 + random() * .5, phase: random() * Math.PI * 2}));
+    const stars = Array.from({length: 760}, () => ({x: random(), y: random(), depth: .25 + random() * .75, radius: .36 + random() ** 5 * 1.3, light: .22 + random() * .62, phase: random() * Math.PI * 2, speed: .5 + random()}));
     const draw = (now: number) => {
       frame = 0;
       const animated = motion && !reduced.matches && !document.hidden;
-      if (animated && now - last < 32) {frame = requestAnimationFrame(draw); return;}
+      if (animated && now - last < 16) {frame = requestAnimationFrame(draw); return;}
       const delta = Math.min(50, last ? now - last : 0); last = now;
       if (animated) elapsed += delta;
-      x += (pointerX - x) * .075; y += (pointerY - y) * .075;
+      const ease = 1 - Math.exp(-delta / 150);
+      x += (pointerX - x) * ease; y += (pointerY - y) * ease;
       context.clearRect(0, 0, width, height);
       for (const star of stars) {
         const drift = animated ? elapsed * .0000018 * star.depth : 0;
         const sx = ((star.x + drift) % 1) * width + x * star.depth, sy = ((star.y + drift * .25) % 1) * height + y * star.depth;
-        const alpha = star.light * (animated ? .88 + .12 * Math.sin(elapsed * .0005 + star.phase) : 1);
+        const alpha = star.light * (animated ? .72 + .28 * Math.sin(elapsed * .0011 * star.speed + star.phase) : 1);
         context.fillStyle = `rgba(220,225,229,${alpha})`;
         context.beginPath(); context.arc(sx, sy, star.radius, 0, Math.PI * 2); context.fill();
         if (star.radius > 1.2) {context.fillStyle = `rgba(220,225,229,${alpha * .17})`;context.fillRect(sx - 2.5, sy - .35, 5, .7);context.fillRect(sx - .35, sy - 2.5, .7, 5);}

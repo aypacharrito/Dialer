@@ -143,7 +143,7 @@ function createWindow(){
     backgroundColor:"#f5f6f2",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
     autoHideMenuBar:true,
     titleBarStyle:"hidden",
-    titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#08090a":"#f5f6f2",symbolColor:nativeTheme.shouldUseDarkColors?"#d3d6da":"#37413b",height:36},
+    titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#08090a":"#f5f6f2",symbolColor:nativeTheme.shouldUseDarkColors?"#d3d6da":"#37413b",height:68},
     webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true,backgroundThrottling:false}
   });
   mainWindow.once("ready-to-show",()=>{clearTimeout(splashTimeout);finishSplash()});

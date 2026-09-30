@@ -11,12 +11,11 @@ import {
   validateTwilioWebhook,
 } from "../../../lib/twilio-webhook";
 import { sendExpoPush } from "../../../lib/expo-push";
+import {isSmsStopReply,isSmsStartReply} from "../../../lib/message-inbox";
 
 export const runtime = "nodejs";
 
-const stop = /^\s*(stop|stopall|unsubscribe|cancel|end|quit)\s*[.!]?\s*$/i;
 const help = /^\s*(help|info)\s*[.!]?\s*$/i;
-const start = /^\s*(start|yes|unstop)\s*[.!]?\s*$/i;
 const digits = (value: string) => value.replace(/\D/g, "").slice(-10);
 
 function twiml(message="") {
@@ -55,8 +54,8 @@ export async function POST(request: Request) {
     const workspace = await readStoredWorkspace(assignment.workspaceId);
     if (!workspace) return twiml();
     const optOutType=String(form.get("OptOutType")||"").toUpperCase();
-    const isStop=optOutType==="STOP"||stop.test(body);
-    const isStart=optOutType==="START"||start.test(body);
+    const isStop=optOutType==="STOP"||isSmsStopReply(body);
+    const isStart=optOutType==="START"||isSmsStartReply(body);
     const isHelp=optOutType==="HELP"||help.test(body);
     const phone = digits(from);
     if (!phone) return twiml();

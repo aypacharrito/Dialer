@@ -2,6 +2,8 @@
    for both fixed navigation and viewport-sized content, without an EXE update. */
 html[data-theme]{--crm-titlebar:0px;--crm-height:calc(100dvh - var(--crm-titlebar))}
 html[data-theme]:has(#pacifica-window-bar){--crm-titlebar:36px}
+html[data-theme][data-desktop-chrome="integrated"]{--crm-titlebar:0px}
+html[data-theme][data-desktop-chrome="fallback"]{--crm-titlebar:68px}
 html[data-theme] .app-shell{height:var(--crm-height)!important;min-height:0!important}
 html[data-theme] .app-shell>.workspace{height:var(--crm-height)!important;min-height:0!important}
 html[data-theme] .app-shell>.sidebar{top:var(--crm-titlebar)!important;height:var(--crm-height)!important;max-height:var(--crm-height);box-sizing:border-box}

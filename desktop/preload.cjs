@@ -30,17 +30,31 @@ contextBridge.exposeInMainWorld("pacificaDesktop",{
   showMainWindow:()=>ipcRenderer.invoke("pacifica:show-main-window"),
 });
 
-// Keep native window controls above the CRM, including the sign-in screen.
+// Native window controls share the CRM header. Auth screens get a quiet drag strip.
 window.addEventListener("DOMContentLoaded",()=>{
   const style=document.createElement("style");
-  style.textContent=`#pacifica-window-bar [hidden]{display:none!important}html{padding-top:36px!important}#pacifica-window-bar{position:fixed;inset:0 0 auto;height:36px;z-index:2147483647;background:#f5f6f2;color:#37413b;-webkit-app-region:drag;display:flex;align-items:center;gap:8px;padding:0 150px 0 16px;font:600 12px system-ui;letter-spacing:0}html[data-theme="dark"] #pacifica-window-bar{background:#08090a;color:#d3d6da}`;
+  style.textContent=`
+    #pacifica-window-bar[hidden],#pacifica-desktop-update[hidden]{display:none!important}
+    html[data-desktop-chrome="fallback"]{padding-top:68px!important}
+    html[data-desktop-chrome="integrated"]{padding-top:0!important}
+    #pacifica-window-bar{position:fixed;inset:0 0 auto;height:68px;z-index:2147483647;background:var(--ps-bg,#f5f6f2);color:var(--ps-text,#37413b);-webkit-app-region:drag;display:flex;align-items:center;gap:8px;padding:0 150px 0 16px;font:500 12px system-ui}
+    html[data-desktop-chrome="integrated"] .app-shell .workspace>.topbar{min-height:68px!important;padding-right:154px!important;-webkit-app-region:drag}
+    html[data-desktop-chrome] .topbar :is(button,a,input,select,textarea,label,summary,[role="button"]),#pacifica-desktop-update{-webkit-app-region:no-drag}
+    html[data-desktop-chrome="integrated"] .topbar .lead-line-switch{margin-inline:auto!important}
+    html[data-desktop-chrome="integrated"] .topbar .top-actions{justify-content:flex-end}
+  `;
   document.head.appendChild(style);
-  const bar=document.createElement("div");bar.id="pacifica-window-bar";const label=document.createElement("span");label.textContent="Pacifica";bar.appendChild(label);document.body.appendChild(bar);
-  for(const [action,text] of [['home','⌂']]){
-    const button=document.createElement('button');button.textContent=text;button.title=action==='back'?'Go back':'Return to Pacifica';button.setAttribute('aria-label',button.title);button.style.cssText='-webkit-app-region:no-drag;border:0;background:transparent;color:inherit;cursor:pointer;display:grid;place-items:center;width:28px;height:28px;padding:0;font:600 17px system-ui';button.onclick=()=>ipcRenderer.invoke('pacifica:navigate',action).then(ok=>{if(!ok)button.title='Finish your call and save its result before navigating'}).catch(()=>{});bar.insertBefore(button,label);
-  }
-  ipcRenderer.invoke("pacifica:desktop-version").then(version=>{if(version)label.title=`Pacifica ${version}`}).catch(()=>{});
-  const update=document.createElement('button');update.hidden=true;update.textContent='Update available';update.style.cssText='margin-left:auto;-webkit-app-region:no-drag;border:0;border-radius:5px;padding:4px 9px;background:rgba(148,174,158,.16);color:inherit;cursor:pointer;font:inherit';bar.appendChild(update);
+  const bar=document.createElement("div");bar.id="pacifica-window-bar";document.body.appendChild(bar);
+  const update=document.createElement('button');update.id='pacifica-desktop-update';update.hidden=true;update.textContent='Update available';update.style.cssText='-webkit-app-region:no-drag;border:0;border-radius:8px;padding:8px 10px;background:rgba(148,174,158,.16);color:inherit;cursor:pointer;font:inherit';bar.appendChild(update);
+  let header=null;
+  const syncChrome=()=>{
+    const next=header?.isConnected?header:document.querySelector('.app-shell .workspace>.topbar');
+    const mode=next?'integrated':'fallback';
+    if(header===next&&document.documentElement.dataset.desktopChrome===mode&&update.isConnected)return;
+    header=next;document.documentElement.dataset.desktopChrome=mode;bar.hidden=Boolean(header);
+    (header?.querySelector('.top-actions')||header||bar).appendChild(update);
+  };
+  new MutationObserver(syncChrome).observe(document.body,{childList:true,subtree:true});syncChrome();
   let phase='idle';const render=state=>{if(!state)return;phase=state.phase;update.hidden=!state.version||!['downloading','ready','installing','error'].includes(phase);update.disabled=['checking','downloading','installing'].includes(phase);update.textContent=phase==='installing'?'Restarting…':phase==='ready'?'Restart to update':phase==='downloading'?`Downloading ${state.percent}%`:phase==='checking'?'Checking…':phase==='error'?'Retry update':state.message==='You are up to date.'?'Up to date':'Check for updates';update.title=state.message||'Updates replace app files and keep your workspace data';};
   ipcRenderer.on('pacifica:update-state',(_event,state)=>render(state));ipcRenderer.invoke('pacifica:update-status').then(render).catch(()=>{});
   update.onclick=()=>ipcRenderer.invoke(phase==='ready'?'pacifica:update-install':'pacifica:update-check').catch(()=>{});
