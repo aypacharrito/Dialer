@@ -24,13 +24,14 @@ function Stars({motion}: {motion: boolean}) {
       const ease = 1 - Math.exp(-delta / 150);
       x += (pointerX - x) * ease; y += (pointerY - y) * ease;
       context.clearRect(0, 0, width, height);
+      context.fillStyle = "rgb(220,225,229)";
       for (const star of stars) {
         const drift = animated ? elapsed * .0000018 * star.depth : 0;
         const sx = ((star.x + drift) % 1) * width + x * star.depth, sy = ((star.y + drift * .25) % 1) * height + y * star.depth;
         const alpha = star.light * (animated ? .72 + .28 * Math.sin(elapsed * .0011 * star.speed + star.phase) : 1);
-        context.fillStyle = `rgba(220,225,229,${alpha})`;
+        context.globalAlpha = alpha;
         context.beginPath(); context.arc(sx, sy, star.radius, 0, Math.PI * 2); context.fill();
-        if (star.radius > 1.2) {context.fillStyle = `rgba(220,225,229,${alpha * .17})`;context.fillRect(sx - 2.5, sy - .35, 5, .7);context.fillRect(sx - .35, sy - 2.5, .7, 5);}
+        if (star.radius > 1.2) {context.globalAlpha = alpha * .17;context.fillRect(sx - 2.5, sy - .35, 5, .7);context.fillRect(sx - .35, sy - 2.5, .7, 5);}
       }
       if (animated) frame = requestAnimationFrame(draw);
     };
@@ -54,7 +55,7 @@ function DialerBackdrop({appearance = "dark", lightUrl = "", darkUrl = "", motio
   const [failed, setFailed] = useState("");
   const showCustom = Boolean(custom && failed !== custom);
   return <div className={`dialer-cosmos dialer-scene-${appearance}${showCustom ? " is-custom" : ""}`} aria-hidden="true">
-    {showCustom ? <img key={custom} src={custom} referrerPolicy="no-referrer" onError={() => setFailed(custom)} alt="" decoding="async" draggable={false}/> : appearance === "dark" ? <Stars motion={motion}/> : <picture><source media="(max-width: 900px)" srcSet="/images/moss-vines-1600.webp"/><img src="/images/moss-vines-4k.webp" width="3840" height="2160" alt="" decoding="async" draggable={false}/></picture>}
+    {showCustom ? <img key={custom} src={custom} referrerPolicy="no-referrer" onError={() => setFailed(custom)} alt="" decoding="async" draggable={false}/> : appearance === "dark" ? <Stars motion={motion}/> : <img className="dialer-watermark" src="/pacifica-mark.png" width="160" height="160" alt="" decoding="async" draggable={false}/>}
   </div>;
 }
 

@@ -12,7 +12,7 @@ test('stars use a 4K backing surface, pause when hidden/reduced, and release the
  await act(async()=>root.unmount());assert.equal(frames.size,0);
  }finally{dom.window.close()}
 });
-test('light mode is static transparent botanical art and a failed custom GIF falls back',async()=>{
+test('light mode uses the Pacifica watermark and a failed custom GIF falls back',async()=>{
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,IS_REACT_ACT_ENVIRONMENT:true});const root=createRoot(document.getElementById('root'));
- try{await act(async()=>root.render(React.createElement(DialerBackdrop,{appearance:'light',lightUrl:'https://example.invalid/custom.gif'})));assert.equal(document.querySelector('img').getAttribute('referrerpolicy'),'no-referrer');await act(async()=>document.querySelector('img').dispatchEvent(new window.Event('error')));assert.match(document.querySelector('img').src,/moss-vines-4k.webp/);assert.equal(document.querySelector('img').width,3840);assert.equal(document.querySelector('canvas'),null)}finally{await act(async()=>root.unmount());dom.window.close()}
+ try{await act(async()=>root.render(React.createElement(DialerBackdrop,{appearance:'light',lightUrl:'https://example.invalid/custom.gif'})));assert.equal(document.querySelector('img').getAttribute('referrerpolicy'),'no-referrer');await act(async()=>document.querySelector('img').dispatchEvent(new window.Event('error')));assert.match(document.querySelector('img').src,/pacifica-mark.png/);assert.equal(document.querySelector('img').className,'dialer-watermark');assert.equal(document.querySelector('canvas'),null)}finally{await act(async()=>root.unmount());dom.window.close()}
 });

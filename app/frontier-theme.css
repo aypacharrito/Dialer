@@ -66,14 +66,22 @@ html[data-theme] .app-shell .miner-view :is(.miner-simple,.miner-pro-table,.tabl
 html[data-theme] .app-shell .miner-view .stage{background:var(--ps-surface-2)!important;color:var(--ps-muted)!important;border:0!important;box-shadow:none!important}
 html[data-theme] .app-shell .miner-view .miner-run-button{background:var(--dialer-button)!important;color:var(--dialer-button-text)!important;box-shadow:none!important}
 html[data-theme] .app-shell .miner-view .miner-run-button:disabled{background:var(--ps-surface-2)!important;color:var(--ps-muted)!important}
+html[data-theme] .app-shell :is(.crm-view .smart-table,.miner-view .miner-table,.miner-view .miner-simple){border:0!important;box-shadow:none!important}
+html[data-theme] .app-shell :is(.crm-view .smart-table,.miner-view .miner-table) :is(.table-head,.table-row){border:0!important;background:transparent!important}
+html[data-theme] .app-shell :is(.crm-view .smart-table,.miner-view .miner-table) .table-row:hover{background:var(--ps-surface-2)!important}
+html[data-theme] .app-shell .messages-center :is(.message-contacts,.message-history,.message-thread>footer){scrollbar-width:thin;scrollbar-color:transparent transparent;transition:scrollbar-color .16s ease}
+html[data-theme] .app-shell .messages-center .is-scrolling{scrollbar-color:var(--ps-subtle) transparent}
+.messages-center :is(.message-contacts,.message-history,.message-thread>footer)::-webkit-scrollbar{width:6px;height:6px}
+.messages-center :is(.message-contacts,.message-history,.message-thread>footer)::-webkit-scrollbar-track{background:transparent}
+.messages-center :is(.message-contacts,.message-history,.message-thread>footer)::-webkit-scrollbar-button{display:none;width:0;height:0}
+.messages-center :is(.message-contacts,.message-history,.message-thread>footer)::-webkit-scrollbar-thumb{background:transparent;border-radius:8px}
+.messages-center .is-scrolling::-webkit-scrollbar-thumb{background:var(--ps-subtle)}
 
 /* The backdrop spans the shell; transparent panels do not form a separate screen. */
 .dialer-cosmos{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;background:transparent}
 .dialer-cosmos :is(canvas,picture,img){position:absolute;inset:0;width:100%;height:100%;max-width:none}
 .dialer-cosmos img{object-fit:cover;object-position:right bottom}
-.dialer-cosmos.dialer-scene-light{opacity:.58}
-.dialer-scene-light:not(.is-custom) picture{inset:auto 0 0 auto;width:min(1100px,68vw);height:auto;aspect-ratio:16/9;mask-image:linear-gradient(90deg,transparent,#000 26%);}
-.dialer-scene-light:not(.is-custom) img{object-fit:contain}
+.dialer-cosmos .dialer-watermark{inset:50% auto auto 58%;width:min(44vw,560px);height:auto;transform:translate(-50%,-50%);object-fit:contain;opacity:.065;filter:grayscale(1)}
 .dialer-cosmos.is-custom img{opacity:.4}
 html[data-theme] .app-shell .workspace>.conversation-workspace{position:relative;min-height:0;flex:1;overflow:auto;isolation:isolate;background:transparent!important;padding:22px clamp(18px,2.5vw,40px)!important;color:var(--ps-text)!important}
 html[data-theme] .app-shell .conversation-workspace .dialer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 0 22px!important;margin:0!important;border:0!important;border-radius:0;background:transparent!important;box-shadow:none!important}
@@ -96,7 +104,7 @@ html[data-theme] .app-shell .dialer-toolbar-actions>button,.dialer-layout-menu>s
 .dialer-widget-content :is(button,input,select,textarea,a,summary){cursor:auto;touch-action:manipulation}
 .dialer-widget-content button,.dialer-widget-content a{cursor:pointer}
 .dialer-widget-tools{position:absolute;right:8px;top:7px;z-index:5;display:flex;align-items:center;gap:2px;opacity:0;transition:opacity .12s ease}
-.dialer-widget:hover>.dialer-widget-tools,.dialer-widget:focus-within>.dialer-widget-tools,.is-editing .dialer-widget-tools,.dialer-widget.is-collapsed .dialer-widget-tools{opacity:1}
+.dialer-widget-tools:focus-within,.is-editing .dialer-widget-tools,.dialer-widget.is-collapsed .dialer-widget-tools{opacity:1}
 .dialer-widget-tools button{display:grid;place-items:center;min-width:25px;height:27px;padding:0 6px;border:0;border-radius:6px;background:var(--ps-surface-2);color:var(--ps-muted);font-size:16px;cursor:pointer}
 .dialer-widget-tools .widget-drag{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;cursor:grab;touch-action:none}
 .dialer-widget-tools .widget-drag:focus-visible,.is-editing .dialer-widget-tools .widget-drag,.is-collapsed .dialer-widget-tools .widget-drag{position:static;width:auto;height:27px;clip-path:none;display:flex;gap:8px}
@@ -106,8 +114,13 @@ html[data-theme] .app-shell .dialer-toolbar-actions>button,.dialer-layout-menu>s
 .is-editing .dialer-widget-content{padding-top:32px}
 .dialer-widget.is-collapsed .dialer-widget-tools{inset:8px 8px auto;justify-content:flex-end}
 .dialer-widget.is-collapsed .widget-drag{margin-right:auto}
-.widget-resize{position:absolute;right:2px;bottom:2px;width:26px;height:26px;border:0;border-radius:6px;background:transparent;color:var(--ps-muted);opacity:0;cursor:nwse-resize;touch-action:none;font-size:13px;z-index:5}
-.dialer-widget:hover>.widget-resize,.widget-resize:focus-visible,.is-editing .widget-resize{opacity:.65}
+.widget-resize{position:absolute;right:2px;bottom:2px;width:26px;height:26px;border:0;border-radius:6px;background:transparent;color:var(--ps-muted);opacity:0;pointer-events:none;cursor:nwse-resize;touch-action:none;font-size:13px;z-index:5}
+.widget-resize:focus-visible,.is-editing .widget-resize{opacity:.65;pointer-events:auto}
+.dialer-panel-menu{position:fixed;z-index:10000;width:220px;display:grid;gap:2px;padding:8px;border:1px solid var(--ps-line);border-radius:12px;background:var(--ps-surface);color:var(--ps-text);box-shadow:var(--ps-shadow-sheet);font:13px var(--font-ui,system-ui)}
+.dialer-panel-menu>span{padding:6px 10px;color:var(--ps-muted);font-size:11px}
+.dialer-panel-menu>button{border:0;border-radius:7px;background:transparent;color:inherit;padding:9px 10px;font:inherit;text-align:left;cursor:pointer}
+.dialer-panel-menu>button:is(:hover,:focus-visible){outline:0;background:var(--ps-surface-2)}
+.dialer-panel-menu>button:disabled{opacity:.4;cursor:default}
 html[data-theme] .app-shell .conversation-workspace :is(.hero-call,.lead-file,.side-pad,.queue-card){position:static!important;width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;margin:0!important;background:transparent!important;border:0!important;border-radius:16px!important;box-shadow:none!important;backdrop-filter:none!important;color:var(--ps-text)!important}
 html[data-theme] .app-shell .conversation-workspace .call-grid{display:grid;grid-template-columns:minmax(0,1fr)!important;padding:28px!important;gap:20px!important}
 html[data-theme] .app-shell .conversation-workspace .contact-card h2{font-size:clamp(21px,3.5cqw,30px)!important;color:var(--ps-text-strong)!important;font-weight:600;letter-spacing:-.035em;line-height:1.2}
@@ -151,6 +164,10 @@ html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-templat
 .dialer-scene-heading button{border:1px solid var(--ps-line);background:transparent;color:var(--ps-text);border-radius:9px;padding:8px 10px;white-space:nowrap}
 .server-automation-toggle.compact{margin-top:10px}
 .release-update{border:0;border-radius:9px;padding:9px 12px;background:var(--ps-accent-soft);color:var(--ps-accent);font-size:12px}
+.settings-update-check{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-left:auto;font-size:12px}
+.settings-update-check>span{color:var(--ps-muted)}
+.settings-update-check>button,.settings-update-check>a{border:0;border-radius:8px;background:var(--ps-surface-2);color:var(--ps-text);padding:8px 11px;font:inherit;text-decoration:none;cursor:pointer}
+.settings-update-check>button:disabled{opacity:.6;cursor:default}
 .messages-center .message-history article{overflow-wrap:anywhere;min-width:0}
 .channel-email .message-history{gap:16px;padding:20px;background:var(--ps-bg)}
 .channel-email .message-history article{align-self:stretch;width:100%;max-width:100%;padding:20px 24px;border:1px solid var(--ps-line);border-radius:12px;background:var(--ps-surface)!important;color:var(--ps-text)!important;box-shadow:0 4px 16px #00000009}
@@ -160,5 +177,5 @@ html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-templat
 @media(min-width:1800px){html[data-theme] .app-shell .topbar{padding-inline:40px!important}}
 @media(max-width:1200px){html[data-theme] .app-shell .top-actions .workspace-sync{display:none}html[data-theme] .app-shell .topbar{gap:10px;padding:12px 18px!important}}
 @media(max-width:900px){html[data-theme] .app-shell .topbar .caller-id{display:none}html[data-theme] .app-shell .conversation-workspace .dialer-toolbar{align-items:flex-start;flex-wrap:wrap}html[data-theme] .app-shell .top-actions{gap:6px}}
-@media(max-width:600px){html[data-theme] .app-shell .topbar{flex-wrap:wrap}html[data-theme] .app-shell .lead-line-switch{flex:1}html[data-theme] .app-shell .conversation-workspace .call-grid{padding:22px!important}html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-template-columns:1fr!important}.dialer-scene-heading{display:grid}.channel-email .message-history{padding:10px}.channel-email .message-history article{padding:16px}.dialer-layout-menu .dialer-layout-popover{right:auto;left:0}.dialer-cosmos.dialer-scene-light{opacity:.35}}
+@media(max-width:600px){html[data-theme] .app-shell .topbar{flex-wrap:wrap}html[data-theme] .app-shell .lead-line-switch{flex:1}html[data-theme] .app-shell .conversation-workspace .call-grid{padding:22px!important}html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-template-columns:1fr!important}.dialer-scene-heading{display:grid}.channel-email .message-history{padding:10px}.channel-email .message-history article{padding:16px}.dialer-layout-menu .dialer-layout-popover{right:auto;left:0}.dialer-cosmos .dialer-watermark{width:62vw;left:50%}}
 @media(prefers-reduced-motion:reduce){.dialer-widget-tools{transition:none}}

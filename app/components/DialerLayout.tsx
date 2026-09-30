@@ -1,6 +1,7 @@
 "use client";
 
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent, type KeyboardEvent} from "react";
+import {createPortal} from "react-dom";
 import {cleanDialerLayout, constrainPanel, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
 
 type LayoutContext = {
@@ -76,6 +77,8 @@ export function DialerQueueLabel({children}: {children: ReactNode}) {return useL
 
 export function DialerPanel({id, children, className = ""}: {id: WidgetId; children: ReactNode; className?: string}) {
   const context = useLayout(), node = useRef<HTMLElement>(null), frame = useRef(0);
+  const [menu, setMenu] = useState<{x: number; y: number} | null>(null);
+  const menuNode = useRef<HTMLDivElement>(null);
   const gesture = useRef<{kind: "move" | "resize"; x: number; y: number; rect: PanelRect} | null>(null), pending = useRef<PanelRect | null>(null);
   const visible = context.visible(id), protectedPanel = context.protectedIds.includes(id), collapsed = context.layout.collapsed.includes(id) && !protectedPanel;
   const rect = context.rects[id], title = dialerWidgets[id].title;
@@ -88,6 +91,17 @@ export function DialerPanel({id, children, className = ""}: {id: WidgetId; child
     const observer = new ResizeObserver(measure); observer.observe(element); return () => observer.disconnect();
   }, [id, visible, collapsed, reportHeight]);
   useEffect(() => () => { if (frame.current) cancelAnimationFrame(frame.current); }, []);
+  useEffect(() => {
+    if (!menu) return;
+    menuNode.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    const close = () => setMenu(null);
+    const outside = (event: globalThis.PointerEvent) => {if (!menuNode.current?.contains(event.target as Node)) close();};
+    window.addEventListener("pointerdown", outside, true);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("blur", close);
+    return () => {window.removeEventListener("pointerdown", outside, true);window.removeEventListener("scroll", close, true);window.removeEventListener("resize", close);window.removeEventListener("blur", close);};
+  }, [menu]);
   if (!visible) return null;
   const paint = () => {
     frame.current = 0; const next = pending.current, element = node.current, current = gesture.current;
@@ -124,11 +138,25 @@ export function DialerPanel({id, children, className = ""}: {id: WidgetId; child
     event.preventDefault(); const step = event.shiftKey ? 30 : 10, dx = event.key === "ArrowRight" ? step : event.key === "ArrowLeft" ? -step : 0, dy = event.key === "ArrowDown" ? step : event.key === "ArrowUp" ? -step : 0;
     context.place(id, resize ? {...rect, width: rect.width + dx, height: Math.max(100, Math.min(2000, (rect.height || node.current?.offsetHeight || 120) + dy))} : {...rect, x: rect.x + dx, y: rect.y + dy});
   };
-  return <section ref={node} data-dialer-widget={id} className={`dialer-widget ${className}${collapsed ? " is-collapsed" : ""}`} style={style} aria-label={title}
+  const openMenu = (x: number, y: number) => setMenu({x: Math.max(8, Math.min(x, window.innerWidth - 228)), y: Math.max(8, Math.min(y, window.innerHeight - 178))});
+  const closeMenu = () => {setMenu(null);node.current?.focus({preventScroll: true});};
+  return <section ref={node} data-dialer-widget={id} className={`dialer-widget ${className}${collapsed ? " is-collapsed" : ""}`} style={style} aria-label={title} tabIndex={-1}
+    onContextMenu={event => {if ((event.target as HTMLElement).closest("input,textarea,select,a,[contenteditable=true]")) return;event.preventDefault();openMenu(event.clientX, event.clientY);}}
+    onKeyDown={event => {if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {event.preventDefault();const bounds = node.current!.getBoundingClientRect();openMenu(bounds.left + 20, bounds.top + 20);}}}
     onPointerDown={event=>{if((event.target as HTMLElement).closest("button,input,textarea,select,a,label,summary,[role=button],[contenteditable=true]"))return;start(event,"move")}}
     onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}>
-    <div className="dialer-widget-tools"><button type="button" className="widget-drag" aria-label={`Move ${title}`} title="Drag to move · arrow keys to adjust" onPointerDown={event => start(event, "move")} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onKeyDown={event => keyboard(event)}><span aria-hidden="true">⠿</span><span>{title}</span></button>{!protectedPanel && <><button type="button" aria-label={`${collapsed ? "Expand" : "Collapse"} ${title}`} onClick={() => context.collapse(id)}>{collapsed ? "+" : "−"}</button><button type="button" aria-label={`Hide ${title}`} onClick={() => context.toggle(id)}>×</button></>}</div>
+    <div className="dialer-widget-tools"><button type="button" className="widget-drag" aria-label={`Move ${title}`} title="Drag to move · arrow keys to adjust" onPointerDown={event => start(event, "move")} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onKeyDown={event => keyboard(event)}><span aria-hidden="true">⠿</span><span>{title}</span></button></div>
     <div className="dialer-widget-content" hidden={collapsed} tabIndex={0}>{children}</div>
     {!collapsed && <button type="button" className="widget-resize" aria-label={`Resize ${title}`} title="Drag to resize · arrow keys to adjust" onPointerDown={event => start(event, "resize")} onPointerMove={move} onPointerUp={finish} onPointerCancel={finish} onKeyDown={event => keyboard(event, true)}><span aria-hidden="true">◢</span></button>}
+    {menu && createPortal(<div ref={menuNode} className="dialer-panel-menu" role="menu" aria-label={`${title} controls`} style={{left: menu.x, top: menu.y}} onPointerDown={event => event.stopPropagation()} onContextMenu={event => {event.preventDefault();event.stopPropagation();}} onKeyDown={event => {
+      event.stopPropagation();
+      if (event.key === "Escape" || event.key === "Tab") {closeMenu();if (event.key === "Escape") event.preventDefault();}
+      if (["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {event.preventDefault();const items = Array.from(menuNode.current!.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));const current = items.indexOf(document.activeElement as HTMLButtonElement);const index = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;items[index]?.focus();}
+    }}>
+      <span>{title}</span>
+      <button role="menuitem" type="button" onClick={() => {closeMenu();context.setEditing(true);}}>Move & resize</button>
+      <button role="menuitem" type="button" aria-label={`${collapsed ? "Expand" : "Collapse"} ${title}`} disabled={protectedPanel} onClick={() => {closeMenu();context.collapse(id);}}>{collapsed ? "Expand" : "Minimize"}</button>
+      <button role="menuitem" type="button" aria-label={`Hide ${title}`} disabled={protectedPanel} onClick={() => {closeMenu();context.toggle(id);}}>Hide panel</button>
+    </div>, document.body)}
   </section>;
 }

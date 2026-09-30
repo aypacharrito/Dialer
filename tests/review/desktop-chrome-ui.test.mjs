@@ -1,4 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {JSDOM} from 'jsdom';
+test('Settings uses fixed desktop update IPC channels and can unsubscribe from progress',async()=>{
+ let bridge,listener,removed=false;const channels=[];
+ const ipc={invoke:async channel=>{channels.push(channel);return {phase:'idle'}},on:(channel,fn)=>{assert.equal(channel,'pacifica:update-state');listener=fn},removeListener:(channel,fn)=>{assert.equal(channel,'pacifica:update-state');assert.equal(fn,listener);removed=true}};
+ vm.runInNewContext(fs.readFileSync(new URL('../../desktop/preload.cjs',import.meta.url),'utf8'),{window:{addEventListener(){}},process:{platform:'win32'},require:()=>({contextBridge:{exposeInMainWorld(_name,value){bridge=value}},ipcRenderer:ipc})});
+ await bridge.getUpdateStatus();await bridge.checkForUpdates();await bridge.installUpdate();assert.deepEqual(channels,['pacifica:update-status','pacifica:update-check','pacifica:update-install']);
+ let phase;const unsubscribe=bridge.onUpdateState(state=>{phase=state.phase});listener({}, {phase:'ready'});assert.equal(phase,'ready');unsubscribe();assert.equal(removed,true);
+});
 test('desktop controls share the CRM header; updates remain hidden unless a release is known',async()=>{
  const dom=new JSDOM('<html><head></head><body></body></html>');await new Promise(resolve=>dom.window.addEventListener('load',resolve,{once:true}));
  const listeners=new Map();const ipc={on:(event,fn)=>listeners.set(event,fn),invoke:async event=>event==='pacifica:desktop-version'?'0.2.26':{phase:'idle',version:''},send(){},removeListener(){}};

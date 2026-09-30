@@ -6,6 +6,7 @@ import ReleaseUpdateNotice from '../../app/components/ReleaseUpdateNotice.tsx';
 import {releaseVersion} from '../../app/lib/release-version.ts';
 function Fixture({protectedIds=[]}){const [keypad,setKeypad]=useState(true);return React.createElement(DialerLayout,{workspaceId:'w1',theme:'dark',keypadOpen:keypad,onKeypadChange:setKeypad,protectedIds,detailsAvailable:true},React.createElement(DialerLayoutMenu),React.createElement('div',{className:'dialer-canvas'},...['contact','keypad','calls','details'].map(id=>React.createElement(DialerPanel,{key:id,id},React.createElement('p',null,id)))))}
 async function setup(){const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test',pretendToBeVisual:true});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true,requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});dom.window.HTMLElement.prototype.setPointerCapture=()=>{};dom.window.HTMLElement.prototype.hasPointerCapture=()=>false;const root=createRoot(document.getElementById('root'));return {dom,root,close:async()=>{await act(async()=>root.unmount());dom.window.close()}}}
+const contextMenu=async id=>act(async()=>document.querySelector(`[data-dialer-widget="${id}"]`).dispatchEvent(new window.MouseEvent('contextmenu',{bubbles:true,clientX:100,clientY:100})));
 const byLabel=text=>document.querySelector(`[aria-label="${text}"]`);
 test('keypad can move, resize, collapse, hide, restore, and persist its layout',async()=>{
  const h=await setup();try{await act(async()=>h.root.render(React.createElement(Fixture)));
@@ -15,8 +16,9 @@ test('keypad can move, resize, collapse, hide, restore, and persist its layout',
  const width=Number.parseFloat(document.querySelector('[data-dialer-widget="keypad"]').style.width);
  await act(async()=>byLabel('Resize Keypad').dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})));
  assert.equal(Number.parseFloat(document.querySelector('[data-dialer-widget="keypad"]').style.width),width-10);
+ assert.equal(byLabel('Collapse Keypad'),null);await contextMenu('keypad');
  await act(async()=>byLabel('Collapse Keypad').click());assert.equal(document.querySelector('[data-dialer-widget="keypad"] .dialer-widget-content').hidden,true);
- await act(async()=>byLabel('Expand Keypad').click());await act(async()=>byLabel('Hide Keypad').click());assert.equal(document.querySelector('[data-dialer-widget="keypad"]'),null);
+ await contextMenu('keypad');await act(async()=>byLabel('Expand Keypad').click());await contextMenu('keypad');await act(async()=>byLabel('Hide Keypad').click());assert.equal(document.querySelector('[data-dialer-widget="keypad"]'),null);
  const checkbox=[...document.querySelectorAll('.dialer-layout-popover label')].find(x=>x.textContent==='Keypad').querySelector('input');await act(async()=>checkbox.click());assert.ok(byLabel('Move Keypad'));
  await act(async()=>new Promise(r=>setTimeout(r,220)));const saved=JSON.parse(localStorage.getItem('pacifica:dialer-layout:v1:w1:dark'));assert.equal(saved.panels.keypad.y,before+10);assert.equal(saved.hidden.includes('keypad'),false);
  await act(async()=>h.root.render(React.createElement(Fixture,{key:'remount'})));assert.equal(Number.parseFloat(document.querySelector('[data-dialer-widget="keypad"]').style.top),before+10);
@@ -28,6 +30,16 @@ test('keypad can move, resize, collapse, hide, restore, and persist its layout',
 });
 test('live call and wrap-up remain accessible even when previously hidden',async()=>{
  const h=await setup();localStorage.setItem('pacifica:dialer-layout:v1:w1:dark',JSON.stringify({hidden:['contact','details'],collapsed:['contact','details']}));try{await act(async()=>h.root.render(React.createElement(Fixture,{protectedIds:['contact','details']})));assert.ok(document.querySelector('[data-dialer-widget="contact"]'));assert.equal(byLabel('Hide Contact & call'),null);assert.equal(document.querySelector('[data-dialer-widget="details"] .dialer-widget-content').hidden,false)}finally{await h.close()}
+});
+test('right-click menu supports keyboard dismissal and protects live call panels',async()=>{
+ const h=await setup();try{await act(async()=>h.root.render(React.createElement(Fixture,{protectedIds:['contact']})));
+  await contextMenu('contact');assert.equal(byLabel('Hide Contact & call').disabled,true);assert.equal(byLabel('Collapse Contact & call').disabled,true);
+  await act(async()=>document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));assert.equal(document.querySelector('[role=menu]'),null);
+  const panel=document.querySelector('[data-dialer-widget="keypad"]');await act(async()=>panel.dispatchEvent(new window.KeyboardEvent('keydown',{key:'F10',shiftKey:true,bubbles:true})));
+  assert.equal(document.querySelector('[role=menu]').getAttribute('aria-label'),'Keypad controls');assert.equal(document.activeElement.textContent,'Move & resize');
+  await act(async()=>document.activeElement.dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})));assert.equal(document.activeElement.textContent,'Minimize');
+  await act(async()=>document.body.dispatchEvent(new window.MouseEvent('pointerdown',{bubbles:true})));assert.equal(document.querySelector('[role=menu]'),null);
+ }finally{await h.close()}
 });
 test('saved geometry is bounded, malformed settings ignored and hidden sections close default gaps',()=>{
  assert.equal(cleanDialerLayout({panels:{keypad:{x:Infinity,y:0,width:200}}}).panels.keypad,undefined);
@@ -43,7 +55,7 @@ test('panel background drags without a grab icon, while controls retain their no
  await act(async()=>pointer(content,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',90,70));await act(async()=>new Promise(resolve=>setTimeout(resolve,25)));
  assert.equal(panel.style.left,'0px');assert.equal(panel.style.transform,'translate3d(90px,70px,0)');
  await act(async()=>pointer(panel,'pointerup',90,70));assert.equal(panel.style.left,'90px');assert.equal(panel.style.top,'70px');assert.equal(panel.style.transform,'');
- const button=panel.querySelector('[aria-label="Collapse Contact & call"]');await act(async()=>pointer(button,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',150,150));await act(async()=>pointer(panel,'pointerup',150,150));assert.equal(panel.style.left,'90px');
+ const button=document.createElement('button');button.textContent='Normal action';content.appendChild(button);await act(async()=>pointer(button,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',150,150));await act(async()=>pointer(panel,'pointerup',150,150));assert.equal(panel.style.left,'90px');
  }finally{await h.close()}
 });
 test('web update notice stays quiet on errors/current version, appears for a real update, and blocks refresh while busy',async()=>{

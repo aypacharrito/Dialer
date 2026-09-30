@@ -4,6 +4,7 @@ import {documentMissingFields,combineDocumentReads} from "./lib/document-review"
 import DialerBackdrop from "./components/DialerBackdrop";
 import {DialerLayout,DialerLayoutMenu,DialerPanel,DialerQueueLabel} from "./components/DialerLayout";
 import ReleaseUpdateNotice from "./components/ReleaseUpdateNotice";
+import SettingsUpdateCheck from "./components/SettingsUpdateCheck";
 import CallTimer from "./components/CallTimer";
 import {callDurationSeconds,formatCallDuration} from "./lib/call-duration";
 import {hasContactPermission} from "./lib/contact-permission";
@@ -1346,6 +1347,7 @@ if(!isDocumentFile(file)){setToast("Use a photo or PDF document");return}if(file
       {isOwner&&view==="settings"&&<div className="page-view settings-page">
         <div className="settings-title-bar">
           <span className="eyebrow">SETTINGS</span>
+          <SettingsUpdateCheck busy={dialing||Boolean(incomingCall)||Boolean(postCallLeadId)||showNewLead||Boolean(selectedLead)||!/saved|synced/i.test(workspaceSyncStatus)}/>
           <span className="settings-save-state"><i/>{workspaceSyncStatus}</span>
         </div>
         <div className="settings-layout">

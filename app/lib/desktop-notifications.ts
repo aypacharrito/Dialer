@@ -1,3 +1,4 @@
 export type DesktopMessage={id:string;leadId:number;name:string;body:string;channel:'sms'|'email';theme:string};
-type DesktopBridge={openCalendarBrowser?:()=>Promise<boolean>;isDesktop?:boolean;supportsDesktopWrapUp?:boolean;notifyMessage?:(message:DesktopMessage)=>void;onMessageAction?:(callback:(message:DesktopMessage)=>void)=>(()=>void)};
+export type DesktopUpdateState={phase:"idle"|"unavailable"|"checking"|"downloading"|"ready"|"installing"|"error";version:string;percent:number;message:string};
+type DesktopBridge={openCalendarBrowser?:()=>Promise<boolean>;isDesktop?:boolean;platform?:string;supportsDesktopWrapUp?:boolean;notifyMessage?:(message:DesktopMessage)=>void;onMessageAction?:(callback:(message:DesktopMessage)=>void)=>(()=>void);checkForUpdates?:()=>Promise<DesktopUpdateState>;getUpdateStatus?:()=>Promise<DesktopUpdateState>;installUpdate?:()=>Promise<boolean>;onUpdateState?:(callback:(state:DesktopUpdateState)=>void)=>(()=>void)};
 export function desktopNotifications(){return typeof window==='undefined'?undefined:(window as Window&{pacificaDesktop?:DesktopBridge}).pacificaDesktop}
