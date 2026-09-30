@@ -140,10 +140,10 @@ function createWindow(){
   const splashTimeout=setTimeout(finishSplash,12000);
   mainWindow=new BrowserWindow({
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
-    backgroundColor:"#f7f8fa",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
+    backgroundColor:"#f5f6f2",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
     autoHideMenuBar:true,
     titleBarStyle:"hidden",
-    titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#111614":"#f7f8fa",symbolColor:nativeTheme.shouldUseDarkColors?"#f4f7f5":"#17211d",height:36},
+    titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#08090a":"#f5f6f2",symbolColor:nativeTheme.shouldUseDarkColors?"#d3d6da":"#37413b",height:36},
     webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true,backgroundThrottling:false}
   });
   mainWindow.once("ready-to-show",()=>{clearTimeout(splashTimeout);finishSplash()});
@@ -275,7 +275,7 @@ ipcMain.handle("pacifica:show-main-window",(event)=>{if(!trustedMain(event))retu
 ipcMain.on("pacifica:theme",(event,theme)=>{
   if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||""))return;
   nativeTheme.themeSource=theme==="dark"?"dark":"light";
-  mainWindow.setTitleBarOverlay({color:theme==="dark"?"#111614":"#f7f8fa",symbolColor:theme==="dark"?"#f4f7f5":"#17211d"});
+  mainWindow.setTitleBarOverlay({color:theme==="dark"?"#08090a":"#f5f6f2",symbolColor:theme==="dark"?"#d3d6da":"#37413b"});
   lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
   overlayWindow?.webContents.send("pacifica:call-state",overlayState());
 });

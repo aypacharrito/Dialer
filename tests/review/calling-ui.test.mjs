@@ -116,7 +116,7 @@ test('typed closed numbers work while Do Not Call records remain blocked',async(
   await act(async()=>FakeDevice.calls[0].disconnect());
  }finally{await h.cleanup()}
 });
-test('neutral callback saves notes and time without marking interest or reopening automated messaging',async()=>{
+test('neutral callback saves notes and time while remaining eligible for follow-ups',async()=>{
  const h=await setup();try{
   await h.nav('Dialer');await click(document.querySelector('.start-call'));
   await act(async()=>FakeDevice.calls[0].answer());await act(async()=>FakeDevice.calls[0].disconnect());
@@ -127,7 +127,7 @@ test('neutral callback saves notes and time without marking interest or reopenin
    const notes=modal.querySelector('textarea');Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(notes,'Asked me to call tomorrow.');notes.dispatchEvent(new window.Event('input',{bubbles:true}));
   });
   await click(document.querySelector('.post-call-save'));
-  const saved=h.saved()[0];assert.equal(saved.outcome,'Call back later');assert.equal(saved.stage,'Follow-up');assert.equal(saved.sourceDisposition,'Contacted');assert.equal(saved.followUp,'2099-09-09T12:00');assert.equal(saved.notes,'Asked me to call tomorrow.');assert.equal(saved.automationNextAt,'');assert.equal(saved.automationStatus,'waiting for salesperson');
+  const saved=h.saved()[0];assert.equal(saved.outcome,'Call back later');assert.equal(saved.stage,'Follow-up');assert.equal(saved.sourceDisposition,'Contacted');assert.equal(saved.followUp,'2099-09-09T12:00');assert.equal(saved.notes,'Asked me to call tomorrow.');assert.ok(saved.automationNextAt);assert.equal(saved.automationStatus,'scheduled');
   assert.equal(FakeDevice.calls.length,1);
  }finally{await h.cleanup()}
 });

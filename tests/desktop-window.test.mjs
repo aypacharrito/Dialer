@@ -44,7 +44,7 @@ test('untrusted frames cannot create native call windows',()=>{
  const {windows,handlers,event}=desktop();handlers.get('pacifica:call-state')({...event,senderFrame:{url:'https://example.com'}},{active:true});assert.equal(windows.length,1);
 });
 test('theme changes update native chrome outside a call',()=>{
- const {windows,handlers,event}=desktop();handlers.get('pacifica:theme')(event,'dark');assert.equal(windows[0].theme.color,'#111614');
+ const {windows,handlers,event}=desktop();handlers.get('pacifica:theme')(event,'dark');assert.equal(windows[0].theme.color,'#08090a');
 });
 
 test('layout changes preserve position, clamp to screen and persist across launches',()=>{

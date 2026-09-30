@@ -42,7 +42,7 @@ export default function DialerKeypad(props: Props) {
     </div>
     <div className="key-grid">{keys.map(([digit, letters]) => <button key={digit} type="button" aria-label={props.dialing ? `Send ${digit}` : `Key ${digit}`} onClick={() => props.onDigits(digit)}><b>{digit}</b><small>{letters}</small></button>)}</div>
     <p id="keypad-feedback" className={`keypad-feedback ${props.feedback.error ? "error" : ""}`} role="status" aria-live="polite">
-      {props.feedback.message || (props.connected ? "Type here or press a key to respond to the call." : props.dialing ? "Waiting for the call to connect…" : "Enter a number or use the keypad.")}
+      {props.feedback.message || (props.connected ? "" : props.dialing ? "Waiting for the call to connect…" : "")}
     </p>
     {!props.dialing && <div className="phone-actions"><button className="erase" type="button" aria-label="Delete last digit" onClick={() => props.onNumberChange(props.number.slice(0, -1))} disabled={!props.number}>⌫</button><button className="phone-call" type="button" aria-label="Call entered number" title={props.phoneReady ? "Call now" : "Phone setup is required"} onClick={props.onCall} disabled={!props.phoneReady || props.number.replace(/\D/g, "").length < 7}>Call now</button></div>}
   </aside>;

@@ -1,0 +1,50 @@
+export const dialerWidgets = {
+  contact: {title: "Contact & call", minWidth: 300},
+  mode: {title: "Call mode", minWidth: 280},
+  calls: {title: "Calls today", minWidth: 140},
+  conversations: {title: "Conversations", minWidth: 140},
+  phone: {title: "Phone status", minWidth: 140},
+  queue: {title: "Upcoming contacts", minWidth: 280},
+  keypad: {title: "Keypad", minWidth: 230},
+  details: {title: "Contact details & outcome", minWidth: 300},
+} as const;
+export type WidgetId = keyof typeof dialerWidgets;
+export type PanelRect = {x: number; y: number; width: number; height?: number};
+export type DialerLayoutState = {version: 1; hidden: WidgetId[]; collapsed: WidgetId[]; panels: Partial<Record<WidgetId, PanelRect>>; showQueueLabel: boolean};
+export const emptyDialerLayout = (): DialerLayoutState => ({version: 1, hidden: ["keypad"], collapsed: [], panels: {}, showQueueLabel: true});
+export function cleanDialerLayout(value: unknown): DialerLayoutState {
+  const result = emptyDialerLayout();
+  if (!value || typeof value !== "object") return result;
+  const input = value as Record<string, unknown>;
+  const ids = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((id): id is WidgetId => typeof id === "string" && Object.hasOwn(dialerWidgets, id)))] : [];
+  result.hidden = Array.isArray(input.hidden) ? ids(input.hidden) : ["keypad"]; result.collapsed = ids(input.collapsed);
+  result.showQueueLabel = input.showQueueLabel !== false;
+  if (input.panels && typeof input.panels === "object") {
+    for (const id of Object.keys(dialerWidgets) as WidgetId[]) {
+      const rect = (input.panels as Record<string, PanelRect>)[id];
+      if (!rect || ![rect.x, rect.y, rect.width].every(Number.isFinite)) continue;
+      result.panels[id] = {x: Math.max(0, Math.min(7680, rect.x)), y: Math.max(0, Math.min(6000, rect.y)), width: Math.max(dialerWidgets[id].minWidth, Math.min(3840, rect.width)), ...(Number.isFinite(rect.height) ? {height: Math.max(64, Math.min(2000, rect.height!))} : {})};
+    }
+  }
+  return result;
+}
+export function constrainPanel(rect: PanelRect, availableWidth: number, minWidth = 140): PanelRect {
+  const width = Math.min(Math.max(minWidth, rect.width), Math.max(1, availableWidth));
+  return {...rect, width, x: Math.max(0, Math.min(rect.x, availableWidth - width)), y: Math.max(0, Math.min(6000, rect.y))};
+}
+export function defaultDialerRects(width: number, heights: Partial<Record<WidgetId, number>>, visible: (id: WidgetId) => boolean): Record<WidgetId, PanelRect> {
+  const gap = 20, main = Math.min(680, Math.max(380, width * .6)), right = main + gap;
+  const side = Math.max(230, Math.min(370, width - right));
+  const height = (id: WidgetId, fallback: number) => visible(id) ? (heights[id] || fallback) + gap : 0;
+  const modeY = height("contact", 280), statsY = modeY + height("mode", 80);
+  const stats = (["calls", "conversations", "phone"] as WidgetId[]).filter(visible), statWidth = (main - gap * Math.max(0, stats.length - 1)) / Math.max(1, stats.length);
+  const detailsY = statsY + (stats.length ? Math.max(...stats.map(id => heights[id] || 96)) + gap : 0);
+  return {
+    contact: {x: 0, y: 0, width: main}, mode: {x: 0, y: modeY, width: main},
+    calls: {x: Math.max(0, stats.indexOf("calls")) * (statWidth + gap), y: statsY, width: statWidth},
+    conversations: {x: Math.max(0, stats.indexOf("conversations")) * (statWidth + gap), y: statsY, width: statWidth},
+    phone: {x: Math.max(0, stats.indexOf("phone")) * (statWidth + gap), y: statsY, width: statWidth},
+    details: {x: 0, y: detailsY, width: main},
+    keypad: {x: right, y: 0, width: side}, queue: {x: right, y: height("keypad", 475), width: side},
+  };
+}

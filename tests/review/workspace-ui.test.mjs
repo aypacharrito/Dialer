@@ -6,8 +6,8 @@ import React,{act} from 'react';
 import CRM from '../../app/CRMClient.tsx';
 import {defaultWorkspaceProfile} from '../../app/lib/workspace-profile.ts';
 async function setup(fail,mode=defaultWorkspaceProfile.mode){
- const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test'});
- Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true});
+ const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test',pretendToBeVisual:true});
+ Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,localStorage:dom.window.localStorage,Element:dom.window.Element,requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window),IS_REACT_ACT_ENVIRONMENT:true});
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:dom.window.navigator});
  dom.window.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});
  dom.window.HTMLElement.prototype.getClientRects=function(){return [{width:30,height:30}]};
@@ -39,13 +39,13 @@ test('a successful cloud load unlocks the workspace and permits autosave',async(
  assert.equal(localStorage.getItem('pacifica:test-workspace:leads'),null,'cloud workspace must not synchronously serialize duplicate contacts into browser storage');
  await h.cleanup();
 });
-test('the keypad is a sibling of the calling column while the queue stays with the call',async()=>{
+test('dialer contact, keypad and queue are independently editable siblings',async()=>{
  const h=await setup(false);
  const nav=[...document.querySelectorAll('.sidebar nav button')].find(b=>b.getAttribute('aria-label')==='Dialer');
  await act(async()=>nav.click());
  await act(async()=>document.querySelector('[aria-controls="dialer-keypad"]').click());
- const primary=document.querySelector('.dialer-primary');const keypad=document.getElementById('dialer-keypad');
- assert.ok(primary.querySelector('.hero-call'));assert.ok(primary.querySelector('.queue-card'));assert.equal(keypad.parentElement,primary.parentElement);assert.equal(primary.contains(keypad),false);
+ const primary=document.querySelector('[data-dialer-widget=contact]');const keypad=document.getElementById('dialer-keypad').closest('[data-dialer-widget]');
+ assert.ok(primary.querySelector('.hero-call'));assert.ok(document.querySelector('[data-dialer-widget=queue] .queue-card'));assert.equal(keypad.parentElement,primary.parentElement);assert.equal(primary.contains(keypad),false);
  assert.equal(document.activeElement.id,'manual-dial-number');
  await h.cleanup();
 });
