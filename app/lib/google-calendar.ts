@@ -26,7 +26,7 @@ export async function googleCalendarRequest(token:string,path:string,method='GET
 }
 export function googleOfficeEvent(item:OfficeItem,workspaceId:string){
  const id=createHash('sha256').update(`${workspaceId}:${item.id}`).digest('hex');
- return {id,summary:item.title,start:{dateTime:item.dueAt},end:{dateTime:new Date(Date.parse(item.dueAt)+(item.durationMinutes||30)*60000).toISOString()},visibility:'private',description:'Managed by Pacifica CRM. Edit this appointment in your CRM calendar.',reminders:{useDefault:false,overrides:item.staffReminderMinutes===-1?[]:[{method:'popup',minutes:item.staffReminderMinutes??15}]},extendedProperties:{private:{pacificaId:item.id}}};
+ return {id,summary:item.title,start:item.allDayDate?{date:item.allDayDate}:{dateTime:item.dueAt},end:item.allDayDate?{date:new Date(Date.parse(item.allDayDate+'T12:00:00Z')+86400000).toISOString().slice(0,10)}:{dateTime:new Date(Date.parse(item.dueAt)+(item.durationMinutes||30)*60000).toISOString()},visibility:'private',description:'Managed by Pacifica CRM. Edit this appointment in your CRM calendar.',reminders:{useDefault:false,overrides:item.staffReminderMinutes===-1?[]:[{method:'popup',minutes:item.staffReminderMinutes??15}]},extendedProperties:{private:{pacificaId:item.id}}};
 }
 export async function syncGoogleCalendar(workspaceId:string){
  if(!calendarConfig().ready)return {connected:false};

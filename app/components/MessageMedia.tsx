@@ -18,7 +18,7 @@ export default function MessageMedia({messageId,mediaCount=0,attachments=[]}:{me
   {files.map(file=><div className="message-media-file" key={file.url}>
    {/^image\/(jpeg|jpg|png|gif|webp)$/i.test(file.type)?<a href={file.url} target="_blank" rel="noreferrer"><img src={file.url} alt={file.name} loading="lazy" decoding="async" onLoad={()=>{const history=document.querySelector('.message-history');if(history&&history.scrollHeight-history.scrollTop-history.clientHeight<350)history.scrollTop=history.scrollHeight}}/></a>:<div className="message-file-card"><span aria-hidden="true">{file.type==='application/pdf'?'PDF':'FILE'}</span><b>{file.name}</b>{file.type==='application/pdf'&&<button onClick={()=>setPreview(preview===file.url?null:file.url)}>{preview===file.url?'Close preview':'Preview'}</button>}</div>}
    {preview===file.url&&<iframe title={`Preview ${file.name}`} src={file.url} loading="lazy"/>}
-   <a href={file.url} target="_blank" rel="noreferrer">Open {file.name}</a>
+   <div className="message-file-actions"><a href={file.url} target="_blank" rel="noreferrer">Open {file.name}</a><a href={`${file.url}${file.url.includes("?")?"&":"?"}download=1`} download={file.name}>Download</a></div>
   </div>)}
  </div>;
 }

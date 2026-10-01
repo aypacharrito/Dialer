@@ -5,12 +5,14 @@ import {cleanOfficeItems,officeReminderDue,officeReminderBody} from './office-sc
 import {outboundSmsStatus,sendOutboundSms} from './outbound-sms';
 import {appendCommunication} from './communications';
 import {hasContactPermission} from './contact-permission';
-export async function runOfficeReminders(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number}={}){
+export async function runOfficeReminders(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number;deadline?:number}={}){
  let sent=0,blocked=0,review=0;const limit=options.sendLimit||50;
  for(const record of await automationWorkspaces(options)){
+  if(Date.now()>(options.deadline??Infinity)-7000)break;
   if(sent>=limit)break;
   if(!record.workspace.profile.serverAutomationEnabled||!await workspaceAutomationAccess(record.workspaceId))continue;
   for(const candidate of cleanOfficeItems(record.workspace.officeItems).filter(x=>officeReminderDue(x))){
+   if(Date.now()>(options.deadline??Infinity)-7000)break;
    if(sent>=limit)break;
    // Readiness failures leave the reminder pending. Claim before dispatch to prevent concurrent cron/browser sends.
    if(!(await outboundSmsStatus(record.workspaceId)).configured){blocked++;break}

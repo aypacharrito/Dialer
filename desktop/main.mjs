@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session, shell, screen, nativeTheme } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell, screen, nativeTheme, dialog } from "electron";
 import electronUpdater from "electron-updater";
 import {createDesktopUpdater} from "./updater.mjs";
 import path from "node:path";
@@ -29,6 +29,7 @@ let updateTimer=null;
 let desktopUpdater=null;
 let rendererRecoveryTimer=null;
 let lastRendererRecovery=0;
+let unresponsiveTimer=null;
 
 function host(url){
   try{return new URL(url).hostname.toLowerCase()}catch{return ""}
@@ -140,7 +141,7 @@ function createWindow(){
   const splashTimeout=setTimeout(finishSplash,12000);
   mainWindow=new BrowserWindow({
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
-    backgroundColor:"#f5f6f2",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
+    backgroundColor:nativeTheme.shouldUseDarkColors?"#08090a":"#f5f6f2",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
     autoHideMenuBar:true,
     titleBarStyle:"hidden",
     titleBarOverlay:{color:nativeTheme.shouldUseDarkColors?"#08090a":"#f5f6f2",symbolColor:nativeTheme.shouldUseDarkColors?"#d3d6da":"#37413b",height:68},
@@ -154,10 +155,19 @@ function createWindow(){
   mainWindow.webContents.on("did-navigate",(_event,url)=>{if(!isAppUrl(url)||!new URL(url).pathname.startsWith("/dashboard")){messageQueue=[];seenMessages.clear();messageWindow?.hide()}});
   mainWindow.webContents.on("will-navigate",(event,url)=>{if(!isTrustedNavigation(url)){event.preventDefault();if(/^https?:\/\//i.test(url))void shell.openExternal(url)}});
   mainWindow.webContents.on("render-process-gone",(_event,details)=>{if(details.reason!=="clean-exit")recoverMainRenderer(`renderer process gone: ${details.reason}`)});
-  mainWindow.webContents.on("unresponsive",()=>recoverMainRenderer("renderer became unresponsive"));
+  mainWindow.webContents.on("unresponsive",()=>{
+    clearTimeout(unresponsiveTimer);
+    unresponsiveTimer=setTimeout(async()=>{
+      const window=mainWindow;
+      if(!window||window.isDestroyed()||lastCallState.active||lastCallState.incoming||lastCallState.wrapUp)return;
+      const choice=await dialog.showMessageBox(window,{type:"question",title:"Pacifica is taking a moment",message:"Keep waiting or reload Pacifica?",buttons:["Keep waiting","Reload"],defaultId:0,cancelId:0});
+      if(choice.response===1&&window===mainWindow&&!window.isDestroyed()&&!lastCallState.active&&!lastCallState.incoming&&!lastCallState.wrapUp)recoverMainRenderer("owner requested reload");
+    },15000);
+  });
+  mainWindow.webContents.on("responsive",()=>{clearTimeout(unresponsiveTimer);unresponsiveTimer=null});
   mainWindow.webContents.on("did-fail-load",(_event,code,description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)recoverMainRenderer(`load failed ${code}: ${description}`)});
   void mainWindow.loadURL(appUrl);
-  mainWindow.on("closed",()=>{clearTimeout(splashTimeout);if(splashWindow&&!splashWindow.isDestroyed())splashWindow.close();splashWindow=null;messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
+  mainWindow.on("closed",()=>{clearTimeout(unresponsiveTimer);clearTimeout(rendererRecoveryTimer);clearTimeout(splashTimeout);if(splashWindow&&!splashWindow.isDestroyed())splashWindow.close();splashWindow=null;messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
 }
 
 // Navigation is restricted to the main window and the existing trusted auth origins.
@@ -182,6 +192,10 @@ app.whenReady().then(()=>{
   session.defaultSession.setPermissionRequestHandler((webContents,permission,callback,details)=>{
     const trusted=isAppUrl(details.requestingUrl||webContents.getURL());
     callback(Boolean(trusted&&["media","notifications","clipboard-sanitized-write"].includes(permission)));
+  });
+  session.defaultSession.on("will-download",(_event,item,contents)=>{
+    if(contents!==mainWindow?.webContents)return;
+    item.setSaveDialogOptions({title:"Save attachment",defaultPath:path.join(app.getPath("downloads"),path.basename(item.getFilename()))});
   });
   loadOverlayLayout();
   createWindow();

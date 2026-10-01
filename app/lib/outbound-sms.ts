@@ -28,8 +28,9 @@ export async function outboundSmsStatus(workspaceId:string,email=""){
   return smsReadiness(assignment,sendingEnabled,credentialError);
 }
 
-export async function sendOutboundSms(input:{workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean;scheduled?:boolean;officeReminderId?:string;mediaUrls?:string[];attachments?:MessageAttachment[]}){
+export async function sendOutboundSms(input:{deadline?:number;workspaceId:string;to:string;body:string;workspaceEmail?:string;automated?:boolean;scheduled?:boolean;officeReminderId?:string;mediaUrls?:string[];attachments?:MessageAttachment[]}){
   const requestedAt=Date.now();
+  const signal=(ms:number)=>AbortSignal.timeout(Math.max(1,Math.min(ms,(input.deadline??Infinity)-Date.now())));
   const status=await outboundSmsStatus(input.workspaceId,input.workspaceEmail);
   if(!status.configured)throw new Error(status.message);
   const to=normalized(input.to);if(!to)throw new Error("Lead has an invalid phone number");
@@ -42,10 +43,11 @@ export async function sendOutboundSms(input:{workspaceId:string;to:string;body:s
   if(input.officeReminderId){const {assertOfficeReminder}=await import("./office-reminder-permission");await assertOfficeReminder(input.workspaceId,input.officeReminderId,to)}
   if(input.automated){const workspace=await assertAutomatedContact(input.workspaceId,to,"sms",input.scheduled===true);form.set("Body",automatedSmsBody(body,workspace.profile.businessName))}
   // Read delivery results before creating another message, including failures from older clients.
-  const history=await twilioApiRequest<{messages?:SmsDeliveryRecord[]}>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?${new URLSearchParams({From:status.from,To:to,PageSize:"20"})}`,{},credentials);
+  const history=await twilioApiRequest<{messages?:SmsDeliveryRecord[]}>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?${new URLSearchParams({From:status.from,To:to,PageSize:"20"})}`,{signal:signal(5000)},credentials);
   if(!history.response.ok||!Array.isArray(history.data.messages))throw new SmsPreflightError("delivery history could not be checked. Try again after the connection recovers.");
   assertSmsDeliveryHistory(history.data.messages);
-  const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()},credentials);
+  if(input.automated)await assertAutomatedContact(input.workspaceId,to,"sms",input.scheduled===true);
+  const {response,data}=await twilioApiRequest<TwilioMessageResponse>(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString(),signal:signal(10000)},credentials);
   if(!response.ok||!data.sid){logEvent("sms_provider_rejected",{workspaceId:input.workspaceId,code:data.code});throw new Error(smsFailureMessage(data.code))};
   logEvent("sms_provider_accepted",{providerId:data.sid,workspaceId:input.workspaceId,status:data.status||"queued",mediaCount:mediaUrls.length,embeddedLinks:links.length,requestedAt:new Date(requestedAt).toISOString(),elapsedMs:Date.now()-requestedAt});
   const sentAt=new Date().toISOString();let historySaved=true;

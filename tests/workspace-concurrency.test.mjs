@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {applyWorkspaceChanges} from '../app/lib/workspace-changes.ts';
-import {cleanWorkspacePayload,updateStoredWorkspace,automationWorkspaces} from '../app/lib/workspace-storage.ts';
+import {mergeStoredWorkspace,cleanWorkspacePayload,updateStoredWorkspace,automationWorkspaces} from '../app/lib/workspace-storage.ts';
 import {defaultWorkspaceProfile} from '../app/lib/workspace-profile.ts';
 
 const lead={id:1,name:'Taylor',notes:'Original',stage:'New lead',automationEnabled:true,automationStatus:'scheduled',communications:[]};
@@ -88,4 +88,12 @@ test('atomic creation does not overwrite a workspace initialized concurrently',a
   });
   const result=await updateStoredWorkspace('new',current=>({...current,callLogs:[{id:'new-call'}]}),{create:true});
   assert.equal(result.leads[0].name,'Taylor');assert.equal(result.callLogs[0].id,'new-call');
+});
+
+test('stale browser saves cannot remove a reply decision or replay a daily send',()=>{
+ const receipt={day:'2026-10-01',claim:'receipt-1',state:'sent',at:'2026-10-01T16:30:00Z'};
+ const server=workspace([{...lead,phone:'8185550100',outcome:'Interested',automationEnabled:false,workflowUpdatedAt:'2026-10-01T17:00:00Z',replyReviews:{sms:{id:'reply1',at:'2026-10-01T16:40:00Z'}},dailyOutreach:{sms:receipt}}]);
+ const stale=workspace([{...lead,phone:'8185550100',outcome:'Completed',workflowUpdatedAt:'2026-10-01T15:00:00Z'}]);
+ const saved=mergeStoredWorkspace(server,stale).leads[0];
+ assert.equal(saved.outcome,'Interested');assert.equal(saved.automationEnabled,false);assert.equal(saved.replyReviews.sms.id,'reply1');assert.equal(saved.dailyOutreach.sms.claim,'receipt-1');
 });

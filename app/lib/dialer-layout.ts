@@ -28,9 +28,19 @@ export function cleanDialerLayout(value: unknown): DialerLayoutState {
   }
   return result;
 }
-export function constrainPanel(rect: PanelRect, availableWidth: number, minWidth = 140, minHeight = 64): PanelRect {
+export function constrainPanel(rect: PanelRect, availableWidth: number, minWidth = 140, minHeight = 64, availableHeight = Infinity): PanelRect {
   const width = Math.min(Math.max(minWidth, rect.width), Math.max(1, availableWidth));
-  return {...rect, width, x: Math.max(0, Math.min(rect.x, availableWidth - width)), y: Math.max(0, Math.min(6000, rect.y)), ...(rect.height !== undefined ? {height: Math.max(minHeight, Math.min(2000, rect.height))} : {})};
+  const height=rect.height!==undefined?Math.min(availableHeight,Math.max(minHeight,Math.min(2000,rect.height))):undefined;
+  return {...rect, width, x: Math.max(0, Math.min(rect.x, availableWidth - width)), y: Math.max(0, Math.min(6000, rect.y, availableHeight-(height??minHeight))), ...(height!==undefined?{height}:{})};
+}
+
+export function overlaps(a:PanelRect,b:PanelRect){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+(b.height||280)&&a.y+(a.height||280)>b.y;}
+/** Temporary layout only: saved positions return when the call detail panel closes. */
+export function clearDetailOverlap(rects:Record<WidgetId,PanelRect>,width:number,keypadVisible:boolean){
+ if(!keypadVisible||!overlaps(rects.keypad,rects.details))return rects;
+ const details=rects.details,keypad=rects.keypad;
+ const right=details.x+details.width+20,left=details.x-keypad.width-20;
+ return {...rects,keypad:{...keypad,...(right+keypad.width<=width?{x:right}:left>=0?{x:left}:{y:details.y+(details.height||280)+20})}};
 }
 export function defaultDialerRects(width: number, heights: Partial<Record<WidgetId, number>>, visible: (id: WidgetId) => boolean): Record<WidgetId, PanelRect> {
   const gap = 20, main = Math.min(680, Math.max(380, width * .6)), right = main + gap;

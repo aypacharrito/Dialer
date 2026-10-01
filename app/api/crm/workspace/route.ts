@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import type { WorkspaceProfile } from "../../../lib/workspace-profile";
@@ -53,17 +54,19 @@ function cleanPayload(value: unknown): WorkspacePayload {
   return clean;
 }
 
-export async function GET() {
+export async function GET(request:Request) {
   const owner = await identity();
   if (!owner)
     return Response.json({ error: "Sign in required" }, { status: 401 });
   try {
     const workspace = await readStoredWorkspace(owner.userId);
-    if (workspace)
-      return Response.json(
-        { found: true, ...workspace },
-        { headers: { "Cache-Control": "no-store" } },
-      );
+    if(workspace){
+      const body=JSON.stringify({found:true,...workspace});
+      const etag='"'+createHash('sha256').update(owner.userId).update(body).digest('hex')+'"';
+      const headers={"Cache-Control":"private, no-store","ETag":etag,"Vary":"Cookie, Authorization"};
+      if(request?.headers.get('if-none-match')===etag)return new Response(null,{status:304,headers});
+      return new Response(body,{headers:{...headers,"Content-Type":"application/json"}});
+    }
     if (workspaceRedisConfig().url) {
       if (owner.email === legacyOwnerEmail) {
         const legacy = await workspaceRedis([

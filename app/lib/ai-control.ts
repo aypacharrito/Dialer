@@ -1,8 +1,9 @@
+import {cleanConversationCalendar} from "./conversation-calendar-state";
 import {isFollowUpContact} from "./ai-sms-recipients";
 import type {OfficeItem} from './office-schedule';
 export type OutreachRule={enabled:boolean;audience:'all-eligible'|'new-leads'|'follow-ups'|'selected';ids:number[];excludeIds:number[];sources:string[];excludeSources:string[];dailyAt:string;timeZone:string;startDate:string};
 export type AiControl={revision:number;salesEnabled:boolean|null;rules:Partial<Record<'sms'|'email',OutreachRule>>;receipts:Array<{id:string;at:string;changes:string[]}>};
-export type ControlCommand={kind:'outreach'|'calendar'|'consent';channel:'sms'|'email'|null;enabled:boolean|null;audience:OutreachRule['audience']|null;ids:number[]|null;excludeIds:number[]|null;sources:string[]|null;excludeSources:string[]|null;dailyAt:string|null;timeZone:string|null;startDate:string|null;salesEnabled:boolean|null;calendarAction:'create'|'edit'|'complete'|'delete'|null;eventId:string|null;leadId:number|null;title:string|null;dueAt:string|null;durationMinutes:number|null;staffReminderMinutes:number|null};
+export type ControlCommand={calendarKind?:'appointment'|'payment'|null;amount?:number|null;kind:'outreach'|'calendar'|'consent'|'calendar-review';channel:'sms'|'email'|null;enabled:boolean|null;audience:OutreachRule['audience']|null;ids:number[]|null;excludeIds:number[]|null;sources:string[]|null;excludeSources:string[]|null;dailyAt:string|null;timeZone:string|null;startDate:string|null;salesEnabled:boolean|null;calendarAction:'create'|'edit'|'complete'|'delete'|null;eventId:string|null;leadId:number|null;title:string|null;dueAt:string|null;durationMinutes:number|null;staffReminderMinutes:number|null};
 export const defaultRule=():OutreachRule=>({enabled:true,audience:'all-eligible',ids:[],excludeIds:[],sources:[],excludeSources:[],dailyAt:'',timeZone:'America/Los_Angeles',startDate:''});
 const list=(v:unknown)=>Array.isArray(v)?v:[];
 export function cleanAiControl(value:unknown):AiControl{
@@ -27,7 +28,7 @@ export function inOutreachWindow(rule:OutreachRule|undefined,now=new Date()){
  return minute>=start&&minute<Math.min(1440,start+60);
  }catch{return false}
 }
-export function describeRule(channel:string,rule:OutreachRule){return `${channel==='sms'?'Texts':'Emails'}: ${rule.enabled?rule.audience:'paused'}${rule.sources.length?`; sources: ${rule.sources.join(', ')}`:''}${rule.audience==='selected'?`; ${rule.ids.length} selected contacts`:''}${rule.excludeIds.length?`; ${rule.excludeIds.length} contacts excluded`:''}${rule.excludeSources.length?`; excluded sources: ${rule.excludeSources.join(', ')}`:''}${rule.dailyAt?`; daily from ${rule.dailyAt} ${rule.timeZone} (up to one hour)`:'; existing sequence timing'}${rule.startDate?`; from ${rule.startDate}`:''}`}
+export function describeRule(channel:string,rule:OutreachRule){return `${channel==='sms'?'Texts':'Emails'}: ${rule.enabled?rule.audience:'paused'}${rule.sources.length?`; sources: ${rule.sources.join(', ')}`:''}${rule.audience==='selected'?`; ${rule.ids.length} selected contacts`:''}${rule.excludeIds.length?`; ${rule.excludeIds.length} contacts excluded`:''}${rule.excludeSources.length?`; excluded sources: ${rule.excludeSources.join(', ')}`:''}${rule.dailyAt?`; daily from ${rule.dailyAt} ${rule.timeZone} (once per contact per day)`:'; existing sequence timing'}${rule.startDate?`; from ${rule.startDate}`:''}`}
 export function validateRule(rule:OutreachRule,leads:Record<string,unknown>[]){
  const knownIds=new Set(leads.map(x=>x.id)),knownSources=new Set(leads.map(x=>String(x.source||'').toLowerCase()));
  if(!['all-eligible','new-leads','follow-ups','selected'].includes(rule.audience))throw Error('Choose a valid audience.');
@@ -38,9 +39,9 @@ export function validateRule(rule:OutreachRule,leads:Record<string,unknown>[]){
  if(rule.startDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(rule.startDate)||!Number.isFinite(Date.parse(rule.startDate))||new Date(rule.startDate).toISOString().slice(0,10)!==rule.startDate))throw Error('Use a valid start date.');
  try{new Intl.DateTimeFormat('en',{timeZone:rule.timeZone}).format()}catch{throw Error('Choose a valid time zone.')}
 }
-export function applyControlCommands<T extends {leads:unknown[];officeItems?:OfficeItem[];aiControl?:AiControl;profile?:{smsConsentSources?:string[];emailConsentSources?:string[]}}>(workspace:T,commands:ControlCommand[],requestId:string,now=new Date()){
+export function applyControlCommands<T extends {leads:unknown[];conversationCalendar?:import("./conversation-calendar").ConversationCalendar;officeItems?:OfficeItem[];aiControl?:AiControl;profile?:{smsConsentSources?:string[];emailConsentSources?:string[]}}>(workspace:T,commands:ControlCommand[],requestId:string,now=new Date()){
  if(!Array.isArray(commands)||!commands.length||commands.length>10)throw Error('Choose between one and ten changes.');
- const control=cleanAiControl(workspace.aiControl),changes:string[]=[],leads=workspace.leads as Record<string,unknown>[],profile=workspace.profile?{...workspace.profile}:undefined;let items=[...(workspace.officeItems||[])];
+ const control=cleanAiControl(workspace.aiControl),changes:string[]=[],leads=workspace.leads as Record<string,unknown>[],profile=workspace.profile?{...workspace.profile}:undefined;let items=[...(workspace.officeItems||[])],conversationCalendar=workspace.conversationCalendar;
  for(const [index,c] of commands.entries()){
   if(c.kind==='outreach'){
    if(c.channel!=='sms'&&c.channel!=='email')throw Error('Choose text or email.');
@@ -62,6 +63,10 @@ export function applyControlCommands<T extends {leads:unknown[];officeItems?:Off
    const current=Array.isArray(profile[field])?profile[field]!.map(String):[];
    profile[field]=c.enabled?Array.from(new Set([...current,...canonical])):current.filter(source=>!canonical.some(item=>item.toLowerCase()===source.toLowerCase()));
    changes.push(`${c.channel==='sms'?'SMS':'Email'} consent ${c.enabled?'documented for':'source trust removed for'}: ${canonical.join(', ')}. ${c.enabled?'Current and future contacts from these sources pass permission checks unless they are opted out, DNC, deleted, or otherwise protected.':'Individual contact consent records are unchanged.'}`);
+  }else if(c.kind==='calendar-review'){
+   if(typeof c.enabled!=='boolean')throw Error('Choose whether to review conversations.');
+   conversationCalendar={...cleanConversationCalendar(conversationCalendar),enabled:c.enabled,nextRunAt:0};
+   changes.push(`Conversation calendar review ${c.enabled?'enabled':'paused'}.`);
   }else if(c.kind==='calendar'){
    const old=items.find(x=>x.id===c.eventId);
    if(c.calendarAction!=='create'&&!old)throw Error('Calendar item no longer exists.');
@@ -75,10 +80,12 @@ export function applyControlCommands<T extends {leads:unknown[];officeItems?:Off
    if(leadId!==0&&!leads.some(x=>x.id===leadId&&!x.deletedAt))throw Error('Choose a saved contact in this workspace.');
    if(!title.trim()||title.length>100||!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(dueAt)||!Number.isFinite(Date.parse(dueAt)))throw Error('Add a title and an exact date/time with a time zone.');
    if(![15,30,45,60,90,120].includes(durationMinutes)||![-1,0,5,15,30,60,1440].includes(staffReminderMinutes))throw Error('Choose a supported duration and reminder.');
-   const item:OfficeItem={...(old||{id:`ai-${requestId}-${index}`,kind:'appointment',amount:0,createdAt:now.toISOString()}),leadId,title:title.trim(),dueAt:new Date(dueAt).toISOString(),durationMinutes,staffReminderMinutes,status:'open',reminderState:old?.reminderState==='sent'?'sent':'off',reminderAt:''};
+   const kind=c.calendarKind??old?.kind??'appointment',amount=c.amount??old?.amount??0;
+   if(!['appointment','payment'].includes(kind)||!Number.isFinite(amount)||amount<0||amount>10000000)throw Error('Choose a valid event type and payment amount.');
+   const item:OfficeItem={...(old||{id:`ai-${requestId}-${index}`,kind:'appointment',amount:0,createdAt:now.toISOString()}),kind,amount:kind==='payment'?amount:0,leadId,title:title.trim(),dueAt:new Date(dueAt).toISOString(),durationMinutes,staffReminderMinutes,status:'open',reminderState:old?.reminderState==='sent'?'sent':'off',reminderAt:''};
    items=old?items.map(x=>x.id===old.id?item:x):[...items,item];changes.push(`${old?'Updated':'Created'}: ${title} · ${item.dueAt}${old?.reminderState==='pending'?' · previous customer text canceled; reschedule it in Calendar':''}`);
   }else throw Error('Unsupported CRM action.');
  }
  control.revision++;control.receipts=[...control.receipts,{id:requestId,at:now.toISOString(),changes}].slice(-100);
- return {workspace:{...workspace,...(profile?{profile}:{}),officeItems:items,aiControl:control},changes};
+ return {workspace:{...workspace,...(profile?{profile}:{}),officeItems:items,...(conversationCalendar?{conversationCalendar}:{}),aiControl:control},changes};
 }

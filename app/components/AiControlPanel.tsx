@@ -1,4 +1,5 @@
 'use client';
+import CloudAutomationStatus from './CloudAutomationStatus';
 import {useEffect,useState} from 'react';
 import {describeRule,type AiControl,type ControlCommand} from '../lib/ai-control';
 type Status={control:AiControl;counts:{sms:number;email:number};salesEnabled:boolean;canManage:boolean;schedule:string};
@@ -10,6 +11,6 @@ export default function AiControlPanel({commands=[],revision=0,changes=[],error=
  return <section className="ai-control-panel">
  {commands.length>0&&<div><h3>Requested CRM changes</h3><ul>{changes.map((change,i)=><li key={i}>{change}</li>)}</ul><p>Saved audience rules apply to AI outreach across this workspace. Calendar changes sync to connected calendars. Personal handoff and opt-out protections remain active.</p><button type="button" disabled={busy||saved||status?.canManage===false} onClick={()=>void save()}>{saved?'Changes saved':busy?'Saving…':'Save these changes'}</button></div>}
  {(message||error)&&<p role="status">{message||error}</p>}
- {status&&showRules&&<details open><summary>Saved AI outreach rules</summary><p>Scheduled sales sequences: {status.salesEnabled?'enabled':'paused'}</p>{(['sms','email'] as const).map(channel=><p key={channel}>{status.control.rules[channel]?describeRule(channel,status.control.rules[channel]!):`${channel==='sms'?'Texts':'Emails'}: existing eligible audience and sequence timing`}. {status.counts[channel]} contacts currently pass audience and permission checks.</p>)}<p>{status.schedule}</p><p>Daily windows control when existing sequence steps may send; they do not repeat completed sequences every day. Customer appointment/payment reminders are configured separately in Calendar.</p>{status.control.receipts.slice(-3).reverse().map(receipt=><p key={receipt.id}><small>{new Date(receipt.at).toLocaleString()} · {receipt.changes.join(' ')}</small></p>)}</details>}
+ {showRules&&<CloudAutomationStatus/>}{status&&showRules&&<details open><summary>Saved AI outreach rules</summary><p>Scheduled sales sequences: {status.salesEnabled?'enabled':'paused'}</p>{(['sms','email'] as const).map(channel=><p key={channel}>{status.control.rules[channel]?describeRule(channel,status.control.rules[channel]!):`${channel==='sms'?'Texts':'Emails'}: existing eligible audience and sequence timing`}. {status.counts[channel]} contacts currently pass audience and permission checks.</p>)}<p>{status.schedule}</p><p>Daily rules repeat each day for eligible follow-ups, including completed sequences. Interested, closed, paused and opted-out contacts stay excluded.</p>{status.control.receipts.slice(-3).reverse().map(receipt=><p key={receipt.id}><small>{new Date(receipt.at).toLocaleString()} · {receipt.changes.join(' ')}</small></p>)}</details>}
  </section>;
 }

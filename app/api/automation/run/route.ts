@@ -1,9 +1,7 @@
-import {runOfficeReminders} from "../../../lib/office-reminder-engine";
+import {runScheduledAutomation} from "../../../lib/scheduled-automation";
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {isClerkConfigured} from "../../../lib/clerk-config";
-import {runFollowUpAutomation} from "../../../lib/follow-up-engine";
-import {runClientReminderAutomation} from "../../../lib/client-reminder-engine";
-import {workspaceRedis} from "../../../lib/workspace-storage";
+import {workspaceRedis,readStoredWorkspace} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 export const maxDuration=60;
@@ -17,11 +15,19 @@ export async function GET(){
   const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
   const stored=await workspaceRedis(["GET","pacifica:v2:automation:cloud-heartbeat"]);
   let heartbeat=null;try{heartbeat=typeof stored==="string"?JSON.parse(stored):null}catch{}
-  return Response.json({configured:Boolean(process.env.CRON_SECRET),browserSchedule:"Runs every five minutes while Pacifica is open",serverSchedule:"Cloud scheduler must call /api/cron/follow-ups every five minutes; a secret alone does not activate it",lastRun:null,cloudLastStartedAt:heartbeat?.startedAt||null},{headers:{"Cache-Control":"no-store"}});
+  const recent=Date.now()-Date.parse(heartbeat?.startedAt||'')<180000;
+  const frequent=Date.parse(heartbeat?.startedAt||'')-Date.parse(heartbeat?.previousStartedAt||'')<=180000;
+  const healthy=recent&&frequent&&Boolean(heartbeat?.completedAt)&&heartbeat?.ok===true&&!heartbeat?.alreadyRunning;
+  const current=await readStoredWorkspace(workspace.userId);
+  const attention=(current?.leads||[]).flatMap(raw=>{const lead=raw as {id:number;name:string;dailyOutreach?:Record<string,{state:string;at:string;error?:string}>};return Object.entries(lead.dailyOutreach||{}).filter(([,r])=>r.state==='review'||r.state==='sending'&&Date.now()-Date.parse(r.at)>120000).map(([channel,r])=>({leadId:lead.id,name:lead.name,channel,error:r.error||'Delivery was not confirmed; no automatic retry was made.'}))}).slice(0,20);
+  const receipts=new Map<string,{state:string}>();
+  for(const raw of current?.leads||[]){const lead=raw as {dailyOutreach?:Record<string,{claim:string;state:string}>};for(const receipt of Object.values(lead.dailyOutreach||{}))receipts.set(receipt.claim,receipt);}
+  const dailySummary={submitted:[...receipts.values()].filter(r=>r.state==='sent').length,review:[...receipts.values()].filter(r=>r.state==='review').length};
+  return Response.json({dailySummary,attention,configured:Boolean(process.env.CRON_SECRET),healthy,browserSchedule:"Cloud automation runs independently of this app",serverSchedule:healthy?"Cloud checks are active. Daily outreach starts at your saved local time.":"One-minute cloud scheduler not confirmed. Activate it before relying on daily outreach.",lastRun:heartbeat?.completedAt?{completedAt:heartbeat.completedAt,ok:heartbeat.ok}:null,cloudLastStartedAt:heartbeat?.startedAt||null},{headers:{"Cache-Control":"no-store"}});
 }
 
 export async function POST(){
   const workspace=await access();if(!workspace)return Response.json({error:"Workspace access required"},{status:403});
-  try{const followUps=await runFollowUpAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});const clientReminders=await runClientReminderAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});const officeReminders=await runOfficeReminders({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50});return Response.json({ok:true,followUps,clientReminders,officeReminders})}
+  try{return Response.json(await runScheduledAutomation({workspaceId:workspace.userId,workspaceLimit:1,sendLimit:50}))}
   catch(error){return Response.json({error:error instanceof Error?error.message:"Automation run failed"},{status:500})}
 }

@@ -105,10 +105,11 @@ function assignRoundRobin<T extends {assignedTo?:string;stage?:string;doNotCall?
   return changed?assigned:leads;
 }
 
-export async function runFollowUpAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number}={}):Promise<AutomationRun>{
+export async function runFollowUpAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number;deadline?:number}={}):Promise<AutomationRun>{
   const startedAt=new Date().toISOString();let workspaces=0,changed=0,duplicatesRemoved=0,due=0,attempted=0,sent=0,smsSent=0,emailSent=0,tasksCreated=0,fallbacks=0,retried=0,blocked=0,deadLettered=0,failed=0;
   const records=await automationWorkspaces(options);
   for(const record of records){
+    if(Date.now()>(options.deadline??Infinity)-7000)break;
     if(!await workspaceAutomationAccess(record.workspaceId))continue;
     workspaces++;const profile=record.workspace.profile;
     let workspaceChanged=false;let currentLeads=record.workspace.leads as Array<FollowUpLead&ProviderManagedLead>;
@@ -118,7 +119,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
     const control=cleanAiControl(record.workspace.aiControl);
     if(!(control.salesEnabled??profile.serverAutomationEnabled)){if(workspaceChanged){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads:currentLeads});changed++}continue}
     const leads=currentLeads.map(raw=>{const prepared=prepareAutomationLead(raw,profile);if(JSON.stringify(prepared)!==JSON.stringify(raw))workspaceChanged=true;return prepared});
-    for(let index=0;index<leads.length&&attempted<(options.sendLimit||250);index++){
+    for(let index=0;index<leads.length&&Date.now()<(options.deadline??Infinity)-7000&&attempted<(options.sendLimit||250);index++){
       const lead=leads[index];if(lead.automationStatus!=="action due")continue;due++;
       const sequence=sequenceFor(lead,profile);if(!sequence){blocked++;continue}const steps=enabledSteps(sequence);const step=steps[lead.automationStep||0];if(!step){leads[index]={...lead,automationStatus:"complete",automationNextAt:""};workspaceChanged=true;continue}
       if(step.channel==="task"){
@@ -127,6 +128,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
         leads[index]=nextState({...lead,followUp:new Date().toISOString(),communications:appendCommunication(lead.communications,communication({channel:"email",direction:"outbound",subject:"Sales task",body:taskNote,status:"task",sentAt:new Date().toISOString(),provider:"pacifica"}))},sequence);
         tasksCreated++;workspaceChanged=true;continue;
       }
+      if(control.rules[step.channel]?.dailyAt)continue; // Daily rules are processed by the recurring engine.
       if(!matchesOutreach(lead,control.rules[step.channel])||!inOutreachWindow(control.rules[step.channel])){blocked++;continue}
       const dailyLimit=Math.min(3,Math.max(1,Number(profile.maxAutomatedTouchesPerLeadPerDay)||1));
       if(automatedTouchesToday(lead,profile.automationTimezone)>=dailyLimit){
@@ -137,6 +139,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
       if(!candidates.length){blocked++;leads[index]={...lead,automationStatus:"blocked",automationLastError:"No consented, configured delivery channel is ready",automationNextAt:isoAfter(60),automationUpdatedAt:new Date().toISOString()};workspaceChanged=true;continue}
       let delivered=false;let lastError="";
       for(const channel of candidates){
+        if(control.rules[channel]?.dailyAt)continue;
         if(!matchesOutreach(lead,control.rules[channel])||!inOutreachWindow(control.rules[channel]))continue;
         try{
           const result=await deliver(record.workspaceId,lead,profile,channel,step);
@@ -145,7 +148,7 @@ export async function runFollowUpAutomation(options:{workspaceId?:string;workspa
           sent++;if(channel==="sms")smsSent++;else emailSent++;delivered=true;workspaceChanged=true;break;
         }catch(error){lastError=error instanceof Error?error.message:"Delivery failed";logError("follow_up_delivery_failed",error,{workspaceId:record.workspaceId,leadId:lead.id,channel})}
       }
-      if(delivered)continue;
+      if(delivered){await saveWorkspaceChanges(record.workspaceId,record.workspace,{...record.workspace,leads:[...leads]});continue;}
       const failures=(lead.automationDeliveryFailures||0)+1;
       if(failures>=retryDelays.length){deadLettered++;leads[index]={...lead,automationDeliveryFailures:failures,automationLastError:lastError,automationDeadLetterAt:new Date().toISOString(),automationStatus:"needs attention",automationNextAt:"",automationUpdatedAt:new Date().toISOString()}}
       else {if(providerBlocked(lastError))blocked++;else failed++;retried++;leads[index]={...lead,automationDeliveryFailures:failures,automationLastError:lastError,automationStatus:"retry scheduled",automationNextAt:isoAfter(retryDelays[failures-1]),automationUpdatedAt:new Date().toISOString()}}

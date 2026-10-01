@@ -8,14 +8,15 @@ import {automationWorkspaces,workspaceRedis,saveWorkspaceChanges} from "./worksp
 type ReminderLead=ClientRecord&{communications?:StoredCommunication[];lastSmsAt?:string};
 export type ClientReminderRun={ok:true;startedAt:string;completedAt:string;workspaces:number;activeClients:number;due:number;sent:number;customerSent:number;ownerSent:number;blocked:number;failed:number};
 
-export async function runClientReminderAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number;now?:Date}={}):Promise<ClientReminderRun>{
+export async function runClientReminderAutomation(options:{workspaceId?:string;workspaceLimit?:number;sendLimit?:number;deadline?:number;now?:Date}={}):Promise<ClientReminderRun>{
   const startedAt=new Date().toISOString();let workspaces=0,activeClients=0,due=0,sent=0,customerSent=0,ownerSent=0,blocked=0,failed=0;
   const records=await automationWorkspaces(options);const limit=options.sendLimit||250;
   for(const record of records){
+    if(Date.now()>(options.deadline??Infinity)-7000)break;
     if(!await workspaceAutomationAccess(record.workspaceId))continue;
     workspaces++;const profile=record.workspace.profile;if(!profile.clientRemindersEnabled)continue;
     const status=await outboundSmsStatus(record.workspaceId);let changed=false;const leads=[...(record.workspace.leads as ReminderLead[])];
-    for(let index=0;index<leads.length&&sent<limit;index++){
+    for(let index=0;index<leads.length&&Date.now()<(options.deadline??Infinity)-7000&&sent<limit;index++){
       const lead=leads[index];if(isActiveClient(lead))activeClients++;const actions=planClientReminders(lead,profile,options.now||new Date());
       for(const action of actions){
         if(sent>=limit)break;

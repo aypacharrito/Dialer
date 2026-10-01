@@ -196,6 +196,7 @@ export function mergeStoredWorkspace(
         client.communications,
       ),
       clientReminderKeys: reminderKeys,
+      dailyOutreach: previous.dailyOutreach,
       lastInboundAt: serverReplyNewer
         ? previous.lastInboundAt
         : client.lastInboundAt || previous.lastInboundAt,
@@ -294,6 +295,7 @@ export async function workspaceRedis(command: Array<string | number>) {
   if (!url || !token) return null;
   const response = await fetch(url, {
     method: "POST",
+    signal:AbortSignal.timeout(8000),
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -305,6 +307,19 @@ export async function workspaceRedis(command: Array<string | number>) {
   if (!response.ok || data.error)
     throw new Error(data.error || "Workspace storage request failed");
   return data.result;
+}
+
+export async function acquireAutomationLease(key:string,token:string,seconds=90){
+  const config=workspaceRedisConfig();
+  if(config.url){if(!config.token)throw Error('Cloud storage credentials are incomplete.');return (await workspaceRedis(['SET',key,token,'NX','EX',seconds]))==='OK';}
+  const db=await workspaceD1();
+  await db.prepare('CREATE TABLE IF NOT EXISTS crm_job_leases (id TEXT PRIMARY KEY, token TEXT NOT NULL, expires_at INTEGER NOT NULL)').run();
+  const result=await db.prepare('INSERT INTO crm_job_leases (id,token,expires_at) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET token=excluded.token,expires_at=excluded.expires_at WHERE crm_job_leases.expires_at < ?').bind(key,token,Date.now()+seconds*1000,Date.now()).run();
+  return result.meta.changes>0;
+}
+export async function releaseAutomationLease(key:string,token:string){
+  if(workspaceRedisConfig().url){await workspaceRedis(['EVAL','if redis.call("GET",KEYS[1])==ARGV[1] then return redis.call("DEL",KEYS[1]) else return 0 end',1,key,token]);return;}
+  const db=await workspaceD1();await db.prepare('DELETE FROM crm_job_leases WHERE id=? AND token=?').bind(key,token).run();
 }
 
 async function workspaceD1() {

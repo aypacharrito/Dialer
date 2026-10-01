@@ -11,6 +11,7 @@ function smsCompliance(body:string){
 }
 
 export async function personalizeAutomationMessage(input:{
+  timeoutMs?:number;
   profile:WorkspaceProfile;
   lead:OutreachLead;
   channel:"sms"|"email";
@@ -29,7 +30,7 @@ export async function personalizeAutomationMessage(input:{
         {role:"user",content:`Channel: ${input.channel}\nWorkspace: ${JSON.stringify(business)}\nLead: ${JSON.stringify(lead)}\nBase subject: ${input.subject}\nBase message: ${input.body}\nRewrite this for this exact lead. Keep facts grounded.`},
       ],
       text:{format:{type:"json_schema",name:"pacifica_personalized_outreach",strict:true,schema:{type:"object",additionalProperties:false,properties:{subject:{type:"string"},body:{type:"string"}},required:["subject","body"]}}},
-    });
+    },{timeout:input.timeoutMs??5000});
     if(response.status!=="completed")return fallback;
     const parsed=JSON.parse(response.output_text) as Partial<Draft>;
     const body=String(parsed.body||"").trim();if(!body)return fallback;

@@ -1,6 +1,7 @@
 import {logError,logEvent} from "./observability";
 
 export type OutboundEmailInput={
+  deadline?:number;
   to:string;
   subject:string;
   text:string;
@@ -38,16 +39,17 @@ export async function sendOutboundEmail(input:OutboundEmailInput){
   const fromName=(input.fromName||"Pacifica customer").replace(/[<>\r\n]/g,"").trim().slice(0,80);
   const from=`${fromName||"Pacifica customer"} <${status.from}>`;
   const replyTo=email(input.replyTo||"")||undefined;const attachments=(input.attachments||[]).filter(item=>/^https:\/\//i.test(item.path)&&item.filename).slice(0,10);
+  const signal=()=>AbortSignal.timeout(Math.max(1,Math.min(15000,(input.deadline??Infinity)-Date.now())));
   try{
     if(status.provider==="webhook"){
-      const response=await fetch(process.env.PACIFICA_EMAIL_WEBHOOK_URL!,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.PACIFICA_EMAIL_WEBHOOK_SECRET}`,"Idempotency-Key":input.idempotencyKey},body:JSON.stringify({from,to,replyTo,subject,text,attachments,idempotencyKey:input.idempotencyKey})});
+      const response=await fetch(process.env.PACIFICA_EMAIL_WEBHOOK_URL!,{method:"POST",signal:signal(),headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.PACIFICA_EMAIL_WEBHOOK_SECRET}`,"Idempotency-Key":input.idempotencyKey},body:JSON.stringify({from,to,replyTo,subject,text,attachments,idempotencyKey:input.idempotencyKey})});
       const data=await response.json().catch(()=>({})) as {id?:string;messageId?:string;error?:string};
       if(!response.ok)throw new Error(data.error||`Email adapter returned HTTP ${response.status}`);
       const providerId=data.id||data.messageId||input.idempotencyKey;
       logEvent("email_sent",{provider:"webhook",providerId,toDomain:to.split("@")[1]});
       return {id:providerId,provider:"webhook" as const};
     }
-    const response=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,"Content-Type":"application/json","Idempotency-Key":input.idempotencyKey},body:JSON.stringify({from,to:[to],subject,text,html:`<div style="font-family:Arial,sans-serif;white-space:pre-wrap;line-height:1.6">${escapeHtml(text)}</div>`,...(attachments.length?{attachments:attachments.map(item=>({path:item.path,filename:item.filename}))}:{}),...(replyTo?{reply_to:replyTo}:{})})});
+    const response=await fetch("https://api.resend.com/emails",{method:"POST",signal:signal(),headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,"Content-Type":"application/json","Idempotency-Key":input.idempotencyKey},body:JSON.stringify({from,to:[to],subject,text,html:`<div style="font-family:Arial,sans-serif;white-space:pre-wrap;line-height:1.6">${escapeHtml(text)}</div>`,...(attachments.length?{attachments:attachments.map(item=>({path:item.path,filename:item.filename}))}:{}),...(replyTo?{reply_to:replyTo}:{})})});
     const data=await response.json().catch(()=>({})) as {id?:string;message?:string;name?:string};
     if(!response.ok||!data.id)throw new Error(data.message||data.name||`Resend returned HTTP ${response.status}`);
     logEvent("email_sent",{provider:"resend",providerId:data.id,toDomain:to.split("@")[1]});

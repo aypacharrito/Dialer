@@ -26,10 +26,11 @@ export async function POST(request:Request){
     if(body.staffReminderMinutes!==undefined&&![ -1,0,5,15,30,60,1440].includes(body.staffReminderMinutes))throw Error('Choose a valid staff reminder.');
     if(body.durationMinutes!==undefined&&![15,30,45,60,90,120].includes(body.durationMinutes))throw Error('Choose a valid appointment duration.');
     if(body.action==='create'&&body.kind==='appointment'&&body.leadId&&items.some(x=>x.kind==='appointment'&&x.leadId===body.leadId&&Math.abs(Date.parse(x.dueAt)-Date.parse(body.dueAt!))<900000))throw Error('An appointment already exists for this contact at that time. Open the existing event.');
+    if(body.allDayDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(body.allDayDate)||new Date(body.dueAt!).toISOString().slice(0,10)!==body.allDayDate))throw Error('Choose a valid all-day date.');
     const reminder=body.reminderState==='pending';
     if(reminder&&body.leadId===0)throw Error('Choose a contact for a customer text reminder.');
     if(reminder&&(!Number.isFinite(Date.parse(body.reminderAt||''))||Date.parse(body.reminderAt!)<now.getTime()||Date.parse(body.reminderAt!)>Date.parse(body.dueAt!)))throw Error('Choose a future reminder time before the appointment or payment is due.');
-    const item:OfficeItem={id:previous?.id||id,leadId:Number(body.leadId),kind:body.kind!,title:body.title.trim().slice(0,100),dueAt:new Date(body.dueAt!).toISOString(),amount:body.kind==='payment'?Number(body.amount)||0:0,status:'open',reminderAt:reminder?new Date(body.reminderAt!).toISOString():'',reminderState:reminder?'pending':'off',createdAt:previous?.createdAt||now.toISOString(),durationMinutes:body.durationMinutes??30,staffReminderMinutes:body.staffReminderMinutes??15};
+    const item:OfficeItem={...(body.allDayDate?{allDayDate:body.allDayDate}:{}),id:previous?.id||id,leadId:Number(body.leadId),kind:body.kind!,title:body.title.trim().slice(0,100),dueAt:new Date(body.dueAt!).toISOString(),amount:body.kind==='payment'?Number(body.amount)||0:0,status:'open',reminderAt:reminder?new Date(body.reminderAt!).toISOString():'',reminderState:reminder?'pending':'off',createdAt:previous?.createdAt||now.toISOString(),durationMinutes:body.durationMinutes??30,staffReminderMinutes:body.staffReminderMinutes??15};
     return {...current,officeItems:previous?items.map(x=>x.id===previous.id?item:x):[...items,item]};
    }
    const item=items.find(x=>x.id===body.id);if(!item)throw Error('Calendar item not found.');

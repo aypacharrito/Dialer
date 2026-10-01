@@ -1,6 +1,7 @@
 import {mergeContactCallDetection,type ContactCallDetection} from "./call-detection";
 import {deletionState,type DeletionState} from './lead-deletion';
-type SyncedContact=DeletionState&ContactCallDetection&{id:number;phone:string;email?:string;vendorId?:string;source?:string;providerUpdatedAt?:string;queueOverride?:boolean;quoteDetailsUpdatedAt?:string;lastInboundAt?:string;automationUpdatedAt?:string;communications?:unknown[]};
+import type {ReplyReviews} from "./reply-interest";
+type SyncedContact=DeletionState&ContactCallDetection&{id:number;phone:string;workflowUpdatedAt?:string;replyReviews?:ReplyReviews;email?:string;vendorId?:string;source?:string;providerUpdatedAt?:string;queueOverride?:boolean;quoteDetailsUpdatedAt?:string;lastInboundAt?:string;automationUpdatedAt?:string;communications?:unknown[]};
 const providerFields=['name','phone','email','city','source','product','vendorId','address','state','zip','territory','brand','profileName','received','importedAt','returnStatus','employeeCount','searchPro','extraFields','providerUpdatedAt'] as const;
 /** Refresh provider details while retaining local workflow and newer deletion decisions. */
 export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
@@ -18,6 +19,10 @@ export function mergeCloudContact<T extends SyncedContact>(local:T,remote:T):T{
   if(Date.parse(remote.automationUpdatedAt||'')>(Date.parse(local.automationUpdatedAt||'')||0)){
     for(const key of ['automationEnabled','automationSequenceId','automationStep','automationNextAt','automationStatus','automationUpdatedAt'])if(values[key]!==undefined)patch[key]=values[key];
   }
+  if(Date.parse(remote.workflowUpdatedAt||'')>(Date.parse(local.workflowUpdatedAt||'')||0)){
+    for(const key of ['stage','status','outcome','sourceDisposition','automationEnabled','automationNextAt','automationStatus','automationUpdatedAt','workflowUpdatedAt'])if(values[key]!==undefined)patch[key]=values[key];
+  }
+  for(const channel of ['sms','email'] as const){const review=remote.replyReviews?.[channel];if(review&&Date.parse(review.at)>(Date.parse(local.replyReviews?.[channel]?.at||'')||0))patch.replyReviews={...(patch.replyReviews as ReplyReviews||local.replyReviews),[channel]:review};}
   if(Date.parse(remote.lastInboundAt||'')>(Date.parse(local.lastInboundAt||'')||0)){
     patch.lastInboundAt=remote.lastInboundAt;
     for(const key of ['smsOptOut','emailOptOut'])if(values[key]!==undefined)patch[key]=values[key];
