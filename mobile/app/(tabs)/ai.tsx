@@ -7,8 +7,8 @@ import {manipulateAsync,SaveFormat} from "expo-image-manipulator";
 import {Screen} from "../../src/components/Screen";
 import {Button,Card,Field,Muted,Title,usePalette} from "../../src/components/Primitives";
 import {useWorkspace} from "../../src/state/WorkspaceProvider";
-import {askPacifica,getWorkspace,putWorkspace,type MobileAiResult} from "../../src/lib/api";
-import {capturedContact,cleanContactDraft,matchingContact,type ContactDraft} from "../../src/lib/contact-capture";
+import {scanContactDocument,askPacifica,getWorkspace,putWorkspace,type MobileAiResult} from "../../src/lib/api";
+import {documentContactFields,capturedContact,cleanContactDraft,matchingContact,type ContactDraft} from "../../src/lib/contact-capture";
 
 export default function AiScreen(){const {userId}=useAuth();return <AiWorkspace key={userId||"signed-out"}/>;}
 function AiWorkspace(){
@@ -36,7 +36,10 @@ function AiWorkspace(){
     const account=userId;inFlight.current=true;setBusy(true);setError("");setSaved(undefined);
     try{
       const token=await getToken();if(!token)throw new Error("Sign in to use Pacifica AI.");
-      const answer=await askPacifica(token,prompt||"Create a contact draft from this photo.",photo,workspace);
+      let answer:MobileAiResult;
+      if(photo){const scan=await scanContactDocument(token,photo),e=scan.extraction;
+        answer={summary:"Document details are ready to review.",notice:[scan.notice,scan.missingFields?.length?`Check missing or unreadable fields: ${scan.missingFields.join(", ")}`:""].filter(Boolean).join(" "),createLead:cleanContactDraft({...e,name:String(e.fullName||[e.firstName,e.middleName,e.lastName].filter(Boolean).join(" ")),vehicle:[e.vehicleYear,e.vehicleMake,e.vehicleModel].filter(Boolean).join(" "),line:"home-auto",notes:Array.isArray(e.otherFields)?e.otherFields.map((f:{label:string;value:string})=>`${f.label}: ${f.value}`).join("\n"):""})};
+      }else answer=await askPacifica(token,prompt,undefined,workspace);
       if(owner.current!==account)return;
       setResult(answer);setDraft(answer.createLead?cleanContactDraft(answer.createLead):undefined);saveId.current=Date.now();
     }catch(reason){setError(reason instanceof Error?reason.message:"AI could not read this photo. Try again.");}
@@ -68,7 +71,7 @@ function AiWorkspace(){
     {error?<Text accessibilityRole="alert" style={{color:p.danger}}>{error}</Text>:null}
     {result?<Card><Text style={{color:p.text}}>{result.summary}</Text>{result.notice?<Muted>{result.notice}</Muted>:null}{result.draft?<Text selectable style={{color:p.text}}>{result.draft}</Text>:null}</Card>:null}
     {draft&&!saved?<Card><Title eyebrow="REVIEW BEFORE SAVING">Contact details</Title>
-      {(["name","phone","email","city","state","product","notes"] as const).map(key=><View key={key} style={{gap:5,marginTop:10}}><Muted>{key.charAt(0).toUpperCase()+key.slice(1)}</Muted><Field accessibilityLabel={key} value={draft[key]} editable={!busy} onChangeText={value=>setDraft(current=>current?{...current,[key]:value}:current)} keyboardType={key==="phone"?"phone-pad":key==="email"?"email-address":"default"} autoCapitalize={key==="email"?"none":"sentences"} multiline={key==="notes"}/></View>)}
+      {(["name","phone","email","city","state",...documentContactFields,"product","notes"] as const).map(key=><View key={key} style={{gap:5,marginTop:10}}><Muted>{key.charAt(0).toUpperCase()+key.slice(1)}</Muted><Field accessibilityLabel={key} value={draft[key]} editable={!busy} onChangeText={value=>setDraft(current=>current?{...current,[key]:value}:current)} keyboardType={key==="phone"?"phone-pad":key==="email"?"email-address":"default"} autoCapitalize={key==="email"?"none":"sentences"} multiline={key==="notes"}/></View>)}
       <View style={{gap:8,marginVertical:12}}><Muted>Contact queue</Muted><Button title={draft.line==="home-auto"?"✓ Home & Auto":"Home & Auto"} kind="secondary" disabled={busy} onPress={()=>setDraft({...draft,line:"home-auto"})}/><Button title={draft.line==="life"?"✓ Life / Priority":"Life / Priority"} kind="secondary" disabled={busy} onPress={()=>setDraft({...draft,line:"life"})}/></View>
       <Button title="Save contact" loading={busy} onPress={()=>void save()}/>
     </Card>:null}

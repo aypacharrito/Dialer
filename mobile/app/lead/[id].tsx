@@ -5,7 +5,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../src/components/Screen";
 import { Button, Card, Field, Muted, Pill, Title, usePalette } from "../../src/components/Primitives";
 import { displayStage, formatPhone } from "../../src/lib/lead";
-import { openDeviceAction, phoneCallUrl, textMessageUrl } from "../../src/lib/device-actions";
+import { openDeviceAction, phoneCallUrl } from "../../src/lib/device-actions";
 import { useWorkspace } from "../../src/state/WorkspaceProvider";
 
 const outcomes = ["Contacted", "Quoted", "Appointment Set", "Sold", "Follow-up", "No answer"];
@@ -49,7 +49,7 @@ export default function LeadDetailScreen() {
 
       <View style={styles.actions}>
         <Button title="Call" onPress={() => void openUrl(phoneCallUrl(lead.phone))} disabled={!lead.phone || lead.doNotCall} style={styles.action} />
-        <Button title="Text" kind="secondary" onPress={() => void openUrl(textMessageUrl(lead.phone))} disabled={!lead.phone || lead.smsOptOut} style={styles.action} />
+        <Button title="Text" kind="secondary" onPress={() => router.push(`/conversation/${lead.id}`)} disabled={!lead.phone || lead.smsOptOut || lead.doNotCall} style={styles.action} />
         <Button title="Email" kind="secondary" onPress={() => void openUrl(`mailto:${lead.email}`)} disabled={!lead.email || lead.emailOptOut} style={styles.action} />
       </View>
 

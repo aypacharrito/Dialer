@@ -21,7 +21,9 @@ function useDisplayScale() {
 }
 
 export function usePalette() {
-  const dark = useColorScheme() === "dark";
+  const scheme=useColorScheme();
+  const {workspace}=useWorkspace();
+  const dark=workspace.profile.appearance==="dark"||(workspace.profile.appearance!=="light"&&scheme==="dark");
   return {
     dark,
     bg: dark ? colors.darkBg : colors.bg,
@@ -29,8 +31,8 @@ export function usePalette() {
     text: dark ? colors.darkText : colors.text,
     muted: dark ? colors.darkMuted : colors.muted,
     border: dark ? colors.darkBorder : colors.border,
-    green: colors.green,
-    greenSoft: dark ? "#123426" : colors.greenSoft,
+    green: dark?"#9AB7AB":colors.green,
+    greenSoft: dark ? "#202D27" : colors.greenSoft,
     danger: colors.danger,
     warning: colors.warning,
   };
@@ -65,7 +67,7 @@ export function Button({
   const p = usePalette();
   const scale = useDisplayScale();
   const backgroundColor = kind === "primary" ? p.green : kind === "danger" ? colors.danger : p.card;
-  const textColor = kind === "secondary" ? p.text : "#FFFFFF";
+  const textColor = kind === "secondary" ? p.text : kind === "primary" && p.dark ? colors.darkBg : "#FFFFFF";
   return (
     <Pressable
       {...props}

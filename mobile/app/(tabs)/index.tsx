@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import NoteReminders from "../../src/components/NoteReminders";
 import React, { useMemo } from "react";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 import { Screen } from "../../src/components/Screen";
@@ -35,6 +36,7 @@ export default function TodayScreen() {
 
       <Card><Title eyebrow="PHOTO TO CONTACT">Capture it on the go</Title><Muted>Photograph a number, business card, or contact details. Pacifica AI prepares a contact for you to review.</Muted><Button title="Open Pacifica AI" onPress={() => router.push("/ai")} /></Card>
 
+      <NoteReminders/>
       <View style={styles.metrics}>
         <Metric label="Leads" value={workspace.leads.length} />
         <Metric label="Priority" value={hot.length} />

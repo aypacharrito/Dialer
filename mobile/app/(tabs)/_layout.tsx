@@ -1,8 +1,8 @@
 import { Tabs } from "expo-router";
 import React from "react";
-import { Text, useColorScheme, type ColorValue } from "react-native";
+import { Text, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors } from "../../src/lib/theme";
+import {usePalette} from "../../src/components/Primitives";
 import { useWorkspace } from "../../src/state/WorkspaceProvider";
 
 function Icon({ symbol, color }: { symbol: string; color: ColorValue }) {
@@ -10,18 +10,18 @@ function Icon({ symbol, color }: { symbol: string; color: ColorValue }) {
 }
 
 export default function TabLayout() {
-  const dark = useColorScheme() === "dark";
+  const p=usePalette();
   const insets = useSafeAreaInsets();
   const { unreadMessages } = useWorkspace();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.green,
-        tabBarInactiveTintColor: dark ? colors.darkMuted : colors.muted,
+        tabBarActiveTintColor: p.green,
+        tabBarInactiveTintColor: p.muted,
         tabBarStyle: {
-          backgroundColor: dark ? colors.darkCard : "#FFFFFF",
-          borderTopColor: dark ? colors.darkBorder : colors.border,
+          backgroundColor: p.card,
+          borderTopColor: p.border,
           height: 58 + Math.max(insets.bottom, 8),
           paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 6,

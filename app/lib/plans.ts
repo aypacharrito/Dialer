@@ -8,17 +8,17 @@ export const pacificaPlans = {
   },
   team: {
     name: "Team",
-    monthlyPrice: 99,
+    monthlyPrice: 100,
     description: "Shared calling, follow-up, and visibility for a growing sales team.",
-    seats: "Up to 5 user seats",
-    numbers: "Up to 5 assigned calling numbers",
+    seats: "Up to 10 users",
+    numbers: "Business numbers billed separately",
   },
   agency: {
     name: "Agency",
-    monthlyPrice: 199,
+    monthlyPrice: 200,
     description: "Advanced lead operations and reporting for established organizations.",
-    seats: "Up to 15 user seats",
-    numbers: "Up to 15 assigned calling numbers",
+    seats: "Unlimited users",
+    numbers: "Business numbers billed separately",
   },
 } as const;
 

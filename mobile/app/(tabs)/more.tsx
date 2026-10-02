@@ -29,6 +29,7 @@ export default function MoreScreen() {
       </Card>
 
       <Card style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: p.text }]}>Appearance</Text><View style={styles.sizeRow}>{["light","dark"].map(appearance=><Button key={appearance} title={appearance==="light"?"Light":"Dark"} kind={(p.dark?"dark":"light")===appearance?"primary":"secondary"} onPress={()=>void updateProfile({appearance})} style={styles.sizeButton}/>)}</View>
         <Text style={[styles.sectionTitle, { color: p.text }]}>Display size</Text>
         <Muted>Choose comfortable, large, or extra-large text across Pacifica.</Muted>
         <View style={styles.sizeRow}>

@@ -39,7 +39,7 @@ html[data-theme] .app-shell .topbar .caller-id b{font-size:13px;font-weight:550;
 html[data-theme] .app-shell .topbar .lead-line-switch{border:0!important;background:transparent!important;border-radius:0!important;padding:0!important;gap:22px!important}
 html[data-theme] .app-shell .topbar .lead-line-switch button{border:0!important;border-bottom:2px solid transparent!important;border-radius:0!important;background:transparent!important;color:var(--ps-muted)!important;font-size:12px;font-weight:500;min-height:40px;padding:8px 0!important;box-shadow:none!important}
 html[data-theme] .app-shell .topbar .lead-line-switch button.active{background:transparent!important;color:var(--ps-text-strong)!important;border-bottom-color:var(--ps-accent)!important}
-html[data-theme] .app-shell .top-actions{gap:10px;flex-wrap:wrap}
+html[data-theme] .app-shell .top-actions{gap:8px;flex-wrap:nowrap;flex-shrink:1;min-width:0}
 html[data-theme] .app-shell .top-actions :is(.import,.scan-action,.inbound-availability,.notification){border:0!important;background:var(--ps-surface)!important;color:var(--ps-text)!important;border-radius:999px!important;box-shadow:none!important;font-weight:500}
 html[data-theme] .app-shell .top-actions .inbound-availability.available{background:var(--ps-accent-soft)!important;color:var(--ps-accent)!important}
 html[data-theme] .app-shell .top-actions .workspace-sync{max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--ps-muted)}
@@ -177,7 +177,7 @@ html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-templat
 @media(min-width:1800px){html[data-theme] .app-shell .topbar{padding-inline:40px!important}}
 @media(max-width:1200px){html[data-theme] .app-shell .top-actions .workspace-sync{display:none}html[data-theme] .app-shell .topbar{gap:10px;padding:12px 18px!important}}
 @media(max-width:900px){html[data-theme] .app-shell .topbar .caller-id{display:none}html[data-theme] .app-shell .conversation-workspace .dialer-toolbar{align-items:flex-start;flex-wrap:wrap}html[data-theme] .app-shell .top-actions{gap:6px}}
-@media(max-width:600px){html[data-theme] .app-shell .topbar{flex-wrap:wrap}html[data-theme] .app-shell .lead-line-switch{flex:1}html[data-theme] .app-shell .conversation-workspace .call-grid{padding:22px!important}html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-template-columns:1fr!important}.dialer-scene-heading{display:grid}.channel-email .message-history{padding:10px}.channel-email .message-history article{padding:16px}.dialer-layout-menu .dialer-layout-popover{right:auto;left:0}.dialer-cosmos .dialer-watermark{width:62vw;left:50%}}
+@media(max-width:600px){html[data-theme] .app-shell .topbar{flex-wrap:nowrap}html[data-theme] .app-shell .lead-line-switch{flex:1}html[data-theme] .app-shell .conversation-workspace .call-grid{padding:22px!important}html[data-theme] .app-shell .conversation-workspace .lead-file-grid{grid-template-columns:1fr!important}.dialer-scene-heading{display:grid}.channel-email .message-history{padding:10px}.channel-email .message-history article{padding:16px}.dialer-layout-menu .dialer-layout-popover{right:auto;left:0}.dialer-cosmos .dialer-watermark{width:62vw;left:50%}}
 @media(prefers-reduced-motion:reduce){.dialer-widget-tools{transition:none}}
 
 /* Reply review stays beside the conversation, without covering its messages. */
@@ -196,3 +196,21 @@ html[data-theme] .app-shell .crm-search-shell:focus-within{border-color:var(--ps
 .dialer-layout.is-bounded .dialer-canvas{height:var(--dialer-canvas-height);min-height:0;overflow:hidden}
 
 html[data-theme] .app-shell .message-thread:has(>.reply-interest-prompt){grid-template-rows:auto auto minmax(0,1fr) auto}
+
+html[data-theme] .app-shell .topbar{flex-wrap:nowrap;min-width:0;container-type:inline-size}
+html[data-theme] .app-shell .topbar .lead-line-switch{flex-shrink:1;min-width:0;white-space:nowrap}
+html[data-theme] .app-shell .top-actions>*{flex-shrink:0}
+@container(max-width:1050px){html[data-theme] .app-shell .topbar .workspace-sync{display:none!important}html[data-theme] .app-shell .topbar .caller-id{display:none!important}html[data-theme] .app-shell .topbar .top-actions{gap:4px!important}html[data-theme] .app-shell .topbar .top-actions button{font-size:11px!important;min-height:32px!important;padding:7px 9px!important}html[data-theme] .app-shell .topbar .lead-line-switch{gap:12px!important}}
+.top-auth .logout-icon{display:none}
+@container(max-width:660px){
+ html[data-theme] .app-shell .topbar .top-actions{gap:2px!important}
+ html[data-theme] .app-shell .topbar .top-actions :is(.inbound-availability,.import){font-size:0!important;gap:0!important}
+ html[data-theme] .app-shell .topbar .top-actions :is(.inbound-availability,.import,.scan-action,.notification,.workspace-tour-help,.top-auth button){width:30px;min-width:30px;min-height:30px!important;height:30px;padding:6px!important}
+ html[data-theme] .app-shell .topbar .lead-line-switch button{font-size:10px!important}
+ html[data-theme] .app-shell .topbar .top-actions .logout-icon{display:block}
+ html[data-theme] .app-shell .topbar .top-actions .logout-label{display:none}
+ html[data-theme] .app-shell .topbar .top-actions .release-update{max-width:36px;overflow:hidden;white-space:nowrap;font-size:0!important}
+ html[data-theme] .app-shell .topbar .top-actions .release-update::after{content:"↻";font-size:18px}
+}
+.note-reminders{margin:0 0 24px;padding:22px;background:var(--ps-surface);border-radius:16px}.note-reminders>header,.note-reminders>article{display:flex;align-items:center;justify-content:space-between;gap:18px}.note-reminders h2{font-size:19px;margin:0 0 5px}.note-reminders>header span,.note-reminders small{font-size:12px;color:var(--ps-muted)}.note-reminder-tabs{display:flex;gap:6px;margin:18px 0}.note-reminder-tabs button[aria-pressed=true]{background:var(--ps-accent-soft);color:var(--ps-accent)}.note-reminders>article{padding:15px 0}.note-reminders>article>div:first-child{display:grid;gap:7px;min-width:0}.note-reminders b{font-weight:550;overflow-wrap:anywhere}.note-reminders details{font-size:12px;color:var(--ps-muted)}.note-reminders p{font-size:13px;overflow-wrap:anywhere}.note-reminders .note-contact{justify-self:start;padding:0;background:transparent;border:0;color:var(--ps-accent)}.note-task-actions{display:flex;gap:7px;flex-wrap:wrap}.note-task-actions button{font-size:12px;white-space:nowrap}@media(max-width:700px){.note-reminders>article{align-items:flex-start;flex-direction:column}.note-reminders{padding:16px}}
+.crm-comparison-page{max-width:1320px;margin:auto;padding:48px 24px;color:#25322d;background:#f8faf9;min-height:100vh}.crm-comparison-page h1{font-size:clamp(30px,5vw,52px);letter-spacing:-.035em;margin:44px 0 16px}.crm-comparison-page p{max-width:850px;line-height:1.65;color:#57645e}.crm-comparison-page h2{margin-top:42px}.crm-comparison-page a{color:#36644e}.comparison-scroll{overflow:auto;margin:24px 0}.crm-comparison-page table{border-collapse:collapse;text-align:left;width:100%;font-size:14px}.crm-comparison-page th,.crm-comparison-page td{padding:16px;vertical-align:top;border-bottom:1px solid #e0e7e2;min-width:120px}.crm-comparison-page td small{display:block;min-width:220px;max-width:320px;margin-top:8px;line-height:1.6;color:#57645e}.crm-comparison-page caption{text-align:left;font-size:20px;font-weight:600;margin-bottom:16px}.crm-comparison-page thead{background:#edf3ef}

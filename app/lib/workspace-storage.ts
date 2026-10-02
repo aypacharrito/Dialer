@@ -1,3 +1,4 @@
+import {cleanNoteReminders,type NoteReminder,type NoteReview} from "./note-reminders";
 import {cleanConversationCalendar,type ConversationCalendar} from "./conversation-calendar";
 import {reconcileCallCalendar} from "./call-calendar";
 import {cleanAiControl,type AiControl} from "./ai-control";
@@ -13,6 +14,8 @@ import {
 import { applyWorkspaceChanges } from "./workspace-changes";
 
 export type StoredWorkspace = {
+  noteReminders?:NoteReminder[];
+  noteReview?:NoteReview;
   conversationCalendar?: ConversationCalendar;
   aiControl?: AiControl;
   quoteIntake?: QuoteIntakeState;
@@ -51,6 +54,8 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
       : [];
   return {
     leads: records(body.leads, 5000),
+    ...(body.noteReminders?{noteReminders:cleanNoteReminders(body.noteReminders)}:{}),
+    ...(body.noteReview?{noteReview:body.noteReview}:{}),
     callLogs: records(body.callLogs, 1000),
     profile: cleanWorkspaceProfile(body.profile),
     ...(body.conversationCalendar?{conversationCalendar:cleanConversationCalendar(body.conversationCalendar)}:{}),
@@ -273,6 +278,7 @@ export function mergeStoredWorkspace(
     callLogs: callLogs.slice(0, 1000),
     profile,
     ...(server.aiControl?{aiControl:server.aiControl}:{}),
+    noteReminders:server.noteReminders,noteReview:server.noteReview,
     conversationCalendar:server.conversationCalendar,
     officeItems:reconcileCallCalendar(rawServerLeads,leads,server.officeItems),
     ...(server.quoteIntake?{quoteIntake:server.quoteIntake}:{}),

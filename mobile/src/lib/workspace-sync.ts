@@ -48,6 +48,7 @@ export function createWorkspaceSync(io: {
   async function sync() {
     const remote = await io.get();
     const next = applyEdits(remote, snapshot.pending);
+    if(next===snapshot.workspace&&!snapshot.pending.length)return;
     if (snapshot.pending.length) await io.put(next);
     snapshot = { workspace: next, pending: [] };
     await io.save(snapshot);

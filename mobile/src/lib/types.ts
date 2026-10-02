@@ -1,6 +1,7 @@
 export type LeadLine = "life" | "home-auto";
 
 export type Communication = {
+  attachments?:Array<{url:string;name:string;type:string}>;
   id?: string;
   providerId?: string;
   direction?: string;

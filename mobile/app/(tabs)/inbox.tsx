@@ -9,7 +9,7 @@ import type { Communication, Lead } from "../../src/lib/types";
 type InboxItem = { lead: Lead; communication: Communication; time: number };
 
 function commTime(item: Communication) {
-  const raw = item.createdAt || item.timestamp || item.at || "";
+  const raw = item.sentAt || item.createdAt || item.timestamp || item.at || "";
   const value = new Date(raw).getTime();
   return Number.isFinite(value) ? value : 0;
 }
@@ -25,7 +25,9 @@ export default function InboxScreen() {
         collected.push({ lead, communication, time: commTime(communication) });
       }
     }
-    return collected.sort((a,b) => b.time - a.time).slice(0, 100);
+    const latest=new Map<number,InboxItem>();
+    for(const item of collected.sort((a,b)=>b.time-a.time)){if(!item.lead.deletedAt&&!latest.has(item.lead.id))latest.set(item.lead.id,item)}
+    return Array.from(latest.values());
   }, [workspace.leads]);
 
   return (
@@ -41,7 +43,7 @@ export default function InboxScreen() {
           return (
             <Text
               key={`${item.lead.id}-${String(comm.id || comm.providerId || index)}`}
-              onPress={() => router.push(`/lead/${item.lead.id}`)}
+              onPress={() => router.push(comm.channel==="sms"?`/conversation/${item.lead.id}`:`/lead/${item.lead.id}`)}
               style={[styles.item, { borderBottomColor: p.border }]}
             >
               <Text style={[styles.name, { color: p.text }]}>{inbound ? "● " : "↗ "}{item.lead.name}{"\n"}</Text>

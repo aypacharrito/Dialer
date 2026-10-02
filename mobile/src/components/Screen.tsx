@@ -1,11 +1,10 @@
 import React from "react";
-import { Platform, ScrollView, StyleSheet, useColorScheme, View, type ScrollViewProps } from "react-native";
+import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors } from "../lib/theme";
+import {usePalette} from "./Primitives";
 
 export function Screen({ children, scroll = true, contentContainerStyle, ...props }: ScrollViewProps & { scroll?: boolean }) {
-  const dark = useColorScheme() === "dark";
-  const backgroundColor = dark ? colors.darkBg : colors.bg;
+  const {bg:backgroundColor}=usePalette();
   if (!scroll) {
     return <SafeAreaView edges={["top", "left", "right"]} style={[styles.safe, { backgroundColor }]}><View style={styles.fill}>{children}</View></SafeAreaView>;
   }

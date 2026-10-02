@@ -1,3 +1,4 @@
+import {usePalette} from "../src/components/Primitives";
 import { ClerkProvider } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { Stack } from "expo-router";
@@ -19,10 +20,11 @@ function MissingConfiguration() {
   );
 }
 
+function ThemedStatusBar(){const p=usePalette();return <StatusBar style={p.dark?"light":"dark"}/>}
 function AppStack() {
   return (
     <WorkspaceProvider>
-      <StatusBar style="auto" />
+      <ThemedStatusBar/>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />

@@ -120,6 +120,7 @@ function AccountWorkspaceProvider({ children, userId }: { children: React.ReactN
   const refresh = useCallback(() => run(() => syncRef.current!.refresh()), [run]);
   const updateLead = useCallback((id: number, patch: Partial<Lead>) => run(() => syncRef.current!.edit({ leadId: id, patch: {
     ...patch,
+    ...(patch.notes!==undefined?{notesUpdatedAt:new Date().toISOString()}:{}),
     ...(Object.prototype.hasOwnProperty.call(patch, "deletedAt") ? { deletionUpdatedAt: new Date().toISOString() } : {}),
   } })), [run]);
   const updateProfile = useCallback((patch: Record<string, unknown>) => run(() => syncRef.current!.edit({ patch })), [run]);

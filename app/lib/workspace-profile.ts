@@ -198,7 +198,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
     replyToEmail:String(profile.replyToEmail||"").trim().slice(0,160),
     emailSignature:String(profile.emailSignature||"").trim().slice(0,500),
     businessAddress:String(profile.businessAddress||"").trim().slice(0,300),
-    teamMembers:Array.isArray(profile.teamMembers)?Array.from(new Set(profile.teamMembers.map(value=>String(value).trim().slice(0,80)).filter(Boolean))).slice(0,50):[],
+    teamMembers:Array.isArray(profile.teamMembers)?Array.from(new Set(profile.teamMembers.map(value=>String(value).trim().slice(0,80)).filter(Boolean))):[],
     serverAutomationEnabled:profile.serverAutomationEnabled===true,
     automationTimezone:String(profile.automationTimezone||"America/Los_Angeles").trim().slice(0,80),
     communicationTemplates:Array.isArray(profile.communicationTemplates)?profile.communicationTemplates.slice(0,100).flatMap(raw=>{
@@ -223,7 +223,7 @@ export function cleanWorkspaceProfile(value:unknown):WorkspaceProfile{
       cursor:Math.max(0,Math.round(Number(rawMiner.cursor)||0)),
     },
     assignmentStrategy:profile.assignmentStrategy==="manual"?"manual":"round-robin",
-    teamRoster:Array.isArray(profile.teamRoster)?profile.teamRoster.slice(0,50).flatMap(raw=>{
+    teamRoster:Array.isArray(profile.teamRoster)?profile.teamRoster.flatMap(raw=>{
       if(!raw||typeof raw!=="object")return [];
       const member=raw as Partial<WorkspaceTeamMember>;const email=String(member.email||"").trim().toLowerCase();const userId=String(member.userId||"").trim();
       if(!email||!userId)return [];
