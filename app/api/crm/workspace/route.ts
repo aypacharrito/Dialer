@@ -1,4 +1,5 @@
-import {createHash} from "node:crypto";
+import {createHash,randomUUID} from "node:crypto";
+import {WorkspaceLoadError} from "../../../lib/workspace-load";
 import { isClerkConfigured } from "../../../lib/clerk-config";
 import { getPacificaAccess } from "../../../lib/clerk-access";
 import type { WorkspaceProfile } from "../../../lib/workspace-profile";
@@ -33,7 +34,10 @@ async function identity(): Promise<Identity | null> {
       ? null
       : { userId: "local", email: "local", role: "owner" };
   const access = await getPacificaAccess();
-  if (!access.allowed) return null;
+  if (!access.allowed) {
+    if(access.role==="signed-out")return null;
+    throw new WorkspaceLoadError("ACCESS_REQUIRED",403);
+  }
   const role =
     access.role === "manager"
       ? ("manager" as const)
@@ -57,10 +61,11 @@ function cleanPayload(value: unknown): WorkspacePayload {
 }
 
 export async function GET(request:Request) {
-  const owner = await identity();
-  if (!owner)
-    return Response.json({ error: "Sign in required" }, { status: 401 });
+  const requestId=randomUUID();
   try {
+    const owner = await identity();
+    if (!owner)
+      return Response.json({ error: "Sign in required",code:"SIGN_IN_REQUIRED",requestId }, { status: 401,headers:{"Cache-Control":"no-store"} });
     const workspace = await readStoredWorkspace(owner.userId);
     if(workspace){
       const body=JSON.stringify({found:true,...workspace});
@@ -101,21 +106,23 @@ export async function GET(request:Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
+    const failure=error instanceof WorkspaceLoadError?error:new WorkspaceLoadError("WORKSPACE_UNAVAILABLE",500);
+    // Safe to share with support: no contact records, credentials, or provider response bodies.
+    console.error("[workspace:load]",{requestId,code:failure.code,status:failure.status,name:error instanceof Error?error.name:"UnknownError"});
     return Response.json(
       {
-        error:
-          error instanceof Error ? error.message : "Unable to load workspace",
+        error:failure.message,code:failure.code,requestId,
       },
-      { status: 500 },
+      { status: failure.status||500,headers:{"Cache-Control":"no-store"} },
     );
   }
 }
 
 export async function PUT(request: Request) {
-  const owner = await identity();
-  if (!owner)
-    return Response.json({ error: "Sign in required" }, { status: 401 });
   try {
+    const owner = await identity();
+    if (!owner)
+      return Response.json({ error: "Sign in required" }, { status: 401 });
     const payload = cleanPayload(await request.json());
     await updateStoredWorkspace(
       owner.userId,
@@ -135,7 +142,7 @@ export async function PUT(request: Request) {
         error:
           error instanceof Error ? error.message : "Unable to save workspace",
       },
-      { status: 500 },
+      { status: error instanceof WorkspaceLoadError ? error.status||500 : 500 },
     );
   }
 }

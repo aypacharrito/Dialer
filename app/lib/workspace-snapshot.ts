@@ -1,17 +1,16 @@
 // Share concurrent reads and retain object identity when the workspace is unchanged.
-type Snapshot=Record<string,unknown>&{leads?:unknown[];callLogs?:unknown[]};
+import {readWorkspaceResponse,type WorkspaceSnapshot as Snapshot} from './workspace-load';
 const snapshots=new Map<string,{etag:string;value:Snapshot}>();
 const pending=new Map<string,Promise<Snapshot>>();
 export function loadWorkspaceSnapshot(workspaceId:string):Promise<Snapshot>{
  const active=pending.get(workspaceId);if(active)return active;
  const saved=snapshots.get(workspaceId);
- const request=fetch('/api/crm/workspace',{cache:'no-store',headers:saved?{'If-None-Match':saved.etag}:{}}).then(async response=>{
+ const request=fetch('/api/crm/workspace',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(20_000),headers:saved?{'If-None-Match':saved.etag}:{}}).then(async response=>{
   if(response.status===304&&saved)return saved.value;
-  if(!response.ok){snapshots.delete(workspaceId);throw Error('Workspace refresh failed');}
-  const value=await response.json(),etag=response.headers.get('etag')||'';
+  const value=await readWorkspaceResponse(response),etag=response.headers.get('etag')||'';
   snapshots.set(workspaceId,{etag,value});
   if(snapshots.size>3)snapshots.delete(snapshots.keys().next().value!);
   return value;
- }).finally(()=>pending.delete(workspaceId));
+ }).catch(error=>{snapshots.delete(workspaceId);throw error}).finally(()=>pending.delete(workspaceId));
  pending.set(workspaceId,request);return request;
 }

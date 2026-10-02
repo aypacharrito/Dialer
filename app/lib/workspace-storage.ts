@@ -12,6 +12,7 @@ import {
   type WorkspaceProfile,
 } from "./workspace-profile";
 import { applyWorkspaceChanges } from "./workspace-changes";
+import {WorkspaceLoadError} from "./workspace-load";
 
 export type StoredWorkspace = {
   noteReminders?:NoteReminder[];
@@ -286,20 +287,20 @@ export function mergeStoredWorkspace(
 }
 
 export function workspaceRedisConfig() {
-  return {
-    url:
-      process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "",
-    token:
-      process.env.KV_REST_API_TOKEN ||
-      process.env.UPSTASH_REDIS_REST_TOKEN ||
-      "",
+  // A URL and token must belong to the same connection; do not mix providers.
+  const kvUrl=process.env.KV_REST_API_URL?.trim()||"",kvToken=process.env.KV_REST_API_TOKEN?.trim()||"";
+  return kvUrl||kvToken ? {url:kvUrl,token:kvToken} : {
+    url:process.env.UPSTASH_REDIS_REST_URL?.trim()||"",
+    token:process.env.UPSTASH_REDIS_REST_TOKEN?.trim()||"",
   };
 }
 
 export async function workspaceRedis(command: Array<string | number>) {
   const { url, token } = workspaceRedisConfig();
-  if (!url || !token) return null;
-  const response = await fetch(url, {
+  if (!url && !token) return null;
+  if (!url || !token) throw new WorkspaceLoadError("STORAGE_NOT_CONFIGURED",503);
+  let response:Response;
+  try { response = await fetch(url, {
     method: "POST",
     signal:AbortSignal.timeout(8000),
     headers: {
@@ -308,10 +309,14 @@ export async function workspaceRedis(command: Array<string | number>) {
     },
     body: JSON.stringify(command),
     cache: "no-store",
-  });
-  const data = (await response.json()) as { result?: unknown; error?: string };
+  }); } catch { throw new WorkspaceLoadError("STORAGE_UNAVAILABLE",503,"",true); }
+  let data:{result?:unknown;error?:string};
+  try { data=await response.json(); } catch { throw new WorkspaceLoadError("STORAGE_UNAVAILABLE",503,"",true); }
+  if (!data || typeof data !== "object") throw new WorkspaceLoadError("STORAGE_UNAVAILABLE",503,"",true);
   if (!response.ok || data.error)
-    throw new Error(data.error || "Workspace storage request failed");
+    throw new WorkspaceLoadError(response.status===401||response.status===403||/unauth|wrongpass|invalid.*token/i.test(data.error||"")
+      ?"STORAGE_AUTH_FAILED":response.status===429||/quota|limit exceeded|too many requests/i.test(data.error||"")?"STORAGE_LIMIT":"STORAGE_UNAVAILABLE",503,"",response.status>=500);
+  if (!Object.hasOwn(data,"result")) throw new WorkspaceLoadError("STORAGE_UNAVAILABLE",503,"",true);
   return data.result;
 }
 
@@ -329,6 +334,7 @@ export async function releaseAutomationLease(key:string,token:string){
 }
 
 async function workspaceD1() {
+  if(process.env.VERCEL)throw new WorkspaceLoadError("STORAGE_NOT_CONFIGURED",503);
   const { getD1 } = await import("../../db/index");
   const db = getD1();
   await db
@@ -342,7 +348,8 @@ async function workspaceD1() {
 export async function readStoredWorkspace(userId: string) {
   const stored = await workspaceRedis(["GET", workspaceKey(userId)]);
   if (typeof stored === "string")
-    return cleanWorkspacePayload(JSON.parse(stored));
+    return parseStoredWorkspace(stored);
+  if(stored!==null)throw new WorkspaceLoadError("WORKSPACE_DATA_INVALID",500);
   if (workspaceRedisConfig().url) return null;
   const db = await workspaceD1();
   const result = (await db
@@ -352,8 +359,17 @@ export async function readStoredWorkspace(userId: string) {
     .bind(workspaceDatabaseId(userId))
     .first()) as { workspaceJson?: string } | null;
   return result?.workspaceJson
-    ? cleanWorkspacePayload(JSON.parse(result.workspaceJson))
+    ? parseStoredWorkspace(result.workspaceJson)
     : null;
+}
+
+function parseStoredWorkspace(raw:string):StoredWorkspace {
+  try {
+    const value=JSON.parse(raw);
+    if(!value||typeof value!=="object"||Array.isArray(value)||!Array.isArray(value.leads)||!Array.isArray(value.callLogs))
+      throw new Error("Invalid workspace data");
+    return cleanWorkspacePayload(value);
+  }catch{throw new WorkspaceLoadError("WORKSPACE_DATA_INVALID",500);}
 }
 
 export async function migrateLegacyStoredWorkspace(userId: string) {

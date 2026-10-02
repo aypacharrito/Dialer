@@ -15,6 +15,7 @@ async function setup(fail,mode=defaultWorkspaceProfile.mode){
  globalThis.fetch=async(url,options)=>{
   requests.push({url,options});
   if(url==='/api/crm/workspace'){
+   if(typeof fail==='function'&&options?.method!=='PUT')return fail();
    if(fail&&options?.method!=='PUT')return new Response('{}',{status:503});
    return new Response(JSON.stringify({found:true,leads:[],callLogs:[],profile:{...defaultWorkspaceProfile,mode,serverAutomationEnabled:false}}));
   }
@@ -38,6 +39,42 @@ test('a successful cloud load unlocks the workspace and permits autosave',async(
  assert.equal(h.requests.filter(r=>r.options?.method==='PUT').length,1);
  assert.equal(localStorage.getItem('pacifica:test-workspace:leads'),null,'cloud workspace must not synchronously serialize duplicate contacts into browser storage');
  await h.cleanup();
+});
+test('Retry recovers a failed cloud load in place without an empty save',async()=>{
+ let available=false;
+ const h=await setup(()=>available?Response.json({found:true,leads:[],callLogs:[],profile:defaultWorkspaceProfile}):Response.json({code:'STORAGE_UNAVAILABLE',requestId:'request-123'},{status:503}));
+ try{
+  assert.match(document.querySelector('.workspace-load-card').textContent,/STORAGE_UNAVAILABLE.*HTTP 503.*request-123/);
+  assert.equal(h.requests.filter(r=>r.options?.method==='PUT').length,0);
+  available=true;await act(async()=>document.querySelector('.workspace-load-card button').click());
+  await act(async()=>new Promise(resolve=>setTimeout(resolve,650)));
+  assert.equal(document.querySelector('.workspace-load-card'),null);
+  assert.equal(h.requests.filter(r=>r.options?.method==='PUT').length,1);
+ }finally{await h.cleanup()}
+});
+test('a transient startup failure retries automatically, then stops retrying after success',async()=>{
+ let reads=0;
+ const h=await setup(()=>++reads===1?new Response('{}',{status:503}):Response.json({found:true,leads:[],callLogs:[],profile:defaultWorkspaceProfile}));
+ try{
+  assert.equal(reads,1);
+  await act(async()=>new Promise(resolve=>setTimeout(resolve,1500)));
+  assert.equal(document.querySelector('.workspace-load-card'),null);assert.equal(reads,2);
+  await act(async()=>window.dispatchEvent(new window.Event('online')));
+  assert.equal(reads,2,'reconnecting must not replace an already loaded workspace');
+ }finally{await h.cleanup()}
+});
+test('expired sign-in shows the sign-in action and never starts autosave',async()=>{
+ const h=await setup(()=>new Response('{}',{status:401}));
+ try{assert.equal(document.querySelector('.workspace-load-action').getAttribute('href'),'/login');assert.equal(document.querySelector('.workspace-load-card button'),null);assert.equal(h.requests.some(r=>r.options?.method==='PUT'),false)}finally{await h.cleanup()}
+});
+test('imported numeric fields load successfully and preserve contact details',async()=>{
+ const contact={id:1,name:'Numeric import',phone:8185550100,source:123,vendorId:123,email:'',importedFields:{Drivers:2},notes:'Keep my note'};
+ const h=await setup(()=>Response.json({found:true,leads:[contact,{...contact,id:2}],callLogs:[],profile:{...defaultWorkspaceProfile,serverAutomationEnabled:false}}));
+ try{
+  assert.equal(document.querySelector('.workspace-load-card'),null);
+  const saves=h.requests.filter(r=>r.options?.method==='PUT');assert.equal(saves.length,1);
+  const saved=JSON.parse(saves[0].options.body).leads[0];assert.equal(saved.phone,'8185550100');assert.equal(saved.notes,'Keep my note');assert.equal(saved.importedFields.Drivers,'2');
+ }finally{await h.cleanup()}
 });
 test('dialer contact, keypad and queue are independently editable siblings',async()=>{
  const h=await setup(false);

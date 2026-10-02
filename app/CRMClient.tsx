@@ -1,5 +1,7 @@
 "use client";
 import {loadWorkspaceSnapshot} from "./lib/workspace-snapshot";
+import {fetchWorkspaceSnapshot,workspaceLoadFailure,type WorkspaceLoadError} from "./lib/workspace-load";
+import {normalizeContactRecord} from "./lib/contact-record";
 import {documentImageForAi} from "./lib/document-image";
 import {documentMissingFields,combineDocumentReads} from "./lib/document-review";
 import DialerBackdrop from "./components/DialerBackdrop";
@@ -127,7 +129,8 @@ async function scanDocumentWithAi(files:File[]){
 
 function normalizeSavedLeads(value:unknown):Lead[]{
   if(!Array.isArray(value))return [];
-  const normalized=(value as Partial<Lead>[]).map((lead,index)=>({notesUpdatedAt:lead.notesUpdatedAt||"",replyReviews:lead.replyReviews,workflowUpdatedAt:lead.workflowUpdatedAt||"",quoteRequests:Array.isArray(lead.quoteRequests)?lead.quoteRequests:[],quoteDetailsUpdatedAt:lead.quoteDetailsUpdatedAt||"",lastCallResult:lead.lastCallResult,lastCallStartedAt:lead.lastCallStartedAt,lastCallDetectionAt:lead.lastCallDetectionAt,lastDetectedCallSid:lead.lastDetectedCallSid,deletedAt:lead.deletedAt||"",deletionUpdatedAt:lead.deletionUpdatedAt||"",id:lead.id||Date.now()+index,name:lead.name||`Lead ${index+1}`,phone:lead.phone||"",city:lead.city||"Imported",status:lead.status||"Ready",email:lead.email||"",stage:lead.stage||"New lead",outcome:lead.outcome||"Not contacted",notes:lead.notes||"",followUp:lead.followUp||"",followUpUtc:lead.followUpUtc||"",doNotCall:Boolean(lead.doNotCall),lastContact:lead.lastContact||"Never",line:lead.line==="home-auto"?"home-auto":"life",queueOverride:Boolean(lead.queueOverride),source:lead.source||"Existing CRM",leadCost:Number(lead.leadCost)||0,product:lead.product||"Service inquiry",sourceDisposition:lead.sourceDisposition||"",importedAt:lead.importedAt||"",vendorId:lead.vendorId||"",sourceSyncStatus:lead.sourceSyncStatus||"",providerUpdatedAt:lead.providerUpdatedAt||"",address:lead.address||"",state:lead.state||"",zip:lead.zip||"",territory:lead.territory||"",brand:lead.brand||"",profileName:lead.profileName||"",received:lead.received||"",returnStatus:lead.returnStatus||"",employeeCount:lead.employeeCount||"",searchPro:lead.searchPro||"",extraFields:lead.extraFields&&typeof lead.extraFields==="object"?lead.extraFields:{},csvFileName:lead.csvFileName||"",csvUpdatedAt:lead.csvUpdatedAt||"",importedFields:lead.importedFields&&typeof lead.importedFields==="object"?lead.importedFields:{},smsConsent:Boolean(lead.smsConsent),smsOptOut:Boolean(lead.smsOptOut),lastSmsAt:lead.lastSmsAt||"",emailConsent:Boolean(lead.emailConsent),emailOptOut:Boolean(lead.emailOptOut),lastEmailAt:lead.lastEmailAt||"",communications:cleanCommunications(lead.communications),attempts:Math.max(0,Number(lead.attempts)||0),lastAttemptAt:lead.lastAttemptAt||"",lastConnectedAt:lead.lastConnectedAt||"",priorityOverride:lead.priorityOverride==="high"||lead.priorityOverride==="low"?lead.priorityOverride:"auto",assignedTo:lead.assignedTo||"",estimatedValue:Math.max(0,Number(lead.estimatedValue)||0),closedRevenue:Math.max(0,Number(lead.closedRevenue)||0),closedAt:lead.closedAt||"",automationEnabled:lead.automationEnabled!==false,automationSequenceId:lead.automationSequenceId||"",automationStep:Math.max(0,Number(lead.automationStep)||0),automationNextAt:lead.automationNextAt||"",automationStatus:lead.automationStatus||"",automationDeliveryFailures:Math.max(0,Number(lead.automationDeliveryFailures)||0),automationLastError:lead.automationLastError||"",automationDeadLetterAt:lead.automationDeadLetterAt||"",automationUpdatedAt:lead.automationUpdatedAt||"",lastInboundAt:lead.lastInboundAt||"",clientStatus:lead.clientStatus==="active"?"active":lead.clientStatus==="inactive"?"inactive":undefined,dateOfBirth:lead.dateOfBirth||"",policyNumber:lead.policyNumber||"",policyEffectiveDate:lead.policyEffectiveDate||"",policyExpirationDate:lead.policyExpirationDate||"",renewalDate:lead.renewalDate||"",clientReminderKeys:Array.isArray(lead.clientReminderKeys)?lead.clientReminderKeys.map(String).slice(-60):[],licenseNumber:lead.licenseNumber||"",licenseState:lead.licenseState||"",licenseExpiration:lead.licenseExpiration||"",vin:lead.vin||"",vehicle:lead.vehicle||""})) as Lead[];
+  const contacts=value.map(normalizeContactRecord) as Partial<Lead>[];
+  const normalized=contacts.map((lead,index)=>({notesUpdatedAt:lead.notesUpdatedAt||"",replyReviews:lead.replyReviews,workflowUpdatedAt:lead.workflowUpdatedAt||"",quoteRequests:Array.isArray(lead.quoteRequests)?lead.quoteRequests:[],quoteDetailsUpdatedAt:lead.quoteDetailsUpdatedAt||"",lastCallResult:lead.lastCallResult,lastCallStartedAt:lead.lastCallStartedAt,lastCallDetectionAt:lead.lastCallDetectionAt,lastDetectedCallSid:lead.lastDetectedCallSid,deletedAt:lead.deletedAt||"",deletionUpdatedAt:lead.deletionUpdatedAt||"",id:lead.id||Date.now()+index,name:lead.name||`Lead ${index+1}`,phone:lead.phone||"",city:lead.city||"Imported",status:lead.status||"Ready",email:lead.email||"",stage:lead.stage||"New lead",outcome:lead.outcome||"Not contacted",notes:lead.notes||"",followUp:lead.followUp||"",followUpUtc:lead.followUpUtc||"",doNotCall:Boolean(lead.doNotCall),lastContact:lead.lastContact||"Never",line:lead.line==="home-auto"?"home-auto":"life",queueOverride:Boolean(lead.queueOverride),source:lead.source||"Existing CRM",leadCost:Number(lead.leadCost)||0,product:lead.product||"Service inquiry",sourceDisposition:lead.sourceDisposition||"",importedAt:lead.importedAt||"",vendorId:lead.vendorId||"",sourceSyncStatus:lead.sourceSyncStatus||"",providerUpdatedAt:lead.providerUpdatedAt||"",address:lead.address||"",state:lead.state||"",zip:lead.zip||"",territory:lead.territory||"",brand:lead.brand||"",profileName:lead.profileName||"",received:lead.received||"",returnStatus:lead.returnStatus||"",employeeCount:lead.employeeCount||"",searchPro:lead.searchPro||"",extraFields:lead.extraFields&&typeof lead.extraFields==="object"?lead.extraFields:{},csvFileName:lead.csvFileName||"",csvUpdatedAt:lead.csvUpdatedAt||"",importedFields:lead.importedFields&&typeof lead.importedFields==="object"?lead.importedFields:{},smsConsent:Boolean(lead.smsConsent),smsOptOut:Boolean(lead.smsOptOut),lastSmsAt:lead.lastSmsAt||"",emailConsent:Boolean(lead.emailConsent),emailOptOut:Boolean(lead.emailOptOut),lastEmailAt:lead.lastEmailAt||"",communications:cleanCommunications(lead.communications),attempts:Math.max(0,Number(lead.attempts)||0),lastAttemptAt:lead.lastAttemptAt||"",lastConnectedAt:lead.lastConnectedAt||"",priorityOverride:lead.priorityOverride==="high"||lead.priorityOverride==="low"?lead.priorityOverride:"auto",assignedTo:lead.assignedTo||"",estimatedValue:Math.max(0,Number(lead.estimatedValue)||0),closedRevenue:Math.max(0,Number(lead.closedRevenue)||0),closedAt:lead.closedAt||"",automationEnabled:lead.automationEnabled!==false,automationSequenceId:lead.automationSequenceId||"",automationStep:Math.max(0,Number(lead.automationStep)||0),automationNextAt:lead.automationNextAt||"",automationStatus:lead.automationStatus||"",automationDeliveryFailures:Math.max(0,Number(lead.automationDeliveryFailures)||0),automationLastError:lead.automationLastError||"",automationDeadLetterAt:lead.automationDeadLetterAt||"",automationUpdatedAt:lead.automationUpdatedAt||"",lastInboundAt:lead.lastInboundAt||"",clientStatus:lead.clientStatus==="active"?"active":lead.clientStatus==="inactive"?"inactive":undefined,dateOfBirth:lead.dateOfBirth||"",policyNumber:lead.policyNumber||"",policyEffectiveDate:lead.policyEffectiveDate||"",policyExpirationDate:lead.policyExpirationDate||"",renewalDate:lead.renewalDate||"",clientReminderKeys:Array.isArray(lead.clientReminderKeys)?lead.clientReminderKeys.map(String).slice(-60):[],licenseNumber:lead.licenseNumber||"",licenseState:lead.licenseState||"",licenseExpiration:lead.licenseExpiration||"",vin:lead.vin||"",vehicle:lead.vehicle||""})) as Lead[];
   const sourceById=new Map((value as Partial<Lead>[]).map(lead=>[lead.id,lead]));
   return deduplicateCsvLeads(normalized).leads.map(lead=>({...lead,policyPremium:policyMoney(sourceById.get(lead.id)?.policyPremium)??0,policyTermMonths:Math.max(0,Number(sourceById.get(lead.id)?.policyTermMonths)||0)}));
 }
@@ -213,6 +216,8 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   const [leadFeedStatus,setLeadFeedStatus]=useState("Checking the secure inbound queue…");
   const [importReport,setImportReport]=useState("");
   const [workspaceHydrated,setWorkspaceHydrated]=useState(false);
+  const [workspaceLoadError,setWorkspaceLoadError]=useState<WorkspaceLoadError|null>(null);
+  const [workspaceLoadAttempt,setWorkspaceLoadAttempt]=useState(0);
   const [postCallLeadId,setPostCallLeadId]=useState<number|null>(null);
   const [floatingWindowOpen,setFloatingWindowOpen]=useState(false);
   const [manualWrap,setManualWrap]=useState<{lead:Lead;logId:string}|null>(null);
@@ -314,7 +319,51 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   useEffect(()=>{if(skipQueuePreferenceSaveRef.current){skipQueuePreferenceSaveRef.current=false;return}try{localStorage.setItem(`pacifica:${workspaceId}:last-lead-queue`,activeLine)}catch{}},[activeLine,workspaceId]);
   useEffect(()=>{if(scanInputRef.current)scanInputRef.current.accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"},[]);
   useEffect(()=>{ if(!toast)return; const t=setTimeout(()=>setToast(""),2600); return()=>clearTimeout(t)},[toast]);
-  useEffect(()=>{let canceled=false;async function hydrate(){let localLeads:Lead[]=[];let localLogs:CallLog[]=[];let localProfile=defaultWorkspaceProfile;const leadKey=`pacifica:${workspaceId}:leads`;const logKey=`pacifica:${workspaceId}:call-logs`;const profileKey=`pacifica:${workspaceId}:profile`;if(!clerkEnabled){try{localLeads=normalizeSavedLeads(JSON.parse(localStorage.getItem(leadKey)||"[]"));const parsedLogs=JSON.parse(localStorage.getItem(logKey)||"[]");localLogs=Array.isArray(parsedLogs)?parsedLogs:[];localProfile=cleanWorkspaceProfile(JSON.parse(localStorage.getItem(profileKey)||"{}"))}catch{}}else{try{const response=await fetch("/api/crm/workspace",{cache:"no-store"});const data=await response.json() as {found?:boolean;leads?:unknown[];callLogs?:CallLog[];profile?:WorkspaceProfile};if(response.ok){localLeads=normalizeSavedLeads(data.leads);localLogs=Array.isArray(data.callLogs)?data.callLogs:[];localProfile=cleanWorkspaceProfile(data.profile)}else throw new Error("Cloud workspace unavailable")}catch{if(!canceled)setWorkspaceSyncStatus("Offline · workspace could not load");return}}if(canceled)return;setLeads(localLeads);setCallLogs(localLogs);setWorkspaceProfile(localProfile);if(localProfile.industry==="legal"||new URLSearchParams(window.location.search).has("calendar"))setView("office");setWorkspaceHydrated(true);setWorkspaceSyncStatus(clerkEnabled?"Cloud workspace synced":"Saved in this browser")}void hydrate();return()=>{canceled=true}},[clerkEnabled,workspaceId]);
+  useEffect(()=>{
+    let canceled=false,loading=false,complete=false,attempts=0;
+    let retryTimer:ReturnType<typeof setTimeout>|undefined;
+    const controller=new AbortController();
+    async function hydrate(){
+      if(canceled||loading||complete)return;
+      loading=true;attempts++;
+      clearTimeout(retryTimer);
+      setWorkspaceLoadError(null);
+      setWorkspaceSyncStatus("Opening workspace…");
+      try{
+        let localLeads:Lead[]=[],localLogs:CallLog[]=[],localProfile=defaultWorkspaceProfile;
+        if(clerkEnabled){
+          const data=await fetchWorkspaceSnapshot({signal:controller.signal});
+          localLeads=normalizeSavedLeads(data.leads);
+          localLogs=data.callLogs as CallLog[];
+          localProfile=cleanWorkspaceProfile(data.profile);
+        }else{
+          try{
+            localLeads=normalizeSavedLeads(JSON.parse(localStorage.getItem(`pacifica:${workspaceId}:leads`)||"[]"));
+            const parsedLogs=JSON.parse(localStorage.getItem(`pacifica:${workspaceId}:call-logs`)||"[]");
+            localLogs=Array.isArray(parsedLogs)?parsedLogs:[];
+            localProfile=cleanWorkspaceProfile(JSON.parse(localStorage.getItem(`pacifica:${workspaceId}:profile`)||"{}"));
+          }catch{}
+        }
+        if(canceled)return;
+        setLeads(localLeads);setCallLogs(localLogs);setWorkspaceProfile(localProfile);
+        if(localProfile.industry==="legal"||new URLSearchParams(window.location.search).has("calendar"))setView("office");
+        complete=true;
+        setWorkspaceHydrated(true);
+        setWorkspaceSyncStatus(clerkEnabled?"Cloud workspace synced":"Saved in this browser");
+      }catch(error){
+        if(canceled)return;
+        const failure=workspaceLoadFailure(error);
+        setWorkspaceLoadError(failure);
+        setWorkspaceSyncStatus("Offline · workspace could not load");
+        // Retry only transient reads, with a limit. Never enable autosave on failure.
+        if(failure.retryable&&attempts<3)retryTimer=setTimeout(()=>void hydrate(),attempts*2000);
+      }finally{loading=false;}
+    }
+    const reconnect=()=>{if(!canceled&&!loading){attempts=0;void hydrate()}};
+    void hydrate();
+    window.addEventListener("online",reconnect);
+    return()=>{canceled=true;controller.abort();clearTimeout(retryTimer);window.removeEventListener("online",reconnect)};
+  },[clerkEnabled,workspaceId,workspaceLoadAttempt]);
   useEffect(()=>{
     if(!workspaceHydrated)return;
     let saved=false;
@@ -324,7 +373,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     workspaceSaveTimerRef.current=window.setTimeout(()=>{workspaceSaveTimerRef.current=undefined;void workspaceSaveQueue.queue.save(JSON.stringify({leads:allLeads,callLogs:callLogs.slice(0,500),profile:workspaceProfile})).then(latest=>{if(latest)setWorkspaceSyncStatus(`Saved ${new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}`)}).catch(()=>setWorkspaceSyncStatus("Offline · automatic retry pending"))},600);
     return()=>{if(workspaceSaveTimerRef.current){window.clearTimeout(workspaceSaveTimerRef.current);workspaceSaveTimerRef.current=undefined}};
   },[allLeads,callLogs,workspaceProfile,workspaceHydrated,clerkEnabled,workspaceId,workspaceSavePulse,workspaceSaveQueue]);
-  useEffect(()=>{if(!workspaceSyncStatus.startsWith("Offline"))return;const retry=window.setTimeout(()=>setWorkspaceSavePulse(value=>value+1),5000);return()=>window.clearTimeout(retry)},[workspaceSyncStatus]);
+  useEffect(()=>{if(!workspaceHydrated||!workspaceSyncStatus.startsWith("Offline"))return;const retry=window.setTimeout(()=>setWorkspaceSavePulse(value=>value+1),5000);return()=>window.clearTimeout(retry)},[workspaceSyncStatus,workspaceHydrated]);
   useEffect(()=>{document.documentElement.dataset.theme=workspaceProfile.appearance;document.documentElement.dataset.displaySize=workspaceProfile.displaySize;document.documentElement.style.colorScheme=workspaceProfile.appearance},[workspaceProfile.appearance,workspaceProfile.displaySize]);
   useEffect(()=>{leadsRef.current=allLeads},[allLeads]);
   useEffect(()=>{dialerRunsRef.current=workspaceProfile.dialerRuns},[workspaceProfile.dialerRuns]);
@@ -1210,7 +1259,7 @@ if(!isDocumentFile(file)){setToast("Use a photo or PDF document");return}if(file
   }
 
   return <main className={`app-shell${view==="dialer"?" is-dialer":""}${sidebarCollapsed?" sidebar-collapsed":""}`} onDragEnter={onFileDragEnter} onDragOver={onFileDragOver} onDragLeave={onFileDragLeave} onDrop={onFileDrop}>
-    {!workspaceHydrated&&<WorkspaceLoadGate failed={workspaceSyncStatus.startsWith("Offline")}/>}
+    {!workspaceHydrated&&<WorkspaceLoadGate error={workspaceLoadError} onRetry={()=>setWorkspaceLoadAttempt(value=>value+1)}/>}
     {workspaceHydrated&&isOwner&&!workspaceProfile.onboardingCompleted&&<BusinessOnboarding profile={workspaceProfile} onComplete={setWorkspaceProfile}/>}
     {fileDragActive&&<div className="file-drop-overlay" role="status" aria-live="polite"><div><Icon name="upload"/><span>DROP TO IMPORT</span><b>License, policy, or lead file</b><small>Images create a reviewable lead · CSV, TSV, and TXT merge into Contacts</small></div></div>}
     {view==="dialer"&&<DialerBackdrop appearance={workspaceProfile.appearance} lightUrl={workspaceProfile.dialerLightBackdropUrl} darkUrl={workspaceProfile.dialerDarkBackdropUrl} motion={workspaceProfile.dialerBackdropMotion}/>}

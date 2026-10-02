@@ -192,6 +192,10 @@ html[data-theme] .app-shell .workspace-load-mark { display:grid; place-items:cen
 html[data-theme] .app-shell .workspace-load-card h1 { font-size:calc(22px * var(--workspace-text-scale,1)); margin:0 0 12px; }
 html[data-theme] .app-shell .workspace-load-card p { color:var(--ps-muted); line-height:1.6; }
 html[data-theme] .app-shell .workspace-load-card button { min-height:44px; padding:10px 24px; margin-top:12px; border:0; border-radius:8px; background:var(--ps-accent); color:var(--ps-surface); cursor:pointer; }
+html[data-theme] .app-shell .workspace-load-action { display:inline-block; min-height:44px; box-sizing:border-box; padding:10px 24px; margin-top:12px; border-radius:8px; background:var(--ps-accent); color:var(--ps-surface); text-decoration:none; }
+html[data-theme] .app-shell .workspace-load-details { margin-top:24px; color:var(--ps-muted); font-size:12px; }
+html[data-theme] .app-shell .workspace-load-details summary { cursor:pointer; }
+html[data-theme] .app-shell .workspace-load-details code { display:block; margin-top:10px; overflow-wrap:anywhere; line-height:1.7; user-select:text; }
 html[data-theme] .app-shell .template-library :is(.template-card,.template-editor) { background:var(--ps-surface) !important; border-color:var(--ps-line) !important; color:var(--ps-text); box-shadow:none !important; }
 html[data-theme] .app-shell .template-library :is(.template-card-main,.template-card-main strong,.template-card-main b) { color:var(--ps-text) !important; background:transparent !important; }
 html[data-theme] .app-shell .template-library :is(small,p) { color:var(--ps-muted) !important; }
