@@ -19,3 +19,11 @@ test('import re-reads source facts, persists research-only records and tolerates
   const second=await (await POST(request(input))).json();assert.equal(second.added,0);assert.equal(recordsWorkspace.leads.length,1);assert.equal(recordsWorkspace.leads[0].notes,'Keep these');assert.equal(recordsWorkspace.leads[0].doNotCall,true);
  }finally{globalThis.fetch=original;}
 });
+test('AI prospect research is read-only and rejects invented evidence',async()=>{
+ globalThis.recordsAccess={allowed:true,userId:'owner',role:'owner'};globalThis.recordsWorkspace={leads:[{id:1,name:'Existing',notes:'Keep'}]};
+ globalThis.researchInsights=[{account:'A-123',opportunity:'Discuss business coverage',nextStep:'Ask about operations',evidence:'Plumbing'},{account:'A-123',opportunity:'Invented',nextStep:'Call owner',evidence:'Owner is Bob'}];
+ const before=structuredClone(recordsWorkspace),original=globalThis.fetch;
+ globalThis.fetch=async()=>Response.json([{location_account:'A-123',business_name:'Example',street_address:'123 Main',city:'Van Nuys',zip_code:'91401',primary_naics_description:'Plumbing'}]);
+ try{const response=await POST(request({...input,action:'analyze'}));assert.equal(response.status,200);assert.equal((await response.json()).insights.length,1);assert.deepEqual(recordsWorkspace,before);}
+ finally{globalThis.fetch=original;}
+});

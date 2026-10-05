@@ -1,3 +1,4 @@
+import {cleanCommunications} from "./communications";
 import type { WorkspaceIndustry, WorkspaceProfile } from "./workspace-profile";
 
 export const industryLabels: Record<WorkspaceIndustry,string> = {
@@ -92,6 +93,7 @@ export function leadAiContext(lead:Record<string,unknown>,includeNotes=false){
     importedFields,
     providerFields,
     customFields,
+    recentMessages:includeNotes?cleanCommunications(lead.communications).slice(-5).map(message=>({id:message.id,channel:message.channel,direction:message.direction,subject:message.subject||"",body:message.body.slice(0,700),sentAt:message.sentAt,attachmentCount:message.attachments?.length||0})):[],
     notes:includeNotes?String(lead.notes||"").trim().slice(0,1200):"[not shared]",
   };
 }

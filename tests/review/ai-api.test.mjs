@@ -26,14 +26,14 @@ test('quota failures make one provider request, explain billing and return a lab
   assert.equal(calls,1);assert.equal(result.mode,'smart-fallback');assert.equal(result.providerCode,'billing_required');assert.match(result.notice,/credits/);assert.match(result.draft,/STOP/);
  }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
 });
-test('CRM analysis uses a completed structured response and accepts a timed callback',async()=>{
+test('CRM analysis keeps callback advice read-only',async()=>{
  const previousKey=process.env.OPENAI_API_KEY,previousFetch=globalThis.fetch;
  process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.pacificaTestAccess=true;
  const result={summary:'Call Taylor tomorrow.',priorities:[],actions:[{leadId:1,leadName:'Taylor',title:'Schedule callback',reason:'Requested',patch:{stage:'Follow-up',outcome:'Call back later',followUp:'2026-09-10T10:30',notesToAppend:null}}],draft:''};
  globalThis.fetch=async()=>output(JSON.stringify(result));
  try{
   const response=await crm(request({prompt:'Plan callback',leads:[{id:1,name:'Taylor',stage:'New lead',doNotCall:false}],includeNotes:false}));
-  const data=await response.json();assert.equal(data.mode,'ai');assert.equal(data.actions[0].patch.followUp,'2026-09-10T10:30');assert.equal(data.actions[0].patch.outcome,'Call back later');
+  const data=await response.json();assert.equal(data.mode,'ai');assert.deepEqual(data.actions,[]);assert.equal(data.summary,'Call Taylor tomorrow.');
  }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
 });
 test('document scan sends a validated PDF to AI, retains printed dates, and rejects invalid uploads',async()=>{
@@ -66,4 +66,11 @@ test('selected writing language reaches AI and never silently falls back to Engl
  process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.fetch=async(url,options)=>{payload=JSON.parse(options.body);return output('Hola Ana, ¿cómo podemos ayudarte?')};
  const response=await draft(request({language:'es',lead:{name:'Ana'},channel:'sms'}));const data=await response.json();assert.equal(response.status,200);assert.match(payload.input[0].content,/Write in Español/);assert.match(data.draft,/Hola Ana/);assert.match(data.draft,/Reply STOP to opt out/);
  }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
+});
+
+test('CRM AI strips model-generated lead mutations before returning them',async()=>{
+ const previousKey=process.env.OPENAI_API_KEY,previousFetch=globalThis.fetch;process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.pacificaTestAccess=true;
+ globalThis.fetch=async()=>output(JSON.stringify({summary:'Review the information.',priorities:[],actions:[{leadId:1,leadName:'Example',title:'Overwrite',reason:'unsafe model output',patch:{stage:'Closed',outcome:'Interested',followUp:'2026-11-01',notesToAppend:'Replace'}}],draft:'',createLead:null}));
+ try{const response=await crm(request({prompt:'Read my CRM',leads:[{id:1,name:'Example'}]}));assert.equal(response.status,200);assert.deepEqual((await response.json()).actions,[]);}
+ finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey;}
 });

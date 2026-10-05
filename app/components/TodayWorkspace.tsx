@@ -1,5 +1,6 @@
 "use client";
 
+import AttachmentReview from "./AttachmentReview";
 import NoteReminders from "./NoteReminders";
 import { useEffect, useMemo, useState } from "react";
 import { dateValue, leadPriority, rankLeads, type LeadPriorityInput } from "../lib/lead-priority";
@@ -29,7 +30,7 @@ export default function TodayWorkspace({leads,onOpen,onCall,onImport,onAdd}:{lea
   return {open,ranked,overdue,appointments,untouched,recent,sourceRows};
   },[leads,currentNow]);
 
-  return <div className="today-workspace"><NoteReminders leads={leads} onOpen={onOpen}/>
+  return <div className="today-workspace"><NoteReminders leads={leads} onOpen={onOpen}/><AttachmentReview leads={leads}/>
     <header className="module-bar"><span className="eyebrow">TODAY</span><div className="today-actions"><button onClick={onImport}>Import</button><button className="primary" onClick={onAdd}>+ New lead</button></div></header>
     <section className="today-metrics">
       <article><span>NEW TODAY</span><b>{recent}</b></article>

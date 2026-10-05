@@ -3,6 +3,7 @@ import {useMemo, useRef, useState} from "react";
 import {cityRecordsSource, type PublicBusinessRecord} from "../lib/public-business-records";
 
 export default function PublicBusinessSearch({onResults}: {onResults: (records: unknown[]) => void}) {
+  const [insights,setInsights]=useState<Array<{account:string;opportunity:string;nextStep:string;evidence:string}>>([]);
   const [zip, setZip] = useState("91401");
   const [query, setQuery] = useState<{zip: string; page: number} | null>(null);
   const [records, setRecords] = useState<PublicBusinessRecord[]>([]);
@@ -16,7 +17,7 @@ export default function PublicBusinessSearch({onResults}: {onResults: (records: 
   async function search(page = 0, targetZip = zip) {
     if (inFlight.current) return;
     if (!/^\d{5}$/.test(targetZip)) {setMessage("Enter a five-digit ZIP code."); return;}
-    inFlight.current = true; setBusy(true); setMessage("Searching city records…"); setSelected([]);
+    inFlight.current = true; setBusy(true); setMessage("Searching city records…"); setSelected([]); setInsights([]);
     try {
       const response = await fetch("/api/miner/public-records", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action: "search", zip: targetZip, page})});
       const data = await response.json(); if (!response.ok) throw new Error(data.error || "Search failed.");
@@ -36,6 +37,16 @@ export default function PublicBusinessSearch({onResults}: {onResults: (records: 
     } catch (error) {setMessage(error instanceof Error ? error.message : "Import failed.");}
     finally {inFlight.current = false; setBusy(false);}
   }
+  async function research() {
+    if(!query||!selected.length||inFlight.current)return;
+    inFlight.current=true;setBusy(true);setMessage("AI is reviewing up to 10 selected businesses…");
+    try{
+      const response=await fetch("/api/miner/public-records",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"analyze",...query,accounts:selected.slice(0,10)})});
+      const data=await response.json();if(!response.ok)throw Error(data.error||"AI research is unavailable.");
+      setInsights(data.insights||[]);setMessage("Research suggestions ready. No contacts were changed.");
+    }catch(error){setMessage(error instanceof Error?error.message:"AI research is unavailable.");}
+    finally{inFlight.current=false;setBusy(false);}
+  }
   return <details className="public-business-search">
     <summary>Pacifica Leads · Free business records</summary>
     <p>Start in the San Fernando Valley. Search LA city registrations, review the business, then add it to your CRM.</p>
@@ -49,6 +60,7 @@ export default function PublicBusinessSearch({onResults}: {onResults: (records: 
         <label>Filter this page<input value={filter} disabled={busy} placeholder="Contractor, real estate, restaurant…" onChange={event => {setFilter(event.target.value); setSelected([]);}} /></label>
         <button type="button" disabled={busy || !visible.length} onClick={() => setSelected(visible.slice(0, 50).map(row => row.account))}>Select up to 50</button>
         <button type="button" disabled={busy || !selected.length} onClick={() => setSelected([])}>Clear</button>
+        <button type="button" disabled={busy || !selected.length} onClick={()=>void research()}>AI research · up to 10</button>
         <button type="button" className="primary" disabled={busy || !selected.length} onClick={() => void importSelected()}>Add to CRM · {selected.length}</button>
       </div>
       <div className="public-records-table" role="region" aria-label="Public business search results" tabIndex={0}>
@@ -61,6 +73,7 @@ export default function PublicBusinessSearch({onResults}: {onResults: (records: 
       </div>
       <div className="public-records-controls"><button type="button" disabled={busy || query.page === 0} onClick={() => void search(query.page - 1, query.zip)}>Previous</button><span>Page {query.page + 1}</span><button type="button" disabled={busy || !hasMore} onClick={() => void search(query.page + 1, query.zip)}>Next</button></div>
     </>}
+    {insights.map(item=><article key={item.account}><h3>{records.find(record=>record.account===item.account)?.name||item.account}</h3><p>{item.opportunity}</p><p>{item.nextStep}</p><small>Source evidence: {item.evidence}</small></article>)}
     <p role="status" aria-live="polite">{message}</p>
     <div className="public-records-sources"><a href={cityRecordsSource} target="_blank" rel="noreferrer">LA city source ↗</a><a href="https://web.cslb.ca.gov/onlineservices/dataportal/ContractorList" target="_blank" rel="noreferrer">Contractor downloads ↗</a><a href="https://www.dre.ca.gov/Licensees/ExamineeLicenseeListDataFiles.html" target="_blank" rel="noreferrer">Real estate licensee downloads ↗</a></div>
   </details>;
