@@ -160,7 +160,7 @@ async function dataAxleSearch(documentType:"people"|"places",zip:string,limit:nu
   return recordArray(await response.json()).filter(record=>postal(flatten(record)).slice(0,5)===zip.slice(0,5));
 }
 
-async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
+export async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
   const geo=new URL("https://nominatim.openstreetmap.org/search");
   geo.searchParams.set("postalcode",zip.slice(0,5));
   geo.searchParams.set("country","US");
@@ -476,13 +476,14 @@ export async function saveMinerRun(workspaceId:string,before:StoredWorkspace,run
 }
 
 export async function runMinerAutoFeedAll(){
+  const {workspaceAutomationAccess}=await import("./clerk-access");
   const signal=AbortSignal.timeout(45000);
   const workspaces=(await listStoredWorkspaces(500)).sort((a,b)=>Date.parse(a.workspace.profile.minerAutoFeed.lastRunAt||"1970-01-01")-Date.parse(b.workspace.profile.minerAutoFeed.lastRunAt||"1970-01-01"));
   const summary={workspaces:0,added:0,errors:[] as string[]};
   for(const record of workspaces){
     if(signal.aborted)break;
     const settings=record.workspace.profile.minerAutoFeed;
-    if(record.workspace.profile.mode!=="insurance"||!settings.enabled)continue;
+    if(record.workspace.profile.mode!=="insurance"||!settings.enabled||!await workspaceAutomationAccess(record.workspaceId,"miner"))continue;
     try{
       const run=await runMinerAutoFeedForWorkspace(record.workspaceId,record.workspace,undefined,signal);
       const saved=await saveMinerRun(record.workspaceId,record.workspace,run);

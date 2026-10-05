@@ -1,3 +1,4 @@
+import {accessScope} from "../lib/account-access-policy";
 import CRMClient from "../CRMClient";
 import DashboardFixes from "../components/DashboardFixes";
 import { requireChatGPTUser } from "../chatgpt-auth";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage(){
   if(isClerkConfigured()){
     const access=await requirePacificaWorkspacePage();
+    if(!isPacificaPlatformOwnerEmail(access.email)&&[access.accessMetadata,access.memberMetadata].some(meta=>accessScope(meta||{})!=="full"))redirect("/miner-workspace");
     return <>
       <CRMClient
         key={access.userId}

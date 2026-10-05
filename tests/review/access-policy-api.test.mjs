@@ -10,3 +10,11 @@ test('workspace owners and their team lose API and cron access when trial expire
  globalThis.workspaceOwner.privateMetadata.pacificaAccessPaused=true;assert.equal((await getPacificaAccess()).allowed,false);assert.equal(await workspaceAutomationAccess('owner-id'),false);
  globalThis.paid=true;assert.equal((await getPacificaAccess()).allowed,false);delete globalThis.workspaceOwner.privateMetadata.pacificaAccessPaused;globalThis.workspaceOwner.privateMetadata.pacificaTrialEndsAt='2000-01-01';assert.equal((await getPacificaAccess()).allowed,true);
 });
+test('permanent grants work for the owner and team; limited scopes also constrain cron',async()=>{
+ globalThis.paid=false;globalThis.identity=owner({pacificaManaged:true,pacificaPermanentAccess:true});globalThis.workspaceOwner=globalThis.identity;
+ assert.equal((await getPacificaAccess()).allowed,true);assert.equal(await workspaceAutomationAccess('owner-id'),true);
+ globalThis.workspaceOwner.privateMetadata.pacificaAccessScope='miner-only';assert.equal(await workspaceAutomationAccess('owner-id'),false);assert.equal(await workspaceAutomationAccess('owner-id','miner'),true);
+ globalThis.identity={...owner({pacificaRole:'agent',pacificaWorkspaceId:'owner-id'}),id:'agent-id'};assert.equal((await getPacificaAccess()).allowed,true);
+ globalThis.workspaceOwner.privateMetadata.pacificaAccessScope='read-only';assert.equal(await workspaceAutomationAccess('owner-id','miner'),false);
+ globalThis.workspaceOwner.privateMetadata.pacificaAccessPaused=true;assert.equal((await getPacificaAccess()).allowed,false);
+});

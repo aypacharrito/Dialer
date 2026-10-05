@@ -1,3 +1,4 @@
+import {cleanMinerState,type MinerState} from "./miner-leads";
 import {cleanNoteReminders,type NoteReminder,type NoteReview} from "./note-reminders";
 import {cleanConversationCalendar,type ConversationCalendar} from "./conversation-calendar";
 import {reconcileCallCalendar} from "./call-calendar";
@@ -15,6 +16,7 @@ import { applyWorkspaceChanges } from "./workspace-changes";
 import {WorkspaceLoadError} from "./workspace-load";
 
 export type StoredWorkspace = {
+  minerState?:MinerState;
   noteReminders?:NoteReminder[];
   noteReview?:NoteReview;
   conversationCalendar?: ConversationCalendar;
@@ -55,6 +57,7 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
       : [];
   return {
     leads: records(body.leads, 5000),
+    ...(body.minerState?{minerState:cleanMinerState(body.minerState)}:{}),
     ...(body.noteReminders?{noteReminders:cleanNoteReminders(body.noteReminders)}:{}),
     ...(body.noteReview?{noteReview:body.noteReview}:{}),
     callLogs: records(body.callLogs, 1000),
@@ -279,6 +282,7 @@ export function mergeStoredWorkspace(
     callLogs: callLogs.slice(0, 1000),
     profile,
     ...(server.aiControl?{aiControl:server.aiControl}:{}),
+    minerState:server.minerState,
     noteReminders:server.noteReminders,noteReview:server.noteReview,
     conversationCalendar:server.conversationCalendar,
     officeItems:reconcileCallCalendar(rawServerLeads,leads,server.officeItems),

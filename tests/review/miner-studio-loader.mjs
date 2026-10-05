@@ -1,0 +1,7 @@
+import {registerHooks} from 'node:module';
+const sources={
+ 'clerk-access':`export async function getPacificaAccess(){return globalThis.minerAccess} export async function workspaceAutomationAccess(){return globalThis.minerAutomation!==false} export async function isPacificaPlatformOwnerApi(){return globalThis.minerPlatformOwner===true} export function isPacificaPlatformOwnerEmail(email){return email==='owner@example.test'}`,
+ 'clerk-config':`export function isClerkConfigured(){return true}`,
+ 'ai-provider':`export const aiConfigured=()=>Boolean(globalThis.minerAi);export const aiModel=()=> 'test';export const aiReasoning=()=>({});export const aiClient=()=>({responses:{create:async(input)=>({output_text:JSON.stringify({insights:await globalThis.minerAi(input)})})}});`,
+};
+registerHooks({resolve(specifier,context,next){let source=sources[specifier.split('/').at(-1)?.replace(/\.ts$/,'')];if(specifier==='@clerk/nextjs/server')source=`export async function clerkClient(){return {users:{getUser:async id=>globalThis.minerUsers.get(id),getUserList:async({emailAddress})=>({data:[...globalThis.minerUsers.values()].filter(u=>emailAddress.includes(u.primaryEmailAddress.emailAddress))}),updateUserMetadata:async(id,{privateMetadata})=>{globalThis.minerUsers.get(id).privateMetadata=privateMetadata}}}}`;return source?{url:'data:text/javascript,'+encodeURIComponent(source),shortCircuit:true}:next(specifier,context)}});

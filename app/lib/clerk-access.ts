@@ -1,4 +1,4 @@
-import {managedAccessState,type ManagedAccess} from "./account-access-policy";
+import {accessScope,managedAccessState,type ManagedAccess} from "./account-access-policy";
 import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { isClerkConfigured } from "./clerk-config";
@@ -54,7 +54,7 @@ export async function getPacificaAccess(){
   if(isPacificaPlatformOwnerEmail(identity.email))return {allowed:true,role:"owner" as const,...identity};
   const state=managedAccessState(identity.accessMetadata);
   if(state==="paused"||managedAccessState(identity.memberMetadata)==="paused")return {allowed:false,role:"access-paused" as const,...identity};
-  if(state==="trial")return {allowed:true,role:identity.teamRole||"owner" as const,...identity};
+  if(state==="trial"||state==="permanent")return {allowed:true,role:identity.teamRole||"owner" as const,...identity};
   if(state==="expired"){
     const owner=identity.teamRole?await (await clerkClient()).users.getUser(identity.userId):null;
     const email=owner?.primaryEmailAddress?.emailAddress||identity.email;
@@ -94,13 +94,15 @@ export async function isPacificaPlatformOwnerApi(){
 }
 
 /** Cron jobs have no signed-in session; check the workspace owner before dispatch. */
-export async function workspaceAutomationAccess(workspaceId:string){
+export async function workspaceAutomationAccess(workspaceId:string,feature:"crm"|"miner"="crm"){
  if(!isClerkConfigured())return !process.env.VERCEL;
  try{const owner=await (await clerkClient()).users.getUser(workspaceId);const email=owner.primaryEmailAddress?.emailAddress||owner.emailAddresses[0]?.emailAddress||"";
   if(isPacificaPlatformOwnerEmail(email))return true;
+  const scope=accessScope(owner.privateMetadata);
+  if(scope==="read-only"||scope==="miner-only"&&feature!=="miner")return false;
   const state=managedAccessState(owner.privateMetadata);
   if(state==="paused")return false;
-  if(state==="trial")return true;
+  if(state==="trial"||state==="permanent")return true;
   if(state==="expired")return await hasPaidSubscription(email);
   return PACIFICA_ADMIN_EMAILS.has(email.toLowerCase())||await hasPaidSubscription(email);
  }catch{return false}

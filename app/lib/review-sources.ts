@@ -16,7 +16,7 @@ export function reviewSources(leads:ReviewLead[]):ReviewSource[]{
   }
   if(/Pacifica Miner/i.test(lead.source||'')){
    const fields=lead.extraFields||{};
-   add(lead,'research',Object.entries(fields).map(([key,value])=>`${key}: ${value}`).join('\n'),'Prospect research',fields['Business evidence checked']||fields['Listing retrieved']||'');
+   add(lead,'research',Object.entries(fields).map(([key,value])=>`${key}: ${value}`).join('\n'),'Prospect research',fields['Source checked at']||fields['Submitted at']||fields['Business evidence checked']||fields['Listing retrieved']||'');
   }
  }
  return sources;

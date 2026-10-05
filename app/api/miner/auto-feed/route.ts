@@ -1,3 +1,4 @@
+import {accountAllows} from '../../../lib/account-access-policy';
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {isClerkConfigured} from "../../../lib/clerk-config";
 import {saveMinerRun,cleanMinerAutoFeed,minerProviderStatus,runMinerAutoFeedForWorkspace} from "../../../lib/miner-auto-feed";
@@ -20,7 +21,7 @@ export async function GET(){
 
 export async function POST(request:Request){
   const user=await access();if(!user)return Response.json({error:"Sign in required"},{status:401});
-  if(user.role==="agent")return Response.json({error:"Manager or owner access is required to change Miner Auto Feed."},{status:403});
+  if(user.role==="agent"||!accountAllows(user,"/api/miner/auto-feed","POST"))return Response.json({error:"Manager or owner access is required to change Miner Auto Feed."},{status:403});
   const workspace=await readStoredWorkspace(user.userId);
   if(!workspace)return Response.json({error:"Workspace not found"},{status:404});
   let body:{settings?:unknown};try{body=await request.json();if(!body||typeof body!=="object"||Array.isArray(body))throw new Error()}catch{return Response.json({error:"Invalid request"},{status:400})}

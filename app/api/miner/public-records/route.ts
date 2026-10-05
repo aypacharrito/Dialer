@@ -1,3 +1,4 @@
+import {accountAllows} from '../../../lib/account-access-policy';
 import {aiClient,aiConfigured,aiModel,aiReasoning} from "../../../lib/ai-provider";
 import {getPacificaAccess} from "../../../lib/clerk-access";
 import {isClerkConfigured} from "../../../lib/clerk-config";
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
   let body: {zip?: unknown; page?: unknown; accounts?: unknown; action?: unknown};
   try {body = await request.json(); if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();}
   catch {return Response.json({error: "Invalid request"}, {status: 400});}
+  if(!accountAllows(user,"/api/miner/public-records","POST",body.action))return Response.json({error:"This feature is outside your account access."},{status:403});
   const zip = String(body.zip || ""); const page = body.page ?? 0;
   if (!/^\d{5}$/.test(zip) || typeof page !== "number" || !Number.isInteger(page) || page < 0 || page > 1000 || !["search", "import", "analyze"].includes(String(body.action)))
     return Response.json({error: "Enter a five-digit ZIP code and valid page."}, {status: 400});

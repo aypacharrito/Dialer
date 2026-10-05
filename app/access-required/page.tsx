@@ -10,7 +10,7 @@ export default function AccessRequiredPage(){
     <section className={styles.card}>
       <p className={styles.kicker}>WORKSPACE ACCESS</p>
       <h1>Your workspace needs access.</h1>
-      <p className={styles.copy}>Your account is signed in, but access is paused or no active trial or subscription was found. Ask the workspace administrator to check your access. To subscribe, use the same email address as this sign-in.</p>
+      <p className={styles.copy}>Your account is signed in, but access is paused or no active access grant or subscription was found. Ask the workspace administrator to check your access. To subscribe, use the same email address as this sign-in.</p>
       <Link className={styles.primary} href="/#pricing">Choose a Pacifica plan</Link>
       <Link className={styles.back} href="/">← Back to the Pacifica website</Link>
     </section>
