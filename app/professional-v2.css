@@ -45,7 +45,7 @@ html[data-theme] button,
 html[data-theme] input,
 html[data-theme] select,
 html[data-theme] textarea {
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important;
+  font-family: var(--font-pacifica) !important;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 

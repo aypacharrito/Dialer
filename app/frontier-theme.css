@@ -16,13 +16,14 @@ html[data-theme="light"]{
  --dialer-glass:#fffffff0;--dialer-chip:#314d3907;--dialer-button:#53765f;--dialer-button-text:#fff;
 }
 html[data-theme]{
+ --font-ui:var(--font-pacifica);--font-display:var(--font-pacifica);
  --ui-bg:var(--ps-bg);--ui-surface:var(--ps-surface);--ui-surface-2:var(--ps-surface-2);--ui-surface-soft:var(--ps-surface-2);--ui-surface-hover:var(--ps-surface-3);--ui-border:var(--ps-line);--ui-border-strong:var(--ps-line-strong);--ui-text:var(--ps-text);--ui-muted:var(--ps-muted);--ui-accent:var(--ps-accent);
  --vf-bg:var(--ps-bg);--vf-surface:var(--ps-surface);--vf-surface-2:var(--ps-surface-2);--vf-border:var(--ps-line);--vf-border-strong:var(--ps-line-strong);--vf-text:var(--ps-text);--vf-muted:var(--ps-muted);
  --pro-bg:var(--ps-bg);--pro-surface:var(--ps-surface);--pro-surface-soft:var(--ps-surface-2);--pro-surface-hover:var(--ps-surface-3);--pro-border:var(--ps-line);--pro-border-strong:var(--ps-line-strong);--pro-text:var(--ps-text);--pro-muted:var(--ps-muted);
  --mint:var(--ps-accent);--coral:var(--ps-danger);--ink:var(--ps-text);--muted:var(--ps-muted);--line:var(--ps-line);
 }
 html,body,.app-shell{background:var(--ps-bg)!important}
-html[data-theme] .app-shell{position:relative;isolation:isolate;font-family:Inter,"Segoe UI Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+html[data-theme] .app-shell{position:relative;isolation:isolate;font-family:var(--font-pacifica)}
 html[data-theme] .app-shell .workspace{position:relative;z-index:1;background:transparent!important}
 html[data-theme] .app-shell :is(.page-view,.today-workspace,.ai-workspace){background:var(--ps-bg)!important}
 html[data-theme] .app-shell>.sidebar{background:var(--ps-bg)!important;border:0!important;box-shadow:none!important}
@@ -53,7 +54,7 @@ html[data-theme] .app-shell :is(.crm-summary,.today-metrics)>article{border:0!im
 html[data-theme] .app-shell .today-metrics>article b{color:var(--ps-text-strong)!important}
 html[data-theme] .app-shell .today-metrics>article.urgent{background:color-mix(in srgb,var(--ps-warning) 8%,var(--ps-surface))!important}
 html[data-theme] .app-shell .today-metrics>article.urgent b{color:var(--ps-warning)!important}
-html[data-theme] .app-shell :is(.focus-list,.source-pulse,.table-card,.client-table,.message-contacts,.message-thread,.ai-chat-composer){border-color:var(--ps-line)!important;border-radius:14px!important;box-shadow:none!important}
+html[data-theme] .app-shell :is(.focus-list,.source-pulse,.table-card,.client-table,.message-contacts,.message-thread){border-color:var(--ps-line)!important;border-radius:14px!important;box-shadow:none!important}
 html[data-theme] .app-shell :is(.focus-list>header,.source-pulse>header,.recording-readiness){background:var(--ps-surface)!important;color:var(--ps-text)!important;border-color:var(--ps-line)!important}
 html[data-theme] .app-shell :is(.focus-person>i,.avatar,.mini-avatar){background:var(--ps-surface-2)!important;color:var(--ps-text)!important}
 html[data-theme] .app-shell .priority-pill{background:var(--ps-accent-soft)!important;color:var(--ps-accent)!important;border:0!important}

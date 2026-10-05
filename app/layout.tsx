@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkConfigured } from "./lib/clerk-config";
+import "./typography.css";
 import "./globals.css";
 import "./professional-polish.css";
 import "./professional-v2.css";

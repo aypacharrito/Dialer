@@ -17,10 +17,10 @@ html[data-theme] .app-shell .ai-workspace {
 .ai-workspace.has-details .ai-content-layout{grid-template-columns:minmax(0,1fr) 320px}
 .ai-chat{width:100%;max-width:800px;min-width:0;margin:0 auto;padding:0}
 .ai-welcome{padding:clamp(32px,7vh,96px) 0 28px;text-align:center}
-.ai-welcome h1{margin:0 0 12px;font-size:32px;font-weight:650;letter-spacing:-.03em;color:var(--ai-text)}
+.ai-welcome h1{margin:0 0 12px;font-size:34px;font-weight:500;letter-spacing:-.03em;color:var(--ai-text)}
 .ai-welcome p{margin:0;color:var(--ai-muted);font-size:16px;line-height:1.6}
 .ai-starters{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:0 0 24px}
-.ai-starters button{border:1px solid var(--ui-border);border-radius:999px;background:var(--ai-surface);color:var(--ai-text);padding:10px 14px;font-size:14px}
+.ai-starters button{border:0;border-radius:10px;background:transparent;color:var(--ai-text);padding:10px 14px;font-size:14px}
 .ai-starters button:hover{background:var(--ui-surface-hover)}.ai-starters span,.ai-starters em{display:none}
 .ai-conversation{display:grid;gap:28px;padding:12px 0 28px}
 .ai-user-message{justify-self:end;max-width:85%;padding:14px 18px;border-radius:18px 18px 5px;background:var(--ui-surface-soft);color:var(--ai-text)}
@@ -30,9 +30,9 @@ html[data-theme] .app-shell .ai-workspace {
 .ai-assistant-message header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14px}
 .ai-assistant-message header em{font-style:normal;color:var(--ai-muted);font-size:12px}.ai-assistant-message header em:empty{display:none}
 .ai-assistant-message small{display:block;margin-top:12px;font-size:14px;line-height:1.5;color:var(--ai-muted)}
-html[data-theme] .app-shell .ai-chat-composer{border:1px solid var(--ui-border-strong);border-radius:20px;background:var(--ai-surface);padding:12px;box-shadow:0 3px 14px #00000006;color:var(--ai-text)}
-.ai-composer-row{display:grid;grid-template-columns:38px minmax(0,1fr) 40px;gap:8px;align-items:center}
-html[data-theme] .app-shell .ai-composer-row textarea{width:100%;min-width:0;min-height:48px;max-height:220px;margin:0;padding:10px 4px;border:0!important;background:transparent!important;box-shadow:none!important;outline:0;color:var(--ai-text)!important;font:inherit;font-size:16px!important;line-height:1.5;resize:none;border-radius:0}
+html[data-theme] .app-shell .ai-chat-composer{border:0!important;border-radius:24px!important;background:var(--ai-surface);padding:18px 18px 12px;box-shadow:none!important;color:var(--ai-text)}
+.ai-composer-row{display:grid;grid-template-columns:38px minmax(0,1fr) 40px;gap:12px;align-items:center}
+html[data-theme] .app-shell .ai-composer-row textarea{width:100%;min-width:0;min-height:66px;max-height:220px;margin:0;grid-column:1/-1;grid-row:1;padding:4px 2px;border:0!important;background:transparent!important;box-shadow:none!important;outline:0;color:var(--ai-text)!important;font:inherit;font-size:16px!important;line-height:1.5;resize:none;border-radius:0!important}
 .ai-composer-row textarea::placeholder{color:var(--ai-muted);opacity:1}
 html[data-theme] .app-shell .ai-composer-row button{display:grid;place-items:center;width:38px;height:38px;min-width:0;padding:0;border:0;border-radius:12px;background:var(--ui-surface-soft);color:var(--ai-text);font-size:22px!important;box-shadow:none}
 html[data-theme] .app-shell .ai-composer-row>button:last-child{background:var(--ui-accent);color:var(--ui-surface)}
@@ -85,3 +85,10 @@ html[data-theme] .app-shell .ai-tools-menu button:hover{background:var(--ui-surf
 .ai-camera-dialog video{width:100%;max-height:65vh;background:#111;border-radius:12px;margin:16px 0}
 
 html[data-theme] .app-shell .ai-chat-composer input[hidden]{display:none!important}
+
+/* The composer owns focus: no nested input rectangle, including keyboard focus. */
+html[data-theme] .app-shell .ai-chat-composer .ai-composer-row textarea:focus-visible{outline:none!important;outline-offset:0}
+html[data-theme] .app-shell .ai-chat-composer:has(textarea:focus-visible){outline:2px solid var(--ps-accent);outline-offset:4px}
+.ai-composer-row>.ai-tools{grid-column:1;grid-row:2}
+html[data-theme] .app-shell .ai-composer-row>button:last-child{grid-column:3;grid-row:2;border-radius:50%}
+html[data-theme] .app-shell .ai-composer-row .ai-attach-button{background:transparent}
