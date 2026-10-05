@@ -1,3 +1,4 @@
+import {LanguageProvider} from "./components/LanguageProvider";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkConfigured } from "./lib/clerk-config";
@@ -46,7 +47,7 @@ export default function RootLayout({
   const clerkEnabled = isClerkConfigured();
   return (
     <html lang="en" data-theme="light">
-      <body>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</body>
+      <body><LanguageProvider>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</LanguageProvider></body>
     </html>
   );
 }

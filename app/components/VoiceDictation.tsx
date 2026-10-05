@@ -1,7 +1,9 @@
 'use client';
+import {useLanguage} from "./LanguageProvider";
 import {useEffect,useRef,useState} from 'react';
 type RecordingSession={recorder?:MediaRecorder;stream?:MediaStream;timer?:ReturnType<typeof setTimeout>;canceled:boolean;controller:AbortController};
 export default function VoiceDictation({disabled,onText}:{disabled:boolean;onText:(text:string)=>void}){
+ const {writingLanguage}=useLanguage();
  const [phase,setPhase]=useState<'idle'|'recording'|'transcribing'>('idle'),[error,setError]=useState('');
  const session=useRef<RecordingSession|null>(null);
  const callback=useRef(onText);useEffect(()=>{callback.current=onText},[onText]);
@@ -23,6 +25,7 @@ export default function VoiceDictation({disabled,onText}:{disabled:boolean;onTex
     setPhase('transcribing');
     try{
      const blob=new Blob(chunks,{type:recorder.mimeType}),form=new FormData();
+     form.append('language',writingLanguage);
      form.append('audio',blob,recorder.mimeType.includes('mp4')?'dictation.mp4':recorder.mimeType.includes('ogg')?'dictation.ogg':'dictation.webm');
      const response=await fetch('/api/ai/transcribe',{method:'POST',body:form,signal:active.controller.signal}),data=await response.json();
      if(!response.ok)throw Error(data.error||'Could not transcribe.');

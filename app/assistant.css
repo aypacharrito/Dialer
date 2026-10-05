@@ -88,7 +88,7 @@ html[data-theme] .app-shell .ai-chat-composer input[hidden]{display:none!importa
 
 /* The composer owns focus: no nested input rectangle, including keyboard focus. */
 html[data-theme] .app-shell .ai-chat-composer .ai-composer-row textarea:focus-visible{outline:none!important;outline-offset:0}
-html[data-theme] .app-shell .ai-chat-composer:has(textarea:focus-visible){outline:2px solid var(--ps-accent);outline-offset:4px}
+html[data-theme] .app-shell .ai-chat-composer:has(textarea:focus-visible){outline:0!important;box-shadow:none!important}
 .ai-composer-row>.ai-tools{grid-column:1;grid-row:2}
 html[data-theme] .app-shell .ai-composer-row>button:last-child{grid-column:3;grid-row:2;border-radius:50%}
 html[data-theme] .app-shell .ai-composer-row .ai-attach-button{background:transparent}

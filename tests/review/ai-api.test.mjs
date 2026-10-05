@@ -58,3 +58,12 @@ test('AI chat forwards real PDF attachments and rejects malformed or oversized r
   assert.equal((await crm(request({prompt:'a'.repeat(4_200_001)}))).status,413);assert.equal(calls,1);
  }finally{globalThis.fetch=fetch;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key}
 });
+
+test('selected writing language reaches AI and never silently falls back to English',async()=>{
+ const previousKey=process.env.OPENAI_API_KEY,previousFetch=globalThis.fetch;let payload;globalThis.pacificaTestAccess=true;
+ try{
+ delete process.env.OPENAI_API_KEY;const unavailable=await draft(request({language:'es',lead:{name:'Ana'}}));assert.equal(unavailable.status,503);assert.equal((await unavailable.json()).draft,undefined);
+ process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.fetch=async(url,options)=>{payload=JSON.parse(options.body);return output('Hola Ana, ¿cómo podemos ayudarte?')};
+ const response=await draft(request({language:'es',lead:{name:'Ana'},channel:'sms'}));const data=await response.json();assert.equal(response.status,200);assert.match(payload.input[0].content,/Write in Español/);assert.match(data.draft,/Hola Ana/);assert.match(data.draft,/Reply STOP to opt out/);
+ }finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey}
+});
