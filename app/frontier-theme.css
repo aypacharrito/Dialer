@@ -215,3 +215,61 @@ html[data-theme] .app-shell .top-actions>*{flex-shrink:0}
 }
 .note-reminders{margin:0 0 24px;padding:22px;background:var(--ps-surface);border-radius:16px}.note-reminders>header,.note-reminders>article{display:flex;align-items:center;justify-content:space-between;gap:18px}.note-reminders h2{font-size:19px;margin:0 0 5px}.note-reminders>header span,.note-reminders small{font-size:12px;color:var(--ps-muted)}.note-reminder-tabs{display:flex;gap:6px;margin:18px 0}.note-reminder-tabs button[aria-pressed=true]{background:var(--ps-accent-soft);color:var(--ps-accent)}.note-reminders>article{padding:15px 0}.note-reminders>article>div:first-child{display:grid;gap:7px;min-width:0}.note-reminders b{font-weight:550;overflow-wrap:anywhere}.note-reminders details{font-size:12px;color:var(--ps-muted)}.note-reminders p{font-size:13px;overflow-wrap:anywhere}.note-reminders .note-contact{justify-self:start;padding:0;background:transparent;border:0;color:var(--ps-accent)}.note-task-actions{display:flex;gap:7px;flex-wrap:wrap}.note-task-actions button{font-size:12px;white-space:nowrap}@media(max-width:700px){.note-reminders>article{align-items:flex-start;flex-direction:column}.note-reminders{padding:16px}}
 .crm-comparison-page{max-width:1320px;margin:auto;padding:48px 24px;color:#25322d;background:#f8faf9;min-height:100vh}.crm-comparison-page h1{font-size:clamp(30px,5vw,52px);letter-spacing:-.035em;margin:44px 0 16px}.crm-comparison-page p{max-width:850px;line-height:1.65;color:#57645e}.crm-comparison-page h2{margin-top:42px}.crm-comparison-page a{color:#36644e}.comparison-scroll{overflow:auto;margin:24px 0}.crm-comparison-page table{border-collapse:collapse;text-align:left;width:100%;font-size:14px}.crm-comparison-page th,.crm-comparison-page td{padding:16px;vertical-align:top;border-bottom:1px solid #e0e7e2;min-width:120px}.crm-comparison-page td small{display:block;min-width:220px;max-width:320px;margin-top:8px;line-height:1.6;color:#57645e}.crm-comparison-page caption{text-align:left;font-size:20px;font-weight:600;margin-bottom:16px}.crm-comparison-page thead{background:#edf3ef}
+
+/* Quiet controls: surfaces appear on interaction, not as permanent boxes. */
+html[data-theme] .app-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),select,textarea){border:0!important;border-bottom:1px solid transparent!important;border-radius:0!important;box-shadow:none!important;outline:0!important;background:transparent!important}
+html[data-theme] .app-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),select,textarea):hover{border-color:transparent!important;box-shadow:none!important}
+html[data-theme] .app-shell :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]),select,textarea):focus-visible{outline:0!important;border-bottom-color:var(--ps-accent)!important;box-shadow:none!important}
+html[data-theme] .app-shell .ai-chat-composer textarea:focus-visible{border-bottom-color:transparent!important}
+html[data-theme] .app-shell :is(.crm-search-shell,.crm-search-shell:focus-within,.crm-search-shell:hover){border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+html[data-theme] .app-shell select :is(option,optgroup){background:var(--ps-bg)!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .topbar{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;grid-template-areas:"caller switch actions"!important;align-items:center!important;min-height:60px!important;height:60px!important;padding:0 22px!important;gap:16px!important}
+html[data-theme] .app-shell .topbar .caller-id{grid-area:caller;justify-self:start;align-self:center}
+html[data-theme] .app-shell .topbar .caller-id small{display:none}
+html[data-theme] .app-shell .topbar .lead-line-switch{grid-area:switch;justify-self:center;align-self:center}
+html[data-theme] .app-shell .topbar .top-actions{grid-area:actions;justify-self:end;align-items:center;gap:5px}
+html[data-theme] .app-shell .topbar .top-actions :is(button,.top-auth button){border:0!important;background:transparent!important;box-shadow:none!important;border-radius:8px!important;min-height:36px!important;height:36px!important;padding:8px!important;display:inline-flex;align-items:center;justify-content:center;transition:background-color 140ms ease,color 140ms ease}
+html[data-theme] .app-shell .topbar .top-actions :is(button,.top-auth button):hover{background:var(--ps-surface-2)!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .topbar .top-actions .inbound-availability.available{color:var(--ps-accent)!important}
+html[data-theme] .app-shell .topbar .top-actions :is(.import,.scan-action,.notification,.workspace-tour-help){width:36px;min-width:36px}
+html[data-theme] .app-shell .dialer-toolbar-actions>button,.dialer-layout-menu>summary{background:transparent!important;transition:background-color 140ms ease}
+html[data-theme] .app-shell .dialer-toolbar-actions>button:hover,.dialer-layout-menu>summary:hover{background:var(--ps-surface-2)!important}
+html[data-theme] .app-shell .workspace>.conversation-workspace{scrollbar-width:none;overscroll-behavior:contain;padding-bottom:0!important}
+.conversation-workspace::-webkit-scrollbar{display:none}
+.dialer-layout.is-bounded .dialer-canvas{height:auto;min-height:var(--dialer-canvas-height);overflow:visible}
+.dialer-widget{background:transparent;box-shadow:none;border-radius:12px;transition:background-color 150ms ease,box-shadow 150ms ease}
+.dialer-widget:hover,.dialer-widget:focus-within{background:color-mix(in srgb,var(--ps-surface) 72%,transparent)}
+.dialer-widget.is-dragging{background:var(--dialer-glass);box-shadow:0 0 0 1px var(--ps-line-strong);transition:none}
+.dialer-widget-content{overflow:visible;height:auto;min-height:0;border-radius:inherit}
+.dialer-widget[data-dialer-widget=keypad] .dialer-widget-content{height:100%}
+.dialer-widget:is([data-dialer-widget=queue],[data-dialer-widget=details]) .dialer-widget-content{height:100%;overflow:auto;scrollbar-width:none}
+.dialer-widget:hover .dialer-widget-tools,.dialer-widget:focus-within .dialer-widget-tools{opacity:1}
+.dialer-widget:hover .widget-resize,.dialer-widget:focus-within .widget-resize{opacity:.75;pointer-events:auto}
+.widget-resize{width:34px;height:34px;right:-4px;bottom:-4px}
+.is-editing .dialer-widget{outline:1px solid var(--ps-line);outline-offset:0;background:var(--dialer-glass)}
+.is-editing .dialer-widget-content{padding-top:0}
+.is-editing .dialer-widget-tools{top:-27px;right:0}
+html[data-theme] .app-shell .conversation-workspace .call-grid{padding:24px!important;gap:16px!important}
+html[data-theme] .app-shell .conversation-workspace .contact-card{display:flex!important;align-items:center!important;gap:18px!important;min-width:0}
+html[data-theme] .app-shell .conversation-workspace .contact-card>div:last-of-type{min-width:0;flex:1}
+html[data-theme] .app-shell .conversation-workspace .contact-card h2{overflow-wrap:break-word;font-size:clamp(22px,4cqw,32px)!important}
+html[data-theme] .app-shell .conversation-workspace .contact-card p:empty,html[data-theme] .app-shell .conversation-workspace .contact-card a:empty{display:none}
+html[data-theme] .app-shell .conversation-workspace .dialer-timeout-control{padding:16px 24px!important}
+html[data-theme] .app-shell .conversation-workspace .key-grid button{background:transparent!important}
+html[data-theme] .app-shell .conversation-workspace .key-grid button:hover{background:var(--ps-surface-2)!important}
+@media(max-width:1100px){html[data-theme] .app-shell .topbar .caller-id{display:none!important}html[data-theme] .app-shell .topbar{grid-template-columns:auto minmax(0,1fr)!important;grid-template-areas:"switch actions"!important;gap:10px!important;padding-inline:14px!important}html[data-theme] .app-shell .topbar .lead-line-switch{justify-self:start}}
+@media(max-width:600px){html[data-theme] .app-shell .topbar{height:auto!important;min-height:56px!important;gap:6px!important;padding-inline:10px!important}html[data-theme] .app-shell .topbar .top-actions :is(button,.top-auth button){width:28px;min-width:28px;height:32px!important;padding:5px!important}html[data-theme] .app-shell .topbar .lead-line-switch{gap:10px!important}.dialer-widget{background:transparent}.is-editing .dialer-widget-tools{top:0}}
+@media(prefers-reduced-motion:reduce){.dialer-widget,html[data-theme] .app-shell .topbar button{transition:none!important}}
+.workspace-tour-v2{font-family:var(--font-pacifica);z-index:10001;background:var(--ps-surface);color:var(--ps-text-strong);border:0;border-radius:16px;box-shadow:0 16px 60px #0005;padding:22px;max-height:calc(100svh - 32px);overflow:auto}
+.workspace-tour-v2 header,.workspace-tour-v2 footer,.workspace-tour-v2 footer>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.workspace-tour-v2 button{font:inherit;border:0;border-radius:8px;background:transparent;color:var(--ps-muted);padding:8px 10px;font-size:13px;cursor:pointer}
+.workspace-tour-v2 button:hover{background:var(--ps-surface-2);color:var(--ps-text-strong)}
+.workspace-tour-v2 header button{font-size:22px;line-height:1;padding:4px 8px}
+.workspace-tour-v2 h2{font-size:20px;font-weight:550;letter-spacing:-.03em;margin:14px 0 10px}
+.workspace-tour-v2 p{font-size:13px;line-height:1.7;color:var(--ps-muted);margin:0 0 20px}
+.workspace-tour-v2 footer .primary{background:var(--ps-accent);color:var(--ps-bg)}
+.workspace-tour-v2 nav{display:flex;gap:8px;margin:0 0 22px}
+.workspace-tour-v2 nav button{width:24px;height:16px;border-radius:0;border-bottom:2px solid var(--ps-line-strong);padding:0}
+.workspace-tour-v2 nav button[aria-current=step]{border-color:var(--ps-accent)}
+[data-tour-highlight=true]{outline:1px solid var(--ps-accent)!important;outline-offset:5px}
+@media(max-width:600px){.workspace-tour-v2{left:16px;right:16px;bottom:16px;width:auto;padding:18px}}

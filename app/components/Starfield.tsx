@@ -49,9 +49,9 @@ function Starfield({ motion = true, className }: { motion?: boolean; className?:
         const sx = ((star.x * width + drift * width + x * star.depth + width) % width);
         const sy = ((star.y * height + y * star.depth + height) % height);
         const alpha = star.light * (animated ? .82 + .18 * Math.sin(elapsed * .0007 * star.speed + star.phase) : 1);
-        if (star.radius > 1.15) {
-          context.globalAlpha = alpha * .8;
-          context.drawImage(halo, sx - 12, sy - 12, 24, 24);
+        if (star.radius > 1.55) {
+          context.globalAlpha = alpha * .5;
+          context.drawImage(halo, sx - 7, sy - 7, 14, 14);
           context.fillStyle = "#dcecff";
           context.globalAlpha = alpha * .35;
           context.fillRect(sx - 4, sy - .25, 8, .5);
@@ -72,8 +72,8 @@ function Starfield({ motion = true, className }: { motion?: boolean; className?:
     const resize = () => {
       const rect = element.getBoundingClientRect();
       width = Math.max(1, rect.width); height = Math.max(1, rect.height);
-      // Up to a native 4K backing buffer; bound memory on ultrawide/Retina displays.
-      const ratio = Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(8294400 / (width * height)));
+      // Native pixel density, including 4K; bound memory only beyond 16 megapixels.
+      const ratio = Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(16777216 / (width * height)));
       element.width = Math.round(width * ratio); element.height = Math.round(height * ratio);
       context.setTransform(ratio, 0, 0, ratio, 0, 0); restart();
     };

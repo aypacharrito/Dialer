@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import React,{act,useState} from 'react';import {createRoot} from 'react-dom/client';import {JSDOM} from 'jsdom';
 import {DialerLayout,DialerLayoutMenu,DialerPanel} from '../../app/components/DialerLayout.tsx';
-import {cleanDialerLayout,constrainPanel,defaultDialerRects} from '../../app/lib/dialer-layout.ts';
+import {cleanDialerLayout,constrainPanel,defaultDialerRects,snapPanel} from '../../app/lib/dialer-layout.ts';
 import ReleaseUpdateNotice from '../../app/components/ReleaseUpdateNotice.tsx';
 import {releaseVersion} from '../../app/lib/release-version.ts';
 function Fixture({protectedIds=[]}){const [keypad,setKeypad]=useState(true);return React.createElement(DialerLayout,{workspaceId:'w1',theme:'dark',keypadOpen:keypad,onKeypadChange:setKeypad,protectedIds,detailsAvailable:true},React.createElement(DialerLayoutMenu),React.createElement('div',{className:'dialer-canvas'},...['contact','keypad','calls','details'].map(id=>React.createElement(DialerPanel,{key:id,id},React.createElement('p',null,id)))))}
@@ -25,7 +25,7 @@ test('keypad can move, resize, collapse, hide, restore, and persist its layout',
  await act(async()=>byLabel('Move Contact & call').dispatchEvent(new window.MouseEvent('pointerdown',{bubbles:true,button:0,clientX:0,clientY:0})));
  await act(async()=>byLabel('Move Contact & call').dispatchEvent(new window.MouseEvent('pointermove',{bubbles:true,clientX:75,clientY:50})));
  await act(async()=>byLabel('Move Contact & call').dispatchEvent(new window.MouseEvent('pointerup',{bubbles:true,clientX:75,clientY:50})));
- assert.equal(document.querySelector('[data-dialer-widget="contact"]').style.left,'75px');
+ assert.equal(document.querySelector('[data-dialer-widget="contact"]').style.left,'80px');
  }finally{await h.close()}
 });
 test('live call and wrap-up remain accessible even when previously hidden',async()=>{
@@ -51,11 +51,12 @@ test('saved geometry is bounded, malformed settings ignored and hidden sections 
 test('panel background drags without a grab icon, while controls retain their normal clicks',async()=>{
  const h=await setup();try{await act(async()=>h.root.render(React.createElement(Fixture)));
  const panel=document.querySelector('[data-dialer-widget="contact"]'),content=panel.querySelector('p');
- const pointer=(target,type,x,y)=>target.dispatchEvent(new window.MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y}));
+ const pointer=(target,type,x,y)=>target.dispatchEvent(new window.MouseEvent(type,{bubbles:true,button:0,clientX:x,clientY:y,shiftKey:true}));
  await act(async()=>pointer(content,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',90,70));await act(async()=>new Promise(resolve=>setTimeout(resolve,25)));
- assert.equal(panel.style.left,'0px');assert.equal(panel.style.transform,'translate3d(90px,70px,0)');
- await act(async()=>pointer(panel,'pointerup',90,70));assert.equal(panel.style.left,'90px');assert.equal(panel.style.top,'70px');assert.equal(panel.style.transform,'');
- const button=document.createElement('button');button.textContent='Normal action';content.appendChild(button);await act(async()=>pointer(button,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',150,150));await act(async()=>pointer(panel,'pointerup',150,150));assert.equal(panel.style.left,'90px');
+ assert.equal(panel.style.left,'5px');assert.equal(panel.style.transform,'translate3d(90px,70px,0)');
+ await act(async()=>pointer(panel,'pointerup',90,70));assert.equal(panel.style.left,'95px');assert.equal(panel.style.top,'70px');assert.equal(panel.style.transform,'');
+ const button=document.createElement('button');button.textContent='Normal action';content.appendChild(button);await act(async()=>pointer(button,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',150,150));await act(async()=>pointer(panel,'pointerup',150,150));assert.equal(panel.style.left,'95px');
+ await act(async()=>pointer(content,'pointerdown',0,0));await act(async()=>pointer(panel,'pointermove',50,40));await act(async()=>pointer(panel,'pointercancel',50,40));assert.equal(panel.style.left,'95px');assert.equal(panel.style.transform,'');
  }finally{await h.close()}
 });
 test('web update notice stays quiet on errors/current version, appears for a real update, and blocks refresh while busy',async()=>{
@@ -66,4 +67,13 @@ test('web update notice stays quiet on errors/current version, appears for a rea
  value=releaseVersion;await act(async()=>h.root.render(React.createElement(ReleaseUpdateNotice,{key:'updated-tab',busy:false})));await act(async()=>window.dispatchEvent(new window.Event('focus')));assert.equal(document.querySelector('.release-update'),null);
  globalThis.fetch=async()=>{throw Error('offline')};await act(async()=>h.root.render(React.createElement(ReleaseUpdateNotice,{key:'offline',busy:false})));await act(async()=>window.dispatchEvent(new window.Event('focus')));assert.equal(document.querySelector('.release-update'),null);
  }finally{globalThis.fetch=fetchBefore;await h.close()}
+});
+
+test('alignment snaps nearby edges and centers without pulling distant panels',()=>{
+ const peers=[{x:100,y:200,width:300,height:160}];
+ assert.equal(snapPanel({x:96,y:197,width:200},peers,1000).x,100);
+ assert.equal(snapPanel({x:96,y:197,width:200},peers,1000).y,200);
+ assert.equal(snapPanel({x:333,y:70,width:220},peers,1000).x,333);
+ assert.equal(snapPanel({x:0,y:0,width:398,height:198},peers,1000,true).width,400);
+ const centered=defaultDialerRects(1400,{},id=>id==='contact');assert.equal(centered.contact.x,360);
 });

@@ -43,18 +43,36 @@ export function clearDetailOverlap(rects:Record<WidgetId,PanelRect>,width:number
  return {...rects,keypad:{...keypad,...(right+keypad.width<=width?{x:right}:left>=0?{x:left}:{y:details.y+(details.height||280)+20})}};
 }
 export function defaultDialerRects(width: number, heights: Partial<Record<WidgetId, number>>, visible: (id: WidgetId) => boolean): Record<WidgetId, PanelRect> {
-  const gap = 20, main = Math.min(680, Math.max(380, width * .6)), right = main + gap;
-  const side = Math.max(230, Math.min(370, width - right));
+  const gap = 20, hasSide = visible("keypad") || visible("queue");
+  const main = Math.min(680, Math.max(380, hasSide ? width * .6 : width));
+  const side = Math.max(250, Math.min(370, width - main - gap));
+  const offset = Math.max(0, (width - main - (hasSide ? side + gap : 0)) / 2), right = offset + main + gap;
   const height = (id: WidgetId, fallback: number) => visible(id) ? (heights[id] || fallback) + gap : 0;
   const modeY = height("contact", 280), statsY = modeY + height("mode", 80);
   const stats = (["calls", "conversations", "phone"] as WidgetId[]).filter(visible), statWidth = (main - gap * Math.max(0, stats.length - 1)) / Math.max(1, stats.length);
   const detailsY = statsY + (stats.length ? Math.max(...stats.map(id => heights[id] || 96)) + gap : 0);
   return {
-    contact: {x: 0, y: 0, width: main}, mode: {x: 0, y: modeY, width: main},
-    calls: {x: Math.max(0, stats.indexOf("calls")) * (statWidth + gap), y: statsY, width: statWidth},
-    conversations: {x: Math.max(0, stats.indexOf("conversations")) * (statWidth + gap), y: statsY, width: statWidth},
-    phone: {x: Math.max(0, stats.indexOf("phone")) * (statWidth + gap), y: statsY, width: statWidth},
-    details: {x: 0, y: detailsY, width: main},
+    contact: {x: offset, y: 0, width: main}, mode: {x: offset, y: modeY, width: main},
+    calls: {x: offset + Math.max(0, stats.indexOf("calls")) * (statWidth + gap), y: statsY, width: statWidth},
+    conversations: {x: offset + Math.max(0, stats.indexOf("conversations")) * (statWidth + gap), y: statsY, width: statWidth},
+    phone: {x: offset + Math.max(0, stats.indexOf("phone")) * (statWidth + gap), y: statsY, width: statWidth},
+    details: {x: offset, y: detailsY, width: main},
     keypad: {x: right, y: 0, width: side, height: 460}, queue: {x: right, y: height("keypad", 460), width: side},
   };
+}
+
+/** Gentle edge/center alignment; Shift leaves motion completely free. */
+export function snapPanel(rect: PanelRect, peers: PanelRect[], width: number, resize = false): PanelRect {
+  const threshold = 7;
+  const nearest = (value: number, targets: number[]) => targets.reduce((best, target) => Math.abs(target - value) < Math.abs(best - value) ? target : best, value + threshold + .01);
+  const xs = [0, width, width / 2, ...peers.flatMap(p => [p.x, p.x + p.width, p.x + p.width / 2])];
+  const ys = [0, ...peers.flatMap(p => [p.y, p.y + (p.height || 0)])];
+  if (resize) {
+    const right = rect.x + rect.width, bottom = rect.y + (rect.height || 0);
+    const sx = nearest(right, xs), sy = nearest(bottom, ys);
+    return {...rect, width: Math.abs(sx-right) <= threshold ? sx-rect.x : rect.width, ...(rect.height !== undefined ? {height: Math.abs(sy-bottom) <= threshold ? sy-rect.y : rect.height} : {})};
+  }
+  const dx = [0, rect.width / 2, rect.width].map(edge => nearest(rect.x+edge,xs)-(rect.x+edge)).sort((a,b)=>Math.abs(a)-Math.abs(b))[0];
+  const dy = nearest(rect.y,ys)-rect.y;
+  return {...rect, x: rect.x + (Math.abs(dx)<=threshold?dx:0), y: rect.y + (Math.abs(dy)<=threshold?dy:0)};
 }
