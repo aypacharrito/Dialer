@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {assessCommercial} from "../lib/commercial-qualification";
 import type {MinerAutoFeedSettings} from "../lib/workspace-profile";
+import PublicBusinessSearch from "./PublicBusinessSearch";
 
 export type MinerMode="personal-auto"|"home"|"commercial";
 export type MinerProspect={
@@ -33,6 +34,7 @@ export default function MinerPanel({
     commercial:prospects.filter(lead=>isMode(lead,"commercial")&&assessCommercial(lead).priority>=0).sort((a,b)=>assessCommercial(b).priority-assessCommercial(a).priority||arrived(b)-arrived(a)),
   }),[prospects]);
   const visible=byMode[mode];
+  const callableCount=visible.filter(lead=>lead.phone).length;
   const running=activeScope===`miner-${mode}`&&dialing;
   const [providerStatus,setProviderStatus]=useState<ProviderStatus|null>(null);
   const [feedBusy,setFeedBusy]=useState(false);
@@ -81,7 +83,7 @@ export default function MinerPanel({
   return <div className="page-view miner-view miner-pro">
     <header className="module-bar miner-pro-header">
       <div><span className="eyebrow">PROSPECTING</span><div className="miner-title-line"><h1>Miner</h1></div></div>
-      <button className="primary" disabled={!visible.length||running} onClick={()=>onStart(mode)}>{running?"Dialing…":`Start dialer · ${visible.length}`}</button>
+      <button className="primary" disabled={!callableCount||running} onClick={()=>onStart(mode)}>{running?"Dialing…":`Start dialer · ${callableCount}`}</button>
     </header>
     <section className="miner-engine-card miner-simple">
       <div className={`miner-signal ${feedBusy?"searching":""}`} aria-hidden="true">⌁</div>
@@ -100,6 +102,7 @@ export default function MinerPanel({
         <small>{consumerReady?"Consumer source connected":"Consumer source not connected"} · {commercialReady?"Commercial source available":"Commercial source unavailable"}</small>
       </details>
     </section>
+    {mode==="commercial"&&<PublicBusinessSearch onResults={onResults}/>}
     <h2 className="miner-results-heading">{modeLabel(mode)} <small>{visible.length} prospects</small></h2>
     <div className="table-card crm-table miner-table miner-pro-table">
       <div className="table-head"><span>PROSPECT</span><span>PRODUCT / SOURCE</span><span>STATUS</span><span>ACTIONS</span></div>

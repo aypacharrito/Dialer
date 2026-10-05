@@ -267,9 +267,9 @@ function identityKeys(lead:UnknownRecord){
   const vin=String(lead.vin||"").trim().toUpperCase();
   const vendor=String(lead.vendorId||"").trim();
   const addr=String(lead.address||"").trim().toLowerCase().replace(/\s+/g," ");
-  return [phone.length>=7?`p:${phone}`:"",mail.includes("@")?`e:${mail}`:"",validVin(vin)?`v:${vin}`:"",vendor?`x:${vendor}`:"",addr.length>8?`a:${addr}`:""].filter(Boolean);
+  return [phone.length>=7?`p:${phone}`:"",mail.includes("@")?`e:${mail}`:"",validVin(vin)?`v:${vin}`:"",vendor?`x:${vendor}`:"",addr.length>8&&lead.name?`a:${normalizeKey(String(lead.name))}:${addr}:${String(lead.zip||lead.city||"").toLowerCase()}`:""].filter(Boolean);
 }
-function createLead(kind:"personal-auto"|"home"|"commercial",record:UnknownRecord,extra:Record<string,string>={}){
+export function createLead(kind:"personal-auto"|"home"|"commercial",record:UnknownRecord,extra:Record<string,string>={}){
   const flat=flatten(record);
   const isBusiness=kind==="commercial";
   const name=(isBusiness?businessName(flat):personName(flat)).trim()||"Miner prospect";

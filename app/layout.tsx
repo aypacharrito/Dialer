@@ -14,6 +14,7 @@ import "./assistant.css";
 import "./viewport-quote.css";
 import "./message-attachments.css";
 import "./frontier-theme.css";
+import "./scrollbars.css";
 
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",
