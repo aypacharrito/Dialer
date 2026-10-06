@@ -17,3 +17,10 @@ test('AI voice route claims bind the approved destination and expire after a sho
  assert.equal(await verifyVoiceRouteToken(token,'other'),null);
  assert.match(voicePilotPrompt('Agency','David'),/never claim to be human/i);assert.match(voicePilotPrompt('Agency','David'),/Wait silently/);
 });
+test('queue removes duplicate phones, opted-out duplicates, hot leads and recent attempts without rewriting contacts',async()=>{
+ const {voiceQueue,callerOptOut}=await import('../app/lib/voice-pilot.ts');
+ const leads=[{id:1,name:'Auto',phone:'8185550101',product:'Auto'},{id:2,name:'Duplicate',phone:'+18185550101'},{id:3,phone:'8185550102',product:'Home'},{id:4,phone:'8185550103',product:'Auto'},{id:5,phone:'8185550103',doNotCall:true},{id:6,phone:'8185550104',outcome:'Interested'}];const original=structuredClone(leads);
+ const now=Date.now(),history=[{id:'call',leadId:3,phone:'+18185550102',startedAt:now-1000,outcome:'no-answer',summary:''}];
+ assert.deepEqual(voiceQueue(leads,[],history).map(l=>l.id),[1]);assert.deepEqual(voiceQueue(leads,[],[],'home').map(l=>l.id),[3]);assert.deepEqual(leads,original);
+ assert.equal(callerOptOut('No me llames otra vez'),true);assert.equal(callerOptOut('No me llamen'),true);assert.equal(callerOptOut('I have two cars'),false);
+});

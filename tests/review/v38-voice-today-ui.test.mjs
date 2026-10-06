@@ -56,3 +56,14 @@ test('AI revisions preserve the selected audience and channel when the provider 
   assert.equal(document.querySelector('.ai-channel-choice button[aria-pressed="true"]').textContent,'Text');assert.match(document.querySelector('[aria-label="Review message before sending"]').value,/would Friday work/);
  }finally{await h.close();globalThis.fetch=original}
 });
+test('Autopilot loads a reviewed queue, requires permission evidence, and invalidates selection on category change',async()=>{
+ const {default:AiVoicePilot}=await import('../../app/components/AiVoicePilot.tsx');const original=globalThis.fetch,requests=[];
+ globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);requests.push(body);assert.equal(body.action,'queue');return Response.json({queue:[{id:1,name:'Driver',phone:'+18185550101'}],excluded:2,history:[]})};
+ const h=await mount(React.createElement(AiVoicePilot,{leads:[{id:1,name:'Driver',phone:'8185550101'}],busy:false,onActive(){},onClose(){}}));
+ const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+ try{
+  assert.equal(requests.length,0);assert.equal(button('Start Autopilot').disabled,true);await click(button('Load queue'));assert.equal(requests.length,1);assert.equal(button('Start Autopilot').disabled,true);
+  const input=document.querySelector('[aria-label="AI call permission evidence"]');await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(input,'Signed permission list October 5');input.dispatchEvent(new window.Event('input',{bubbles:true}))});await click('input[type="checkbox"]');assert.equal(button('Start Autopilot').disabled,false);
+  const select=[...document.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value==='home'));await act(async()=>{select.value='home';select.dispatchEvent(new window.Event('change',{bubbles:true}))});assert.equal(button('Start Autopilot').disabled,true);assert.equal(document.querySelector('input[type="checkbox"]').checked,false);assert.equal(requests.length,1);
+ }finally{await h.close();globalThis.fetch=original}
+});

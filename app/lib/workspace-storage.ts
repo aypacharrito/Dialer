@@ -1,4 +1,4 @@
-import {cleanVoicePilot,type VoicePilotRun} from "./voice-pilot";
+import {cleanVoicePilot,cleanVoiceHistory,type VoicePilotRun,type VoiceCallHistory} from "./voice-pilot";
 import {cleanDocumentInsights,type DocumentInsight} from "./review-context";
 import {cleanMinerState,type MinerState} from "./miner-leads";
 import {cleanNoteReminders,type NoteReminder,type NoteReview} from "./note-reminders";
@@ -20,6 +20,7 @@ import {WorkspaceLoadError} from "./workspace-load";
 export type StoredWorkspace = {
   voicePilot?:VoicePilotRun;
   voicePilotBlocked?:string[];
+  voicePilotHistory?:VoiceCallHistory[];
   minerState?:MinerState;
   documentInsights?:DocumentInsight[];
   noteReminders?:NoteReminder[];
@@ -64,6 +65,7 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
     leads: records(body.leads, 5000),
     ...(Array.isArray(body.voicePilotBlocked)?{voicePilotBlocked:body.voicePilotBlocked.filter(v=>typeof v==="string"&&/^\+1\d{10}$/.test(v)).slice(-5000)}:{}),
     ...(body.voicePilot?{voicePilot:cleanVoicePilot(body.voicePilot)}:{}),
+    voicePilotHistory:cleanVoiceHistory(body.voicePilotHistory),
     ...(body.minerState?{minerState:cleanMinerState(body.minerState)}:{}),
     ...(body.documentInsights?{documentInsights:cleanDocumentInsights(body.documentInsights)}:{}),
     ...(body.noteReminders?{noteReminders:cleanNoteReminders(body.noteReminders)}:{}),
@@ -293,6 +295,7 @@ export function mergeStoredWorkspace(
     minerState:server.minerState,
     voicePilot:server.voicePilot,
     voicePilotBlocked:server.voicePilotBlocked,
+    voicePilotHistory:server.voicePilotHistory,
     documentInsights:server.documentInsights,
     noteReminders:server.noteReminders,noteReview:server.noteReview,
     conversationCalendar:server.conversationCalendar,

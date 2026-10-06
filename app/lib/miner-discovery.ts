@@ -17,7 +17,7 @@ export async function runSavedSearch(workspaceId:string,id:string,signal?:AbortS
    const state=cleanMinerState(current.minerState),active=state.searches.find(s=>s.id===id);
    if(!active||JSON.stringify(active)!==JSON.stringify(search))return current;
    const merged=mergeNewProspects(current,prospects);accepted=merged.accepted;
-   return {...merged.workspace,minerState:{...state,searches:state.searches.map(s=>s.id===id?{...s,cursor:found.hasMore&&s.cursor<1000?s.cursor+1:0,lastRunAt:new Date().toISOString(),lastAdded:accepted.length,lastStatus:`${accepted.length} new prospects; ${found.records.length-accepted.length} duplicates or capacity skips. ${researchNotice}`}:s)}};
+   return {...merged.workspace,minerState:{...state,searches:state.searches.map(s=>s.id===id?{...s,cursor:found.partial?s.cursor:found.hasMore&&s.cursor<1000?s.cursor+1:0,lastRunAt:new Date().toISOString(),lastAdded:accepted.length,lastStatus:`${accepted.length} new prospects; ${found.records.length-accepted.length} duplicates or capacity skips. ${researchNotice}${found.partial?' Some sources were unavailable; this page will be retried.':''}`}:s)}};
   });return {added:accepted.length,skipped:found.records.length-accepted.length,prospects:accepted,researchNotice};
  }catch(error){
   await updateStoredWorkspace(workspaceId,current=>{const state=cleanMinerState(current.minerState);return {...current,minerState:{...state,searches:state.searches.map(s=>s.id===id?{...s,lastRunAt:new Date().toISOString(),lastStatus:'Source unavailable; no cursor advancement. Try again later.',lastAdded:0}:s)}}}).catch(()=>{});throw error;

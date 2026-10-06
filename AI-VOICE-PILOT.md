@@ -1,31 +1,33 @@
-# V39 · Insurance AI first-call pilot
+# V40 · Continuous AI Autopilot
 
-This update includes V38's Today, messaging, connected-page and visual improvements. It adds one supervised insurance AI call at a time, operated from your laptop.
+Open **Pacifica AI → AI Autopilot** in an insurance workspace as its owner.
 
-## Start a call
+1. Choose **Continuous queue**, then **Load queue**. You can filter Auto or Home, or choose one contact.
+2. Set your call count and session time limits. Default: up to 25 contacts and 60 minutes. Maximum: 500 contacts and 120 minutes per session.
+3. Enter the source/date of written AI-call permission for the selected contacts and confirm their time zone. Then select **Start Autopilot** and allow microphone access.
+4. Keep the laptop open, Pacifica AI open, and your headset ready. Ava calls one contact at a time. After a call ends and its transcript saves, the next call begins after five seconds.
+5. When a caller clearly wants a comparison now or asks for the agent, an alert sounds and a summary appears. Your microphone joins the same call automatically after a short announcement. AI disconnects. No additional transfer telephone number is required.
 
-1. Apply the update, then commit and push through GitHub Desktop as usual.
-2. Sign in as the workspace owner. Use insurance mode and your existing working OpenAI and Twilio connections.
-3. Open **Pacifica AI → AI Autopilot**. Select one saved contact, choose the recipient's time zone, and enter the source/date of their written permission for AI voice calls.
-4. Select **Start AI call**. Keep Pacifica and your laptop awake. You can hear the call and see its transcript.
-5. **Take over** switches to your microphone and closes AI. **Stop AI call**, closing the panel, leaving Pacifica AI, or a detected connection loss ends the call. Both AI and takeover calls have a five-minute limit.
+The customer call remains outbound. The handoff feels like an incoming call to you, but it is an automatic takeover of the existing browser call, not a new inbound PSTN call or a transfer to your cellphone.
 
-Ava introduces herself as AI with your business name, explains live transcription and asks permission to continue. She uses English or Spanish, asks short insurance qualification questions, and can use the selected contact's existing notes, messages, emails and extracted document details. She cannot create a quote or promise savings.
+**Pause after call** holds the next contact. **Resume queue** continues. **Stop Autopilot** ends the active call and queue. Closing the panel, leaving Pacifica AI, a detected connection loss, another CRM phone call, or a microphone failure also stops the queue. There is a five-minute limit for each phone call, including the human portion. The session time limit also stops an active call when reached.
 
-## What is saved
+## Conversation
 
-The transcript is added as a separate document insight for Today to review. Existing lead fields are not rewritten. Treat speech recognition as a draft and verify details. Caller requests to stop further calls also create a separate AI-call suppression entry; review the contact's Do Not Call setting yourself. This suppression applies to AI calling, not every external dialer.
+Ava identifies herself as AI and asks permission for live transcription. Once permitted, she moves into short factual or either/or questions rather than repeated interest checks or broad discovery questions. Auto qualification covers carrier, premium and payment period, vehicle count, coverage and timing. Home qualification covers property use, carrier, annual premium, renewal/closing timing and relevant known property facts. She uses existing CRM context and does not repeat supplied information.
 
-## Connections and limits
+A caller's request for a quote/comparison now or for a human triggers handoff. Saying yes to an unrelated factual question does not establish transfer interest. Refusals, voicemail, wrong-person responses, opt-outs and callback requests end the qualification flow. Requested callbacks are noted, not automatically booked. No invented quotes, savings, carrier eligibility, discounts, or renewal dates.
 
-- Uses the existing server-side `OPENAI_API_KEY`, Twilio Voice SDK configuration and workspace-assigned Twilio number. Your OpenAI project must have access to the configured Live model; API and telephone usage incur their normal account charges.
-- Defaults: `OPENAI_LIVE_MODEL=gpt-live-1`, `OPENAI_LIVE_VOICE=gleam`. Reasoning uses the existing `OPENAI_MODEL` setting. No additional hosted voice server is needed for this browser bridge.
-- An owner must start every call. Only eligible US-format contacts are available; server checks also reject blocked duplicates, active-call conflicts, expired call routes and calls outside 9 AM–8 PM in the selected recipient time zone.
-- Only one destination is authorized for each signed route. Provider errors stop the attempt without an automatic retry or next call.
-- This phase does not include unattended queues, automatic warm transfers, automatic lead edits, or the later legal-office workflow.
+## Records and controls
 
-## Verification
+- Existing contact fields stay unchanged, including in AI phone-status callbacks. Call logs, AI run history and a separate transcript/summary insight are added for review and Today.
+- Duplicate phone numbers, stopped/paused/closed/interested records, numbers blocked for AI calling, and numbers attempted in the prior 24 hours are excluded from a newly loaded queue. A blocked duplicate excludes the shared phone. The server rechecks eligibility before issuing a phone route.
+- Written AI-call permission is still required. Permission for an ordinary quote response and a public listing are not automatically treated as AI-call permission. Newly mined public research remains outside automatic calling.
+- Provider/setup errors or transcript-save failures stop the queue. They do not silently retry paid calls. The browser and server prevent a second active AI phone call.
+- Uses your existing server-side OpenAI key and workspace-assigned Twilio number. Normal provider charges apply. Defaults remain `OPENAI_LIVE_MODEL=gpt-live-1` and `OPENAI_LIVE_VOICE=gleam`; delegation uses `OPENAI_MODEL`.
 
-Automated checks cover permission and account gates, one-call routing, duplicate opt-outs, stale routes, provider failures, transcript storage without lead edits, audio routing, Stop during setup, and Take over. Production build and type checking are included in the release verification. No real outbound call was placed during development; live audio quality and your accounts' model/telephone access still need one supervised test call after installation.
+## Verification limits
 
-For V38's connected pages inside the desktop app, install the new desktop build produced by your normal desktop release workflow. The website retains its paste/external-page fallback.
+Build, type checking and automated tests cover queue sequencing, pause/resume, microphone release, Stop during setup, provider failures, factual handoff evidence, function-result ordering, opt-outs, duplicate/recent-call exclusions and preserving contacts. No real customer was called during development. Your OpenAI model access, Twilio account configuration, real audio quality and handoff timing still need one supervised test call after installation.
+
+The legal-office receptionist, unattended cloud calling, parallel calls, cellphone transfers and automatic policy quotes are not part of this laptop queue.

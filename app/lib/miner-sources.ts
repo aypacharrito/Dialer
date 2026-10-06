@@ -1,11 +1,13 @@
 import {inflateRawSync} from 'node:zlib';
 import {cityRecordsSource,searchPublicBusinesses} from './public-business-records';
-import {publicBusinessSearch} from './miner-auto-feed';
-import {csvRows,sourceRecord,validSearch,type LeadKind,type MinerSource,type SourceProspect} from './miner-leads';
+import {publicBusinessSearch,type PublicBusinessFocus} from './miner-auto-feed';
+import {searchHousing,type HousingSource} from './miner-housing';
+import {csvRows,sourceRecord,validSearch,minerSources,type LeadKind,type MinerSource,type SourceProspect} from './miner-leads';
 export const parcelEndpoint='https://public.gis.lacounty.gov/public/rest/services/LACounty_Cache/LACounty_Parcel/MapServer/0';
 export const licenseDirectory='https://www.dre.ca.gov/Licensees/ExamineeLicenseeListDataFiles.html';
-const cache=new Map<string,{until:number;records:SourceProspect[];hasMore:boolean}>();
-const inflight=new Map<string,Promise<{records:SourceProspect[];hasMore:boolean}>>();
+export type MinerSearchResult={records:SourceProspect[];hasMore:boolean;partial?:boolean;sourceStatus?:Array<{name:string;count:number;available:boolean}>};
+const cache=new Map<string,MinerSearchResult&{until:number}>();
+const inflight=new Map<string,Promise<MinerSearchResult>>();
 const string=(value:unknown)=>value===null||value===undefined?'':String(value).trim().slice(0,300);
 export function parcelRecord(row:Record<string,unknown>,kind:LeadKind):SourceProspect|null{
  const key=string(row.AIN),address=string(row.SitusFullAddress),zip=string(row.SitusZIP).slice(0,5);
@@ -30,7 +32,22 @@ async function fetchBounded(url:string,signal:AbortSignal,maxBytes:number){
  try{for(;;){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>maxBytes)throw Error('Directory exceeds the current size limit.');chunks.push(value);}}finally{await reader.cancel();}
  return Buffer.concat(chunks);
 }
-async function searchUncached(source:MinerSource,kind:LeadKind,zip:string,page:number,signal:AbortSignal){
+async function searchUncached(source:MinerSource,kind:LeadKind,zip:string,page:number,signal:AbortSignal):Promise<MinerSearchResult>{
+ if(source==='all'){
+  const sources=minerSources.filter(s=>s.id!=='all'&&s.kinds.includes(kind));
+  const results:MinerSearchResult[]=[],sourceStatus=sources.map(s=>({name:s.name,count:0,available:false}));let next=0;
+  async function worker(){while(next<sources.length&&!signal.aborted){const index=next++,s=sources[index];try{const found=await searchMinerSource(s.id,kind,zip,page,signal);results[index]=found;sourceStatus[index]={name:s.name,count:found.records.length,available:true}}catch{/* Preserve successful sources and report the missing one. */}}}
+  await Promise.all(Array.from({length:Math.min(3,sources.length)},()=>worker()));
+  if(!sourceStatus.some(s=>s.available))throw Error('Public sources are temporarily unavailable.');
+  const seen=new Set<string>(),records=results.flatMap(r=>r?.records||[]).filter(r=>{if(seen.has(r.key))return false;seen.add(r.key);return true});
+  return {records,hasMore:results.some(r=>r?.hasMore),partial:sourceStatus.some(s=>!s.available),sourceStatus};
+ }
+ if(['permits','occupancy','roof-solar'].includes(source))return searchHousing(source as HousingSource,kind,zip,page,signal);
+ if(['auto-dealers','auto-service','driving-schools','home-trades','home-finance'].includes(source)){
+  const rows=await publicBusinessSearch(zip,100,signal,source as PublicBusinessFocus);
+  const records=rows.flatMap(r=>{const record=sourceRecord(Object.fromEntries(Object.entries(r).map(([k,v])=>[k.replace(/[^a-z0-9]/g,''),string(v)])),'OpenStreetMap',kind,String(r.listing_url));return record?[{...record,fields:{...record.fields,'Search area':`Near ZIP ${zip}`,'Record type':'Referral partner research; not a consumer insurance inquiry'}}]:[]});
+  return {records:records.slice(page*50,page*50+50),hasMore:records.length>(page+1)*50};
+ }
  if(source==='city'){
   const found=await searchPublicBusinesses(zip,page,signal);
   return {records:found.records.map(r=>({key:`city:${r.account}`,name:r.name,phone:'',email:'',address:r.address,city:r.city,zip:r.zip,kind,source:'LA City registrations',url:cityRecordsSource,fields:{'Registered name':r.registeredName,'Industry':r.industry,'Business start':r.started,'Checked at':r.retrievedAt,'Record type':'Business research; phone unavailable'}})),hasMore:found.hasMore};
@@ -43,7 +60,7 @@ async function searchUncached(source:MinerSource,kind:LeadKind,zip:string,page:n
  }
  if(source==='businesses'){
   const rows=await publicBusinessSearch(zip,100,signal);
-  const records=rows.filter(r=>kind==='auto'?/car|auto|vehicle|motor|tyre|tire/.test(String(r.category)):kind==='real-estate'?/estate|mortgage|property/.test(String(r.category)):true).flatMap(r=>{const row=sourceRecord(Object.fromEntries(Object.entries(r).map(([k,v])=>[k.replace(/[^a-z0-9]/g,''),string(v)])),'OpenStreetMap',kind,String(r.listing_url));return row?[{...row,fields:{...row.fields,'Record type':kind==='commercial'?'Public business listing':'Potential referral partner; not a consumer inquiry'}}]:[]});
+  const records=rows.filter(r=>kind==='auto'?/car|auto|vehicle|motor|tyre|tire/.test(String(r.category)):kind==='real-estate'||kind==='home'?/estate|mortgage|property|roofer|builder|solar/.test(String(r.category)):true).flatMap(r=>{const row=sourceRecord(Object.fromEntries(Object.entries(r).map(([k,v])=>[k.replace(/[^a-z0-9]/g,''),string(v)])),'OpenStreetMap',kind,String(r.listing_url));return row?[{...row,fields:{...row.fields,'Record type':kind==='commercial'?'Public business listing':'Potential referral partner; not a consumer inquiry'}}]:[]});
   return {records:records.slice(page*50,page*50+50),hasMore:records.length>(page+1)*50};
  }
  const csv=directoryCsv(await fetchBounded('https://secure.dre.ca.gov/datafile/CurrList.zip',signal,30*1024*1024));
@@ -53,12 +70,12 @@ async function searchUncached(source:MinerSource,kind:LeadKind,zip:string,page:n
  for(const cells of rows){if(cells[zipIndex]?.slice(0,5)!==zip)continue;const record=licenseRecord(Object.fromEntries(keys.map((k,i)=>[k,cells[i]?.trim()||''])),kind);if(!record)continue;if(matched++<page*50)continue;records.push(record);if(records.length>50)break;}
  return {records:records.slice(0,50),hasMore:records.length>50};
 }
-export async function searchMinerSource(source:MinerSource,kind:LeadKind,zip:string,page=0,signal?:AbortSignal){
+export async function searchMinerSource(source:MinerSource,kind:LeadKind,zip:string,page=0,signal?:AbortSignal):Promise<MinerSearchResult>{
  if(!validSearch(source,kind,zip,page))throw Error('Choose a supported source, category and five-digit ZIP.');
- const key=[source,kind,zip,page].join(':'),hit=cache.get(key);if(hit&&hit.until>Date.now())return {records:hit.records,hasMore:hit.hasMore};
+ const key=[source,kind,zip,page].join(':'),hit=cache.get(key);if(hit&&hit.until>Date.now())return {records:hit.records,hasMore:hit.hasMore,partial:hit.partial,sourceStatus:hit.sourceStatus};
  let pending=inflight.get(key);if(!pending){
   pending=searchUncached(source,kind,zip,page,signal?AbortSignal.any([signal,AbortSignal.timeout(40000)]):AbortSignal.timeout(40000)).then(found=>{
-   if(cache.size>=20)cache.delete(cache.keys().next().value!);cache.set(key,{...found,until:Date.now()+900000});return found;
+   if(cache.size>=20)cache.delete(cache.keys().next().value!);cache.set(key,{...found,until:Date.now()+(found.partial?30000:900000)});return found;
   }).finally(()=>inflight.delete(key));inflight.set(key,pending);
  }
  return pending;

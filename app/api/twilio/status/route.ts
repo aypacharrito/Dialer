@@ -119,6 +119,8 @@ export async function POST(request: Request) {
           : -1,
         duration: Math.max(0, Number(form.get("CallDuration")) || 0),
       }),
+      // AI call facts belong in the call log; existing contact fields stay untouched.
+      ...(params.has('aiPilot')?{leads:current.leads}:{}),
     }));
     return new Response(null, { status: 204 });
   } catch {

@@ -8,5 +8,5 @@ export const dynamic='force-dynamic';
 export default async function MinerWorkspace(){
  const access=await requirePacificaWorkspacePage(),scopes=[accessScope(access.accessMetadata||{}),accessScope(access.memberMetadata||{})];
  const workspace=await readStoredWorkspace(access.userId);
- return <main className="miner-only-page"><header className="miner-only-header"><Link href="/">Pacifica</Link><span>{access.displayName} · {scopes.includes('read-only')?'View-only Miner':'Miner workspace'}</span>{scopes.every(s=>s==='full')&&<Link href="/dashboard">Open CRM</Link>}<ClerkTopAuth/></header><MinerStudio initialKind={workspace?.profile.industry==='real-estate'?'real-estate':'commercial'} readOnly={scopes.includes('read-only')||access.role==='agent'}/></main>;
+ return <main className="miner-only-page"><header className="miner-only-header"><Link href="/">Pacifica</Link><span>{access.displayName} · {scopes.includes('read-only')?'View-only Miner':'Miner workspace'}</span>{scopes.every(s=>s==='full')&&<Link href="/dashboard">Open CRM</Link>}<ClerkTopAuth/></header><MinerStudio initialKind={workspace?.profile.industry==='real-estate'?'real-estate':'auto'} readOnly={scopes.includes('read-only')||access.role==='agent'}/></main>;
 }

@@ -160,21 +160,33 @@ async function dataAxleSearch(documentType:"people"|"places",zip:string,limit:nu
   return recordArray(await response.json()).filter(record=>postal(flatten(record)).slice(0,5)===zip.slice(0,5));
 }
 
-export async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal){
+export type PublicBusinessFocus='auto-dealers'|'auto-service'|'driving-schools'|'home-trades'|'home-finance';
+const focusTags:Record<PublicBusinessFocus,string[]>={
+ 'auto-dealers':['["shop"~"^(car|motorcycle)$"]'],
+ 'auto-service':['["shop"~"^(car_repair|car_parts|tyres|motorcycle_repair)$"]','["amenity"="vehicle_inspection"]'],
+ 'driving-schools':['["amenity"="driving_school"]'],
+ 'home-trades':['["craft"~"^(roofer|builder|carpenter|electrician|plumber|hvac|solar_installation)$"]'],
+ 'home-finance':['["office"~"^(estate_agent|mortgage_broker)$"]'],
+};
+const businessGeo=new Map<string,{until:number;lat:number;lon:number}>();
+const businessGeoPending=new Map<string,Promise<{lat:number;lon:number}>>();
+export async function publicBusinessSearch(zip:string,limit:number,signal:AbortSignal,focus?:PublicBusinessFocus){
   const geo=new URL("https://nominatim.openstreetmap.org/search");
   geo.searchParams.set("postalcode",zip.slice(0,5));
   geo.searchParams.set("country","US");
   geo.searchParams.set("format","jsonv2");
   geo.searchParams.set("limit","1");
   const headers={Accept:"application/json","User-Agent":"PacificaCRM/1.0 (https://pacificacrm.com)"};
-  const geoResponse=await fetch(geo,{headers,cache:"no-store",signal:AbortSignal.any([signal,AbortSignal.timeout(8000)])});
-  if(!geoResponse.ok)throw new Error("Public business geocoder unavailable");
-  const geoRows=await geoResponse.json() as Array<{lat?:string;lon?:string}>;
-  const lat=Number(geoRows[0]?.lat),lon=Number(geoRows[0]?.lon);
-  if(!Number.isFinite(lat)||!Number.isFinite(lon))throw new Error("Could not locate target ZIP for public business search");
+  let coordinates=businessGeo.get(zip);
+  if(!coordinates||coordinates.until<Date.now()){
+    let pending=businessGeoPending.get(zip);
+    if(!pending){pending=(async()=>{const response=await fetch(geo,{headers,cache:"no-store",signal:AbortSignal.timeout(8000)});if(!response.ok)throw Error('Public business geocoder unavailable');const rows=await response.json();const lat=Number(rows[0]?.lat),lon=Number(rows[0]?.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon))throw Error('Could not locate target ZIP');if(businessGeo.size>=100)businessGeo.delete(businessGeo.keys().next().value!);businessGeo.set(zip,{lat,lon,until:Date.now()+86400000});return {lat,lon}})().finally(()=>businessGeoPending.delete(zip));businessGeoPending.set(zip,pending)}
+    coordinates={...await pending,until:Date.now()+86400000};
+  }
+  const {lat,lon}=coordinates;
 
   // Use a bounded spatial query; filter business tags locally instead of repeated key-regex scans.
-  const queryFor=(radius:number,seconds:number)=>{const dy=radius/111320,dx=radius/(111320*Math.max(.1,Math.cos(lat*Math.PI/180))),box=[lat-dy,lon-dx,lat+dy,lon+dx].join(',');return `[out:json][timeout:${seconds}];(nwr(${box})["name"]["phone"];nwr(${box})["name"]["contact:phone"];);out tags ${Math.min(180,Math.max(40,limit*6))};`};
+  const queryFor=(radius:number,seconds:number)=>{const dy=radius/111320,dx=radius/(111320*Math.max(.1,Math.cos(lat*Math.PI/180))),box=[lat-dy,lon-dx,lat+dy,lon+dx].join(',');const selectors=focus?focusTags[focus].map(tags=>`nwr(${box})["name"]${tags};`).join(""):`nwr(${box})["name"]["phone"];nwr(${box})["name"]["contact:phone"];`;return `[out:json][timeout:${seconds}];(${selectors});out tags ${Math.min(250,Math.max(40,limit*6))};`};
   let payload:{elements?:Array<{type?:string;id?:number;tags?:Record<string,string>}>}|undefined;
   for(const [index,endpoint] of ["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter"].entries()){
     const query=queryFor(index===0?4000:1500,index===0?18:8);
@@ -196,8 +208,8 @@ export async function publicBusinessSearch(zip:string,limit:number,signal:AbortS
     const phone=tags.phone||tags["contact:phone"]||"";
     const name=tags.name||"";
     const normalized=normalizePhone(phone);
-    if(!name||!normalized)continue;
-    const identity=`${name.toLowerCase()}|${normalized}`;
+    if(!name||!normalized&&!focus)continue;
+    const identity=`${name.toLowerCase()}|${normalized||element.id}`;
     if(seen.has(identity))continue;
     seen.add(identity);
     const categoryValue=tags.shop||tags.office||tags.craft||tags.amenity||tags.industrial||tags.tourism||tags.healthcare||"business";
