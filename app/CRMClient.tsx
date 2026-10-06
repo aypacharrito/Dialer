@@ -180,6 +180,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
   useEffect(()=>{const frame=requestAnimationFrame(()=>{try{setSidebarCollapsed(localStorage.getItem("pacifica:sidebar-collapsed")==="true")}catch{}});return()=>cancelAnimationFrame(frame)},[]);
   function toggleSidebar(){setSidebarCollapsed(value=>{const next=!value;try{localStorage.setItem("pacifica:sidebar-collapsed",String(next))}catch{}return next})}
   const [dialing,setDialing]=useState(false);
+  const aiVoiceActive=useRef(false);
   const [connected,setConnected]=useState(false);
   const [index,setIndex]=useState(0);
   const [callConnectedAt,setCallConnectedAt]=useState<number|null>(null);
@@ -670,6 +671,7 @@ export default function Page({clerkEnabled=false,isOwner=false,isPlatformOwner=f
     setToast(message);
   }
   async function placeCall(number:string,wasManual:boolean,queuedLead:Lead=lead){
+    if(aiVoiceActive.current){setToast("Stop AI Autopilot before starting another call.");return}
     if(!wasManual&&queuedLead.doNotCall){setToast("This contact is marked Do Not Call");return}
     if(dialing||!callStartGateRef.current.tryStart())return;
     const attemptId=++callAttemptRef.current;
@@ -1365,7 +1367,7 @@ if(!isDocumentFile(file)){setToast("Use a photo or PDF document");return}if(file
       <div hidden={view!=="messages"} className="page-view messages-view"><MessagesCenter visible={view==="messages"} key={`${workspaceId}:${messageTarget?.leadId||"inbox"}:${messageTarget?.channel||"sms"}`} workspaceId={workspaceId} profile={workspaceProfile} leads={leads} initialLeadId={messageTarget?.leadId} initialChannel={messageTarget?.channel} onOpenContact={id=>setSelectedLead(id)} onCloseLead={id=>updateLead(id,{stage:"Closed",status:"Closed",outcome:"Not interested",followUp:"",automationEnabled:false,automationNextAt:"",automationStatus:"complete",automationUpdatedAt:new Date().toISOString()})} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile}/></div>
 
       {view!=="ai"&&aiActivity!=="idle"&&<button type="button" className="ai-background-status" onClick={()=>openView("ai")}>{aiActivity==="working"?"Pacifica AI is working…":aiActivity==="sending"?"Pacifica AI is sending…":"Pacifica AI · response ready"} <span>Open →</span></button>}
-      <div hidden={view!=="ai"} className="page-view ai-view"><AiCommandCenter clerkEnabled={clerkEnabled} onQuoteRequests={()=>setQuoteReviewOpen(open=>!open)} visible={view==="ai"} onActivity={setAiActivity} key={workspaceId} workspaceId={workspaceId} activeLine={activeLine} profile={workspaceProfile} leads={allLeads} recentCalls={callLogs} onApply={applyAiAction} onCreateLead={createAiLead} onOpen={id=>setSelectedLead(id)} onCall={callLeadById}>{quoteReviewOpen&&view==="ai"&&<OpportunityDesk leads={leads} initialLeadId={quoteRequestLeadId} onOpen={setSelectedLead} onMessage={id=>{const item=leads.find(l=>l.id===id);if(item)openLeadMessage(item,"sms")}} onRefresh={async()=>{const response=await fetch("/api/crm/workspace",{cache:"no-store"});if(!response.ok)throw Error("Contact refresh failed. Your reviewed request remains saved.");const data=await response.json();setLeads(current=>mergeIncomingContacts(current,normalizeSavedLeads(data.leads)));}}/>}</AiCommandCenter></div>
+      <div hidden={view!=="ai"} className="page-view ai-view"><AiCommandCenter callBusy={dialing||autoDialing||Boolean(incomingCall)||Boolean(postCallLeadId)} onVoiceActive={active=>{aiVoiceActive.current=active}} onNavigate={next=>{if(next==="settings")setSettingsSection("integrations");openView(next)}} clerkEnabled={clerkEnabled} onQuoteRequests={()=>setQuoteReviewOpen(open=>!open)} visible={view==="ai"} onActivity={setAiActivity} key={workspaceId} workspaceId={workspaceId} activeLine={activeLine} profile={workspaceProfile} leads={allLeads} recentCalls={callLogs} onApply={applyAiAction} onCreateLead={createAiLead} onOpen={id=>setSelectedLead(id)} onCall={callLeadById}>{quoteReviewOpen&&view==="ai"&&<OpportunityDesk leads={leads} initialLeadId={quoteRequestLeadId} onOpen={setSelectedLead} onMessage={id=>{const item=leads.find(l=>l.id===id);if(item)openLeadMessage(item,"sms")}} onRefresh={async()=>{const response=await fetch("/api/crm/workspace",{cache:"no-store"});if(!response.ok)throw Error("Contact refresh failed. Your reviewed request remains saved.");const data=await response.json();setLeads(current=>mergeIncomingContacts(current,normalizeSavedLeads(data.leads)));}}/>}</AiCommandCenter></div>
 
 
       {view==="clients"&&<div className="page-view clients-view"><ClientPortfolio leads={leads} profile={workspaceProfile} onOpen={id=>setSelectedLead(id)} onPatch={(id,patch)=>updateLead(id,patch as Partial<Lead>)} onProfileChange={setWorkspaceProfile} onImportDocument={openDocumentPicker}/></div>}
@@ -1387,16 +1389,15 @@ if(!isDocumentFile(file)){setToast("Use a photo or PDF document");return}if(file
         </div>
         <div className="settings-layout">
           <nav className="settings-nav" aria-label="Settings sections">
-            <span>WORKSPACE SETTINGS</span>
             {([
-              ["workspace","01","Workspace"],
-              ["team","02","Team & routing"],
-              ["phone","03","Calling"],
-              ["integrations","04","Integrations"],
-              ["system","05","System health"],
-              ["billing","06","Plans & Billing"],
-            ] as const).map(([section,number,label])=><button key={section} type="button" className={settingsSection===section?"active":""} aria-current={settingsSection===section?"page":undefined} onClick={()=>setSettingsSection(section)}><i>{number}</i><span><b>{label}</b></span></button>)}
-            {isPlatformOwner&&<button type="button" className={settingsSection==="accounts"?"active":""} onClick={()=>setSettingsSection("accounts")}><i>07</i><span><b>Accounts & trials</b></span></button>}
+              ["workspace","Workspace"],
+              ["team","Team & routing"],
+              ["phone","Calling"],
+              ["integrations","Integrations"],
+              ["system","System health"],
+              ["billing","Plans & Billing"],
+            ] as const).map(([section,label])=><button key={section} type="button" className={settingsSection===section?"active":""} aria-current={settingsSection===section?"page":undefined} onClick={()=>setSettingsSection(section)}><span><b>{label}</b></span></button>)}
+            {isPlatformOwner&&<button type="button" className={settingsSection==="accounts"?"active":""} onClick={()=>setSettingsSection("accounts")}><span><b>Accounts & trials</b></span></button>}
           </nav>
           <div className="settings-content">
             {isPlatformOwner&&settingsSection==="accounts"&&<section className="settings-section"><AccountAccessPanel/></section>}

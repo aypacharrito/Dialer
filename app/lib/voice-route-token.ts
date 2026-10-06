@@ -1,4 +1,5 @@
 type VoiceRouteClaim={
+  purpose?:"ai-call";destination?:string;runId?:string;
   workspaceId:string;
   identity:string;
   phoneNumber:string;
@@ -31,8 +32,8 @@ async function signingKey(secret:string){
   return crypto.subtle.importKey("raw",encoder.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
 }
 
-export async function createVoiceRouteToken(claim:Omit<VoiceRouteClaim,"expiresAt">,secret:string){
-  const payload=base64UrlEncode(JSON.stringify({...claim,expiresAt:Math.floor(Date.now()/1000)+3600}));
+export async function createVoiceRouteToken(claim:Omit<VoiceRouteClaim,"expiresAt">,secret:string,seconds=3600){
+  const payload=base64UrlEncode(JSON.stringify({...claim,expiresAt:Math.floor(Date.now()/1000)+seconds}));
   const signature=await crypto.subtle.sign("HMAC",await signingKey(secret),encoder.encode(payload));
   return `${payload}.${base64UrlEncode(signature)}`;
 }

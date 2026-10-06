@@ -74,3 +74,13 @@ test('CRM AI strips model-generated lead mutations before returning them',async(
  try{const response=await crm(request({prompt:'Read my CRM',leads:[{id:1,name:'Example'}]}));assert.equal(response.status,200);assert.deepEqual((await response.json()).actions,[]);}
  finally{globalThis.fetch=previousFetch;if(previousKey===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=previousKey;}
 });
+
+test('CRM drafts resolve full-workspace audiences and preserve a reviewed subset through edits',async()=>{
+ const key=process.env.OPENAI_API_KEY,fetch=globalThis.fetch;let payload;process.env.OPENAI_API_KEY='test-placeholder-not-a-real-key';globalThis.pacificaTestAccess=true;
+ const leads=Array.from({length:160},(_,i)=>({id:i+1,name:'Person '+i,phone:'818'+String(5550000+i),stage:'Follow-up',smsConsent:true}));
+ globalThis.fetch=async(_url,options)=>{payload=JSON.parse(options.body);return output(JSON.stringify({summary:'Draft ready.',priorities:[],actions:[],draft:'Hello, following up as requested.',recipientIds:[],createLead:null}))};
+ try{let data=await (await crm(request({prompt:'do texts for all followups',leads,language:'es'}))).json();assert.equal(data.recipientIds.length,160);assert.match(payload.input[0].content,/Reply and draft in Español/);assert.match(payload.input.at(-1).content[0].text,/"selectedCount":160/);
+ data=await (await crm(request({prompt:'Make it shorter',leads,draftReview:{channel:'sms',audience:'custom',recipientIds:[2,159],text:data.draft}}))).json();assert.deepEqual(data.recipientIds,[2,159]);assert.deepEqual(data.actions,[]);
+ await crm(request({prompt:'Summarize this page',pageContexts:[{title:'Policy',url:'https://example.test/policy?token=secret#private',text:'Visible policy details.'}]}));const text=payload.input.at(-1).content[0].text;assert.match(text,/Visible policy details/);assert.doesNotMatch(text,/token=secret|#private/);assert.match(payload.input[0].content,/untrusted data/);
+ }finally{globalThis.fetch=fetch;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key}
+});

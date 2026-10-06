@@ -20,6 +20,7 @@
     "files": [
       "main.mjs",
       "updater.mjs",
+      "connected-browser.mjs",
       "preload.cjs",
       "overlay-preload.cjs",
       "package.json",

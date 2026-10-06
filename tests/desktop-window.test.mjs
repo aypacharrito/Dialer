@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {createConnectedBrowser} from '../desktop/connected-browser.mjs';
 
 function desktop(settings={}){
  const windows=[],handlers=new Map(),external=[],timers=new Map();let timerId=0;
@@ -14,8 +15,9 @@ function desktop(settings={}){
   setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getPosition(){return [this.bounds.x,this.bounds.y]} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){} flashFrame(value){this.flashing=value}
  }
  const source=fs.readFileSync(new URL('../desktop/main.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('const __dirname=path.dirname(fileURLToPath(import.meta.url));','const __dirname="/desktop";');
- vm.runInNewContext(source,{app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,name==='pacifica:call-state'?(...args)=>{fn(...args);const overlay=windows[1];if(overlay&&!overlay.rendered){overlay.rendered=true;overlay.events.get('ready-to-show')?.();handlers.get('pacifica:overlay-rendered')?.({sender:overlay.webContents})}}:fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){},on(){}}},shell:{openExternal(url){external.push(url)}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},setInterval(){},clearInterval(){},console});
- return {windows,handlers,external,flushLayout,event:{sender:windows[0].webContents,senderFrame:{url:'https://pacificacrm.com/dashboard'}}};
+ vm.runInNewContext(source,{createConnectedBrowser,WebContentsView:class {},app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,name==='pacifica:call-state'?(...args)=>{fn(...args);const overlay=windows[1];if(overlay&&!overlay.rendered){overlay.rendered=true;overlay.events.get('ready-to-show')?.();handlers.get('pacifica:overlay-rendered')?.({sender:overlay.webContents})}}:fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){},on(){}}},shell:{openExternal(url){external.push(url)}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},setInterval(){},clearInterval(){},console});
+ windows[0].webContents.mainFrame={url:'https://pacificacrm.com/dashboard'};
+ return {windows,handlers,external,flushLayout,event:{sender:windows[0].webContents,senderFrame:windows[0].webContents.mainFrame}};
 }
 test('floating call window keeps a dragged position across timer updates and calls',()=>{
  const {windows,handlers,event}=desktop();const update=handlers.get('pacifica:call-state');
@@ -101,4 +103,18 @@ test('Google calendar authorization opens only the fixed CRM URL in the system b
  const {handlers,external,event}=desktop();const open=handlers.get('pacifica:open-calendar-browser');
  assert.equal(await open({...event,senderFrame:{url:'https://attacker.test'}}),false);assert.equal(external.length,0);
  assert.equal(await open(event),true);assert.equal(external[0],'https://pacificacrm.com/dashboard?calendar=open');
+});
+
+
+test('connected page controls require the CRM main frame, including same-origin iframe rejection',async()=>{
+ const {handlers,event}=desktop();
+ for(const channel of ['page-open','page-bounds','page-action','page-capture','page-close']){
+  const handler=handlers.get(`pacifica:${channel}`);
+  for(const senderFrame of [{url:'https://attacker.test/dashboard'},{url:event.senderFrame.url}])assert.throws(()=>handler({...event,senderFrame}),/signed-in workspace/);
+  for(const url of ['https://pacificacrm.com/login','https://pacificacrm.com/dashboard-other']){event.senderFrame.url=url;assert.throws(()=>handler(event),/signed-in workspace/)}
+  event.senderFrame.url='https://pacificacrm.com/dashboard';
+ }
+ assert.equal(handlers.get('pacifica:page-bounds')(event,{}),false);
+ await assert.rejects(handlers.get('pacifica:page-capture')(event),/Wait for the page/);
+ assert.doesNotThrow(()=>handlers.get('pacifica:page-close')(event));
 });

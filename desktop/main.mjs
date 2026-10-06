@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, session, shell, screen, nativeTheme, dialog } from "electron";
+import { app, BrowserWindow, WebContentsView, ipcMain, session, shell, screen, nativeTheme, dialog } from "electron";
 import electronUpdater from "electron-updater";
+import {createConnectedBrowser} from "./connected-browser.mjs";
 import {createDesktopUpdater} from "./updater.mjs";
 import path from "node:path";
 import fs from "node:fs";
@@ -30,6 +31,15 @@ let desktopUpdater=null;
 let rendererRecoveryTimer=null;
 let lastRendererRecovery=0;
 let unresponsiveTimer=null;
+const connectedPages=createConnectedBrowser({getWindow:()=>mainWindow,WebContentsView,session,shell,appOrigin,onState:state=>{if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('pacifica:page-state',state)}});
+function trustedPageControl(event){return trustedMain(event)&&event.senderFrame===mainWindow.webContents.mainFrame&&/^\/dashboard(?:\/|$)/.test(new URL(event.senderFrame.url).pathname)}
+for(const [channel,handler] of Object.entries({
+ 'pacifica:page-open':(_event,url,workspaceId)=>connectedPages.open(url,workspaceId),
+ 'pacifica:page-bounds':(_event,value)=>connectedPages.bound(value),
+ 'pacifica:page-action':(_event,name)=>connectedPages.action(name),
+ 'pacifica:page-capture':()=>connectedPages.capture(),
+ 'pacifica:page-close':()=>connectedPages.close(),
+}))ipcMain.handle(channel,(event,...args)=>{if(!trustedPageControl(event))throw Error('Open your signed-in workspace first.');return handler(event,...args)});
 
 function host(url){
   try{return new URL(url).hostname.toLowerCase()}catch{return ""}
@@ -152,7 +162,7 @@ function createWindow(){
     if(isTrustedNavigation(url))return {action:"allow"};
     if(/^https?:\/\//i.test(url))void shell.openExternal(url);return {action:"deny"};
   });
-  mainWindow.webContents.on("did-navigate",(_event,url)=>{if(!isAppUrl(url)||!new URL(url).pathname.startsWith("/dashboard")){messageQueue=[];seenMessages.clear();messageWindow?.hide()}});
+  mainWindow.webContents.on("did-navigate",(_event,url)=>{if(!isAppUrl(url)||!new URL(url).pathname.startsWith("/dashboard")){messageQueue=[];seenMessages.clear();messageWindow?.hide();connectedPages.close()}});
   mainWindow.webContents.on("will-navigate",(event,url)=>{if(!isTrustedNavigation(url)){event.preventDefault();if(/^https?:\/\//i.test(url))void shell.openExternal(url)}});
   mainWindow.webContents.on("render-process-gone",(_event,details)=>{if(details.reason!=="clean-exit")recoverMainRenderer(`renderer process gone: ${details.reason}`)});
   mainWindow.webContents.on("unresponsive",()=>{
@@ -167,7 +177,7 @@ function createWindow(){
   mainWindow.webContents.on("responsive",()=>{clearTimeout(unresponsiveTimer);unresponsiveTimer=null});
   mainWindow.webContents.on("did-fail-load",(_event,code,description,_url,isMainFrame)=>{if(isMainFrame&&code!==-3)recoverMainRenderer(`load failed ${code}: ${description}`)});
   void mainWindow.loadURL(appUrl);
-  mainWindow.on("closed",()=>{clearTimeout(unresponsiveTimer);clearTimeout(rendererRecoveryTimer);clearTimeout(splashTimeout);if(splashWindow&&!splashWindow.isDestroyed())splashWindow.close();splashWindow=null;messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
+  mainWindow.on("closed",()=>{connectedPages.close();clearTimeout(unresponsiveTimer);clearTimeout(rendererRecoveryTimer);clearTimeout(splashTimeout);if(splashWindow&&!splashWindow.isDestroyed())splashWindow.close();splashWindow=null;messageWindow?.close();messageWindow=null;overlayWindow?.close();overlayWindow=null;mainWindow=null});
 }
 
 // Navigation is restricted to the main window and the existing trusted auth origins.

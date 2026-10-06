@@ -31,7 +31,7 @@ test('message history can load while the sending gate stays visibly blocked',asy
   assert.match(document.querySelector('.message-connection').title,/sending paused/);
   const area=document.querySelector('[aria-label="Message body"]');
   await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(area,'hello');area.dispatchEvent(new window.Event('input',{bubbles:true}))});
-  assert.equal(button('Send text message').disabled,true);
+  assert.equal(document.querySelector('.send-message').disabled,true);
   ready=true;await click(document.querySelector('[aria-label="Refresh message connection"]'));
   assert.match(document.querySelector('.message-connection').textContent,/SMS ready/);
   assert.equal(document.querySelector('.sms-setup-notice'),null);

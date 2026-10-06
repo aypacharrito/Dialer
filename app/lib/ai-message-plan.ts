@@ -4,7 +4,7 @@ export type OneTimeMessageAudience="all-eligible"|"new-leads"|"follow-ups";
 export function oneTimeMessageAudience(prompt:string):OneTimeMessageAudience|null{
   const value=prompt.trim();
   if(/\b(?:not|never|except|exclude|only from|from source|don.t|do not)\b/i.test(value))return null;
-  if(!/\b(?:text|sms|message|email|e-mail|send)\b/i.test(value))return null;
+  if(!/\b(?:texts?|sms|messages?|e-?mails?|send)\b/i.test(value))return null;
   if(/\b(?:(?:every|each)\s+(?:day|morning|week|month)|daily|weekly|monthly|recurring|automatically|from now on|always|schedule|scheduled)\b/i.test(value))return null;
   if(/\bfollow[- ]?ups?\b/i.test(value))return "follow-ups";
   if(/\bnew(?:\s+untouched)?\s+leads?\b/i.test(value))return "new-leads";
@@ -17,7 +17,7 @@ export function audienceMessageTargets<T extends Contact>(audience:OneTimeMessag
   if(audience==="new-leads")return contacts.filter(contact=>contact.stage==="New lead"&&!follow(contact));
   return contacts;
 }
-export function messageChannel(prompt:string,fallback:"sms"|"email"="sms"):"sms"|"email"{return /\be-?mail\b/i.test(prompt)?"email":/\b(?:text|sms)\b/i.test(prompt)?"sms":fallback}
+export function messageChannel(prompt:string,fallback:"sms"|"email"="sms"):"sms"|"email"{return /\be-?mails?\b/i.test(prompt)?"email":/\b(?:texts?|sms)\b/i.test(prompt)?"sms":fallback}
 export function explicitMessageTargets<T extends Contact>(prompt:string,contacts:T[]){
   const lower=prompt.toLowerCase();
   // Only the unqualified whole-audience phrase preselects everyone. Other requests use named recipients or explicit review.

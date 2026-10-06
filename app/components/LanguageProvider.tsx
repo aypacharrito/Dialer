@@ -11,10 +11,10 @@ function subscribe(callback:()=>void){window.addEventListener(changeEvent,callba
 export function LanguageProvider({children}:{children:ReactNode}){
  const saved=useSyncExternalStore(subscribe,snapshot,()=>"{}");
  let preferences:Partial<Preferences>={};try{preferences=JSON.parse(saved)||{}}catch{}
- const language=cleanLanguage(preferences.language),writingLanguage=cleanLanguage(preferences.writingLanguage);
+ const language=cleanLanguage(preferences.language),writingLanguage=language;
  useEffect(()=>{document.documentElement.lang=language},[language]);
  function save(next:Language,writing:Language){memory=JSON.stringify({language:next,writingLanguage:writing});try{localStorage.setItem(preferenceKey,memory)}catch{}window.dispatchEvent(new window.Event(changeEvent))}
- return <Context.Provider value={{language,writingLanguage,setLanguage:value=>save(value,writingLanguage),setWritingLanguage:value=>save(language,value),t:text=>translate(text,language)}}>{children}</Context.Provider>;
+ return <Context.Provider value={{language,writingLanguage,setLanguage:value=>save(value,value),setWritingLanguage:value=>save(value,value),t:text=>translate(text,language)}}>{children}</Context.Provider>;
 }
 export const useLanguage=()=>useContext(Context);
 export function LanguageSelect({writing=false,disabled=false}:{writing?:boolean;disabled?:boolean}){const {language,writingLanguage,setLanguage,setWritingLanguage,t}=useLanguage();return <label className="language-select"><span>{t(writing?"Writing language":"Language")}</span><select disabled={disabled} aria-label={t(writing?"Writing language":"Language")} value={writing?writingLanguage:language} onChange={event=>(writing?setWritingLanguage:setLanguage)(cleanLanguage(event.target.value))}>{Object.entries(languages).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>}

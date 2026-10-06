@@ -1,3 +1,5 @@
+import {cleanVoicePilot,type VoicePilotRun} from "./voice-pilot";
+import {cleanDocumentInsights,type DocumentInsight} from "./review-context";
 import {cleanMinerState,type MinerState} from "./miner-leads";
 import {cleanNoteReminders,type NoteReminder,type NoteReview} from "./note-reminders";
 import {cleanConversationCalendar,type ConversationCalendar} from "./conversation-calendar";
@@ -16,7 +18,10 @@ import { applyWorkspaceChanges } from "./workspace-changes";
 import {WorkspaceLoadError} from "./workspace-load";
 
 export type StoredWorkspace = {
+  voicePilot?:VoicePilotRun;
+  voicePilotBlocked?:string[];
   minerState?:MinerState;
+  documentInsights?:DocumentInsight[];
   noteReminders?:NoteReminder[];
   noteReview?:NoteReview;
   conversationCalendar?: ConversationCalendar;
@@ -57,7 +62,10 @@ export function cleanWorkspacePayload(value: unknown): StoredWorkspace {
       : [];
   return {
     leads: records(body.leads, 5000),
+    ...(Array.isArray(body.voicePilotBlocked)?{voicePilotBlocked:body.voicePilotBlocked.filter(v=>typeof v==="string"&&/^\+1\d{10}$/.test(v)).slice(-5000)}:{}),
+    ...(body.voicePilot?{voicePilot:cleanVoicePilot(body.voicePilot)}:{}),
     ...(body.minerState?{minerState:cleanMinerState(body.minerState)}:{}),
+    ...(body.documentInsights?{documentInsights:cleanDocumentInsights(body.documentInsights)}:{}),
     ...(body.noteReminders?{noteReminders:cleanNoteReminders(body.noteReminders)}:{}),
     ...(body.noteReview?{noteReview:body.noteReview}:{}),
     callLogs: records(body.callLogs, 1000),
@@ -283,6 +291,9 @@ export function mergeStoredWorkspace(
     profile,
     ...(server.aiControl?{aiControl:server.aiControl}:{}),
     minerState:server.minerState,
+    voicePilot:server.voicePilot,
+    voicePilotBlocked:server.voicePilotBlocked,
+    documentInsights:server.documentInsights,
     noteReminders:server.noteReminders,noteReview:server.noteReview,
     conversationCalendar:server.conversationCalendar,
     officeItems:reconcileCallCalendar(rawServerLeads,leads,server.officeItems),

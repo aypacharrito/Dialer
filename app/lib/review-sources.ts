@@ -1,4 +1,4 @@
-export type ReviewLead={id:number;name?:string;notes?:string;notesUpdatedAt?:string;lastAttemptAt?:string;deletedAt?:string;source?:string;extraFields?:Record<string,string>;communications?:Array<{id:string;channel:string;direction:string;subject?:string;body:string;sentAt:string}>};
+export type ReviewLead={id:number;name?:string;stage?:string;doNotCall?:boolean;notes?:string;notesUpdatedAt?:string;lastAttemptAt?:string;deletedAt?:string;source?:string;extraFields?:Record<string,string>;communications?:Array<{id:string;channel:string;direction:string;subject?:string;body:string;sentAt:string;status?:string;attachments?:Array<{name?:string;type?:string;url?:string}>}>};
 export type ReviewSource={key:string;leadId:number;name:string;text:string;label:string;recordedAt:string};
 /** Read-only projection. Source text is evidence, never executable instructions. */
 export function reviewSources(leads:ReviewLead[]):ReviewSource[]{
@@ -12,7 +12,7 @@ export function reviewSources(leads:ReviewLead[]):ReviewSource[]{
   add(lead,'notes',String(lead.notes||''),'Call notes',lead.notesUpdatedAt||lead.lastAttemptAt||'');
   for(const message of lead.communications||[]){
    if(!message.id||!['sms','email'].includes(message.channel))continue;
-   add(lead,`message:${message.id}`,[message.subject,message.body].filter(Boolean).join('\n'),`${message.direction==='inbound'?'Received':'Sent'} ${message.channel==='email'?'email':'SMS'}`,message.sentAt||'');
+   add(lead,`message:${message.id}`,[message.subject,message.body,(message.attachments||[]).map(a=>`Attachment: ${a.name||a.type||'file'}`).join('\n'),`Delivery status: ${message.status||'unknown'}`].filter(Boolean).join('\n'),`${message.direction==='inbound'?'Received':'Sent'} ${message.channel==='email'?'email':'SMS'}`,message.sentAt||'');
   }
   if(/Pacifica Miner/i.test(lead.source||'')){
    const fields=lead.extraFields||{};

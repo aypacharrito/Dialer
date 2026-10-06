@@ -1,7 +1,8 @@
+import {cleanDocumentInsights} from '../../../lib/review-context';
 import {createHash,randomUUID} from 'node:crypto';
 import {getPacificaAccess} from '../../../lib/clerk-access';
 import {readStoredWorkspace,updateStoredWorkspace} from '../../../lib/workspace-storage';
-import {cleanNoteReminders,emptyNoteReview,type NoteReminder} from '../../../lib/note-reminders';
+import {emptyNoteReview} from '../../../lib/note-reminders';
 import {cleanDocumentLeadExtraction,documentLeadImportedFields} from '../../../lib/document-lead';
 import {POST as scanDocument} from '../../ai/document-lead/route';
 import type {StoredCommunication} from '../../../lib/communications';
@@ -64,12 +65,11 @@ export async function POST(request:Request){
    const currentLead=(current.leads as Lead[]).find(l=>l.id===lead.id&&!l.deletedAt);
    if(!currentLead)throw Error('Contact is no longer available.');
    if(typeof body.messageId==='string'&&currentLead.communications?.find(m=>m.id===body.messageId)?.attachments?.[body.index]?.url!==lead.communications?.find(m=>m.id===body.messageId)?.attachments?.[body.index]?.url)throw Error('Attachment changed; retry review.');
-   const items=cleanNoteReminders(current.noteReminders),now=new Date().toISOString();
-   if(items.length+evidence.length>5000)throw Error('Today reminder capacity reached.');
-   const suggestions:NoteReminder[]=evidence.map(text=>({id:randomUUID(),leadId:lead.id,title:'Review document information',evidence:text.slice(0,500),sourceId:claimKey,sourceLabel:`AI transcription · ${name} · verify against original`,dueAt:'',status:'open',snoozedUntil:'',createdAt:now,updatedAt:now}));
-   added=suggestions.length;
-   return {...current,noteReminders:[...items,...suggestions],noteReview:{...state,checked:{...state.checked,[claimKey]:'done'}}};
-  });return json({added});
+   const now=new Date().toISOString(),documents=cleanDocumentInsights(current.documentInsights);
+   const detail={id:randomUUID(),leadId:lead.id,sourceId:claimKey,name,text:evidence.join('\n').slice(0,12000),recordedAt:currentLead.communications?.find(m=>m.id===body.messageId)?.sentAt||now,createdAt:now};
+   added=detail.text?1:0;
+   return {...current,documentInsights:detail.text?[...documents.filter(d=>d.sourceId!==claimKey),detail].slice(-500):documents,noteReview:{...state,nextRunAt:state.lease?state.nextRunAt:0,checked:{...state.checked,[claimKey]:'done'}}};
+  });return json({added,kind:"document-context"});
  }catch(error){
   if(claimKey&&claim)await updateStoredWorkspace(access.userId,current=>{const state=current.noteReview||emptyNoteReview();if(state.checked[claimKey]!==claim)return current;const checked={...state.checked};delete checked[claimKey];return {...current,noteReview:{...state,checked}};}).catch(()=>{});
   return json({error:error instanceof Error?error.message:'Attachment review failed.'},502);

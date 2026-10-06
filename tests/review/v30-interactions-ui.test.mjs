@@ -53,9 +53,9 @@ test('Today keeps failed saves visible, snoozes to Later and supports Done/Undo'
   if(action==='done')item={...item,status:'done'};if(action==='reopen')item={...item,status:'open',snoozedUntil:''};
   return Response.json({items:[item],configured:true});};
  const close=await mount(React.createElement(NoteReminders,{leads:[{id:1,name:'Example'}],onOpen(){}}));
- const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+ const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent.replace(/\s+/g,'')===text.replace(/\s+/g,'')||text==='Today'&&b.textContent.startsWith('Today'));
  try{await act(async()=>new Promise(resolve=>setTimeout(resolve,15)));await click(button('✓ Done'));assert.match(document.body.textContent,/Save unavailable/);assert.ok(button('✓ Done'));
   await click(button('Tomorrow'));assert.equal(document.querySelector('article'),null);await click(button('Later'));assert.match(document.body.textContent,/Request declaration page/);
-  fail=false;await click(button('✓ Done'));await click(button('Done'));assert.ok(button('Undo'));await click(button('Undo'));await click(button('Today'));assert.ok(button('✓ Done'));
+  fail=false;await click(button('✓ Done'));await click(button('Done'));assert.ok(button('Restore'));await click(button('Restore'));await click(button('Today'));assert.ok(button('✓ Done'));
  }finally{await close();globalThis.fetch=original}
 });

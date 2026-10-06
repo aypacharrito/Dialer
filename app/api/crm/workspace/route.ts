@@ -51,6 +51,10 @@ const legacyOwnerEmail = "pacificalegalinsurance@gmail.com";
 
 function cleanPayload(value: unknown): WorkspacePayload {
   const clean=cleanWorkspacePayload(value);
+  delete clean.voicePilot;
+  delete clean.voicePilotBlocked;
+  delete clean.documentInsights;
+  delete clean.minerState;
   delete clean.quoteIntake;
   delete clean.noteReminders;
   delete clean.noteReview;

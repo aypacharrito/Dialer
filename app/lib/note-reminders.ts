@@ -1,10 +1,10 @@
 import {reviewSources,type ReviewLead} from "./review-sources";
-export type NoteReminder={sourceId?:string;sourceLabel?:string;id:string;leadId:number;title:string;evidence:string;dueAt:string;status:"open"|"done";snoozedUntil:string;createdAt:string;updatedAt:string};
+export type NoteReminder={sourceId?:string;sourceLabel?:string;id:string;leadId:number;title:string;evidence:string;dueAt:string;status:"open"|"done"|"dismissed";actionKey?:string;confidence?:number;resolvedBy?:"user"|"ai";resolution?:string;resolutionEvidence?:string;resolutionSourceId?:string;snoozedUntil:string;createdAt:string;updatedAt:string};
 export type NoteReview={checked:Record<string,string>;nextRunAt:number;lastRunAt:number;lease:string;error:string};
 export const emptyNoteReview=():NoteReview=>({checked:{},nextRunAt:0,lastRunAt:0,lease:"",error:""});
 export function cleanNoteReminders(value:unknown):NoteReminder[]{
  if(!Array.isArray(value))return [];
- return value.filter((v):v is NoteReminder=>Boolean(v&&typeof v.id==="string"&&Number.isFinite(v.leadId)&&typeof v.title==="string"&&typeof v.evidence==="string"&&["open","done"].includes(v.status)&&Number.isFinite(Date.parse(v.createdAt)))).slice(0,5000).map(v=>({...v,title:v.title.slice(0,160),evidence:v.evidence.slice(0,500),dueAt:Number.isFinite(Date.parse(v.dueAt))?v.dueAt:"",snoozedUntil:Number.isFinite(Date.parse(v.snoozedUntil))?v.snoozedUntil:""}));
+ return value.filter((v):v is NoteReminder=>Boolean(v&&typeof v.id==="string"&&Number.isFinite(v.leadId)&&typeof v.title==="string"&&typeof v.evidence==="string"&&["open","done","dismissed"].includes(v.status)&&Number.isFinite(Date.parse(v.createdAt)))).slice(0,5000).map(v=>({...v,title:v.title.slice(0,160),evidence:v.evidence.slice(0,500),dueAt:Number.isFinite(Date.parse(v.dueAt))?v.dueAt:"",snoozedUntil:Number.isFinite(Date.parse(v.snoozedUntil))?v.snoozedUntil:""}));
 }
 export function visibleNoteReminders(items:NoteReminder[],now=Date.now()){
  return items.filter(t=>t.status==="open"&&(!t.snoozedUntil||Date.parse(t.snoozedUntil)<=now)&&(!t.dueAt||Date.parse(t.dueAt)<=now)).sort((a,b)=>Date.parse(a.dueAt||a.createdAt)-Date.parse(b.dueAt||b.createdAt));

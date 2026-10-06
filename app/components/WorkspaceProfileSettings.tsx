@@ -17,7 +17,7 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
     <article className="locked-business-profile">
       <div><span>BUSINESS PROFILE</span><h3>{profile.businessName||"Pacifica workspace"}</h3><p>{profile.businessDescription||"Business details were set during account creation."}</p></div>
       <strong>LOCKED TO THIS ACCOUNT</strong>
-      <small>Business type, core services, customer type, and primary objective are collected during account creation so this workspace cannot accidentally turn into a different vertical.</small>
+      <small>Business type and core services are set during account creation.</small>
     </article>
 
     <div className="workspace-profile-fields">
@@ -33,8 +33,8 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
 
     <section className="lead-form-permissions" aria-label="Lead-form permissions"><h3>Lead-form permissions</h3><p>Reuse permission already collected on your lead forms. STOP, unsubscribe, and Do Not Call always block outreach.</p><div className="workspace-profile-fields"><label>Sources with SMS consent<ListInput values={profile.smsConsentSources||[]} onChange={values=>update({smsConsentSources:values,smsConsentPolicyVersion:1})} placeholder="SmartFinancial, Website"/></label><label>Sources with email permission<ListInput values={profile.emailConsentSources||[]} onChange={values=>update({emailConsentSources:values})} placeholder="SmartFinancial, Website"/></label></div></section>
 
-    <label className="server-automation-toggle"><input type="checkbox" checked={profile.aiPersonalizationEnabled} onChange={event=>update({aiPersonalizationEnabled:event.target.checked})}/><span><b>AI-personalize each automated follow-up</b><small>Uses the locked business profile plus that lead&apos;s CRM/provider fields. It never invents prices, rates, inventory, approvals, coverage, or appointments.</small></span></label>
-    <label className="server-automation-toggle"><input type="checkbox" checked={profile.serverAutomationEnabled} onChange={event=>update({serverAutomationEnabled:event.target.checked})}/><span><b>Server-side multi-channel follow-up engine</b><small>Creates the next action while Pacifica is closed. Provider and consent gates still apply.</small></span></label>
+    <label className="server-automation-toggle"><input type="checkbox" checked={profile.aiPersonalizationEnabled} onChange={event=>update({aiPersonalizationEnabled:event.target.checked})}/><span><b>Personalize automatic follow-ups</b><small>Uses your business profile and each contact&apos;s details.</small></span></label>
+    <label className="server-automation-toggle"><input type="checkbox" checked={profile.serverAutomationEnabled} onChange={event=>update({serverAutomationEnabled:event.target.checked})}/><span><b>Background follow-ups</b><small>Runs your saved outreach sequences while Pacifica is closed.</small></span></label>
 
     <div className="workspace-appearance-setting"><div><b>Appearance</b></div><div className="appearance-picker" role="group" aria-label="Workspace appearance"><button type="button" className={profile.appearance==="light"?"active":""} aria-pressed={profile.appearance==="light"} onClick={()=>update({appearance:"light"})}><span aria-hidden="true">☀</span><b>Light</b></button><button type="button" className={profile.appearance==="dark"?"active":""} aria-pressed={profile.appearance==="dark"} onClick={()=>update({appearance:"dark"})}><span aria-hidden="true">☾</span><b>Dark</b></button></div></div>
 

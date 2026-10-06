@@ -2,6 +2,14 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("pacificaDesktop",{
   isDesktop:true,
+  connectedBrowser:{
+    open:(url,workspaceId)=>ipcRenderer.invoke('pacifica:page-open',url,workspaceId),
+    bounds:value=>ipcRenderer.invoke('pacifica:page-bounds',value),
+    action:name=>ipcRenderer.invoke('pacifica:page-action',name),
+    capture:()=>ipcRenderer.invoke('pacifica:page-capture'),
+    close:()=>ipcRenderer.invoke('pacifica:page-close'),
+    onState:callback=>{if(typeof callback!=='function')return ()=>{};const handler=(_event,state)=>callback(state);ipcRenderer.on('pacifica:page-state',handler);return ()=>ipcRenderer.removeListener('pacifica:page-state',handler)},
+  },
   openCalendarBrowser:()=>ipcRenderer.invoke("pacifica:open-calendar-browser"),
   supportsDesktopWrapUp:true,
   supportsAtomicCallState:true,

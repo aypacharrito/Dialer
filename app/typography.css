@@ -1,11 +1,18 @@
 @font-face {
+  font-family: "Pacifica Manrope";
+  src: url("/fonts/manrope-latin-variable.woff") format("woff");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
   font-family: "Pacifica Inter";
   src: url("/fonts/inter-latin-variable.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
-:root { --font-pacifica: "Pacifica Inter", Inter, "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+:root { --font-pacifica: "Pacifica Manrope", "Pacifica Inter", Inter, "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 body { font-family: var(--font-pacifica); }
 .app-shell { font-optical-sizing: auto; }
 .app-shell :is(button,input,select,textarea) { font-family: inherit; }

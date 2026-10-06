@@ -21,5 +21,5 @@ test('dictation releases the microphone when the conversation closes without upl
  globalThis.MediaRecorder=class{static isTypeSupported(){return true;}state='inactive';mimeType='audio/webm';start(){this.state='recording'}stop(){this.state='inactive';this.onstop?.()}};
  globalThis.fetch=async()=>{uploads++;return Response.json({text:'Hello'})};
  const close=await mount(React.createElement(VoiceDictation,{disabled:false,onText(){}}));
- try{await act(async()=>document.querySelector('button').click());assert.equal(document.querySelector('button').textContent,'Stop dictation');await close();assert.ok(stopped>=1);assert.equal(uploads,0);}finally{if(savedNavigator)Object.defineProperty(globalThis,'navigator',savedNavigator);else delete globalThis.navigator;globalThis.MediaRecorder=oldRecorder;globalThis.fetch=oldFetch;}
+ try{await act(async()=>document.querySelector('button').click());assert.equal(document.querySelector('button').textContent,'Finish recording');await close();assert.ok(stopped>=1);assert.equal(uploads,0);}finally{if(savedNavigator)Object.defineProperty(globalThis,'navigator',savedNavigator);else delete globalThis.navigator;globalThis.MediaRecorder=oldRecorder;globalThis.fetch=oldFetch;}
 });
