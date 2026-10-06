@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {createVoicePilot} from '../../app/lib/voice-pilot-browser.ts';
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function setup(){
+function setup(extra={}){
  const h={requests:[],events:[],statuses:[],transcripts:[],dials:0,micRequests:0,ended:0};globalThis.voiceBrowser=h;
  class Track{stopped=false;stop(){this.stopped=true}}
  class Stream{constructor(tracks=[new Track()]){this.tracks=tracks}getAudioTracks(){return this.tracks}getTracks(){return this.tracks}clone(){return new Stream()}}
- class Audio{destination={};async resume(){}async close(){h.audioClosed=true}createMediaStreamDestination(){return {stream:new Stream()}}createGain(){h.gain={gain:{value:0},connect(){},disconnect(){}};return h.gain}createMediaStreamSource(){return {connect(){}}}}
+ class Audio{destination={};async resume(){}async close(){h.audioClosed=true}createMediaStreamDestination(){return {stream:new Stream()}}createGain(){const gain={gain:{value:0},connect(){},disconnect(){}};h.gain||=gain;return gain}createMediaStreamSource(){return {connect(){}}}}
  class Channel extends EventTarget{readyState='open';send(raw){const event=JSON.parse(raw);h.events.push(event);if(event.type==='session.close')queueMicrotask(()=>this.dispatchEvent(new MessageEvent('message',{data:JSON.stringify({type:'session.closed'})})))}close(){this.readyState='closed'}message(data){this.dispatchEvent(new MessageEvent('message',{data:JSON.stringify(data)}))}}
  class Peer extends EventTarget{iceGatheringState='complete';connectionState='connected';constructor(){super();h.peer=this}addTrack(){}createDataChannel(){return h.channel=new Channel()}async createOffer(){return {type:'offer',sdp:'v=0 offer'}}async setLocalDescription(value){this.localDescription=value}async setRemoteDescription(){h.channel.message({type:'session.started'})}close(){this.connectionState='closed';h.peerClosed=true}}
  class Call extends EventEmitter{status(){return 'open'}getRemoteStream(){return new Stream()}disconnect(){h.disconnected=true;this.emit('disconnect')}}
@@ -15,7 +15,7 @@ function setup(){
  h.Device=Device;globalThis.window=new EventTarget();globalThis.AudioContext=Audio;globalThis.RTCPeerConnection=Peer;globalThis.MediaStream=Stream;
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true,mediaDevices:{async getUserMedia(){h.micRequests++;return h.mic=new Stream()}}}});
  globalThis.fetch=async(url,options={})=>{if(url==='/api/twilio/token')return Response.json({token:'test-token'});const body=JSON.parse(options.body);h.requests.push(body);if(body.action==='end')return Response.json({ok:true});if(h.waitForStart)return h.waitForStart(options.signal);return Response.json({runId:body.requestId,name:'Test Contact',phone:'+18185550101',sdp:'v=0 answer',routeToken:'bound-route',greeting:'Greet now.'})};
- h.pilot=createVoicePilot({leadId:1,timezone:'America/Los_Angeles',onStatus:value=>h.statuses.push(value),onTranscript:value=>h.transcripts.push(value),onHandoff:summary=>{h.handoff=summary},onHuman:active=>{h.human=active},onEnd:()=>h.ended++});return h;
+ h.pilot=createVoicePilot({leadId:1,timezone:'America/Los_Angeles',onStatus:value=>h.statuses.push(value),onTranscript:value=>h.transcripts.push(value),onHandoff:summary=>{h.handoff=summary},onHuman:active=>{h.human=active},...extra,onEnd:result=>{h.ended++;h.result=result}});return h;
 }
 test('AI audio is routed without operator microphone, greets once, and caller opt-out ends and saves separately',async()=>{
  const h=setup();await h.pilot.start();assert.equal(h.dials,1);assert.equal(h.micRequests,0);assert.equal(h.params.AiPilot,'true');assert.equal(h.gain.gain.value,1);
@@ -54,4 +54,18 @@ test('fabricated handoff evidence cannot activate the operator microphone',async
   delegated(h,{name:'handoff_to_agent',args:{caller_evidence:'I want a quote now',summary:'Unsupported'}});
   h.channel.message({type:'response.event',delegation_id:'d1',event:{type:'response.completed',response:{id:'resp1'}}});await tick();assert.equal(h.handoff,undefined);assert.equal(h.micRequests,0);assert.ok(h.events.some(e=>e.item?.output?.includes('rejected')));
  }finally{h.pilot.stop();await tick()}
+});
+
+test('Twilio per-call errors keep their code and advance only after the result has saved',async()=>{
+ const h=setup();await h.pilot.start();h.call.emit('error',{code:31486,message:'Busy here'});await tick();
+ assert.equal(h.result.advance,true);assert.equal(h.result.saved,true);assert.match(h.result.message,/31486/);assert.match(h.requests.at(-1).summary,/Busy here/);
+});
+test('voicemail leave mode preserves playback time and saves voicemail on disconnect',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});const h=setup({messageOptions:{voicemail:'leave',message:'Hello from Ava.'}});await h.pilot.start();
+ try{
+  assert.equal(h.requests.find(r=>r.action==='start').messageOptions.voicemail,'leave');
+  delegated(h,{name:'finish_call',args:{outcome:'voicemail',summary:'Left callback details.'}});
+  h.channel.message({type:'response.event',delegation_id:'d1',event:{type:'response.completed',response:{id:'resp1'}}});await tick();
+  t.mock.timers.tick(4000);assert.equal(h.disconnected,undefined);h.call.emit('disconnect');await tick();assert.equal(h.result.outcome,'voicemail');
+ }finally{h.pilot.stop();await tick();t.mock.timers.reset()}
 });

@@ -91,3 +91,12 @@ test('Autopilot Start reaches microphone setup directly and Stop cancels pending
   await click(button('Stop Autopilot'));await act(async()=>permit({getTracks:()=>[{stop:()=>stopped++}]}));assert.equal(stopped,1);assert.deepEqual(active,[true,false]);assert.ok(button('Start Autopilot'));
  }finally{await h.close();globalThis.fetch=original}
 });
+
+test('minimizing Ava keeps its queue mounted across page navigation',async()=>{
+ const {default:AiVoicePilot}=await import('../../app/components/AiVoicePilot.tsx');const original=globalThis.fetch,active=[];let permit,stopped=0;
+ globalThis.fetch=async()=>Response.json({queue:[{id:1,name:'Driver',phone:'+18185550101'}],excluded:0,history:[]});
+ function App(){const [open,setOpen]=React.useState(true);return React.createElement(AiVoicePilot,{expanded:open,onOpen:()=>setOpen(true),onClose:()=>setOpen(false),leads:[{id:1,name:'Driver',phone:'8185550101'}],busy:false,onActive:value=>active.push(value)})}
+ const h=await mount(React.createElement(App));const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:()=>new Promise(resolve=>permit=resolve)}});
+ try{await click(button('Load queue'));await click(button('Start Autopilot'));await click('[aria-label="Minimize AI Autopilot"]');assert.deepEqual(active,[true]);assert.ok(document.querySelector('.ava-dock'));await click(button('Stop'));await act(async()=>permit({getTracks:()=>[{stop:()=>stopped++}]}));assert.equal(stopped,1);assert.deepEqual(active,[true,false])}finally{await h.close();globalThis.fetch=original}
+});

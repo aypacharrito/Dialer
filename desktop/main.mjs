@@ -69,9 +69,13 @@ function saveOverlayLayout(){
   try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({layout:overlayLayout,sizes:overlaySizes,position:overlayPosition}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
 }
 function overlayState(){return {...lastCallState,layout:lastCallState.active?overlayLayout:"vertical"}}
+function overlayMinimum(phase){
+  if(phase==="call"&&lastCallState.mode==="ava")return overlayLayout==="vertical"?[300,230]:[660,112];
+  return phase==="incoming"?[420,138]:phase==="wrap"?[480,560]:(overlayLayout==="vertical"?[280,180]:[480,88]);
+}
 function overlayDimensions(phase){
-  const minimum=phase==="incoming"?[420,138]:phase==="wrap"?[480,560]:(overlayLayout==="vertical"?[280,180]:[480,88]);
-  const saved=overlaySizes[phase==="incoming"?"incoming":phase==="wrap"?"wrap:result":`${phase}:${overlayLayout}`];
+  const minimum=overlayMinimum(phase);
+  const saved=overlaySizes[phase==="incoming"?"incoming":phase==="wrap"?"wrap:result":`${phase}:${overlayLayout}${lastCallState.mode==="ava"?":ava":""}`];
   return minimum.map((size,index)=>Math.max(size,Math.min(index?900:1200,Number(saved?.[index])||size)));
 }
 
@@ -219,13 +223,13 @@ function showCallOverlay(){
   if(!nextPhase){overlayWindow?.hide();overlayPhase="";publishOverlayStatus(false);return}
   const overlay=createOverlay();
   const phaseChanged=overlayPhase!==nextPhase;
-  const geometry=nextPhase==="incoming"?"incoming":nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}`;
+  const geometry=nextPhase==="incoming"?"incoming":nextPhase==="wrap"?"wrap:result":`call:${overlayLayout}${lastCallState.mode==="ava"?":ava":""}`;
   if(overlayGeometry!==geometry){
     // Keep the exact top-left location when switching Call -> Call result.
     // Size changes must not make the overlay "jump" to a new position.
     const [oldX,oldY]=overlay.getPosition();
     const [width,height]=overlayDimensions(nextPhase);
-    overlay.setMinimumSize(nextPhase==="incoming"?420:nextPhase==="wrap"?480:(overlayLayout==="vertical"?280:480),nextPhase==="incoming"?138:nextPhase==="wrap"?560:(overlayLayout==="vertical"?180:88));
+    overlay.setMinimumSize(...overlayMinimum(nextPhase));
     overlay.setSize(width,height,false);
     const area=screen.getDisplayMatching({x:oldX,y:oldY,width:1,height:1}).workArea;
     const x=Math.max(area.x,Math.min(oldX,area.x+area.width-width));
@@ -268,7 +272,7 @@ ipcMain.on("pacifica:call-action",(event,action)=>{
   if(!overlayWindow||event.sender!==overlayWindow.webContents||typeof action!=="string")return;
   if(action==="toggle-layout"&&lastCallState.active){overlayLayout=overlayLayout==="horizontal"?"vertical":"horizontal";saveOverlayLayout();showCallOverlay();return}
   if(action==="minimize"){overlayWindow.setSkipTaskbar(false);overlayWindow.minimize();return}
-  if(!["open","mute","end","pause","answer-incoming","decline-incoming"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
+  if(!["open","mute","end","pause","takeover","skip","answer-incoming","decline-incoming"].includes(action)&&!/^digit:[0-9*#]$/.test(action))return;
   if(action==="open"){mainWindow?.show();mainWindow?.focus()}
   mainWindow?.webContents.send("pacifica:call-action",action);
 });

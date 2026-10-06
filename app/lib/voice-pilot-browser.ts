@@ -1,22 +1,23 @@
 'use client';
 import type {Call,Device} from '@twilio/voice-sdk';
-import {callerOptOut,type VoiceOutcome} from './voice-pilot';
+import {callerOptOut,type VoiceOutcome,type VoiceMessageOptions} from './voice-pilot';
+import {voiceFailure} from './voice-failure';
 type FunctionItem={type?:string;call_id?:string;name?:string;arguments?:string};
 type LiveEnvelope={type?:string;delegation_id?:string;event?:{type?:string;response?:{id?:string};item?:FunctionItem}};
-export type VoicePilotResult={outcome:VoiceOutcome;summary:string;message:string;saved:boolean};
-type PilotOptions={leadId:number;timezone:string;queue?:boolean;operatorStream?:MediaStream;onStatus:(status:string)=>void;onTranscript:(text:string)=>void;onHandoff?:(summary:string)=>void;onHuman?:(active:boolean)=>void;onEnd:(result:VoicePilotResult)=>void};
+export type VoicePilotResult={outcome:VoiceOutcome;summary:string;message:string;saved:boolean;advance?:boolean};
+type PilotOptions={leadId:number;timezone:string;queue?:boolean;messageOptions?:VoiceMessageOptions;onConnected?:(at:number|null)=>void;operatorStream?:MediaStream;onStatus:(status:string)=>void;onTranscript:(text:string)=>void;onHandoff?:(summary:string)=>void;onHuman?:(active:boolean)=>void;onEnd:(result:VoicePilotResult)=>void};
 export function createVoicePilot(options:PilotOptions){
  let stopped=false,human=false,blocked=false,answeredOnce=false,runId=crypto.randomUUID(),summary='';
  let plannedOutcome:VoiceOutcome='completed';
  const responseIds=new Map<string,string>(),pendingTools=new Map<string,FunctionItem[]>();
- let device:Device|undefined,call:Call|undefined,peer:RTCPeerConnection|undefined,channel:RTCDataChannel|undefined,context:AudioContext|undefined,mic:MediaStream|undefined,voice:GainNode|undefined,toPhone:MediaStreamAudioDestinationNode|undefined;
+ let device:Device|undefined,call:Call|undefined,peer:RTCPeerConnection|undefined,channel:RTCDataChannel|undefined,context:AudioContext|undefined,mic:MediaStream|undefined,voice:GainNode|undefined,toPhone:MediaStreamAudioDestinationNode|undefined,operatorGain:GainNode|undefined;
  let timer:ReturnType<typeof setTimeout>|undefined,watchdog:ReturnType<typeof setInterval>|undefined,finishTimer:ReturnType<typeof setTimeout>|undefined,lastTick=Date.now();
  const controller=new AbortController(),handledTools=new Set<string>(),fragments:Array<{speaker:string;text:string;at:number}>=[];
  const transcript=()=>{const turns:Array<{speaker:string;text:string}>=[];for(const f of fragments.slice().sort((a,b)=>a.at-b.at)){const last=turns.at(-1);if(last?.speaker===f.speaker)last.text+=f.text;else turns.push({...f})}return turns.map(f=>`${f.speaker}: ${f.text}`).join('\n').slice(-12000)};
  const assertActive=()=>{if(stopped||!navigator.onLine)throw Error('AI calling was stopped.')};
  const send=(event:unknown)=>{if(channel?.readyState==='open')channel.send(JSON.stringify(event))};
  async function post(body:unknown){const r=await fetch('/api/ai/voice-call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});const data=await r.json();if(!r.ok)throw Error(data.error||'AI calling is unavailable.');return data}
- function stop(message='Autopilot stopped.',outcome:VoiceOutcome='manual-stop'){
+ function stop(message='Autopilot stopped.',outcome:VoiceOutcome='manual-stop',advance=false){
   if(stopped)return;stopped=true;clearTimeout(timer);clearTimeout(finishTimer);clearInterval(watchdog);controller.abort();
   call?.disconnect();device?.destroy();if(mic&&mic!==options.operatorStream)mic.getTracks().forEach(t=>t.stop());
   voice?.disconnect();toPhone?.stream.getTracks().forEach(t=>t.stop());
@@ -24,8 +25,8 @@ export function createVoicePilot(options:PilotOptions){
   const cleanup=()=>{clearTimeout(cleanupTimer);closingChannel?.close();closingPeer?.close();void context?.close().catch(()=>{})};
   if(closingChannel?.readyState==='open'){closingChannel.addEventListener('message',event=>{try{if(JSON.parse(event.data).type==='session.closed')cleanup()}catch{}});send({type:'session.close'});cleanupTimer=setTimeout(cleanup,3000)}else cleanup();
   window.removeEventListener('offline',offline);window.removeEventListener('pagehide',offline);
-  options.onStatus(message);options.onHuman?.(false);
-  void fetch('/api/ai/voice-call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'end',runId,block:blocked,transcript:transcript(),outcome,summary}),keepalive:true,signal:AbortSignal.timeout(8000)}).then(r=>{if(!r.ok)throw Error('Save failed');options.onEnd({outcome,summary,message,saved:true})}).catch(()=>{options.onStatus('Call stopped. Copy the transcript; saving failed.');options.onEnd({outcome:'error',summary,message:'Transcript could not save. Autopilot paused.',saved:false})});
+  options.onStatus(message);options.onHuman?.(false);options.onConnected?.(null);
+  void fetch('/api/ai/voice-call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'end',runId,block:blocked,transcript:transcript(),outcome,summary:summary||(outcome==='error'?message:'')}),keepalive:true,signal:AbortSignal.timeout(8000)}).then(r=>{if(!r.ok)throw Error('Save failed');options.onEnd({outcome,summary:summary||(outcome==='error'?message:''),message,saved:true,advance})}).catch(()=>{options.onStatus('Call stopped. Copy the transcript; saving failed.');options.onEnd({outcome:'error',summary,message:'Transcript could not save. Autopilot paused.',saved:false})});
  }
  const offline=()=>stop('Stopped because this computer disconnected.','error');
  async function takeOver(){
@@ -34,7 +35,7 @@ export function createVoicePilot(options:PilotOptions){
    mic=options.operatorStream||await navigator.mediaDevices.getUserMedia({audio:true});
    if(stopped){if(mic!==options.operatorStream)mic.getTracks().forEach(t=>t.stop());return false}
    if(!mic.getAudioTracks().some(t=>t.readyState!=='ended'))throw Error('Microphone disconnected');
-   human=true;voice!.gain.value=0;send({type:'session.close'});peer?.close();context!.createMediaStreamSource(mic).connect(toPhone!);
+   human=true;voice!.gain.value=0;send({type:'session.close'});peer?.close();operatorGain=context!.createGain();operatorGain.gain.value=1;context!.createMediaStreamSource(mic).connect(operatorGain);operatorGain.connect(toPhone!);
    options.onStatus('Connected to you · AI is off');options.onHuman?.(true);return true;
   }catch{options.onStatus('Microphone unavailable. AI remains on the line.');return false}
  }
@@ -53,8 +54,8 @@ export function createVoicePilot(options:PilotOptions){
    return;
   }
   if(item.name==='finish_call'&&['voicemail','not-interested','wrong-person','opt-out','callback','completed'].includes(String(args.outcome))){
-   summary=note;const outcome=args.outcome as VoiceOutcome;plannedOutcome=outcome;blocked=outcome==='opt-out';reply({status:'ending',instruction:outcome==='voicemail'?'End silently.':'Say one brief goodbye. The application is ending the call.'});
-   clearTimeout(finishTimer);finishTimer=setTimeout(()=>stop('Call finished.',outcome),outcome==='voicemail'||blocked?0:4500);return;
+   summary=note;const outcome=args.outcome as VoiceOutcome;plannedOutcome=outcome;blocked=outcome==='opt-out';reply({status:'ending',instruction:outcome==='voicemail'?'The voicemail action is complete. Remain silent; do not repeat the message.':'Say one brief goodbye. The application is ending the call.'});
+   clearTimeout(finishTimer);finishTimer=setTimeout(()=>stop('Call finished.',outcome),blocked||(outcome==='voicemail'&&options.messageOptions?.voicemail!=='leave')?0:4500);return;
   }
   reply({status:'rejected',reason:'Unsupported call action.'});
  }
@@ -96,16 +97,16 @@ export function createVoicePilot(options:PilotOptions){
    const tokenResponse=await fetch('/api/twilio/token',{signal:controller.signal}),token=await tokenResponse.json();if(!tokenResponse.ok)throw Error(token.error||'Twilio is unavailable.');assertActive();
    await peer.setLocalDescription(await peer.createOffer());
    if(peer.iceGatheringState!=='complete')await new Promise<void>((resolve,reject)=>{const timeout=setTimeout(()=>{peer?.removeEventListener('icegatheringstatechange',changed);reject(Error('Audio connection timed out.'))},8000);function changed(){if(peer?.iceGatheringState==='complete'){clearTimeout(timeout);peer.removeEventListener('icegatheringstatechange',changed);resolve()}}peer!.addEventListener('icegatheringstatechange',changed);changed()});assertActive();
-   const result=await post({action:'start',requestId:runId,leadId:options.leadId,timezone:options.timezone,queue:options.queue===true,sdp:peer.localDescription?.sdp});assertActive();runId=result.runId;
+   const result=await post({action:'start',requestId:runId,leadId:options.leadId,timezone:options.timezone,queue:options.queue===true,messageOptions:options.messageOptions,sdp:peer.localDescription?.sdp});assertActive();runId=result.runId;
    await peer.setRemoteDescription({type:'answer',sdp:result.sdp});await ready;assertActive();
    const {Device}=await import('@twilio/voice-sdk');assertActive();
-   device=new Device(token.token,{getUserMedia:()=>Promise.resolve(toPhone!.stream.clone()),logLevel:'error',closeProtection:true});device.on('error',()=>stop('Phone connection failed. Check Phone setup.','error'));
+   device=new Device(token.token,{getUserMedia:()=>Promise.resolve(toPhone!.stream.clone()),logLevel:'error',closeProtection:true,enableImprovedSignalingErrorPrecision:true});device.on('error',error=>{const failure=voiceFailure(error);stop(failure.message,'error',failure.advance)});
    options.onStatus(`Calling ${result.name||'contact'}…`);call=await device.connect({params:{To:result.phone,RouteToken:result.routeToken,AiPilot:'true'}});if(stopped){call.disconnect();return}
-   const answered=()=>{if(stopped||answeredOnce)return;answeredOnce=true;const remote=call!.getRemoteStream();if(!remote){stop('Caller audio was unavailable.','error');return}context!.createMediaStreamSource(remote).connect(toAI);voice!.gain.value=1;send({type:'session.instructions.append',event_id:crypto.randomUUID(),delegation_id:null,content:result.greeting});options.onStatus('Ava is qualifying · you join when interested');};
-   call.on('accept',answered);call.on('disconnect',()=>stop('Call finished.',human?'human-ended':answeredOnce?'completed':'no-answer'));call.on('cancel',()=>stop('No answer.','no-answer'));call.on('error',()=>stop('Phone call failed. Autopilot paused.','error'));if(call.status()==='open')answered();
+   const answered=()=>{if(stopped||answeredOnce)return;answeredOnce=true;const remote=call!.getRemoteStream();if(!remote){stop('Caller audio was unavailable.','error');return}context!.createMediaStreamSource(remote).connect(toAI);voice!.gain.value=1;send({type:'session.instructions.append',event_id:crypto.randomUUID(),delegation_id:null,content:result.greeting});options.onConnected?.(Date.now());options.onStatus('Ava is listening · screening, voicemail or caller');};
+   call.on('accept',answered);call.on('disconnect',()=>stop('Call finished.',human?'human-ended':plannedOutcome!=='completed'?plannedOutcome:answeredOnce?'completed':'no-answer'));call.on('cancel',()=>stop('No answer.','no-answer'));call.on('error',error=>{const failure=voiceFailure(error);stop(failure.message,'error',failure.advance)});if(call.status()==='open')answered();
    timer=setTimeout(()=>stop('Five-minute call limit reached.',human?'human-ended':'completed'),300000);
    lastTick=Date.now();watchdog=setInterval(()=>{const now=Date.now();if(now-lastTick>45000||!navigator.onLine)offline();lastTick=now},5000);
-  }catch(error){if(!stopped)stop(error instanceof Error?error.message:'AI calling failed.','error')}
+  }catch(error){if(!stopped){const failure=voiceFailure(error);stop(failure.message,'error',failure.advance)}}
  }
- return {start,stop,takeOver};
+ return {start,stop,takeOver,skip:()=>stop('Contact skipped.','skipped'),mute:(muted:boolean)=>{if(operatorGain)operatorGain.gain.value=muted?0:1}};
 }

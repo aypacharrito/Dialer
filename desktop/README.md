@@ -32,3 +32,7 @@ PACIFICA_DESKTOP_MAC_URL=https://YOUR-PRIVATE-RELEASE-LOCATION/Pacifica.dmg
 The desktop app itself still requires the user's normal Clerk/Pacifica sign-in and subscription access.
 
 The desktop title bar shows the installed version. Native overlay changes require a new EXE; a Vercel web deployment cannot replace files already packaged inside an older EXE. Browser picture-in-picture uses compact controls with horizontal/vertical layouts and an optional keypad.
+
+## V43 Ava mode
+
+The existing call overlay now receives Ava state from the main CRM, even on other pages. Join, Pause/Resume and Skip return to the same live queue. Mute is available after human handoff; Stop ends the queue. Ava remembers a separate overlay size. The existing desktop release workflow creates a new installer when these desktop files are pushed to main. Install that release after the web update to get the native Ava buttons.

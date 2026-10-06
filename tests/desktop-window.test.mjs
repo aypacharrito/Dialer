@@ -19,6 +19,14 @@ function desktop(settings={}){
  windows[0].webContents.mainFrame={url:'https://pacificacrm.com/dashboard'};
  return {windows,handlers,external,flushLayout,event:{sender:windows[0].webContents,senderFrame:windows[0].webContents.mainFrame}};
 }
+test('Ava gets room for queue controls and routes actions only from the native overlay',()=>{
+ const {windows,handlers,event}=desktop(),update=handlers.get('pacifica:call-state');
+ update(event,{active:true,mode:'ava',name:'Test contact',paused:false});const overlay=windows[1];assert.deepEqual(overlay.getSize(),[660,112]);
+ for(const action of ['takeover','skip','pause'])handlers.get('pacifica:call-action')({sender:overlay.webContents},action);
+ assert.deepEqual(windows[0].sent.filter(([name])=>name==='pacifica:call-action').map(([,action])=>action),['takeover','skip','pause']);
+ handlers.get('pacifica:call-action')({sender:windows[0].webContents},'takeover');assert.equal(windows[0].sent.filter(([name])=>name==='pacifica:call-action').length,3);
+ update(event,{active:true});assert.deepEqual(overlay.getSize(),[480,88]);
+});
 test('floating call window keeps a dragged position across timer updates and calls',()=>{
  const {windows,handlers,event}=desktop();const update=handlers.get('pacifica:call-state');
  update(event,{active:true,elapsed:'00:01'});assert.equal(windows.length,2);assert.equal(windows[1].bounds.x,460);assert.equal(windows[1].bounds.height,88);
