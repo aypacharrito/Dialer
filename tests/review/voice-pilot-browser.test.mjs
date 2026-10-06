@@ -15,10 +15,11 @@ function setup(){
  h.Device=Device;globalThis.window=new EventTarget();globalThis.AudioContext=Audio;globalThis.RTCPeerConnection=Peer;globalThis.MediaStream=Stream;
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true,mediaDevices:{async getUserMedia(){h.micRequests++;return h.mic=new Stream()}}}});
  globalThis.fetch=async(url,options={})=>{if(url==='/api/twilio/token')return Response.json({token:'test-token'});const body=JSON.parse(options.body);h.requests.push(body);if(body.action==='end')return Response.json({ok:true});if(h.waitForStart)return h.waitForStart(options.signal);return Response.json({runId:body.requestId,name:'Test Contact',phone:'+18185550101',sdp:'v=0 answer',routeToken:'bound-route',greeting:'Greet now.'})};
- h.pilot=createVoicePilot({leadId:1,permissionEvidence:'Written test permission',timezone:'America/Los_Angeles',onStatus:value=>h.statuses.push(value),onTranscript:value=>h.transcripts.push(value),onHandoff:summary=>{h.handoff=summary},onHuman:active=>{h.human=active},onEnd:()=>h.ended++});return h;
+ h.pilot=createVoicePilot({leadId:1,timezone:'America/Los_Angeles',onStatus:value=>h.statuses.push(value),onTranscript:value=>h.transcripts.push(value),onHandoff:summary=>{h.handoff=summary},onHuman:active=>{h.human=active},onEnd:()=>h.ended++});return h;
 }
 test('AI audio is routed without operator microphone, greets once, and caller opt-out ends and saves separately',async()=>{
  const h=setup();await h.pilot.start();assert.equal(h.dials,1);assert.equal(h.micRequests,0);assert.equal(h.params.AiPilot,'true');assert.equal(h.gain.gain.value,1);
+ const start=h.requests.find(r=>r.action==='start');assert.equal('permissionConfirmed' in start,false);assert.equal('permissionEvidence' in start,false);
  h.call.emit('accept');assert.equal(h.events.filter(e=>e.type==='session.instructions.append').length,1);
  h.channel.message({type:'session.input_transcript.delta',delta:'Please do not call me.',start_ms:50});await tick();
  assert.equal(h.ended,1);assert.equal(h.disconnected,true);assert.equal(h.peerClosed,true);assert.equal(h.audioClosed,true);

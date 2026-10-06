@@ -1,7 +1,7 @@
 'use client';
 import {createVoicePilot,type VoicePilotResult} from './voice-pilot-browser';
 export type VoiceQueueContact={id:number;name:string;phone:string};
-type Options={contacts:VoiceQueueContact[];permissionEvidence:string;timezone:string;maxMinutes:number;onStatus:(text:string)=>void;onContact:(contact:VoiceQueueContact,index:number,total:number)=>void;onTranscript:(text:string)=>void;onHandoff:(contact:VoiceQueueContact,summary:string)=>void;onHuman:(active:boolean)=>void;onResult:(contact:VoiceQueueContact,result:VoicePilotResult)=>void;onEnd:()=>void};
+type Options={contacts:VoiceQueueContact[];timezone:string;maxMinutes:number;onStatus:(text:string)=>void;onContact:(contact:VoiceQueueContact,index:number,total:number)=>void;onTranscript:(text:string)=>void;onHandoff:(contact:VoiceQueueContact,summary:string)=>void;onHuman:(active:boolean)=>void;onResult:(contact:VoiceQueueContact,result:VoicePilotResult)=>void;onEnd:()=>void};
 /** One dial at a time. A saved completion is required before advancing. */
 export function createVoiceQueue(options:Options,factory= createVoicePilot){
  let running=false,paused=false,next=0,pilot:ReturnType<typeof createVoicePilot>|undefined,mic:MediaStream|undefined;
@@ -17,7 +17,7 @@ export function createVoiceQueue(options:Options,factory= createVoicePilot){
   if(!running||paused||pilot)return;if(!navigator.onLine){leave();return}
   const contact=contacts[next++];if(!contact){stop('Queue complete.');return}
   options.onContact(contact,next,contacts.length);options.onTranscript('');
-  pilot=factory({leadId:contact.id,permissionEvidence:options.permissionEvidence,timezone:options.timezone,queue:true,operatorStream:mic,onStatus:options.onStatus,onTranscript:options.onTranscript,onHandoff:summary=>{if(running)options.onHandoff(contact,summary)},onHuman:options.onHuman,onEnd:result=>{
+  pilot=factory({leadId:contact.id,timezone:options.timezone,queue:true,operatorStream:mic,onStatus:options.onStatus,onTranscript:options.onTranscript,onHandoff:summary=>{if(running)options.onHandoff(contact,summary)},onHuman:options.onHuman,onEnd:result=>{
    pilot=undefined;options.onResult(contact,result);if(!running)return;
    if(!result.saved||result.outcome==='error'||result.outcome==='manual-stop'){stop(result.message);return}
    if(paused)options.onStatus('Autopilot paused.');else schedule();

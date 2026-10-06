@@ -1,10 +1,12 @@
-# V40 · Continuous AI Autopilot
+# V42 · Continuous AI Autopilot
 
 Open **Pacifica AI → AI Autopilot** in an insurance workspace as its owner.
 
+Use **Load queue → Start Autopilot**. The repeated permission text field, checkbox and instruction paragraphs have been removed. The server no longer requires a per-session permission note. Existing historical notes are retained; new runs do not fabricate consent or change contact permissions. Queue totals use the contacts still eligible in the current workspace. A failed reload clears the previous queue.
+
 1. Choose **Continuous queue**, then **Load queue**. You can filter Auto or Home, or choose one contact.
 2. Set your call count and session time limits. Default: up to 25 contacts and 60 minutes. Maximum: 500 contacts and 120 minutes per session.
-3. Enter the source/date of written AI-call permission for the selected contacts and confirm their time zone. Then select **Start Autopilot** and allow microphone access.
+3. Choose the recipient time zone, select **Start Autopilot**, and allow microphone access.
 4. Keep the laptop open, Pacifica AI open, and your headset ready. Ava calls one contact at a time. After a call ends and its transcript saves, the next call begins after five seconds.
 5. When a caller clearly wants a comparison now or asks for the agent, an alert sounds and a summary appears. Your microphone joins the same call automatically after a short announcement. AI disconnects. No additional transfer telephone number is required.
 
@@ -22,7 +24,7 @@ A caller's request for a quote/comparison now or for a human triggers handoff. S
 
 - Existing contact fields stay unchanged, including in AI phone-status callbacks. Call logs, AI run history and a separate transcript/summary insight are added for review and Today.
 - Duplicate phone numbers, stopped/paused/closed/interested records, numbers blocked for AI calling, and numbers attempted in the prior 24 hours are excluded from a newly loaded queue. A blocked duplicate excludes the shared phone. The server rechecks eligibility before issuing a phone route.
-- Written AI-call permission is still required. Permission for an ordinary quote response and a public listing are not automatically treated as AI-call permission. Newly mined public research remains outside automatic calling.
+- Starting the queue does not create or change consent records. Existing contact exclusions remain in force, including opt-outs, stopped automation and blocked numbers. Newly mined public research remains outside automatic calling.
 - Provider/setup errors or transcript-save failures stop the queue. They do not silently retry paid calls. The browser and server prevent a second active AI phone call.
 - Uses your existing server-side OpenAI key and workspace-assigned Twilio number. Normal provider charges apply. Defaults remain `OPENAI_LIVE_MODEL=gpt-live-1` and `OPENAI_LIVE_VOICE=gleam`; delegation uses `OPENAI_MODEL`.
 

@@ -1,12 +1,13 @@
 export const voiceOutcomes=['completed','no-answer','voicemail','not-interested','wrong-person','opt-out','callback','human-ended','manual-stop','error','started'] as const;
 export type VoiceOutcome=typeof voiceOutcomes[number];
-export type VoicePilotRun={id:string;leadId:number;phone:string;ownerId:string;startedAt:number;expiresAt:number;state:'starting'|'ready'|'calling'|'ended';permissionEvidence:string;timezone:string;callSid?:string};
+export type VoicePilotRun={id:string;leadId:number;phone:string;ownerId:string;startedAt:number;expiresAt:number;state:'starting'|'ready'|'calling'|'ended';permissionEvidence?:string;timezone:string;callSid?:string};
 export type VoiceCallHistory={id:string;leadId:number;phone:string;startedAt:number;outcome:VoiceOutcome;summary:string};
 export function cleanVoiceHistory(value:unknown):VoiceCallHistory[]{return Array.isArray(value)?value.filter(v=>v&&typeof v.id==='string'&&Number.isSafeInteger(v.leadId)&&/^\+1\d{10}$/.test(v.phone)&&Number.isFinite(v.startedAt)&&voiceOutcomes.includes(v.outcome)).slice(-2000).map(v=>({...v,summary:String(v.summary||'').slice(0,1000)})):[]}
 export function cleanVoicePilot(value:unknown):VoicePilotRun|undefined{
  if(!value||typeof value!=='object')return;const v=value as VoicePilotRun;
  if(typeof v.id!=='string'||!Number.isSafeInteger(v.leadId)||!/^\+1\d{10}$/.test(v.phone)||!Number.isFinite(v.expiresAt)||!['starting','ready','calling','ended'].includes(v.state))return;
- return {...v,permissionEvidence:String(v.permissionEvidence||'').slice(0,1000)};
+ const {permissionEvidence,...run}=v;
+ return {...run,...(typeof permissionEvidence==='string'?{permissionEvidence:permissionEvidence.slice(0,1000)}:{})};
 }
 export function voicePhone(value:unknown){const digits=String(value||'').replace(/\D/g,'');return /^1?\d{10}$/.test(digits)?`+1${digits.slice(-10)}`:''}
 export function voicePilotEligible(lead:Record<string,unknown>){return Boolean(voicePhone(lead.phone)&&!lead.deletedAt&&!lead.doNotCall&&!lead.smsOptOut&&lead.automationEnabled!==false&&!['Closed','Interested'].includes(String(lead.stage))&&!['Interested','Not interested','Wrong number'].includes(String(lead.outcome)))}

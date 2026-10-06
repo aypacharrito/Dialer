@@ -56,14 +56,38 @@ test('AI revisions preserve the selected audience and channel when the provider 
   assert.equal(document.querySelector('.ai-channel-choice button[aria-pressed="true"]').textContent,'Text');assert.match(document.querySelector('[aria-label="Review message before sending"]').value,/would Friday work/);
  }finally{await h.close();globalThis.fetch=original}
 });
-test('Autopilot loads a reviewed queue, requires permission evidence, and invalidates selection on category change',async()=>{
+test('Autopilot enables Start after loading eligible contacts without a permission form',async()=>{
  const {default:AiVoicePilot}=await import('../../app/components/AiVoicePilot.tsx');const original=globalThis.fetch,requests=[];
- globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);requests.push(body);assert.equal(body.action,'queue');return Response.json({queue:[{id:1,name:'Driver',phone:'+18185550101'}],excluded:2,history:[]})};
+ globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);requests.push(body);assert.equal(body.action,'queue');return Response.json({queue:[{id:1,name:'Driver',phone:'+18185550101'},{id:2,name:'Stale contact',phone:'+18185550102'}],excluded:2,history:[]})};
  const h=await mount(React.createElement(AiVoicePilot,{leads:[{id:1,name:'Driver',phone:'8185550101'}],busy:false,onActive(){},onClose(){}}));
  const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
  try{
-  assert.equal(requests.length,0);assert.equal(button('Start Autopilot').disabled,true);await click(button('Load queue'));assert.equal(requests.length,1);assert.equal(button('Start Autopilot').disabled,true);
-  const input=document.querySelector('[aria-label="AI call permission evidence"]');await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(input,'Signed permission list October 5');input.dispatchEvent(new window.Event('input',{bubbles:true}))});await click('input[type="checkbox"]');assert.equal(button('Start Autopilot').disabled,false);
-  const select=[...document.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value==='home'));await act(async()=>{select.value='home';select.dispatchEvent(new window.Event('change',{bubbles:true}))});assert.equal(button('Start Autopilot').disabled,true);assert.equal(document.querySelector('input[type="checkbox"]').checked,false);assert.equal(requests.length,1);
+  assert.equal(requests.length,0);assert.equal(button('Start Autopilot').disabled,true);await click(button('Load queue'));assert.equal(requests.length,1);assert.equal(button('Start Autopilot').disabled,false);
+  assert.match(document.querySelector('.ai-voice-pilot > [role="status"]').textContent,/1 ready · 3 skipped/);
+  assert.equal(document.querySelector('[aria-label="AI call permission evidence"]'),null);assert.equal(document.querySelector('input[type="checkbox"]'),null);assert.equal(document.querySelector('#voice-start-help'),null);
+  const select=[...document.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value==='home'));await act(async()=>{select.value='home';select.dispatchEvent(new window.Event('change',{bubbles:true}))});assert.equal(button('Start Autopilot').disabled,true);assert.equal(requests.length,1);assert.equal(button('Start Autopilot').title,'Load queue');assert.equal(document.querySelector('.ai-voice-pilot > [role="status"]').textContent,'');
+  await click(button('Load queue'));assert.equal(requests[1].kind,'home');assert.equal(button('Start Autopilot').disabled,false);
+ }finally{await h.close();globalThis.fetch=original}
+});
+
+test('Autopilot explains an empty queue and clears stale contacts after a failed reload',async()=>{
+ const {default:AiVoicePilot}=await import('../../app/components/AiVoicePilot.tsx');const original=globalThis.fetch;let load=0;
+ globalThis.fetch=async()=>++load===1?Response.json({queue:[],excluded:3,history:[]}):load===2?Response.json({queue:[{id:1,name:'Driver',phone:'+18185550101'}],excluded:2,history:[]}):Response.json({error:'Workspace temporarily unavailable.'},{status:503});
+ const h=await mount(React.createElement(AiVoicePilot,{leads:[{id:1,name:'Driver',phone:'8185550101'}],busy:false,onActive(){},onClose(){}}));const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+ try{
+  await click(button('Load queue'));assert.match(document.querySelector('.ai-voice-pilot > [role="status"]').textContent,/No eligible contacts/);assert.equal(button('Start Autopilot').disabled,true);
+  await click(button('Load queue'));assert.match(document.querySelector('.ai-voice-pilot > [role="status"]').textContent,/1 ready/);
+  await click(button('Load queue'));assert.match(document.querySelector('.ai-voice-pilot > [role="status"]').textContent,/Workspace temporarily unavailable/);assert.equal(button('Start Autopilot').disabled,true);assert.equal(button('Start Autopilot').title,'Load queue');
+ }finally{await h.close();globalThis.fetch=original}
+});
+
+test('Autopilot Start reaches microphone setup directly and Stop cancels pending setup',async()=>{
+ const {default:AiVoicePilot}=await import('../../app/components/AiVoicePilot.tsx');const original=globalThis.fetch,active=[];let permit,stopped=0,micRequests=0;
+ globalThis.fetch=async(_url,options)=>{assert.equal(JSON.parse(options.body).action,'queue');return Response.json({queue:[{id:1,name:'Driver',phone:'+18185550101'}],excluded:0,history:[]})};
+ const h=await mount(React.createElement(AiVoicePilot,{leads:[{id:1,name:'Driver',phone:'8185550101'}],busy:false,onActive:value=>active.push(value),onClose(){}}));const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:()=>{micRequests++;return new Promise(resolve=>permit=resolve)}}});
+ try{
+  await click(button('Load queue'));await click(button('Start Autopilot'));assert.equal(micRequests,1);assert.deepEqual(active,[true]);assert.ok(button('Stop Autopilot'));
+  await click(button('Stop Autopilot'));await act(async()=>permit({getTracks:()=>[{stop:()=>stopped++}]}));assert.equal(stopped,1);assert.deepEqual(active,[true,false]);assert.ok(button('Start Autopilot'));
  }finally{await h.close();globalThis.fetch=original}
 });

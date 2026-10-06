@@ -4,7 +4,7 @@ import {callerOptOut,type VoiceOutcome} from './voice-pilot';
 type FunctionItem={type?:string;call_id?:string;name?:string;arguments?:string};
 type LiveEnvelope={type?:string;delegation_id?:string;event?:{type?:string;response?:{id?:string};item?:FunctionItem}};
 export type VoicePilotResult={outcome:VoiceOutcome;summary:string;message:string;saved:boolean};
-type PilotOptions={leadId:number;permissionEvidence:string;timezone:string;queue?:boolean;operatorStream?:MediaStream;onStatus:(status:string)=>void;onTranscript:(text:string)=>void;onHandoff?:(summary:string)=>void;onHuman?:(active:boolean)=>void;onEnd:(result:VoicePilotResult)=>void};
+type PilotOptions={leadId:number;timezone:string;queue?:boolean;operatorStream?:MediaStream;onStatus:(status:string)=>void;onTranscript:(text:string)=>void;onHandoff?:(summary:string)=>void;onHuman?:(active:boolean)=>void;onEnd:(result:VoicePilotResult)=>void};
 export function createVoicePilot(options:PilotOptions){
  let stopped=false,human=false,blocked=false,answeredOnce=false,runId=crypto.randomUUID(),summary='';
  let plannedOutcome:VoiceOutcome='completed';
@@ -96,7 +96,7 @@ export function createVoicePilot(options:PilotOptions){
    const tokenResponse=await fetch('/api/twilio/token',{signal:controller.signal}),token=await tokenResponse.json();if(!tokenResponse.ok)throw Error(token.error||'Twilio is unavailable.');assertActive();
    await peer.setLocalDescription(await peer.createOffer());
    if(peer.iceGatheringState!=='complete')await new Promise<void>((resolve,reject)=>{const timeout=setTimeout(()=>{peer?.removeEventListener('icegatheringstatechange',changed);reject(Error('Audio connection timed out.'))},8000);function changed(){if(peer?.iceGatheringState==='complete'){clearTimeout(timeout);peer.removeEventListener('icegatheringstatechange',changed);resolve()}}peer!.addEventListener('icegatheringstatechange',changed);changed()});assertActive();
-   const result=await post({action:'start',requestId:runId,leadId:options.leadId,permissionConfirmed:true,permissionEvidence:options.permissionEvidence,timezone:options.timezone,queue:options.queue===true,sdp:peer.localDescription?.sdp});assertActive();runId=result.runId;
+   const result=await post({action:'start',requestId:runId,leadId:options.leadId,timezone:options.timezone,queue:options.queue===true,sdp:peer.localDescription?.sdp});assertActive();runId=result.runId;
    await peer.setRemoteDescription({type:'answer',sdp:result.sdp});await ready;assertActive();
    const {Device}=await import('@twilio/voice-sdk');assertActive();
    device=new Device(token.token,{getUserMedia:()=>Promise.resolve(toPhone!.stream.clone()),logLevel:'error',closeProtection:true});device.on('error',()=>stop('Phone connection failed. Check Phone setup.','error'));

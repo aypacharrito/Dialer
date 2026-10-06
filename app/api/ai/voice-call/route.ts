@@ -34,8 +34,6 @@ export async function POST(request:Request){
   });return Response.json({ok:true});
  }
  if(body.action!=='start'||!Number.isSafeInteger(body.leadId)||typeof body.sdp!=='string'||!body.sdp.startsWith('v=0')||body.sdp.length>64000)return Response.json({error:'Select a saved contact and start from Pacifica.'},{status:400});
- const evidence=typeof body.permissionEvidence==='string'?body.permissionEvidence.trim():'';
- if(body.permissionConfirmed!==true||evidence.length<12||evidence.length>1000)return Response.json({error:'Document written permission for AI voice calls before starting.'},{status:400});
  if(typeof body.timezone!=='string'||!voiceCallingHours(body.timezone))return Response.json({error:'Call between 9 AM and 8 PM in the recipient’s time zone.'},{status:400});
  if(!aiConfigured()||!process.env.TWILIO_API_KEY_SECRET||!process.env.TWILIO_TWIML_APP_SID)return Response.json({error:'Connect OpenAI and Twilio in Settings first.'},{status:503});
  const assignment=await phoneAssignmentForWorkspace(access.userId,access.email);
@@ -49,7 +47,7 @@ export async function POST(request:Request){
    if(body.queue===true&&cleanVoiceHistory(current.voicePilotHistory).some(h=>h.phone===phone&&Date.now()-h.startedAt<86400000))throw Error('This number was already attempted in the last 24 hours.');
    if(current.profile.mode!=='insurance')throw Error('This pilot is for insurance workspaces.');
    if(current.voicePilot&&current.voicePilot.state!=='ended'&&current.voicePilot.expiresAt>Date.now())throw Error('An AI call is already active. Stop it before starting another.');
-   run={id:runId,leadId:body.leadId,phone,ownerId,startedAt:Date.now(),expiresAt:Date.now()+8*60_000,state:'starting',permissionEvidence:evidence,timezone:body.timezone};return {...current,voicePilot:run,voicePilotHistory:[...cleanVoiceHistory(current.voicePilotHistory),{id:runId,leadId:body.leadId,phone,startedAt:Date.now(),outcome:'started' as const,summary:''}].slice(-2000)};
+   run={id:runId,leadId:body.leadId,phone,ownerId,startedAt:Date.now(),expiresAt:Date.now()+8*60_000,state:'starting',timezone:body.timezone};return {...current,voicePilot:run,voicePilotHistory:[...cleanVoiceHistory(current.voicePilotHistory),{id:runId,leadId:body.leadId,phone,startedAt:Date.now(),outcome:'started' as const,summary:''}].slice(-2000)};
   });
   if(!run)throw Error('Could not reserve this call.');
   request.signal.throwIfAborted();

@@ -1,5 +1,17 @@
 # V40 · Auto and home discovery
 
+## Building Pacifica's own database
+
+The public discovery and request-form paths do not require buying a lead list. Public discoveries become new, deduplicated prospects with their source evidence; requests submitted through your own forms become first-party inquiries. AI researches the evidence and adds information to new prospects without changing existing contacts.
+
+- **Home:** select a ZIP and public property/permit source, then add the results or save a daily search. These records identify properties and projects. The current public feeds do not provide owner names and consumer phone numbers; consumer-contact matching is still a separate gap.
+- **Auto:** create an Auto request form under **Miner → Auto → Request forms**. Share the link through your website and referral partners; completed forms can create new leads automatically. The public Auto searches find dealerships, repair shops and driving schools for referrals, not individual driver records.
+- **Generating demand:** a saved search can find research records automatically. A form receives inquiries only when people visit and submit it. AI cannot supply missing consumer phone numbers, actual renewal dates or customer interest without a source.
+
+This is the foundation for Pacifica-owned lead generation. V41 corrects Autopilot's start-button explanations; it does not add a consumer driver database or a new data-provider connection.
+
+## Public discovery
+
 The Miner now opens on Auto in insurance workspaces. **All available sources** searches the category's public sources together, retains successful results when another source fails, reports each source's result count, and deduplicates records. Save a daily search for ongoing discovery. A partial scheduled search retries its current page rather than advancing past the failed source.
 
 ## Added searches

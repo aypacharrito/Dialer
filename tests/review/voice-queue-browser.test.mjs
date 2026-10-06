@@ -4,7 +4,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function setup(){
  const h={calls:[],results:[],statuses:[],released:0,ended:0};globalThis.window=new EventTarget();
  h.stream={getTracks:()=>[{stop:()=>h.released++}]};Object.defineProperty(globalThis,'navigator',{configurable:true,value:{onLine:true,mediaDevices:{getUserMedia:async()=>h.stream}}});
- h.options={contacts:[{id:1,name:'One',phone:'+18185550101'},{id:2,name:'Two',phone:'+18185550102'}],permissionEvidence:'Test queue permission',timezone:'America/Los_Angeles',maxMinutes:60,onStatus:s=>h.statuses.push(s),onContact(){},onTranscript(){},onHandoff(){},onHuman(){},onResult:(contact,result)=>h.results.push({contact,result}),onEnd:()=>h.ended++};
+ h.options={contacts:[{id:1,name:'One',phone:'+18185550101'},{id:2,name:'Two',phone:'+18185550102'}],timezone:'America/Los_Angeles',maxMinutes:60,onStatus:s=>h.statuses.push(s),onContact(){},onTranscript(){},onHandoff(){},onHuman(){},onResult:(contact,result)=>h.results.push({contact,result}),onEnd:()=>h.ended++};
  h.queue=createVoiceQueue(h.options,options=>{const call={options,started:0,stopped:0};h.calls.push(call);return {start:async()=>{call.started++},stop:()=>{call.stopped++;options.onEnd({outcome:'manual-stop',saved:true,message:'Stopped',summary:''})},takeOver:async()=>true}});return h;
 }
 test('queue advances only after a saved call completion, supports pause/resume, and finishes without another dial',async t=>{
