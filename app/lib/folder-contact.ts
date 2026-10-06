@@ -1,4 +1,4 @@
-export type FolderContact={id:string;name:string;phone:string;email:string;address:string;city:string;state:string;zip:string;product:string;sourceFile:string;sourcePage:string;review:string;approved:boolean};
+export type FolderContact={conflicts?:Array<{field:string;value:string;file:string;page:string}>;sources?:Array<{file:string;page:string}>;id:string;name:string;phone:string;email:string;address:string;city:string;state:string;zip:string;product:string;sourceFile:string;sourcePage:string;review:string;approved:boolean};
 const clean=(v:unknown,max=240)=>typeof v==='string'||typeof v==='number'?String(v).replace(/[\u0000-\u001f]+/g,' ').trim().slice(0,max):'';
 const key=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]/g,'');
 export function folderPhone(v:unknown){const value=clean(v),digits=value.replace(/\D/g,'');return /^1?\d{10}$/.test(digits)?'+1'+digits.slice(-10):/^\+\d{8,15}$/.test(value)?value:''}
@@ -64,6 +64,6 @@ export function newFolderContacts<T extends IdentityContact>(existing:T[],candid
  for(const item of candidates){if(item.review&&!item.approved)continue;const keys=folderIdentity(item);if(!keys.length||keys.some(k=>seen.has(k)))continue;keys.forEach(k=>seen.add(k));added.push(item)}
  return added;
 }
-export const folderCsvHeader=['Name','Phone','Email','Address','City','State','ZIP','Product','Source file','Page / row','Review'];
+export const folderCsvHeader=['Name','Phone','Email','Address','City','State','ZIP','Product','Source file','Page / row','Review','All sources','Conflicting values'];
 export function folderCsvCell(v:string){const safe=/^[\s\uFEFF]*[=+@-]/.test(v)||/^[\t\r\n]/.test(v)?"'"+v:v;return '"'+safe.replace(/"/g,'""')+'"'}
-export function folderCsvLine(row:FolderContact){return [row.name,row.phone,row.email,row.address,row.city,row.state,row.zip,row.product,row.sourceFile,row.sourcePage,row.review&&!row.approved?row.review:''].map(folderCsvCell).join(',')+'\r\n'}
+export function folderCsvLine(row:FolderContact){return [row.name,row.phone,row.email,row.address,row.city,row.state,row.zip,row.product,row.sourceFile,row.sourcePage,row.review&&!row.approved?row.review:'',(row.sources||[{file:row.sourceFile,page:row.sourcePage}]).map(source=>source.file+' · '+source.page).join('; '),(row.conflicts||[]).map(item=>item.field+': '+item.value+' ('+item.file+' · '+item.page+')').join('; ')].map(folderCsvCell).join(',')+'\r\n'}

@@ -259,3 +259,5 @@ html[data-theme] .app-shell .ai-workspace.has-pages { padding-right:calc(min(48v
 @media(max-width:600px){.ava-panel,.folder-panel{top:76px;right:16px;bottom:16px}.ava-dock{right:16px;flex-wrap:wrap}.ava-dock>button:first-child{flex-basis:100%}}
 
 .ava-dock button,.folder-panel button,.folder-dock button{padding:9px 12px;border:1px solid var(--ps-line);border-radius:10px;background:var(--ps-surface-2);color:var(--ps-text);font:inherit;font-size:12px;cursor:pointer}.ava-panel textarea{padding:12px;border:1px solid var(--ps-line);border-radius:8px;background:var(--ps-surface-2);color:var(--ps-text)}.voice-pilot-actions{flex-wrap:wrap}
+
+.folder-options{display:grid;gap:12px;margin:18px 0}.folder-options label{display:grid;gap:6px;font-size:12px}.folder-options input,.folder-options select,.folder-options textarea{width:100%;padding:10px 12px;border:1px solid var(--ps-line);border-radius:10px;background:var(--ps-surface-2);color:var(--ps-text);font:inherit}.folder-options textarea{min-height:76px;resize:vertical}.folder-panel button:disabled{opacity:.45;cursor:default}.folder-panel .primary{background:var(--ps-accent,#aac5b9);color:var(--ps-text)}

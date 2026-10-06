@@ -21,3 +21,11 @@ test('oversized and unsupported files are reported and cancellation prevents rea
  const control=new AbortController();control.abort();const reader=createLocalFolderReader({signal:control.signal,checkpoint:async()=>control.signal.throwIfAborted(),progress(){}});
  try{await assert.rejects(async()=>{for await(const batch of reader.read(new File(['Name,Phone'],'data.csv')))assert.ok(batch)},{name:'AbortError'})}finally{await reader.close()}
 });
+test('AI mode receives unlabelled prose and irregular tables instead of only locally recognized fields',async()=>{
+ const control=new AbortController(),sections=[],reader=createLocalFolderReader({signal:control.signal,checkpoint:async()=>control.signal.throwIfAborted(),progress(){},extract:async(text,file,page)=>{sections.push({text,file,page});return []}});
+ try{
+  for await(const batch of reader.read(new File(['Saw Ana; she said to try her cell tomorrow 818 555 0101.'],'notes.md')))assert.deepEqual(batch,[]);
+  for await(const batch of reader.read(new File(['Person we met,How to reach them\nAna Doe,8185550101\nBen Doe,ben@example.test'],'unusual.csv')))assert.deepEqual(batch,[]);
+  assert.equal(sections.length,2);assert.match(sections[0].text,/Saw Ana/);assert.match(sections[1].text,/Person we met/);assert.match(sections[1].text,/ben@example.test/);assert.equal(sections[1].page,'Rows 2–3');
+ }finally{await reader.close()}
+});

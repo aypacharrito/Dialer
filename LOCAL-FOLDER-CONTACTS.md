@@ -1,17 +1,26 @@
-# V43 · Local folder contacts
+# V44 · Pacifica AI folder scanning
 
-Use **Contacts → Scan folder → Choose folder** on the device containing your files.
+Open **Pacifica AI → Scan folder → Choose folder → Scan with AI** on the computer containing your files. You can also ask Pacifica AI, “Scan my folder for home and auto contacts.” That opens the scanner with your request as its instructions; choose the folder and start the scan there.
 
-- Files are read locally, one file/page or CSV chunk at a time. The folder is not uploaded to OpenAI or the CRM. Parsing and English OCR use bundled browser libraries. This is not an offline general-purpose language model.
-- Supported inputs: PDF text, scanned PDF pages, common browser-decodable images, comma-separated CSV, TSV, labeled TXT, JSON records/contacts arrays, and VCF. Unsupported, encrypted, malformed or unreadable files appear under **Files need attention**.
-- Extracts name, phone, email, address, city, state, ZIP and an explicitly provided product. Saves source filename and page/row for review. Does not guess missing contact details. Unstructured/OCR results require approval before adding.
-- **Add ready contacts** appends new records to the currently selected queue. It skips matching existing and deleted contacts. It does not enrich or overwrite an existing lead. New records do not claim messaging consent or enable automated outreach.
-- **Export CSV** includes all extracted records, source references and review flags. Where supported, export streams directly to a selected destination; other browsers have a 32 MB text export limit.
-- **Pause**, **Resume**, **Stop** and the minimize button keep navigation available. Keep Pacifica running during a scan. After restart, reselect the same folder: completed files are skipped and incomplete files are re-read with duplicate protection. Progress and extracted fields are stored locally per workspace in IndexedDB. Original files are never modified.
-- **Clear local results** removes the local extraction cache and checkpoints, not original files or contacts already added to the CRM.
+## Reading and extraction
 
-## Capacity
+- **Pacifica AI** mode uses the same server OpenAI connection and model as the assistant. Local code reads files and performs English OCR; the model reads extracted text for contact details in prose, irregular tables and scattered documents. Each request contains a bounded text section, its source filename/page and your instructions. Original files and the whole folder are not uploaded. Extracted text **is sent to OpenAI** and API usage is charged. This is not offline AI.
+- **Local parser** mode remains available for local-only parsing and OCR without OpenAI calls. It works best with structured or labeled contact details.
+- Supported inputs: PDF text and scanned PDF pages, browser-decodable images, CSV, TSV, TXT, Markdown, LOG, JSON and VCF. Unsupported formats, encrypted or unreadable documents and parsing errors appear under **Files need attention**. ZIP, DOCX, XLSX and email archive files are not supported; export or convert those first.
+- AI extracts name, phone, email, address, city, state, ZIP and explicitly stated product. Nonempty fields must have supporting quotes in the supplied text; unsupported values are discarded, and uncertain results require review. These checks reduce invented details but cannot guarantee perfect identity association or OCR accuracy.
 
-There is no total folder-size cap. A 27 GB folder is processed incrementally, not loaded into one request. Practical limits depend on file count, device memory, local storage and scan quality. Per-file limits: PDF 256 MB, image 64 MB, TXT/JSON/VCF 32 MB. CSV/TSV stream in chunks; an individual CSV record is capped at 1 MB. Large PDFs need splitting. Browser storage may be cleared by the user/browser. No 27 GB sample was available for a full-scale test.
+## Duplicates and adding contacts
 
-Contact details are sent to the normal CRM save path only when **Add ready contacts** is selected. The files and raw extracted document text stay local.
+- Matching phone, email, or name plus address identifies a staged duplicate. Complementary details combine across files. Name alone never merges two people. Conflicting values and overlapping identities require review; sources and conflicting alternatives remain visible. Details with no reliable shared identity cannot automatically be joined across unrelated files.
+- **Add ready contacts** appends new records to the selected CRM queue. Matching existing or deleted contacts are skipped. Existing leads are never enriched or overwritten. New records do not claim messaging consent or enable automated outreach.
+- **Export CSV** includes extracted fields, review flags, source references and conflicting alternatives. Where supported, export streams to a selected destination; other browsers have a 32 MB text export limit.
+
+## Usage, progress and capacity
+
+- The default **AI request limit** is 25 per scan; adjustable from 1 to 500. This is a request limit, not a dollar cap. Actual charges depend on the configured model and tokens. Displayed tokens are usage reported by successful responses; failed requests may also incur charges. Set project spending controls in your OpenAI account for budget management.
+- Successful text sections are cached locally. At the limit or a provider error, scanning stops and retains progress; start another pass to continue. Reselect the same folder after a restart. Unchanged completed files and cached sections avoid repeat AI requests. Changing the model or instructions starts a new extraction pass. Failed or interrupted requests without a saved response may be charged again when explicitly retried; there is no automatic retry loop or silent local-parser fallback.
+- **Pause**, **Resume**, **Stop** and minimize keep navigation available. Keep Pacifica open during scanning. Progress, contact candidates and extracted result caches are stored in this browser's IndexedDB per workspace. They do not follow you automatically to a different device. Source files are never modified.
+- **Clear local results** removes scan checkpoints and extraction caches, not original files or contacts already added to the CRM. Browser storage may also be cleared by the browser/user.
+- No total folder-size cap is imposed: files/pages are processed sequentially rather than loading 27 GB at once. Practical capacity depends on file count, device memory, local storage and document quality. Per-file limits: PDF 256 MB; image 64 MB; TXT/MD/LOG/JSON/VCF 32 MB. CSV/TSV stream in chunks with a 1 MB maximum record. Large files need splitting.
+
+Automated tests use mocked AI responses and synthetic files; no live AI credits or customer calls are used. A full 27 GB dataset was not available for scale testing. Model extraction accuracy still needs checking against your actual documents.

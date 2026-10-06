@@ -2,6 +2,7 @@
 "use client";
 import {useLanguage} from "./LanguageProvider";
 import {quoteLinkIntent} from "../lib/quote-link-intent";
+import {folderScanIntent} from "../lib/folder-ai";
 import ProfileAvatar from "./ProfileAvatar";
 import AiControlPanel from "./AiControlPanel";
 import type {ControlCommand} from "../lib/ai-control";
@@ -65,7 +66,7 @@ async function imageForAi(file:File){
   }finally{bitmap.close()}
 }
 
-export default function AiCommandCenter({clerkEnabled=false,leads,recentCalls,onApply,onCreateLead,onOpen,onCall,workspaceId,profile,onActivity,onQuoteRequests,onNavigate,callBusy=false,onAutopilot,children,visible=false}:{clerkEnabled?:boolean;callBusy?:boolean;onAutopilot?:()=>void;children?:ReactNode;onQuoteRequests?:()=>void;onNavigate?:(view:"messages"|"office"|"settings")=>void;visible?:boolean;onActivity:(state:"idle"|"working"|"sending"|"ready")=>void;workspaceId:string;activeLine:"life"|"home-auto";profile:WorkspaceProfile;leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
+export default function AiCommandCenter({clerkEnabled=false,leads,recentCalls,onApply,onCreateLead,onOpen,onCall,workspaceId,profile,onActivity,onQuoteRequests,onNavigate,callBusy=false,onAutopilot,onScanFolder,children,visible=false}:{clerkEnabled?:boolean;callBusy?:boolean;onAutopilot?:()=>void;onScanFolder?:(goal?:string)=>void;children?:ReactNode;onQuoteRequests?:()=>void;onNavigate?:(view:"messages"|"office"|"settings")=>void;visible?:boolean;onActivity:(state:"idle"|"working"|"sending"|"ready")=>void;workspaceId:string;activeLine:"life"|"home-auto";profile:WorkspaceProfile;leads:Lead[];recentCalls:RecentCall[];onApply:(action:AiAction)=>void;onCreateLead:(lead:AiCreateLead)=>void;onOpen:(leadId:number)=>void;onCall:(leadId:number)=>void}){
   const {t,writingLanguage}=useLanguage();
   const [pagesOpen,setPagesOpen]=useState(false),[pageContexts,setPageContexts]=useState<PageContext[]>([]);
   const closePages=useCallback(()=>{setPagesOpen(false);document.getElementById("ai-pages-toggle")?.focus()},[]);
@@ -112,6 +113,11 @@ export default function AiCommandCenter({clerkEnabled=false,leads,recentCalls,on
   async function run(nextPrompt=prompt){
     const typed=nextPrompt.trim();const question=typed||images.length||pageContexts.length?typed||"Read the attached files and page context and summarize their contents. Do not create a contact unless I ask.":"";if(!question||loading||sending||dictating)return;
     setQuoteLink("");setToolsOpen(false);
+    if(onScanFolder&&!images.length&&folderScanIntent(question)){
+      const summary='Choose your folder, then select Scan with AI. I’ll extract contacts and check duplicates in the scan panel.';
+      setSubmittedPrompt(question);setSubmittedImages([]);setPrompt('');setError('');setResult({summary,priorities:[],actions:[],draft:''});setRequestId(crypto.randomUUID());
+      setHistory(items=>[...items,{role:'user' as const,content:question},{role:'assistant' as const,content:summary}].slice(-6));onScanFolder(question);return;
+    }
     const previousReview=result?.draft?{channel:draftChannel,audience:audienceMode,recipientIds:selectedRecipients,text:result.draft,subject:result.subject}:undefined;
     const requestImages=[...images];setPrompt(typed);setLoading(true);setError("");setApplied([]);setCreated(false);setSendReport("");submittedSms.current.clear();setRequestId(crypto.randomUUID());const channel=messageChannel(question,result?draftChannel:"sms");
     const quote=images.length?null:quoteLinkIntent(question,leads);
@@ -168,7 +174,7 @@ export default function AiCommandCenter({clerkEnabled=false,leads,recentCalls,on
   const hasDetails=Boolean(result&&(result.controlCommands?.length||result.controlError||result.createLead||result.priorities.length||result.actions.length||result.draft));
   return <div className={`ai-workspace ${pagesOpen?"has-pages":""} ${hasDetails?"has-details":""}`} onDragEnter={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();setDragging(true)}}} onDragOver={event=>{if(Array.from(event.dataTransfer.types).includes("Files")){event.preventDefault();event.dataTransfer.dropEffect="copy"}}} onDragLeave={event=>{if(event.currentTarget===event.target)setDragging(false)}} onDrop={event=>{event.preventDefault();event.stopPropagation();setDragging(false);void addFiles(event.dataTransfer.files)}}>
     {dragging&&<div className="ai-drop-overlay"><div><b>Drop photos or PDFs into Pacifica AI</b><span>I’ll read it together with your instructions.</span></div></div>}
-    <header className="ai-shell-header"><div className="ai-shell-brand"><ProfileAvatar enabled={clerkEnabled}/><span><b>Pacifica AI</b><small role="status">{loading?"Thinking…":sending?"Sending…":service}</small></span></div><div className="ai-header-tools">{profile.mode==="insurance"&&onAutopilot&&<button type="button" disabled={callBusy} onClick={onAutopilot}>Ava dialer</button>}<button id="ai-pages-toggle" type="button" aria-expanded={pagesOpen} onClick={()=>setPagesOpen(value=>!value)}>Pages & connections</button><label className="ai-notes-control"><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/><span><b>{t("Use CRM context")}</b></span></label></div></header>
+    <header className="ai-shell-header"><div className="ai-shell-brand"><ProfileAvatar enabled={clerkEnabled}/><span><b>Pacifica AI</b><small role="status">{loading?"Thinking…":sending?"Sending…":service}</small></span></div><div className="ai-header-tools">{onScanFolder&&<button type="button" disabled={loading||sending} onClick={()=>onScanFolder()}>Scan folder</button>}{profile.mode==="insurance"&&onAutopilot&&<button type="button" disabled={callBusy} onClick={onAutopilot}>Ava dialer</button>}<button id="ai-pages-toggle" type="button" aria-expanded={pagesOpen} onClick={()=>setPagesOpen(value=>!value)}>Pages & connections</button><label className="ai-notes-control"><input type="checkbox" checked={includeNotes} onChange={event=>setIncludeNotes(event.target.checked)}/><span><b>{t("Use CRM context")}</b></span></label></div></header>
     <div className="ai-content-layout">
     <main className={result?"ai-chat answered":"ai-chat"}>
       {!result?<section className="ai-welcome"><h1>{t("How can I help?")}</h1><p>Talk it through, review your day, or bring a document.</p></section>:<section className="ai-conversation" aria-live="polite"><div className="ai-user-message"><span>You</span><p>{displayPrompt}</p>{submittedImages.length>0&&<div className="ai-message-images">{submittedImages.map(image=>isPdf(image)?<span key={image.id} className="ai-pdf-file">PDF · {image.name}</span>:<img key={image.id} src={image.dataUrl} alt={image.name}/>)}</div>}</div><div className="ai-assistant-message"><ProfileAvatar enabled={clerkEnabled}/><div><header><b>Pacifica</b><em className={result.mode==="smart-fallback"?"fallback":""}>{result.mode==="smart-fallback"?"Local suggestions":""}</em></header><p>{result.summary}</p>{result.notice&&<small>{result.notice}</small>}</div></div></section>}

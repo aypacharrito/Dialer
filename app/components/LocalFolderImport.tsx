@@ -3,12 +3,16 @@ import {useEffect,useRef,useState} from 'react';
 import {folderCsvHeader,folderCsvCell,folderCsvLine,type FolderContact} from '../lib/folder-contact';
 import {folderFileKey,openFolderStore,type FolderStore,type FolderFileResult} from '../lib/folder-contact-store';
 import {createLocalFolderReader} from '../lib/local-folder-reader';
+import {createFolderAiExtractor,FolderAiStop,folderTextHash} from '../lib/folder-ai-browser';
+import {folderAiVersion} from '../lib/folder-ai';
 import {downloadContactsCsv} from '../lib/contact-export';
 type SaveWindow=Window&{showSaveFilePicker?:(options:{suggestedName:string;types:Array<{description:string;accept:Record<string,string[]>}>})=>Promise<{createWritable:()=>Promise<{write:(value:string)=>Promise<void>;close:()=>Promise<void>;abort:()=>Promise<void>}>}>};
-export default function LocalFolderImport({workspaceId,expanded,onClose,onOpen,onAdd}:{workspaceId:string;expanded:boolean;onClose:()=>void;onOpen:()=>void;onAdd:(rows:FolderContact[])=>void}){
+export default function LocalFolderImport({workspaceId,expanded,onClose,onOpen,onAdd,instruction=""}:{instruction?:string;workspaceId:string;expanded:boolean;onClose:()=>void;onOpen:()=>void;onAdd:(rows:FolderContact[])=>void}){
  const input=useRef<HTMLInputElement>(null),store=useRef<FolderStore|null>(null),mounted=useRef(true),controller=useRef<AbortController|null>(null),pause=useRef(false),wake=useRef<(()=>void)|null>(null);
  const [ready,setReady]=useState(false),[busy,setBusy]=useState(false),[paused,setPaused]=useState(false),[status,setStatus]=useState('Choose a folder'),[error,setError]=useState(''),[count,setCount]=useState(0),[rows,setRows]=useState<FolderContact[]>([]),[errors,setErrors]=useState<FolderFileResult[]>([]),[progress,setProgress]=useState({done:0,total:0}),[pageStart,setPageStart]=useState(''),[pages,setPages]=useState<string[]>([]);
- const active=useRef(false);
+ const active=useRef(false),selectedFiles=useRef<File[]>([]);
+ const [selectedCount,setSelectedCount]=useState(0),[mode,setMode]=useState<'ai'|'local'>('ai'),[goal,setGoal]=useState(instruction||'Find all people and businesses with contact details.'),[maxRequests,setMaxRequests]=useState(25),[usage,setUsage]=useState({requests:0,input:0,output:0,cached:0,rejected:0});
+ useEffect(()=>{if(instruction&&!active.current)queueMicrotask(()=>{setGoal(instruction.slice(0,1200));setMode('ai')})},[instruction]);
  const [scanning,setScanning]=useState(false);
  useEffect(()=>{
   mounted.current=true;let disposed=false,database:FolderStore|undefined;
@@ -21,25 +25,28 @@ export default function LocalFolderImport({workspaceId,expanded,onClose,onOpen,o
  function cancel(){controller.current?.abort();pause.current=false;setPaused(false);wake.current?.()}
  async function scan(files:File[]){
   const db=store.current;if(!db||active.current||!files.length)return;active.current=true;setBusy(true);setScanning(true);setError('');pause.current=false;setPaused(false);const control=new AbortController();controller.current=control;
-  setProgress({done:0,total:files.length});let latest=0,lastRefresh=0;
+  setProgress({done:0,total:files.length});setUsage({requests:0,input:0,output:0,cached:0,rejected:0});let latest=0,lastRefresh=0;
   const refreshProgress=async()=>{if(Date.now()-lastRefresh<1000||!mounted.current)return;lastRefresh=Date.now();await refresh('');setPageStart('');setPages([])};
-  const reader=createLocalFolderReader({signal:control.signal,checkpoint:()=>checkpoint(control.signal),progress:message=>{if(mounted.current&&Date.now()-latest>250){latest=Date.now();setStatus(message)}}});
+  let model='',namespace='local';
+  try{if(mode==='ai'){const response=await fetch('/api/ai/folder-contacts',{cache:'no-store',signal:control.signal}),connection=await response.json();if(!response.ok||!connection.configured)throw Error(connection.error||'Connect Pacifica AI in Settings first.');model=String(connection.model||'');namespace=folderAiVersion+':'+await folderTextHash(JSON.stringify([goal,model]))}control.signal.throwIfAborted()}catch(e){active.current=false;controller.current=null;if(mounted.current){setBusy(false);setScanning(false);setStatus(control.signal.aborted?'Stopped · saved progress kept':'Scan stopped');if(!control.signal.aborted)setError(e instanceof Error?e.message:'AI is unavailable.')}return}
+  const ai=mode==='ai'?createFolderAiExtractor({store:db,signal:control.signal,checkpoint:()=>checkpoint(control.signal),goal,model,maxRequests,onProgress:value=>{if(mounted.current){setUsage(value);setStatus('Pacifica AI · '+value.requests+' / '+maxRequests+' requests');void refreshProgress().catch(()=>{})}}}):undefined;
+  const reader=createLocalFolderReader({extract:ai?.extract,signal:control.signal,checkpoint:()=>checkpoint(control.signal),progress:message=>{if(mounted.current&&Date.now()-latest>250){latest=Date.now();setStatus(message)}}});
   try{
    for(let index=0;index<files.length;index++){
-    await checkpoint(control.signal);const file=files[index],id=folderFileKey(file),name=file.webkitRelativePath||file.name;
+    await checkpoint(control.signal);const file=files[index],id=namespace+':'+folderFileKey(file),name=file.webkitRelativePath||file.name;
     if((await db.file(id))?.status==='done'){setProgress({done:index+1,total:files.length});continue}
     setStatus(name);let found=0;
     try{
      for await(const batch of reader.read(file)){await checkpoint(control.signal);found+=batch.length;await db.add(batch);await refreshProgress()}
-     if(!found)throw Error('No contact fields found. Check this file manually.');
+     if(!found&&mode==='local')throw Error('No contact fields found. Check this file manually.');
      await db.finish({id,name,status:'done',error:'',at:Date.now()});
     }catch(e){
-     control.signal.throwIfAborted();if(e instanceof DOMException&&['QuotaExceededError','InvalidStateError','AbortError'].includes(e.name))throw e;
+     control.signal.throwIfAborted();if(e instanceof FolderAiStop)throw e;if(e instanceof DOMException&&['QuotaExceededError','InvalidStateError','AbortError'].includes(e.name))throw e;
      await db.finish({id,name,status:'error',error:e instanceof Error?e.message:'Could not read this file.',at:Date.now()});
     }
     if(mounted.current){setProgress({done:index+1,total:files.length});await refreshProgress()}
    }
-   if(mounted.current)setStatus('Scan complete');
+   if(mounted.current)setStatus(mode==='ai'?'AI scan complete':'Local scan complete');
   }catch(e){if(mounted.current){setStatus(control.signal.aborted?'Stopped · saved progress kept':'Scan stopped');if(!control.signal.aborted)setError(e instanceof Error?e.message:'Scan failed.')}}
   finally{await reader.close().catch(()=>{});active.current=false;controller.current=null;if(mounted.current){setBusy(false);setScanning(false);setPaused(false);await refresh('')}}
  }
@@ -68,15 +75,17 @@ export default function LocalFolderImport({workspaceId,expanded,onClose,onOpen,o
  }
  async function changePage(next:string,history:string[]){await refresh(next);setPageStart(next);setPages(history)}
  if(!expanded)return <section className="folder-dock" aria-label="Folder scan"><button onClick={onOpen}><strong>{count.toLocaleString()} contacts extracted</strong><small>{busy?status:'Local folder results'}</small></button>{scanning&&<button onClick={togglePause}>{paused?'Resume':'Pause'}</button>}</section>;
- return <section className="folder-panel" aria-label="Local folder contacts"><header><h2>Folder → contacts</h2><button aria-label="Minimize folder scan" onClick={onClose}>−</button></header>
-  <small>Local processing · PDF, images, CSV, TSV, TXT, JSON, VCF</small><input ref={node=>{input.current=node;node?.setAttribute('webkitdirectory','');node?.setAttribute('directory','')}} type="file" multiple hidden onChange={e=>{const files=Array.from(e.target.files||[]);e.target.value='';void scan(files)}}/>
-  <div className="folder-actions"><button disabled={!ready||busy} onClick={()=>input.current?.click()}>Choose folder</button>{scanning&&<><button onClick={togglePause}>{paused?'Resume':'Pause'}</button><button onClick={cancel}>Stop</button></>}</div>
+ return <section className="folder-panel" aria-label="Local folder contacts"><header><h2>Pacifica AI · Scan folder</h2><button aria-label="Minimize folder scan" onClick={onClose}>−</button></header>
+  <small>{mode==='ai'?'AI reads extracted text through your OpenAI connection. Files stay on this device; API usage is charged.':'Local parsing and OCR · no OpenAI usage'}</small><input ref={node=>{input.current=node;node?.setAttribute('webkitdirectory','');node?.setAttribute('directory','')}} type="file" multiple hidden onChange={e=>{const files=Array.from(e.target.files||[]);e.target.value='';selectedFiles.current=files;setSelectedCount(files.length);setStatus(files.length.toLocaleString()+' files selected')}}/>
+  <div className="folder-actions"><button disabled={!ready||busy} onClick={()=>input.current?.click()}>Choose folder</button><button className="primary" disabled={!ready||busy||!selectedCount} onClick={()=>void scan(selectedFiles.current)}>{mode==='ai'?'Scan with AI':'Scan locally'}</button>{scanning&&<><button onClick={togglePause}>{paused?'Resume':'Pause'}</button><button onClick={cancel}>Stop</button></>}</div>
+  <div className="folder-options"><label>Reading mode<select disabled={busy} aria-label="Folder reading mode" value={mode} onChange={e=>setMode(e.target.value as 'ai'|'local')}><option value="ai">Pacifica AI</option><option value="local">Local parser</option></select></label>{mode==='ai'&&<><label>Find<textarea aria-label="Folder scan instructions" disabled={busy} maxLength={1200} value={goal} onChange={e=>setGoal(e.target.value)}/></label><label>AI request limit<input aria-label="AI request limit" disabled={busy} type="number" min={1} max={500} value={maxRequests} onChange={e=>setMaxRequests(Math.max(1,Math.min(500,Math.floor(Number(e.target.value))||25)))}/></label></>}</div>
+  {mode==='ai'&&usage.requests+usage.cached>0&&<small>{usage.requests} requests · {usage.cached} cached · {(usage.input+usage.output).toLocaleString()} reported tokens{usage.rejected?' · '+usage.rejected+' unverified results excluded':''}</small>}
   <p role="status">{paused?'Paused':status}</p>{progress.total>0&&<><progress aria-label="Folder progress" max={progress.total} value={progress.done}/><small>{progress.done.toLocaleString()} / {progress.total.toLocaleString()} files · {count.toLocaleString()} contacts</small></>}
   {error&&<p role="alert">{error}</p>}
   <div className="folder-actions"><button disabled={busy||!count} onClick={()=>void add()}>Add ready contacts</button><button disabled={busy||!count} onClick={()=>void exportCsv()}>Export CSV</button></div>
-  {rows.map(row=><article className="folder-row" key={row.id}><div><strong>{row.name||'Name missing'}</strong><small>{[row.phone,row.email,row.address].filter(Boolean).join(' · ')}</small><small>{row.sourceFile} · {row.sourcePage}</small>{row.review&&!row.approved&&<small>{row.review}</small>}</div>{row.review&&!row.approved&&<button disabled={busy} onClick={()=>void store.current?.approve(row.id).then(()=>refresh()).catch(e=>setError(e.message))}>Approve</button>}</article>)}
+  {rows.map(row=><article className="folder-row" key={row.id}><div><strong>{row.name||'Name missing'}</strong><small>{[row.phone,row.email,row.address,row.city,row.state,row.zip,row.product].filter(Boolean).join(' · ')}</small><small>{row.sourceFile} · {row.sourcePage}</small>{(row.sources?.length||0)>1&&<details><summary>{row.sources!.length} sources</summary>{row.sources!.map((source,index)=><small key={index}>{source.file} · {source.page}</small>)}</details>}{row.review&&!row.approved&&<small>{row.review}</small>}{!!row.conflicts?.length&&<details><summary>Conflicting details</summary>{row.conflicts.map((item,index)=><small key={index}>{item.field}: {item.value} · {item.file} · {item.page}</small>)}</details>}</div>{row.review&&!row.approved&&<button disabled={busy} onClick={()=>void store.current?.approve(row.id).then(()=>refresh()).catch(e=>setError(e.message))}>Approve</button>}</article>)}
   <div className="folder-actions"><button disabled={busy||!pages.length} onClick={()=>void changePage(pages.at(-1)||'',pages.slice(0,-1))}>Previous</button><button disabled={busy||rows.length<50} onClick={()=>void changePage(rows.at(-1)?.id||'',[...pages,pageStart])}>Next</button></div>
   {errors.length>0&&<details><summary>{errors.length.toLocaleString()}{errors.length===100?'+':''} files need attention</summary><ul>{errors.map(file=><li key={file.id}>{file.name}: {file.error}</li>)}</ul>{errors.length===100&&<small>Showing the first 100 files.</small>}</details>}
-  <details><summary>Scan details</summary><p>Reads only the selected folder. Documents stay on this device. OCR uses English. Unclear results need approval; existing contacts are skipped. PDF limit: 256 MB per file. Image limit: 64 MB. TXT/JSON/VCF limit: 32 MB. CSV and TSV are read in chunks.</p><p>Keep Pacifica open during the scan. Reselect the same folder to resume after a restart. Results stay in this browser’s local storage until cleared.</p><button disabled={busy||!ready} onClick={()=>void store.current?.clear().then(async()=>{await refresh('');setPageStart('');setPages([]);setProgress({done:0,total:0});setStatus('Local results cleared')}).catch(e=>setError(e.message))}>Clear local results</button></details>
+  <details><summary>Scan details</summary><p>Reads the selected folder and its subfolders. AI mode sends text sections to OpenAI; local mode stays on this device. OCR uses English. Unclear results need approval; existing contacts are skipped. PDF limit: 256 MB per file. Image limit: 64 MB. TXT/MD/LOG/JSON/VCF limit: 32 MB. CSV and TSV are read in chunks.</p><p>Keep Pacifica open during the scan. Reselect the same folder to resume after a restart or continue after the AI limit. Completed AI sections are cached; failed API requests stop the scan. Results stay in this browser’s local storage until cleared.</p><button disabled={busy||!ready} onClick={()=>void store.current?.clear().then(async()=>{await refresh('');setPageStart('');setPages([]);setProgress({done:0,total:0});setStatus('Local results cleared')}).catch(e=>setError(e.message))}>Clear local results</button></details>
  </section>;
 }

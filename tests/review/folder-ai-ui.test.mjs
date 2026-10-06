@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import React,{act} from 'react';
+import {JSDOM} from 'jsdom';
+import {indexedDB,IDBKeyRange} from 'fake-indexeddb';
+import AiCommandCenter from '../../app/components/AiCommandCenter.tsx';
+import LocalFolderImport from '../../app/components/LocalFolderImport.tsx';
+import {defaultWorkspaceProfile} from '../../app/lib/workspace-profile.ts';
+import {folderContact} from '../../app/lib/folder-contact.ts';
+async function mount(component){
+ const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test',pretendToBeVisual:true});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,Element:dom.window.Element,HTMLElement:dom.window.HTMLElement,Node:dom.window.Node,Event:dom.window.Event,indexedDB,IDBKeyRange,IS_REACT_ACT_ENVIRONMENT:true});Object.defineProperty(globalThis,'navigator',{configurable:true,value:dom.window.navigator});
+ const {createRoot}=await import('react-dom/client');const root=createRoot(document.getElementById('root'));await act(async()=>root.render(component));return {close:async()=>{await act(async()=>root.unmount());dom.window.close()}};
+}
+const button=text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+const click=async element=>{assert.ok(element);await act(async()=>element.click())};
+async function until(predicate){for(let i=0;i<100&&!predicate();i++)await act(async()=>new Promise(r=>setTimeout(r,5)));assert.ok(predicate(),'UI did not reach the expected state')}
+test('Pacifica AI exposes Scan folder and opens it from a chat request without a paid chat request',async()=>{
+ const previous=globalThis.fetch,posts=[],opened=[];globalThis.fetch=async(url,options)=>{if(options?.method==='POST')posts.push(url);return Response.json({configured:true,providerConfigured:true,rules:[]})};
+ const h=await mount(React.createElement(AiCommandCenter,{visible:true,workspaceId:'test',profile:defaultWorkspaceProfile,leads:[],recentCalls:[],onActivity(){},onApply(){},onCreateLead(){},onOpen(){},onCall(){},onScanFolder:goal=>opened.push(goal)}));
+ try{await click(button('Scan folder'));assert.deepEqual(opened,[undefined]);const input=document.querySelector('[aria-label="Message Pacifica AI"]');await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(input,'Scan my entire folder for home and auto contacts');input.dispatchEvent(new window.Event('input',{bubbles:true}))});await click(document.querySelector('[aria-label="Send to Pacifica AI"]'));assert.equal(opened[1],'Scan my entire folder for home and auto contacts');assert.match(document.querySelector('.ai-assistant-message').textContent,/Choose your folder/);assert.deepEqual(posts,[])}finally{await h.close();globalThis.fetch=previous}
+});
+test('choosing a folder alone sends nothing; explicit AI scanning combines scattered contacts and adds only on request',async()=>{
+ const previous=globalThis.fetch,calls=[],added=[];globalThis.fetch=async(url,options)=>{calls.push({url,options});if(options?.method!=='POST')return Response.json({configured:true,model:'test-model'});const body=JSON.parse(options.body);return Response.json({rows:[folderContact({name:'Ana Doe',phone:'8185550101',email:body.file.includes('two')?'ana@example.test':''},body.file,body.page)],more:false,rejected:0,usage:{input:10,output:20}})};
+ const h=await mount(React.createElement(LocalFolderImport,{workspaceId:crypto.randomUUID(),expanded:true,onClose(){},onOpen(){},onAdd:rows=>added.push(...rows)}));
+ try{await until(()=>!button('Choose folder').disabled);const files=[new File(['Ana told me to try her cell: 8185550101.'],'one.txt'),new File(['Ana Doe: 8185550101; email ana@example.test.'],'two.txt')];Object.defineProperty(files[1],'webkitRelativePath',{value:'root/nested/two.txt'});const input=document.querySelector('input[type="file"]');Object.defineProperty(input,'files',{configurable:true,value:files});await act(async()=>input.dispatchEvent(new window.Event('change',{bubbles:true})));assert.equal(calls.length,0);assert.match(document.querySelector('.folder-panel').textContent,/AI reads extracted text/);await click(button('Scan with AI'));await until(()=>document.querySelector('[role="status"]').textContent==='AI scan complete');assert.equal(document.querySelectorAll('.folder-row').length,1);assert.equal(added.length,0);assert.match(document.querySelector('.folder-row').textContent,/ana@example.test/);assert.match(document.querySelector('.folder-row').textContent,/2 sources/);await click(button('Add ready contacts'));assert.equal(added.length,1);assert.equal(added[0].sources.length,2);const posts=calls.filter(call=>call.options?.method==='POST');assert.equal(posts.length,2);assert.match(JSON.parse(posts[1].options.body).text,/ana@example.test/);await click(button('Scan with AI'));await until(()=>document.querySelector('[role="status"]').textContent==='AI scan complete');assert.equal(calls.filter(call=>call.options?.method==='POST').length,2)}finally{await h.close();globalThis.fetch=previous}
+});
