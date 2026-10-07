@@ -1,4 +1,4 @@
-# V44 · Pacifica AI folder scanning
+# V45 · Pacifica AI folder scanning
 
 Open **Pacifica AI → Scan folder → Choose folder → Scan with AI** on the computer containing your files. You can also ask Pacifica AI, “Scan my folder for home and auto contacts.” That opens the scanner with your request as its instructions; choose the folder and start the scan there.
 
@@ -17,8 +17,8 @@ Open **Pacifica AI → Scan folder → Choose folder → Scan with AI** on the c
 
 ## Usage, progress and capacity
 
-- The default **AI request limit** is 25 per scan; adjustable from 1 to 500. This is a request limit, not a dollar cap. Actual charges depend on the configured model and tokens. Displayed tokens are usage reported by successful responses; failed requests may also incur charges. Set project spending controls in your OpenAI account for budget management.
-- Successful text sections are cached locally. At the limit or a provider error, scanning stops and retains progress; start another pass to continue. Reselect the same folder after a restart. Unchanged completed files and cached sections avoid repeat AI requests. Changing the model or instructions starts a new extraction pass. Failed or interrupted requests without a saved response may be charged again when explicitly retried; there is no automatic retry loop or silent local-parser fallback.
+- **There is no scan request-count limit.** AI processing continues through all supported files in the selected folder until completion, Pause/Stop, or a provider/read/storage failure that requires attention. Sections remain bounded in size so large folders are processed incrementally. Normal OpenAI charges still apply; usage counters remain visible. Actual charges depend on the configured model and tokens, and failed requests may also incur charges.
+- Successful text sections are cached locally. A provider error stops scanning and retains progress; restart the scan after resolving the error to continue. Reselect the same folder after a restart. Unchanged completed files and cached sections avoid repeat AI requests. Changing the model or instructions starts a new extraction pass. Failed or interrupted requests without a saved response may be charged again when explicitly retried; there is no automatic retry loop or silent local-parser fallback.
 - **Pause**, **Resume**, **Stop** and minimize keep navigation available. Keep Pacifica open during scanning. Progress, contact candidates and extracted result caches are stored in this browser's IndexedDB per workspace. They do not follow you automatically to a different device. Source files are never modified.
 - **Clear local results** removes scan checkpoints and extraction caches, not original files or contacts already added to the CRM. Browser storage may also be cleared by the browser/user.
 - No total folder-size cap is imposed: files/pages are processed sequentially rather than loading 27 GB at once. Practical capacity depends on file count, device memory, local storage and document quality. Per-file limits: PDF 256 MB; image 64 MB; TXT/MD/LOG/JSON/VCF 32 MB. CSV/TSV stream in chunks with a 1 MB maximum record. Large files need splitting.

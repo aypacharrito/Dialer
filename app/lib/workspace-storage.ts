@@ -8,6 +8,7 @@ import {cleanAiControl,type AiControl} from "./ai-control";
 import {cleanOfficeItems,type OfficeItem} from "./office-schedule";
 import {cleanQuoteIntake,type QuoteIntakeState} from "./quote-intake";
 import { mergeCallDetection } from "./call-detection";
+import { mergeAiCallResult } from "./voice-call-results";
 import { mergeCloudContact } from "./contact-sync";
 import { deletionState } from "./lead-deletion";
 import {
@@ -259,7 +260,7 @@ export function mergeStoredWorkspace(
         (client.callSid ? byCallSid.get(String(client.callSid)) : undefined);
       if (!previous) return client;
       matchedServerLogIds.add(String(previous.id));
-      return {
+      return mergeAiCallResult({
         ...previous,
         ...client,
         ...mergeCallDetection(client, previous),
@@ -267,8 +268,8 @@ export function mergeStoredWorkspace(
         recordingUrl: client.recordingUrl || previous.recordingUrl,
         recordingStatus: client.recordingStatus || previous.recordingStatus,
         transcript: client.transcript || previous.transcript,
-        aiSummary: client.aiSummary || previous.aiSummary,
-      };
+        aiSummary: typeof client.aiSummary === 'string' && client.aiSummary ? client.aiSummary : typeof previous.aiSummary === 'string' ? previous.aiSummary : undefined,
+      },previous,true);
     },
   );
   for (const log of serverLogs)

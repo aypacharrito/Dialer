@@ -1,10 +1,11 @@
 import {getPacificaAccess} from "../../lib/clerk-access";
 import {isClerkConfigured} from "../../lib/clerk-config";
 import {workspaceRedis,workspaceRedisConfig} from "../../lib/workspace-storage";
+import {mediaType,smsAudioTypes,messageAudioName} from '../../lib/message-audio';
 
 export const runtime="nodejs";
 
-const smsTypes=new Set(["image/jpeg","image/jpg","image/png","image/gif","image/heic","image/heif","application/pdf","text/vcard","text/x-vcard","text/csv"]);
+const smsTypes=new Set(["image/jpeg","image/jpg","image/png","image/gif","image/heic","image/heif","application/pdf","text/vcard","text/x-vcard","text/csv",...smsAudioTypes]);
 const smsLargeMediaTypes=new Set(["image/jpeg","image/jpg","image/png","image/gif"]);
 
 async function access(){
@@ -28,13 +29,13 @@ export async function POST(request:Request){
     const raw=form.get("file");
     const channel=form.get("channel")==="email"?"email":"sms";
     if(!(raw instanceof File)||!raw.size)return Response.json({error:"Choose a file first."},{status:400});
-    const type=(raw.type||"application/octet-stream").toLowerCase();
-    if(channel==="sms"&&!smsTypes.has(type))return Response.json({error:"Twilio MMS supports images, PDF, vCard, and CSV here. Send Word/Excel/ZIP files by email instead."},{status:400});
+    const type=mediaType(raw.type||"application/octet-stream").replace('audio/x-m4a','audio/mp4');
+    if(channel==="sms"&&!smsTypes.has(type))return Response.json({error:"This file type cannot be sent by MMS. Use MP3, M4A, a photo or PDF, or attach it to an email."},{status:400});
     const maximum=channel==="sms"?(smsLargeMediaTypes.has(type)?4_500_000:450_000):8_000_000;
     if(raw.size>maximum){const label=channel==="sms"&&!smsLargeMediaTypes.has(type)?"450 KB":"4.5 MB";return Response.json({error:`This file is too large for safe ${channel==="sms"?"Twilio MMS":"message"} delivery. Keep it under ${channel==="email"?"8 MB":label}.`},{status:413})}
     const bytes=Buffer.from(await raw.arrayBuffer());
     const token=`${crypto.randomUUID().replaceAll("-","")}${crypto.randomUUID().replaceAll("-","")}`;
-    const name=safeName(raw.name,type);
+    const name=safeName(raw.name||messageAudioName(type),type);
     const expiresAt=Date.now()+24*60*60*1000;
     const record={workspaceId:workspace.userId,name,type,size:raw.size,base64:bytes.toString("base64"),expiresAt};
     await workspaceRedis(["SET",`pacifica:message-media:v1:${token}`,JSON.stringify(record),"EX",86400]);

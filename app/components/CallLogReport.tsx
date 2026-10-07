@@ -1,10 +1,11 @@
 "use client";
 
 import {callResultLabel,type CallDetection} from "../lib/call-detection";
+import type {AiCallResult} from "../lib/voice-call-results";
 import RecordingPlayer from "./RecordingPlayer";
 import { useMemo, useState } from "react";
 
-export type CallLog = CallDetection & {
+export type CallLog = CallDetection & AiCallResult & {
   id: string;
   name: string;
   phone: string;

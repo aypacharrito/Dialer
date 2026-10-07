@@ -1,4 +1,5 @@
 import { applyCallDetection } from "../../../lib/call-detection";
+import { reconcileVoiceStatus } from "../../../lib/voice-call-results";
 import {
   readStoredWorkspace,
   updateStoredWorkspace,
@@ -105,7 +106,8 @@ export async function POST(request: Request) {
   try {
     const workspace = await readStoredWorkspace(workspaceId);
     if (!workspace) return new Response(null, { status: 204 });
-    await updateStoredWorkspace(workspaceId, (current) => ({
+    await updateStoredWorkspace(workspaceId, (current) => {
+     const detected={
       ...current,
       ...applyCallDetection(current, {
         callSid,
@@ -121,7 +123,9 @@ export async function POST(request: Request) {
       }),
       // AI call facts belong in the call log; existing contact fields stay untouched.
       ...(params.has('aiPilot')?{leads:current.leads}:{}),
-    }));
+     };
+     return params.has('aiPilot')?reconcileVoiceStatus(detected,params.get('aiPilot')||'',parentCallSid||callSid,phone):detected;
+    });
     return new Response(null, { status: 204 });
   } catch {
     return Response.json(

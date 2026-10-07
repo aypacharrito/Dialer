@@ -97,3 +97,10 @@ test('stale browser saves cannot remove a reply decision or replay a daily send'
  const saved=mergeStoredWorkspace(server,stale).leads[0];
  assert.equal(saved.outcome,'Interested');assert.equal(saved.automationEnabled,false);assert.equal(saved.replyReviews.sms.id,'reply1');assert.equal(saved.dailyOutreach.sms.claim,'receipt-1');
 });
+
+test('a stale browser save cannot overwrite server-recorded Ava outcomes or summaries',()=>{
+ const server={...workspace(),callLogs:[{id:'ai-run',callSid:'CA-test',aiRunId:'run',aiOutcome:'voicemail',aiResultAt:'2026-10-06T22:00:00Z',outcome:'Voicemail',aiSummary:'Recorded greeting',duration:12}]};
+ const stale={...workspace(),callLogs:[{id:'ai-run',callSid:'CA-test',outcome:'Completed',aiSummary:'Older summary',duration:0}]};
+ const unchangedLeads=mergeStoredWorkspace({...server,callLogs:[]},{...stale,callLogs:[]}).leads;
+ const saved=mergeStoredWorkspace(server,stale);assert.equal(saved.callLogs[0].outcome,'Voicemail');assert.equal(saved.callLogs[0].aiSummary,'Recorded greeting');assert.equal(saved.callLogs[0].aiOutcome,'voicemail');assert.equal(saved.callLogs[0].duration,12);assert.deepEqual(saved.leads,unchangedLeads);
+});

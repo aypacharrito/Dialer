@@ -1,4 +1,4 @@
-# V43 · Ava dialer and continuous Autopilot
+# V45 · Silent Ava dialer and continuous Autopilot
 
 Open **Dialer → Ava Autopilot** in an insurance workspace as its owner. Pacifica AI also has an **Ava dialer** shortcut.
 
@@ -7,8 +7,8 @@ Use **Load queue → Start Autopilot**. The repeated permission text field, chec
 1. Choose **Continuous queue**, then **Load queue**. You can filter Auto or Home, or choose one contact.
 2. Set your call count and session time limits. Default: up to 25 contacts and 60 minutes. Maximum: 500 contacts and 120 minutes per session.
 3. Choose the recipient time zone, select **Start Autopilot**, and allow microphone access.
-4. Keep the laptop and Pacifica open, with your headset ready. You can switch CRM pages or minimize Ava’s panel without stopping it. Ava calls one contact at a time. After a call ends and its transcript saves, the next call begins after five seconds.
-5. When a caller clearly wants a comparison now or asks for the agent, an alert sounds and a summary appears. Your microphone joins the same call automatically after a short announcement. AI disconnects. No additional transfer telephone number is required.
+4. Keep the laptop and Pacifica open, with your headset ready. You can switch CRM pages or minimize Ava’s panel without stopping it. Ava calls one contact at a time. Ringing, Ava, screening prompts, voicemail and the caller remain silent on your speakers while she qualifies. Ava still receives the original caller audio and the caller still hears Ava. After a call ends and its transcript saves, the next call begins after five seconds.
+5. When a caller clearly wants a comparison now or asks for the agent, an alert sounds and a summary appears. Your microphone joins the same call automatically after a short announcement. AI disconnects, your microphone joins, and caller audio becomes audible. A failed microphone handoff leaves the call silent for you and Ava stays connected. Manual Take over explicitly opens the same connection. No additional transfer telephone number is required.
 
 The customer call remains outbound. The handoff feels like an incoming call to you, but it is an automatic takeover of the existing browser call, not a new inbound PSTN call or a transfer to your cellphone.
 
@@ -22,7 +22,7 @@ A caller's request for a quote/comparison now or for a human triggers handoff. S
 
 ## Records and controls
 
-- Existing contact fields stay unchanged, including in AI phone-status callbacks. Call logs, AI run history and a separate transcript/summary insight are added for review and Today.
+- Ava automatically marks voicemail and no-answer using her listening/delegated call controls. Call logs and AI run history save the result without a manual disposition prompt. Phone-provider no-answer callbacks reconcile whether they arrive before or after browser completion. A later generic completed callback preserves an explicit voicemail result. Existing contact fields stay unchanged, including in AI phone-status callbacks; these are call results, not lead edits. Transcripts and summaries remain separate insights for review and Today.
 - Duplicate phone numbers, stopped/paused/closed/interested records, numbers blocked for AI calling, and numbers attempted in the prior 24 hours are excluded from a newly loaded queue. A blocked duplicate excludes the shared phone. The server rechecks eligibility before issuing a phone route.
 - Starting the queue does not create or change consent records. Existing contact exclusions remain in force, including opt-outs, stopped automation and blocked numbers. Newly mined public research remains outside automatic calling.
 - Known destination failures (timeout, unavailable, busy, declined or not found) save their actual error code and advance after five seconds. Three consecutive recoverable errors stop the session. Unknown errors, account/authentication problems, connection failures and transcript-save failures stop immediately. The same number is not retried. The browser and server prevent a second active AI phone call.
@@ -30,7 +30,7 @@ A caller's request for a quote/comparison now or for a human triggers handoff. S
 
 ## Verification limits
 
-Build, type checking and automated tests cover queue sequencing, pause/resume, microphone release, Stop during setup, provider failures, factual handoff evidence, function-result ordering, opt-outs, duplicate/recent-call exclusions and preserving contacts. No real customer was called during development. Your OpenAI model access, Twilio account configuration, real audio quality and handoff timing still need one supervised test call after installation.
+Build, type checking and automated tests cover queue sequencing, pause/resume, microphone release, Stop during setup, provider failures, factual handoff evidence, function-result ordering, opt-outs, duplicate/recent-call exclusions and preserving contacts. No real customer was called during development. Your OpenAI model access, Twilio account configuration, real audio quality and handoff timing still need one supervised test call after installation. Automated audio tests verify a silent speaker output, an intact AI input stream and audible playback only after takeover; no real headset or customer call was used.
 
 The legal-office receptionist, unattended cloud calling, parallel calls, cellphone transfers and automatic policy quotes are not part of this laptop queue.
 

@@ -1,5 +1,13 @@
 # Pacifica ClearVoice third-party notices
 
+Voice messages use the unmodified `@breezystack/lamejs` 1.2.7 MP3 encoder
+(Alex Zhukov and contributors), licensed under LGPL-3.0. Its source and build
+instructions are available at https://github.com/shijinyu/lamejs. The package
+is dynamically imported as a separate browser module and can be replaced by
+changing the npm dependency and rebuilding the CRM. Its license is included
+at `public/licenses/lamejs-LGPL-3.0.txt`. Recording and encoding stay local;
+audio uploads only when the user attaches the recording to a message.
+
 Pacifica ClearVoice uses the following open-source projects through
 `@sapphi-red/web-noise-suppressor`:
 

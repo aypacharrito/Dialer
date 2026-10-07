@@ -18,3 +18,9 @@ test('matching by call SID avoids a duplicate recording and includes a new recor
  const result=mergeRecordingUpdates([call],[{...call,id:'remote-id',recordingSid:'RE-test'},{...call,id:'call-3',callSid:'CA-new',recordingSid:'RE-new'}]);
  assert.equal(result.length,2);assert.equal(result[0].id,'call-3');assert.equal(result[1].id,'call-1');assert.equal(result[1].recordingSid,'RE-test');
 });
+test('Ava results appear without recordings or a phone webhook and survive stale polling',()=>{
+ const result={...call,aiRunId:'run',aiOutcome:'voicemail',aiResultAt:'2026-10-06T22:00:00Z',outcome:'Voicemail',aiSummary:'Recorded greeting'};
+ const added=mergeRecordingUpdates([],[result]);assert.equal(added[0].outcome,'Voicemail');
+ const updated=mergeRecordingUpdates([call],[result]);assert.equal(updated[0].outcome,'Voicemail');assert.equal(updated[0].aiSummary,'Recorded greeting');assert.equal(mergeRecordingUpdates(updated,[result]),updated);
+ const stale={...result,outcome:'Completed',aiSummary:'Older result',aiResultAt:'2026-10-06T21:59:00Z'};assert.equal(mergeRecordingUpdates(updated,[stale]),updated);
+});

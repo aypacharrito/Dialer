@@ -8,6 +8,7 @@ import {twilioClientIdentity} from '../../../lib/twilio-workspaces';
 import {aiConfigured,aiModel,aiProviderIssue} from '../../../lib/ai-provider';
 import {voiceMessageOptions,voiceCallingHours,voicePhone,voicePilotEligible,voicePilotPrompt,voiceQueue,voiceTools,voiceBackendPrompt,voiceOutcomes,cleanVoiceHistory,type VoiceOutcome,type VoicePilotRun} from '../../../lib/voice-pilot';
 import {reviewSources,type ReviewLead} from '../../../lib/review-sources';
+import {recordVoiceResult} from '../../../lib/voice-call-results';
 export const runtime='nodejs';
 export const maxDuration=60;
 export async function POST(request:Request){
@@ -24,14 +25,15 @@ export async function POST(request:Request){
   return Response.json({queue,excluded:leads.length-queue.length,history:history.slice(-30).reverse()},{headers:{'Cache-Control':'no-store'}});
  }
  if(body.action==='end'){
+  let savedOutcome:VoiceOutcome|undefined,savedSummary='';
   await updateStoredWorkspace(access.userId,current=>{
    const run=current.voicePilot;if(!run||run.id!==body.runId||run.ownerId!==ownerId||run.state==='ended')return current;
    const text=typeof body.transcript==='string'?body.transcript.slice(0,12000).trim():'';
    const outcome:VoiceOutcome=voiceOutcomes.includes(body.outcome)&&body.outcome!=='started'?body.outcome:body.block===true?'opt-out':'completed';
    const summary=typeof body.summary==='string'?body.summary.slice(0,1000):'';
-   const history=cleanVoiceHistory(current.voicePilotHistory).map(h=>h.id===run.id?{...h,outcome,summary}:h);
-   return {...current,voicePilot:{...run,state:'ended'},voicePilotHistory:history,...(body.block===true?{voicePilotBlocked:[...new Set([...(current.voicePilotBlocked||[]),run.phone])].slice(-5000)}:{}),...(text?{documentInsights:[...(current.documentInsights||[]),{id:run.id,leadId:run.leadId,sourceId:`voice:${run.id}`,name:'AI call transcript · verify details',text:[summary?`AI call summary (verify): ${summary}`:'',`Outcome: ${outcome}`,text].filter(Boolean).join('\n'),createdAt:new Date().toISOString(),recordedAt:new Date(run.startedAt).toISOString()}].slice(-500),noteReview:current.noteReview?{...current.noteReview,nextRunAt:0}:undefined}:{})};
-  });return Response.json({ok:true});
+   const result=recordVoiceResult(current,run,outcome,summary);savedOutcome=result.outcome;savedSummary=result.summary;
+   return {...result.workspace,voicePilot:{...run,state:'ended'},...(body.block===true?{voicePilotBlocked:[...new Set([...(current.voicePilotBlocked||[]),run.phone])].slice(-5000)}:{}),...(text?{documentInsights:[...(current.documentInsights||[]),{id:run.id,leadId:run.leadId,sourceId:`voice:${run.id}`,name:'AI call transcript · verify details',text:[savedSummary?`AI call summary (verify): ${savedSummary}`:'',`Outcome: ${savedOutcome}`,text].filter(Boolean).join('\n'),createdAt:new Date().toISOString(),recordedAt:new Date(run.startedAt).toISOString()}].slice(-500),noteReview:current.noteReview?{...current.noteReview,nextRunAt:0}:undefined}:{})};
+  });return Response.json({ok:true,outcome:savedOutcome,summary:savedSummary});
  }
  if(body.action!=='start'||!Number.isSafeInteger(body.leadId)||typeof body.sdp!=='string'||!body.sdp.startsWith('v=0')||body.sdp.length>64000)return Response.json({error:'Select a saved contact and start from Pacifica.'},{status:400});
  if(typeof body.timezone!=='string'||!voiceCallingHours(body.timezone))return Response.json({error:'Call between 9 AM and 8 PM in the recipient’s time zone.'},{status:400});

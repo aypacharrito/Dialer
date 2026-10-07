@@ -3,16 +3,15 @@ import type {FolderContact} from './folder-contact';
 import type {FolderStore,FolderAiChunk} from './folder-contact-store';
 export class FolderAiStop extends Error{}
 export async function folderTextHash(value:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(byte=>byte.toString(16).padStart(2,'0')).join('')}
-type Options={store:Pick<FolderStore,'chunk'|'saveChunk'|'add'>;signal:AbortSignal;checkpoint:()=>Promise<void>;goal:string;model:string;maxRequests:number;onProgress:(state:{requests:number;input:number;output:number;cached:number;rejected:number})=>void};
+type Options={store:Pick<FolderStore,'chunk'|'saveChunk'|'add'>;signal:AbortSignal;checkpoint:()=>Promise<void>;goal:string;model:string;onProgress:(state:{requests:number;input:number;output:number;cached:number;rejected:number})=>void};
 export function createFolderAiExtractor(options:Options){
- let requests=0,input=0,output=0,cached=0,rejected=0;const limit=Math.max(1,Math.min(500,Math.floor(options.maxRequests)||25));
+ let requests=0,input=0,output=0,cached=0,rejected=0;
  const update=()=>options.onProgress({requests,input,output,cached,rejected});
  async function section(text:string,file:string,page:string):Promise<FolderContact[]>{
   await options.checkpoint();options.signal.throwIfAborted();if(!text.trim())return [];
   const id=await folderTextHash(JSON.stringify([folderAiVersion,options.model,options.goal,file,page,text]));
   let data=await options.store.chunk(id);
   if(data){cached++;update()}else{
-   if(requests>=limit)throw new FolderAiStop('AI scan limit reached. Progress is saved; start another pass to continue.');
    requests++;update();let response:Response;
    try{response=await fetch('/api/ai/folder-contacts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ai',text,file,page,goal:options.goal}),signal:options.signal})}catch(error){options.signal.throwIfAborted();throw new FolderAiStop(error instanceof Error?error.message:'AI connection lost. Progress is saved.')}
    const result=await response.json().catch(()=>({}));options.signal.throwIfAborted();

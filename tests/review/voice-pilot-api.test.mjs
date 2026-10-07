@@ -45,3 +45,21 @@ test('signed AI phone status callbacks add call history without changing existin
  const result=await status(new Request('https://pacificacrm.com/api/twilio/status?'+query,{method:'POST',body:new URLSearchParams({CallSid:'CA'+'3'.repeat(32),CallStatus:'in-progress',SequenceNumber:'1'})}));
  assert.equal(result.status,204);assert.deepEqual(voiceHarness.workspace.leads,leads);assert.equal(voiceHarness.workspace.callLogs.length,1);
 });
+test('no-answer status and AI end requests agree regardless of webhook arrival order',async()=>{
+ const {POST:status}=await import('../../app/api/twilio/status/route.ts');
+ for(const callbackFirst of [true,false]){
+  setup();const leads=structuredClone(voiceHarness.workspace.leads),sid='CA'+'4'.repeat(32),run={id:start.requestId,leadId:1,phone:'+18185550101',ownerId:'owner',state:'calling',startedAt:now,expiresAt:now+300000,callSid:sid,timezone:start.timezone};
+  voiceHarness.workspace.voicePilot=run;voiceHarness.workspace.voicePilotHistory=[{id:run.id,leadId:1,phone:run.phone,startedAt:now,outcome:'started',summary:''}];
+  const query=new URLSearchParams({workspaceId:'test',phone:run.phone,startedAt:new Date(now).toISOString(),aiPilot:run.id,parentCallSid:sid});
+  const hook=()=>status(new Request('https://pacificacrm.com/api/twilio/status?'+query,{method:'POST',body:new URLSearchParams({CallSid:'CA'+'5'.repeat(32),CallStatus:'no-answer',SequenceNumber:'3'})}));
+  if(callbackFirst)await hook();const ended=await POST(request({action:'end',runId:run.id,outcome:'completed',transcript:''}));if(callbackFirst)assert.equal((await ended.json()).outcome,'no-answer');else await hook();
+  assert.equal(voiceHarness.workspace.voicePilotHistory[0].outcome,'no-answer');assert.equal(voiceHarness.workspace.callLogs.length,1);assert.equal(voiceHarness.workspace.callLogs[0].outcome,'No answer');assert.deepEqual(voiceHarness.workspace.leads,leads);
+ }
+});
+test('Ava voicemail classification is visible in Reports and survives a later generic completed callback',async()=>{
+ setup();const {POST:status}=await import('../../app/api/twilio/status/route.ts'),sid='CA'+'6'.repeat(32),run={id:start.requestId,leadId:1,phone:'+18185550101',ownerId:'owner',state:'calling',startedAt:now,expiresAt:now+300000,callSid:sid,timezone:start.timezone};
+ voiceHarness.workspace.voicePilot=run;voiceHarness.workspace.voicePilotHistory=[{id:run.id,leadId:1,phone:run.phone,startedAt:now,outcome:'started',summary:''}];
+ await POST(request({action:'end',runId:run.id,outcome:'voicemail',summary:'Voicemail greeting heard.',transcript:'Caller: Please leave your message after the tone.'}));assert.equal(voiceHarness.workspace.callLogs[0].duration,0);
+ const query=new URLSearchParams({workspaceId:'test',phone:run.phone,startedAt:new Date(now).toISOString(),aiPilot:run.id,parentCallSid:sid});await status(new Request('https://pacificacrm.com/api/twilio/status?'+query,{method:'POST',body:new URLSearchParams({CallSid:'CA'+'7'.repeat(32),CallStatus:'completed',CallDuration:'12',SequenceNumber:'3'})}));
+ assert.equal(voiceHarness.workspace.callLogs[0].duration,12);assert.equal(voiceHarness.workspace.callLogs[0].outcome,'Voicemail');assert.equal(voiceHarness.workspace.callLogs[0].detectedResult,'Voicemail');assert.equal(voiceHarness.workspace.voicePilotHistory[0].outcome,'voicemail');assert.equal(voiceHarness.workspace.leads[0].stage,'Follow-up');
+});

@@ -1,4 +1,5 @@
 import {archiveMessageFiles} from "../../../lib/message-media-archive";
+import {isMessageAudio} from '../../../lib/message-audio';
 import {smsFailureMessage} from "../../../lib/sms-delivery";
 import {SmsPreflightError} from "../../../lib/sms-preflight";
 import {
@@ -260,7 +261,7 @@ export async function POST(request: Request) {
       to,
       body:
         text ||
-        `[${mediaUrls.length} attachment${mediaUrls.length === 1 ? "" : "s"}]`,
+        (attachments.length&&attachments.every(file=>isMessageAudio(file.type))?'':`[${mediaUrls.length} attachment${mediaUrls.length === 1 ? "" : "s"}]`),
       status: result.status,
       date_created: new Date().toISOString(),
     };

@@ -5,7 +5,7 @@ import {folderContact,newFolderContacts} from '../app/lib/folder-contact.ts';
 import {createFolderAiExtractor,FolderAiStop} from '../app/lib/folder-ai-browser.ts';
 const contact=(fields,file='notes.txt')=>folderContact(fields,file,'Text');
 function memory(){const chunks=new Map(),rows=[];return {chunks,rows,chunk:async id=>chunks.get(id),saveChunk:async data=>chunks.set(data.id,data),add:async data=>rows.push(...data)}}
-function extractor(store,overrides={}){const control=new AbortController();return createFolderAiExtractor({store,signal:control.signal,checkpoint:async()=>control.signal.throwIfAborted(),goal:'Find contacts',model:'test-model',maxRequests:25,onProgress(){},...overrides})}
+function extractor(store,overrides={}){const control=new AbortController();return createFolderAiExtractor({store,signal:control.signal,checkpoint:async()=>control.signal.throwIfAborted(),goal:'Find contacts',model:'test-model',onProgress(){},...overrides})}
 test('AI accepts evidence from irregular prose and removes unsupported fields',()=>{
  const text='Spoke with Ana Doe. Reach her tomorrow: (818) 555-0101. Ben Doe left ben@example.test. Do not mistake the insurer for the customer.';
  const result=cleanFolderAiResult({more:false,contacts:[{name:'Ana Doe',phone:'8185550101',city:'Miami',evidence:[{field:'name',quote:'Ana Doe'},{field:'phone',quote:'(818) 555-0101'},{field:'city',quote:'Miami'}]},{name:'Ben Doe',email:'ben@example.test',evidence:[{field:'name',quote:'Ben Doe'},{field:'email',quote:'ben@example.test'}]},{name:'Invented',phone:'9995550101',evidence:[{field:'name',quote:'Invented'},{field:'phone',quote:'9995550101'}]}]},text,'scattered/notes.txt','Text');
@@ -22,10 +22,14 @@ test('folder chat requests route to the scanner and explicit cancellation does n
  for(const prompt of ['Scan my folder for contacts','Go through this entire directory and find leads','buscar contactos en carpetas'])assert.equal(folderScanIntent(prompt),true);
  for(const prompt of ['Do not scan my folder','Stop scanning the folder','Write my follow-ups'])assert.equal(folderScanIntent(prompt),false);
 });
-test('AI scans stop at the request limit and resume cached sections without paying again',async()=>{
- const previous=globalThis.fetch,store=memory(),calls=[];globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);return Response.json({rows:[contact({name:'Ana',phone:'8185550101'})],more:false,rejected:0,usage:{input:10,output:20}})};
- try{const text='contact notes '.repeat(1100);await assert.rejects(extractor(store,{maxRequests:1}).extract(text,'notes.txt','Text'),FolderAiStop);assert.equal(calls.length,1);assert.equal(store.rows.length,1);let progress;await extractor(store,{maxRequests:1,onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,2);assert.equal(progress.cached,1);assert.equal(progress.requests,1);assert.equal(progress.input+progress.output,30);assert.ok(calls.every(body=>body.text.length<=10600));assert.equal(calls[0].mode,'ai');assert.equal(calls[0].goal,'Find contacts')}
+test('AI scans continue beyond the old request caps and reuse cached sections',async()=>{
+ const previous=globalThis.fetch,store=memory(),calls=[];globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);return Response.json({rows:[],more:false,rejected:0,usage:{input:10,output:20}})};
+ try{const text=Array.from({length:510},(_,i)=>String(i).padEnd(10000,'.')).join('');let progress;await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,510);assert.equal(progress.requests,510);await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,510);assert.equal(progress.cached,510);assert.equal(progress.requests,0);assert.ok(calls.every(body=>body.text.length<=10600));assert.equal(calls[0].mode,'ai')}
  finally{globalThis.fetch=previous}
+});
+test('an interrupted scan resumes after its saved sections without repeating successful requests',async()=>{
+ const previous=globalThis.fetch,store=memory();let calls=0;globalThis.fetch=async()=>++calls===2?Response.json({error:'Connection interrupted'},{status:503}):Response.json({rows:[contact({name:'Ana',phone:'8185550101'})],more:false,rejected:0,usage:{input:10,output:20}});
+ try{const text='contact notes '.repeat(1100);await assert.rejects(extractor(store).extract(text,'notes.txt','Text'),FolderAiStop);assert.equal(store.rows.length,1);let progress;await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls,3);assert.equal(progress.cached,1);assert.equal(progress.requests,1)}finally{globalThis.fetch=previous}
 });
 test('provider and local saving failures stop instead of falling back or repeatedly spending',async()=>{
  const previous=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({error:'Credits needed'},{status:503})};

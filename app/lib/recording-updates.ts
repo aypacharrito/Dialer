@@ -1,4 +1,5 @@
 import {mergeCallDetection} from "./call-detection";
+import {mergeAiCallResult} from "./voice-call-results";
 import type {CallLog} from "../components/CallLogReport";
 
 const recordingFields=["recordingSid","recordingUrl","recordingStatus","transcript","aiSummary"] as const;
@@ -14,13 +15,14 @@ export function mergeRecordingUpdates(local:CallLog[],remote:CallLog[]){
     matched.add(update.id);
     const changes:Partial<CallLog>={};
     for(const field of recordingFields){
+      if(field==='aiSummary'&&update.aiRunId)continue;
       const value=update[field];
       if(value&&value!==log[field])changes[field]=value;
     }
-    const detected=mergeCallDetection(log,update);
+    const detected=mergeAiCallResult(mergeCallDetection(log,update),update);
     return Object.keys(changes).length?{...detected,...changes}:detected;
   });
-  const added=remote.filter(log=>!matched.has(log.id)&&Boolean(log.recordingSid||log.detectionUpdatedAt));
+  const added=remote.filter(log=>!matched.has(log.id)&&Boolean(log.recordingSid||log.detectionUpdatedAt||log.aiResultAt));
   if(!added.length&&merged.every((log,index)=>log===local[index]))return local;
   return [...added,...merged].slice(0,500);
 }

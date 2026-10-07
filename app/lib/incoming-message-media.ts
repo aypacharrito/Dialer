@@ -2,6 +2,7 @@ import {createHash} from "node:crypto";
 import {workspaceRedis,workspaceRedisConfig} from "./workspace-storage";
 import {twilioAccountConfig,twilioApiRequest} from "./twilio-rest";
 import type {MessageAttachment} from "./message-attachments";
+import {isMessageAudio,messageAudioName} from './message-audio';
 const maxBytes=8*1024*1024;
 async function copyMedia(workspaceId:string,identity:string,name:string,type:string,response:Response):Promise<MessageAttachment>{
  if(!response.ok||!response.body)throw Error("Attachment unavailable");if(Number(response.headers.get("content-length"))>maxBytes)throw Error("Attachment too large to archive");
@@ -13,7 +14,7 @@ export async function archiveInboundSmsMedia(workspaceId:string,sid:string,count
  if(!count||!/^M[MS][a-f0-9]{32}$/i.test(sid))return [];
  const {accountSid,credentials}=twilioAccountConfig(),base=`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages/${sid}`;
  const result=await twilioApiRequest<{media_list?:Array<{sid:string;content_type:string}>}>(`${base}/Media.json?PageSize=10`,{},credentials);if(!result.response.ok)throw Error("Could not read incoming attachments");
- return Promise.all((result.data.media_list||[]).slice(0,10).map(async(item,index)=>{if(!/^ME[a-f0-9]{32}$/i.test(item.sid))throw Error("Invalid media identifier");const name=`Attachment ${index+1}${item.content_type==="application/pdf"?".pdf":""}`;
+ return Promise.all((result.data.media_list||[]).slice(0,10).map(async(item,index)=>{if(!/^ME[a-f0-9]{32}$/i.test(item.sid))throw Error("Invalid media identifier");const name=isMessageAudio(item.content_type)?messageAudioName(item.content_type):`Attachment ${index+1}${item.content_type==="application/pdf"?".pdf":""}`;
   for(const credential of credentials){const response=await fetch(`${base}/Media/${item.sid}`,{headers:{Authorization:credential.authorization},signal:AbortSignal.timeout(12000)});if(response.status===401||response.status===403)continue;return copyMedia(workspaceId,`${sid}:${item.sid}`,name,item.content_type,response)}throw Error("Could not archive incoming attachment");
  }));
 }
