@@ -13,6 +13,7 @@ function Starfield({ motion = true, className }: { motion?: boolean; className?:
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     let width = 1, height = 1, frame = 0, last = 0, elapsed = 0;
     let pointerX = 0, pointerY = 0, x = 0, y = 0, visible = true;
+    let left = 0, top = 0;
     let seed = 7391;
     const random = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
     const stars = Array.from({ length: 780 }, () => ({
@@ -71,6 +72,7 @@ function Starfield({ motion = true, className }: { motion?: boolean; className?:
     };
     const resize = () => {
       const rect = element.getBoundingClientRect();
+      left = rect.left; top = rect.top;
       width = Math.max(1, rect.width); height = Math.max(1, rect.height);
       // Native pixel density, including 4K; bound memory only beyond 16 megapixels.
       const ratio = Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(16777216 / (width * height)));
@@ -79,22 +81,24 @@ function Starfield({ motion = true, className }: { motion?: boolean; className?:
     };
     const move = (event: PointerEvent) => {
       if (!motion || reduced.matches || !visible || event.pointerType !== "mouse") return;
-      const rect = element.getBoundingClientRect();
-      pointerX = ((event.clientX - rect.left) / width - .5) * 10;
-      pointerY = ((event.clientY - rect.top) / height - .5) * 7;
+      pointerX = ((event.clientX - left) / width - .5) * 10;
+      pointerY = ((event.clientY - top) / height - .5) * 7;
     };
+    const position = () => {const rect = element.getBoundingClientRect(); left = rect.left; top = rect.top;};
     const observer = new ResizeObserver(resize);
     observer.observe(element);
     const intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; restart(); });
     intersection.observe(element);
     window.addEventListener("resize", resize);
     window.addEventListener("pointermove", move, { passive: true });
+    window.addEventListener("scroll", position, { passive: true, capture: true });
     document.addEventListener("visibilitychange", restart);
     reduced.addEventListener("change", restart);
     resize();
     return () => {
       cancelAnimationFrame(frame); observer.disconnect(); intersection.disconnect();
       window.removeEventListener("resize", resize); window.removeEventListener("pointermove", move);
+      window.removeEventListener("scroll", position, true);
       document.removeEventListener("visibilitychange", restart); reduced.removeEventListener("change", restart);
     };
   }, [motion]);

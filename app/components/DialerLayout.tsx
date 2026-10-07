@@ -23,7 +23,8 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
   const [height,setHeight]=useState(700);
   const [width, setWidth] = useState(1000), [heights, setHeights] = useState<Partial<Record<WidgetId, number>>>({});
   const [loadedKey, setLoadedKey] = useState("");
-  const host = useRef<HTMLDivElement>(null), key = `pacifica:dialer-layout:v1:${workspaceId}:${theme}`;
+  const host = useRef<HTMLDivElement>(null), key = `pacifica:dialer-layout:v2:${workspaceId}`;
+  const initialTheme = useRef(theme);
   const keypadChange = useRef(onKeypadChange);
   useEffect(() => {keypadChange.current = onKeypadChange;}, [onKeypadChange]);
   useEffect(() => {
@@ -31,12 +32,16 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
     queueMicrotask(() => {
       if (canceled) return;
       let saved = emptyDialerLayout();
-      try { saved = cleanDialerLayout(JSON.parse(localStorage.getItem(key) || "null")); } catch {}
+      try {
+        const legacy = `pacifica:dialer-layout:v1:${workspaceId}:`;
+        const raw = localStorage.getItem(key) ?? localStorage.getItem(legacy + initialTheme.current) ?? localStorage.getItem(legacy + (initialTheme.current === "dark" ? "light" : "dark"));
+        saved = cleanDialerLayout(JSON.parse(raw || "null"));
+      } catch {}
       setLayout(saved); setLoadedKey(key);
       if (!saved.hidden.includes("keypad")) keypadChange.current(true);
     });
     return () => { canceled = true; };
-  }, [key]);
+  }, [key, workspaceId]);
   useEffect(() => {
     if (loadedKey !== key) return;
     const timer = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify({...layout, hidden: keypadOpen ? layout.hidden.filter(id => id !== "keypad") : [...new Set([...layout.hidden, "keypad"])]})); } catch {} }, 180);

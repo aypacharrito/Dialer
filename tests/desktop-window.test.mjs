@@ -12,7 +12,7 @@ function desktop(settings={}){
   constructor(options){this.options=options;this.visible=false;this.minimized=false;this.positions=0;this.bounds={x:100,y:100,width:options.width,height:options.height};this.events=new Map();this.sent=[];this.webContents={send:(...args)=>this.sent.push(args),once(){},on(){},setWindowOpenHandler(){}};if(options.webPreferences?.preload)windows.push(this)}
   once(name,fn){this.events.set(name,fn)} on(name,fn){this.events.set(name,fn)} loadURL(){} loadFile(file){this.file=file;return Promise.resolve()} close(){this.visible=false} show(){this.visible=true} showInactive(){this.visible=true} hide(){this.visible=false} isVisible(){return this.visible} isDestroyed(){return false}
   isMinimized(){return this.minimized} minimize(){this.minimized=true;this.visible=false} restore(){this.minimized=false;this.visible=true;this.events.get('restore')?.()} setSkipTaskbar(value){this.skipTaskbar=value}
-  setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getPosition(){return [this.bounds.x,this.bounds.y]} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){} flashFrame(value){this.flashing=value}
+  setBackgroundColor(value){this.background=value} setMinimumSize(width,height){this.minimum=[width,height]} setAlwaysOnTop(){} setVisibleOnAllWorkspaces(){} setTitleBarOverlay(value){this.theme=value} getBounds(){return this.bounds} getPosition(){return [this.bounds.x,this.bounds.y]} getSize(){return [this.bounds.width,this.bounds.height]} setSize(width,height){this.bounds={...this.bounds,width,height}} setPosition(x,y){this.positions++;this.bounds={...this.bounds,x,y}} focus(){} flashFrame(value){this.flashing=value}
  }
  const source=fs.readFileSync(new URL('../desktop/main.mjs',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace('const __dirname=path.dirname(fileURLToPath(import.meta.url));','const __dirname="/desktop";');
  vm.runInNewContext(source,{createConnectedBrowser,WebContentsView:class {},app:{whenReady:()=>({then:callback=>callback()}),on(){},setAppUserModelId(){},getPath:()=>'/user-data',getVersion:()=> '0.2.11',isPackaged:false},BrowserWindow:Window,ipcMain:{on:(name,fn)=>handlers.set(name,name==='pacifica:call-state'?(...args)=>{fn(...args);const overlay=windows[1];if(overlay&&!overlay.rendered){overlay.rendered=true;overlay.events.get('ready-to-show')?.();handlers.get('pacifica:overlay-rendered')?.({sender:overlay.webContents})}}:fn),handle:(name,fn)=>handlers.set(name,fn)},session:{defaultSession:{setPermissionRequestHandler(){},on(){}}},shell:{openExternal(url){external.push(url)}},screen:{getDisplayMatching:()=>({workArea:{x:0,y:0,width:1400,height:1000}})},nativeTheme:{shouldUseDarkColors:false},fs:{readFileSync:()=>settings.value||'{}',mkdirSync(){},writeFileSync:(_path,value)=>settings.value=value,renameSync(){}},electronUpdater:{autoUpdater:{}},path:{join:(...parts)=>parts.join('/')},process:{env:{},platform:'win32'},URL,setTimeout(fn,delay){timers.set(++timerId,{fn,delay});return timerId},clearTimeout(id){timers.delete(id)},setInterval(){},clearInterval(){},console});
@@ -125,4 +125,20 @@ test('connected page controls require the CRM main frame, including same-origin 
  assert.equal(handlers.get('pacifica:page-bounds')(event,{}),false);
  await assert.rejects(handlers.get('pacifica:page-capture')(event),/Wait for the page/);
  assert.doesNotThrow(()=>handlers.get('pacifica:page-close')(event));
+});
+
+test('native startup defaults to dark and restores the selected appearance on relaunch',()=>{
+ const settings={},first=desktop(settings);
+ assert.equal(first.windows[0].options.backgroundColor,'#08090a');
+ first.handlers.get('pacifica:theme')(first.event,'light');
+ assert.equal(first.windows[0].background,'#f5f6f2');assert.equal(JSON.parse(settings.value).appearance,'light');
+ const second=desktop(settings);assert.equal(second.windows[0].options.backgroundColor,'#f5f6f2');assert.equal(second.windows[0].options.titleBarOverlay.color,'#f5f6f2');
+ second.handlers.get('pacifica:theme')(second.event,'dark');
+ assert.equal(desktop(settings).windows[0].options.backgroundColor,'#08090a');
+});
+test('untrusted or invalid themes cannot replace the saved native appearance',()=>{
+ const settings={},h=desktop(settings);
+ h.handlers.get('pacifica:theme')({...h.event,senderFrame:{url:'https://example.com'}},'light');
+ h.handlers.get('pacifica:theme')(h.event,'unknown');
+ assert.equal(settings.value,undefined);assert.equal(h.windows[0].options.backgroundColor,'#08090a');
 });

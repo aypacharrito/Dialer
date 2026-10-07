@@ -2,6 +2,7 @@ import {LanguageProvider} from "./components/LanguageProvider";
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkConfigured } from "./lib/clerk-config";
+import { appearanceBootstrap } from "./lib/workspace-appearance";
 import "./typography.css";
 import "./globals.css";
 import "./professional-polish.css";
@@ -16,6 +17,7 @@ import "./message-attachments.css";
 import "./frontier-theme.css";
 import "./scrollbars.css";
 import "./refined-workspace.css";
+import "./responsive-workspace.css";
 
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",
@@ -48,7 +50,12 @@ export default function RootLayout({
 }>) {
   const clerkEnabled = isClerkConfigured();
   return (
-    <html lang="en" data-theme="light">
+    <html lang="en" data-theme="dark" data-display-size="large" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{__html: appearanceBootstrap}}/>
+        <link rel="preload" href="/fonts/inter-latin-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/>
+        <link rel="preload" href="/fonts/manrope-latin-variable.woff" as="font" type="font/woff" crossOrigin="anonymous"/>
+      </head>
       <body><LanguageProvider>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</LanguageProvider></body>
     </html>
   );

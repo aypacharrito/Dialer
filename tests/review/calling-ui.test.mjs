@@ -87,7 +87,7 @@ test('Call again saves a result, retries the same person exactly once and leaves
   await click(document.querySelector('.post-call-again'));
   assert.equal(FakeDevice.calls.length,2);assert.equal(FakeDevice.calls[1].number,first.number);
   assert.equal(document.querySelector('.post-call-modal'),null);assert.equal(document.querySelector('.inline-pause'),null);
-  const called=h.saved().find(item=>item.phone===first.number);assert.equal(called.outcome,'Completed');
+  await pause(650);const called=h.saved().find(item=>item.phone===first.number);assert.equal(called.outcome,'Completed');
   await act(async()=>FakeDevice.calls[1].disconnect());await pause(500);assert.equal(FakeDevice.calls.length,2);
  }finally{await h.cleanup()}
 });
@@ -127,7 +127,7 @@ test('neutral callback saves notes and time while remaining eligible for follow-
    const notes=modal.querySelector('textarea');Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(notes,'Asked me to call tomorrow.');notes.dispatchEvent(new window.Event('input',{bubbles:true}));
   });
   await click(document.querySelector('.post-call-save'));
-  const saved=h.saved()[0];assert.equal(saved.outcome,'Call back later');assert.equal(saved.stage,'Follow-up');assert.equal(saved.sourceDisposition,'Contacted');assert.equal(saved.followUp,'2099-09-09T12:00');assert.equal(saved.notes,'Asked me to call tomorrow.');assert.ok(saved.automationNextAt);assert.equal(saved.automationStatus,'scheduled');
+  await pause(650);const saved=h.saved()[0];assert.equal(saved.outcome,'Call back later');assert.equal(saved.stage,'Follow-up');assert.equal(saved.sourceDisposition,'Contacted');assert.equal(saved.followUp,'2099-09-09T12:00');assert.equal(saved.notes,'Asked me to call tomorrow.');assert.ok(saved.automationNextAt);assert.equal(saved.automationStatus,'scheduled');
   assert.equal(FakeDevice.calls.length,1);
  }finally{await h.cleanup()}
 });
@@ -138,10 +138,10 @@ test('deleting a test lead removes it from contacts and dialing, survives save, 
   await h.nav('Contacts');await click(document.querySelector('.table-row'));
   await click(byText('.contact-drawer button','Delete contact'));
   assert.equal(document.querySelectorAll('.table-row').length,0);
-  assert.ok(h.saved()[0].deletedAt);
+  await pause(650);assert.ok(h.saved()[0].deletedAt);
   await h.nav('Dialer');assert.match(document.querySelector('.dialer-toolbar').textContent,/0 remaining/);
   await click(byText('.contact-deleted-notice button','Undo'));
-  assert.equal(h.saved()[0].deletedAt,'');
+  await pause(650);assert.equal(h.saved()[0].deletedAt,'');
   await h.nav('Contacts');assert.equal(document.querySelectorAll('.table-row').length,1);
  }finally{await h.cleanup()}
 });
@@ -196,7 +196,7 @@ test('answering an incoming call preserves the outgoing log and ignores its late
   await act(async()=>FakeDevice.instance.emit('incoming',incoming));
   await click(byText('.incoming-call-card button','End current & answer'));
   assert.equal(old.status(),'closed');assert.equal(incoming.isMuted(),false);
-  const logs=JSON.parse(localStorage.getItem('pacifica:test-call:call-logs'));
+  await pause(650);const logs=JSON.parse(localStorage.getItem('pacifica:test-call:call-logs'));
   assert.ok(logs.some(log=>log.callSid==='CA-test'&&log.status==='Replaced by incoming call'));
   const status=document.querySelector('.phone-stat').textContent;
   await act(async()=>{old.emit('ringing');old.emit('accept');old.emit('disconnect')});
@@ -251,7 +251,7 @@ test('desktop elapsed state and saved duration catch up without a workspace time
   assert.equal(states.at(-1).elapsed,'01:05');
   assert.equal(document.querySelector('.timer time').textContent,'01:05');
   await act(async()=>FakeDevice.calls[0].disconnect());await pause(450);
-  const logs=JSON.parse(localStorage.getItem('pacifica:test-call:call-logs'));
+  await pause(650);const logs=JSON.parse(localStorage.getItem('pacifica:test-call:call-logs'));
   assert.equal(logs[0].duration,65);
   assert.equal(states.at(-1).active,false);
  }finally{Date.now=originalNow;await h.cleanup()}

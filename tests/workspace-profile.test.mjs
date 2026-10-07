@@ -2,16 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {cleanWorkspaceProfile,defaultWorkspaceProfile} from "../app/lib/workspace-profile.ts";
 
-test("new and legacy workspaces default to the white theme",()=>{
-  assert.equal(defaultWorkspaceProfile.appearance,"light");
+test("new and legacy workspaces default to dark",()=>{
+  assert.equal(defaultWorkspaceProfile.appearance,"dark");
   assert.equal(defaultWorkspaceProfile.displaySize,"large");
-  assert.equal(cleanWorkspaceProfile({mode:"insurance"}).appearance,"light");
+  assert.equal(cleanWorkspaceProfile({mode:"insurance"}).appearance,"dark");
   assert.equal(cleanWorkspaceProfile({}).displaySize,"large");
 });
 
 test("dark mode is retained as an account preference",()=>{
   assert.equal(cleanWorkspaceProfile({appearance:"dark"}).appearance,"dark");
-  assert.equal(cleanWorkspaceProfile({appearance:"unknown"}).appearance,"light");
+  assert.equal(cleanWorkspaceProfile({appearance:"unknown"}).appearance,"dark");
   assert.equal(cleanWorkspaceProfile({displaySize:"comfortable"}).displaySize,"comfortable");
   assert.equal(cleanWorkspaceProfile({displaySize:"extra-large"}).displaySize,"extra-large");
   assert.equal(cleanWorkspaceProfile({displaySize:"tiny"}).displaySize,"large");

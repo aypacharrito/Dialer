@@ -4,7 +4,7 @@ import {DialerLayout,DialerLayoutMenu,DialerPanel} from '../../app/components/Di
 import {cleanDialerLayout,constrainPanel,defaultDialerRects,snapPanel} from '../../app/lib/dialer-layout.ts';
 import ReleaseUpdateNotice from '../../app/components/ReleaseUpdateNotice.tsx';
 import {releaseVersion} from '../../app/lib/release-version.ts';
-function Fixture({protectedIds=[]}){const [keypad,setKeypad]=useState(true);return React.createElement(DialerLayout,{workspaceId:'w1',theme:'dark',keypadOpen:keypad,onKeypadChange:setKeypad,protectedIds,detailsAvailable:true},React.createElement(DialerLayoutMenu),React.createElement('div',{className:'dialer-canvas'},...['contact','keypad','calls','details'].map(id=>React.createElement(DialerPanel,{key:id,id},React.createElement('p',null,id)))))}
+function Fixture({protectedIds=[],theme='dark'}){const [keypad,setKeypad]=useState(true);return React.createElement(DialerLayout,{workspaceId:'w1',theme,keypadOpen:keypad,onKeypadChange:setKeypad,protectedIds,detailsAvailable:true},React.createElement(DialerLayoutMenu),React.createElement('div',{className:'dialer-canvas'},...['contact','keypad','calls','details'].map(id=>React.createElement(DialerPanel,{key:id,id},React.createElement('p',null,id)))))}
 async function setup(){const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test',pretendToBeVisual:true});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true,requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});dom.window.HTMLElement.prototype.setPointerCapture=()=>{};dom.window.HTMLElement.prototype.hasPointerCapture=()=>false;const root=createRoot(document.getElementById('root'));return {dom,root,close:async()=>{await act(async()=>root.unmount());dom.window.close()}}}
 const contextMenu=async id=>act(async()=>document.querySelector(`[data-dialer-widget="${id}"]`).dispatchEvent(new window.MouseEvent('contextmenu',{bubbles:true,clientX:100,clientY:100})));
 const byLabel=text=>document.querySelector(`[aria-label="${text}"]`);
@@ -20,7 +20,7 @@ test('keypad can move, resize, collapse, hide, restore, and persist its layout',
  await act(async()=>byLabel('Collapse Keypad').click());assert.equal(document.querySelector('[data-dialer-widget="keypad"] .dialer-widget-content').hidden,true);
  await contextMenu('keypad');await act(async()=>byLabel('Expand Keypad').click());await contextMenu('keypad');await act(async()=>byLabel('Hide Keypad').click());assert.equal(document.querySelector('[data-dialer-widget="keypad"]'),null);
  const checkbox=[...document.querySelectorAll('.dialer-layout-popover label')].find(x=>x.textContent==='Keypad').querySelector('input');await act(async()=>checkbox.click());assert.ok(byLabel('Move Keypad'));
- await act(async()=>new Promise(r=>setTimeout(r,220)));const saved=JSON.parse(localStorage.getItem('pacifica:dialer-layout:v1:w1:dark'));assert.equal(saved.panels.keypad.y,before+10);assert.equal(saved.hidden.includes('keypad'),false);
+ await act(async()=>new Promise(r=>setTimeout(r,220)));const saved=JSON.parse(localStorage.getItem('pacifica:dialer-layout:v2:w1'));assert.equal(saved.panels.keypad.y,before+10);assert.equal(saved.hidden.includes('keypad'),false);
  await act(async()=>h.root.render(React.createElement(Fixture,{key:'remount'})));assert.equal(Number.parseFloat(document.querySelector('[data-dialer-widget="keypad"]').style.top),before+10);
  await act(async()=>byLabel('Move Contact & call').dispatchEvent(new window.MouseEvent('pointerdown',{bubbles:true,button:0,clientX:0,clientY:0})));
  await act(async()=>byLabel('Move Contact & call').dispatchEvent(new window.MouseEvent('pointermove',{bubbles:true,clientX:75,clientY:50})));
@@ -76,4 +76,26 @@ test('alignment snaps nearby edges and centers without pulling distant panels',(
  assert.equal(snapPanel({x:333,y:70,width:220},peers,1000).x,333);
  assert.equal(snapPanel({x:0,y:0,width:398,height:198},peers,1000,true).width,400);
  const centered=defaultDialerRects(1400,{},id=>id==='contact');assert.equal(centered.contact.x,360);
+});
+
+test('theme changes preserve the migrated layout, panel identity and editing state',async()=>{
+ const h=await setup();
+ localStorage.setItem('pacifica:dialer-layout:v1:w1:dark',JSON.stringify({panels:{keypad:{x:380,y:75,width:300,height:460}}}));
+ localStorage.setItem('pacifica:dialer-layout:v1:w1:light',JSON.stringify({panels:{keypad:{x:50,y:350,width:250,height:500}}}));
+ try{
+  await act(async()=>h.root.render(React.createElement(Fixture,{theme:'dark'})));
+  const panel=document.querySelector('[data-dialer-widget="keypad"]');assert.equal(panel.style.top,'75px');
+  await act(async()=>document.querySelector('.layout-edit-button').click());
+  await act(async()=>byLabel('Move Keypad').dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})));
+  await act(async()=>h.root.render(React.createElement(Fixture,{theme:'light'})));
+  assert.equal(document.querySelector('[data-dialer-widget="keypad"]'),panel);assert.equal(panel.style.top,'85px');assert.equal(document.querySelector('.layout-edit-button').getAttribute('aria-pressed'),'true');
+  await act(async()=>new Promise(r=>setTimeout(r,220)));
+  await act(async()=>h.root.render(React.createElement(Fixture,{key:'reopen',theme:'light'})));
+  assert.equal(document.querySelector('[data-dialer-widget="keypad"]').style.top,'85px');
+  assert.equal(JSON.parse(localStorage.getItem('pacifica:dialer-layout:v1:w1:light')).panels.keypad.y,350,'legacy layout remains available');
+ }finally{await h.close()}
+});
+test('a saved layout from the other theme migrates when the active theme has no layout',async()=>{
+ const h=await setup();localStorage.setItem('pacifica:dialer-layout:v1:w1:light',JSON.stringify({panels:{keypad:{x:20,y:90,width:300,height:460}}}));
+ try{await act(async()=>h.root.render(React.createElement(Fixture,{theme:'dark'})));assert.equal(document.querySelector('[data-dialer-widget="keypad"]').style.top,'90px')}finally{await h.close()}
 });

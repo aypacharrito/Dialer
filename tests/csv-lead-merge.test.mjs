@@ -74,3 +74,20 @@ test("maintenance removes historical address duplicates and keeps their stronges
   assert.equal(result.leads[0].importedFields.RoofAge,"10");assert.equal(result.leads[0].importedFields.Bedrooms,"3");
   assert.equal(result.leads.reduce((sum,item)=>sum+item.leadCost,0),25);
 });
+
+test('large unique imports retain their records without pairwise phone reads',()=>{
+ let reads=0;
+ const contacts=Array.from({length:10000},(_,i)=>({...lead,id:i+1,vendorId:'',email:'',name:`Contact ${i}`,get phone(){reads++;return String(8185500000+i)}}));
+ const result=deduplicateCsvLeads(contacts);
+ assert.equal(result.removed,0);assert.equal(result.leads,contacts);assert.ok(reads<=contacts.length*2,`expected bounded reads, got ${reads}`);
+});
+test('identity changes remove stale matches and retain earliest-match behavior across bridges',()=>{
+ const a={...lead,id:1,vendorId:'',phone:'8185550101',email:'a@example.test',importedAt:'2026-09-01T00:00:00Z'};
+ const b={...a,id:2,phone:'8185550102',email:'b@example.test'};
+ const bridge={...b,id:3,email:a.email,importedAt:'2026-09-02T00:00:00Z'};
+ const match={...bridge,id:4,email:'c@example.test',importedAt:'2026-09-03T00:00:00Z',notes:'Latest detailed note for contact A'};
+ const oldPhone={...a,id:5,email:'fresh@example.test',importedAt:'2026-09-04T00:00:00Z'};
+ const result=deduplicateCsvLeads([a,b,bridge,match,oldPhone]);
+ assert.deepEqual(result.leads.map(x=>x.id),[1,2,5]);assert.equal(result.removed,2);
+ assert.equal(result.leads[0].email,'c@example.test');assert.equal(result.leads[0].notes,match.notes);assert.equal(result.leads[1],b);
+});

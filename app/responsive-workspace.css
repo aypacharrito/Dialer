@@ -1,0 +1,37 @@
+/* Stable geometry across appearances. Only colors respond to a theme change. */
+html[data-theme] .app-shell :is(h1,h2,h3) { font-family:var(--font-pacifica-display); }
+html[data-theme] .app-shell button { transition-duration:120ms; }
+html[data-theme] .app-shell .sidebar .logo { gap:12px; min-width:0; }
+html[data-theme] .app-shell .sidebar .logo .brand-mark { margin:0; transform:none; overflow:hidden; }
+html[data-theme] .app-shell .sidebar .logo .brand-mark img { margin:0; transform:none; object-position:center; }
+html[data-theme] .app-shell .sidebar .logo>div { min-width:0; }
+html[data-theme] .app-shell .sidebar .logo b { font-family:var(--font-pacifica-display); font-weight:700; letter-spacing:.12em; }
+
+/* Match the saved sidebar before React hydrates, including its footer. */
+@media(min-width:1281px) {
+  html[data-sidebar-collapsed="true"] .app-shell { --navigation-width:72px; }
+  html[data-sidebar-collapsed="true"] .app-shell>.sidebar { padding:12px 8px!important; }
+  html[data-sidebar-collapsed="true"] .app-shell .sidebar :is(.logo>div,.agent>div,.sidebar-install,.language-select,nav button>span,nav button>em),
+  html[data-theme] .app-shell.sidebar-collapsed .language-select { display:none!important; }
+  html[data-sidebar-collapsed="true"] .app-shell .sidebar .logo { justify-content:center; padding:12px 0!important; }
+  html[data-sidebar-collapsed="true"] .app-shell .sidebar nav button { position:relative; justify-content:center!important; padding:0!important; min-height:44px; }
+  html[data-sidebar-collapsed="true"] .app-shell .sidebar nav button>em.message-unread { display:block!important; position:absolute; right:0; top:0; font-size:10px; }
+  html[data-sidebar-collapsed="true"] .app-shell .sidebar-foot { flex-direction:column; gap:8px; }
+}
+
+/* Center the mark in the usable workspace, below the header. */
+.dialer-watermark-stage { position:absolute; inset:68px 0 0 var(--navigation-width,240px); display:grid; place-items:center; }
+.dialer-cosmos .dialer-watermark-stage .dialer-watermark { position:static; inset:auto; width:clamp(200px,32vw,460px); height:auto; transform:none; object-fit:contain; object-position:center; opacity:.045; }
+
+/* Keypad controls remain readable in narrow, user-sized panels. */
+html[data-theme] .app-shell .conversation-workspace .side-pad>header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+html[data-theme] .app-shell .conversation-workspace .side-pad>header>span:first-child { flex:0 1 auto; min-width:0; white-space:nowrap; font-size:10px; letter-spacing:.06em; }
+html[data-theme] .app-shell .conversation-workspace .side-pad .pad-tools { display:inline-flex; flex:0 0 auto; width:auto; gap:8px; }
+html[data-theme] .app-shell .conversation-workspace .side-pad .pad-tools>button { display:inline-flex; align-items:center; justify-content:center; width:auto; min-width:48px; height:30px; padding:4px 8px; white-space:nowrap; font-size:12px; }
+html[data-theme] .app-shell .conversation-workspace .side-pad .pad-tools>small { white-space:nowrap; font-size:10px; padding:4px 6px; }
+
+.contact-pagination { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px; color:var(--ps-muted); font-size:12px; }
+.contact-pagination>div { display:flex; gap:8px; }
+.contact-pagination button { min-height:36px; padding:6px 12px; border:1px solid var(--ps-line); border-radius:8px; background:var(--ps-surface); color:var(--ps-text); font:inherit; cursor:pointer; }
+.contact-pagination button:disabled { opacity:.4; }
+@media(prefers-reduced-motion:reduce) { html[data-theme] .app-shell button { transition:none; } }

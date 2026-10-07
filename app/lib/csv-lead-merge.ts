@@ -95,13 +95,13 @@ function mergeMatchedLead<T extends CsvManagedLead>(current:T,item:T,nowIso:stri
   } as T;
 }
 
-function sameLead(left:CsvManagedLead,right:CsvManagedLead){
-  const leftVendor=left.vendorId?`${sourceKey(left.source)}:${left.vendorId.trim().toLowerCase()}`:"";
-  const rightVendor=right.vendorId?`${sourceKey(right.source)}:${right.vendorId.trim().toLowerCase()}`:"";
-  if(leftVendor&&rightVendor&&leftVendor===rightVendor)return true;
-  const leftPhone=normalizedCsvPhone(left.phone);const rightPhone=normalizedCsvPhone(right.phone);if(leftPhone.length>=7&&leftPhone===rightPhone)return true;
-  const leftEmail=normalizedCsvEmail(left.email);const rightEmail=normalizedCsvEmail(right.email);if(leftEmail.includes("@")&&leftEmail===rightEmail)return true;
-  const leftAddress=addressIdentity(left);return Boolean(leftAddress&&leftAddress===addressIdentity(right));
+function duplicateKeys(lead:CsvManagedLead){
+  const keys:string[]=[];
+  if(lead.vendorId)keys.push(`vendor:${sourceKey(lead.source)}:${lead.vendorId.trim().toLowerCase()}`);
+  const phone=normalizedCsvPhone(lead.phone);if(phone.length>=7)keys.push(`phone:${phone}`);
+  const email=normalizedCsvEmail(lead.email);if(email.includes("@"))keys.push(`email:${email}`);
+  const address=addressIdentity(lead);if(address)keys.push(`address:${address}`);
+  return keys;
 }
 
 function mergeDuplicateLead<T extends CsvManagedLead>(current:T,duplicate:T,nowIso:string){
@@ -138,7 +138,19 @@ function mergeDuplicateLead<T extends CsvManagedLead>(current:T,duplicate:T,nowI
 
 export function deduplicateCsvLeads<T extends CsvManagedLead>(existing:T[],nowIso=new Date().toISOString()){
   const leads:T[]=[];let removed=0;
-  for(const lead of existing){const position=leads.findIndex(candidate=>sameLead(candidate,lead));if(position<0){leads.push(lead);continue}leads[position]=mergeDuplicateLead(leads[position],lead,nowIso);removed++}
+  const byIdentity=new Map<string,Set<number>>();
+  const add=(keys:string[],position:number)=>{for(const key of keys){let positions=byIdentity.get(key);if(!positions){positions=new Set();byIdentity.set(key,positions)}positions.add(position)}};
+  for(const lead of existing){
+    const keys=duplicateKeys(lead);let position=Infinity;
+    // Retain the earliest matching contact, exactly as the previous findIndex did.
+    for(const key of keys)for(const candidate of byIdentity.get(key)||[])position=Math.min(position,candidate);
+    if(!Number.isFinite(position)){add(keys,leads.length);leads.push(lead);continue}
+    // Merging can change a phone, email, vendor or address. Drop its old identities
+    // so future contacts cannot match details that are no longer on the record.
+    for(const key of duplicateKeys(leads[position])){const positions=byIdentity.get(key);positions?.delete(position);if(!positions?.size)byIdentity.delete(key)}
+    leads[position]=mergeDuplicateLead(leads[position],lead,nowIso);
+    add(duplicateKeys(leads[position]),position);removed++;
+  }
   return {leads:removed?leads:existing,removed};
 }
 
