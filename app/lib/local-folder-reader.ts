@@ -40,7 +40,8 @@ export function createLocalFolderReader(options:Options){
   if(extension==='pdf'){
    if(file.size>256*1024*1024)throw Error('PDF exceeds 256 MB; split this file into smaller PDFs.');
    const pdfjs=await import('pdfjs-dist');pdfjs.GlobalWorkerOptions.workerSrc='/scanner/pdf.worker.min.mjs';
-   const task=pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false});
+   const source={data:new Uint8Array(await file.arrayBuffer())};Object.assign(source,{isEvalSupported:false});
+   const task=pdfjs.getDocument(source);
    const cancel=()=>{void task.destroy()};options.signal.addEventListener('abort',cancel,{once:true});
    try{const pdf=await task.promise;let previousPage='',readable=false;for(let n=1;n<=pdf.numPages;n++){
     await options.checkpoint();options.progress('Page '+n+' / '+pdf.numPages);const page=await pdf.getPage(n);

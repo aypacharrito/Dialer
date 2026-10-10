@@ -1,0 +1,57 @@
+/* V47: calm surfaces, unblocked messaging, contained dialer, and a white Pacifica mark. */
+html[data-theme="dark"]{
+  --ps-bg:#090d12;--ps-surface:#121820;--ps-surface-2:#19212a;--ps-surface-3:#222c36;
+  --ps-text:#d8e0e8;--ps-text-strong:#f2f6f9;--ps-muted:#98a6b3;--ps-subtle:#82919e;
+  --ps-line:#d6e8f014;--ps-line-strong:#d6e8f02b;--ps-accent:#8ebead;--ps-accent-hover:#a9d2c4;--ps-accent-soft:#8ebead18;
+  --dialer-glass:#111820dc;--dialer-chip:#d9eff309;--dialer-button:#9ec8b9;--dialer-button-text:#10211b;
+}
+html[data-theme="light"]{
+  --ps-bg:#edf1ee;--ps-surface:#f8faf8;--ps-surface-2:#e5ebe7;--ps-surface-3:#dce4df;
+  --ps-text:#34413a;--ps-text-strong:#17231d;--ps-muted:#5d6d64;--ps-subtle:#718077;
+  --ps-line:#20382b14;--ps-line-strong:#20382b2b;--ps-accent:#3e6955;--ps-accent-hover:#305743;--ps-accent-soft:#3e695514;
+  --dialer-glass:#f7faf8ee;--dialer-chip:#25433109;--dialer-button:#456f5b;--dialer-button-text:#f7fbf9;
+}
+
+html[data-theme] body,html[data-theme] .app-shell{background:var(--ps-bg)!important;color:var(--ps-text)}
+html[data-theme] .app-shell :is(input,textarea,select){background:var(--ps-surface)!important;color:var(--ps-text-strong)!important;border-color:var(--ps-line-strong)!important}
+html[data-theme] .app-shell :is(.table-card,.message-thread,.message-contacts,.contact-drawer,.folder-panel,.ai-result,.settings-card){background:var(--ps-surface)!important}
+html[data-theme] .app-shell :is(button,a,input,textarea,select):focus-visible{outline:2px solid color-mix(in srgb,var(--ps-accent) 82%,white)!important;outline-offset:2px}
+
+html[data-theme] .app-shell .sidebar .logo .brand-mark{
+  display:grid!important;place-items:center!important;width:44px!important;height:44px!important;flex:0 0 44px!important;
+  border:1px solid #ffffff2c!important;border-radius:13px!important;background:linear-gradient(145deg,#173a4c,#132934)!important;
+  box-shadow:0 10px 28px #06141c35,inset 0 1px 0 #ffffff1f!important;overflow:hidden!important;
+}
+html[data-theme] .app-shell .sidebar .logo .brand-mark img{
+  width:31px!important;height:31px!important;object-fit:contain!important;filter:brightness(0) invert(1) drop-shadow(0 2px 5px #79d9d855)!important;opacity:.98!important;
+}
+
+html[data-theme] .app-shell .ai-background-status{
+  position:fixed!important;top:78px!important;right:24px!important;bottom:auto!important;z-index:38!important;
+  display:flex!important;align-items:center!important;gap:10px!important;max-width:min(340px,calc(100vw - 32px))!important;
+  min-height:38px!important;padding:8px 11px!important;border:1px solid var(--ps-line-strong)!important;border-radius:10px!important;
+  background:color-mix(in srgb,var(--ps-surface) 94%,transparent)!important;color:var(--ps-text)!important;
+  box-shadow:0 12px 30px #0000001f!important;backdrop-filter:blur(14px)!important;font-size:12px!important;line-height:1.2!important;
+}
+html[data-theme] .app-shell .ai-background-status:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--ps-accent);box-shadow:0 0 0 4px var(--ps-accent-soft)}
+html[data-theme] .app-shell .ai-background-status span{margin-left:auto;color:var(--ps-accent);white-space:nowrap}
+
+html[data-theme] .app-shell .dialer-layout,html[data-theme] .app-shell .dialer-canvas{min-width:0!important;max-width:100%!important;overflow-x:hidden!important}
+html[data-theme] .app-shell .dialer-widget{box-sizing:border-box!important;max-width:100%!important;min-width:0!important;overflow:hidden!important}
+html[data-theme] .app-shell .dialer-widget-content{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;overflow:hidden!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"]{min-width:260px!important;max-width:min(380px,100%)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .side-pad{box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;padding:16px!important;overflow:hidden!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] :is(header,.pad-tools,.number-display,.number-input-shell,.key-grid,.phone-actions){box-sizing:border-box;min-width:0;max-width:100%}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .number-input-shell input{width:100%!important;min-width:0!important;font-size:clamp(16px,2vw,22px)!important;text-overflow:ellipsis}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid{grid-template-columns:repeat(3,minmax(48px,1fr))!important;gap:8px!important;padding:0!important;width:100%!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button{min-width:0!important;width:100%!important;height:clamp(48px,6.3vh,60px)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .phone-actions{display:grid!important;grid-template-columns:44px minmax(0,1fr)!important;gap:10px!important;width:100%!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .phone-call{width:100%!important;max-width:none!important}
+
+html[data-theme] .app-shell .workspace-sync{display:inline-flex!important;align-items:center!important;min-height:28px!important;max-width:110px!important;padding:4px 8px!important;border-radius:8px!important;background:var(--ps-surface-2)!important;color:var(--ps-muted)!important;font-size:10px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+@media(max-width:760px){
+  html[data-theme] .app-shell .ai-background-status{top:70px!important;right:12px!important;bottom:auto!important;max-width:calc(100vw - 24px)!important}
+  html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"]{width:100%!important;max-width:100%!important;min-width:0!important}
+}
+@media(prefers-reduced-motion:reduce){html[data-theme] .app-shell *{scroll-behavior:auto}}

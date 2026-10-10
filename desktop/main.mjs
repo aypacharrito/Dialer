@@ -319,7 +319,7 @@ function showMessagePopup(){
  if(!mainWindow||mainWindow.isDestroyed())return;
  if(!messageQueue.length){messageWindow?.hide();return}
  if(!messageWindow||messageWindow.isDestroyed()){
-  messageWindow=new BrowserWindow({width:400,height:260,frame:false,resizable:false,show:false,alwaysOnTop:true,skipTaskbar:true,backgroundColor:"#ffffff",title:"Pacifica message",webPreferences:{preload:path.join(__dirname,"message-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  messageWindow=new BrowserWindow({width:360,height:196,frame:false,resizable:false,show:false,alwaysOnTop:true,skipTaskbar:true,backgroundColor:"#f4f7f6",title:"Pacifica message",webPreferences:{preload:path.join(__dirname,"message-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   messageWindow.setAlwaysOnTop(true,"floating");messageWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   messageWindow.webContents.setWindowOpenHandler(()=>({action:"deny"}));
   messageWindow.webContents.on("will-navigate",event=>event.preventDefault());
@@ -328,7 +328,7 @@ function showMessagePopup(){
   void messageWindow.loadFile(path.join(__dirname,"message.html"));return;
  }
  const area=screen.getDisplayMatching(mainWindow.getBounds()).workArea;
- messageWindow.setPosition(area.x+Math.max(0,area.width-420),area.y+Math.max(0,area.height-280));
+ messageWindow.setPosition(area.x+Math.max(0,area.width-376),area.y+Math.max(0,area.height-212));
  messageWindow.webContents.send("pacifica:message-state",messageQueue[0]);messageWindow.showInactive();
 }
 ipcMain.on("pacifica:message-state",(event,input)=>{

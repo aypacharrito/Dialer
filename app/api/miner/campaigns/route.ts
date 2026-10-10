@@ -1,16 +1,16 @@
 import {accountAllows} from '../../../lib/account-access-policy';
 import {inquiryLead} from '../../../lib/miner-prospect-tools';
 import {randomUUID} from 'node:crypto';
-import {getPacificaAccess} from '../../../lib/clerk-access';
+import {getPacificaMinerOwnerAccess} from '../../../lib/clerk-access';
 import {readStoredWorkspace,updateStoredWorkspace} from '../../../lib/workspace-storage';
 import {cleanMinerState,isLeadKind} from '../../../lib/miner-leads';
 import {createQuoteToken} from '../../../lib/quote-intake-token';
 import {mergeNewProspects} from '../../../lib/miner-auto-feed';
 export const runtime='nodejs';
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store'}});
-export async function GET(){const user=await getPacificaAccess();if(!user.allowed)return json({error:'Workspace access required.'},403);try{const workspace=await readStoredWorkspace(user.userId);return json({...cleanMinerState(workspace?.minerState),checkedAt:Date.now(),scheduleConfigured:Boolean(process.env.CRON_SECRET),prospects:workspace?.leads.filter(raw=>!(raw as {deletedAt?:string}).deletedAt&&/Pacifica Miner/.test(String((raw as {source?:string}).source)))||[]});}catch{return json({error:'Workspace unavailable.'},503)}}
+export async function GET(){const user=await getPacificaMinerOwnerAccess();if(!user)return json({error:'Miner is available only to the Pacifica platform owner.'},403);try{const workspace=await readStoredWorkspace(user.userId);return json({...cleanMinerState(workspace?.minerState),checkedAt:Date.now(),scheduleConfigured:Boolean(process.env.CRON_SECRET),prospects:workspace?.leads.filter(raw=>!(raw as {deletedAt?:string}).deletedAt&&/Pacifica Miner/.test(String((raw as {source?:string}).source)))||[]});}catch{return json({error:'Workspace unavailable.'},503)}}
 export async function POST(request:Request){
- const user=await getPacificaAccess();if(!user.allowed||user.role==='agent'||!accountAllows(user,'/api/miner/campaigns','POST'))return json({error:'Workspace owner or manager access required.'},403);
+ const user=await getPacificaMinerOwnerAccess();if(!user||user.role==='agent'||!accountAllows(user,'/api/miner/campaigns','POST'))return json({error:'Miner is available only to the Pacifica platform owner.'},403);
  if(request.headers.get('origin')&&request.headers.get('origin')!==new URL(request.url).origin)return json({error:'Invalid origin.'},403);
  try{const body=await request.json();let result:Record<string,unknown>={};
   if(body.action==='link'){

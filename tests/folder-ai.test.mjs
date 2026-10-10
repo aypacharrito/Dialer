@@ -6,17 +6,17 @@ import {createFolderAiExtractor,FolderAiStop} from '../app/lib/folder-ai-browser
 const contact=(fields,file='notes.txt')=>folderContact(fields,file,'Text');
 function memory(){const chunks=new Map(),rows=[];return {chunks,rows,chunk:async id=>chunks.get(id),saveChunk:async data=>chunks.set(data.id,data),add:async data=>rows.push(...data)}}
 function extractor(store,overrides={}){const control=new AbortController();return createFolderAiExtractor({store,signal:control.signal,checkpoint:async()=>control.signal.throwIfAborted(),goal:'Find contacts',model:'test-model',onProgress(){},...overrides})}
-test('AI accepts evidence from irregular prose and removes unsupported fields',()=>{
- const text='Spoke with Ana Doe. Reach her tomorrow: (818) 555-0101. Ben Doe left ben@example.test. Do not mistake the insurer for the customer.';
- const result=cleanFolderAiResult({more:false,contacts:[{name:'Ana Doe',phone:'8185550101',city:'Miami',evidence:[{field:'name',quote:'Ana Doe'},{field:'phone',quote:'(818) 555-0101'},{field:'city',quote:'Miami'}]},{name:'Ben Doe',email:'ben@example.test',evidence:[{field:'name',quote:'Ben Doe'},{field:'email',quote:'ben@example.test'}]},{name:'Invented',phone:'9995550101',evidence:[{field:'name',quote:'Invented'},{field:'phone',quote:'9995550101'}]}]},text,'scattered/notes.txt','Text');
- assert.equal(result.rows.length,2);assert.equal(result.rejected,1);assert.equal(result.rows[0].city,'');assert.match(result.rows[0].review,/Review AI/);assert.equal(result.rows[0].phone,'+18185550101');assert.equal(result.rows[1].email,'ben@example.test');assert.equal(result.rows[1].review,'');assert.equal(result.rows[1].sourceFile,'scattered/notes.txt');
+test('AI requires a grounded human name and phone, keeps extra CRM facts, and removes unsupported fields',()=>{
+ const text='Spoke with Ana Doe. Reach her tomorrow: (818) 555-0101. Amount owed: $4,250. Ben Doe left ben@example.test. Acme Insurance LLC: 818-555-0102.';
+ const result=cleanFolderAiResult({more:false,contacts:[{name:'Ana Doe',phone:'8185550101',email:'',address:'',city:'Miami',state:'',zip:'',product:'',details:[{label:'Amount owed',value:'$4,250',quote:'Amount owed: $4,250'}],uncertain:false,evidence:[{field:'name',quote:'Ana Doe'},{field:'phone',quote:'(818) 555-0101'},{field:'city',quote:'Miami'}]},{name:'Ben Doe',phone:'',email:'ben@example.test',address:'',city:'',state:'',zip:'',product:'',details:[],uncertain:false,evidence:[{field:'name',quote:'Ben Doe'},{field:'email',quote:'ben@example.test'}]},{name:'Acme Insurance LLC',phone:'8185550102',email:'',address:'',city:'',state:'',zip:'',product:'',details:[],uncertain:false,evidence:[{field:'name',quote:'Acme Insurance LLC'},{field:'phone',quote:'818-555-0102'}]}]},text,'scattered/notes.txt','Text');
+ assert.equal(result.rows.length,1);assert.equal(result.rejected,2);assert.equal(result.rows[0].city,'');assert.match(result.rows[0].review,/Review AI/);assert.equal(result.rows[0].phone,'+18185550101');assert.equal(result.rows[0].importedFields['Amount owed'],'$4,250');assert.equal(result.rows[0].sourceFile,'scattered/notes.txt');
 });
 test('cross-file candidates fill missing details, preserve conflicting values and never overwrite CRM leads',()=>{
  const a=contact({name:'Ana Doe',phone:'8185550101'},'a.txt'),b=contact({name:'Ana Doe',phone:'8185550101',email:'ana@example.test'},'nested/b.txt');
  const merged=mergeFolderCandidates(a,b);assert.equal(merged.email,'ana@example.test');assert.equal(merged.sources.length,2);assert.equal(merged.review,'');assert.equal(a.email,'');
  const conflicting=mergeFolderCandidates({...merged,approved:true},contact({name:'Ben Doe',phone:'8185550101'},'c.txt'));assert.equal(conflicting.name,'Ana Doe');assert.match(conflicting.review,/Conflicting name/);assert.equal(conflicting.conflicts[0].value,'Ben Doe');assert.equal(conflicting.approved,false);assert.deepEqual(newFolderContacts([], [conflicting]),[]);
  const existing=[{name:'Original',phone:'8185550101',notes:'Keep exactly',deletedAt:'2026-10-01'}],before=structuredClone(existing);assert.deepEqual(newFolderContacts(existing,[merged]),[]);assert.deepEqual(existing,before);
- const fragment=contact({phone:'8185550101'},'fragment.txt');assert.equal(mergeFolderCandidates(fragment,a).review,'');
+ assert.equal(contact({phone:'8185550101'},'fragment.txt'),null);
 });
 test('folder chat requests route to the scanner and explicit cancellation does not start it',()=>{
  for(const prompt of ['Scan my folder for contacts','Go through this entire directory and find leads','buscar contactos en carpetas'])assert.equal(folderScanIntent(prompt),true);
@@ -28,7 +28,7 @@ test('AI scans continue beyond the old request caps and reuse cached sections',a
  finally{globalThis.fetch=previous}
 });
 test('an interrupted scan resumes after its saved sections without repeating successful requests',async()=>{
- const previous=globalThis.fetch,store=memory();let calls=0;globalThis.fetch=async()=>++calls===2?Response.json({error:'Connection interrupted'},{status:503}):Response.json({rows:[contact({name:'Ana',phone:'8185550101'})],more:false,rejected:0,usage:{input:10,output:20}});
+ const previous=globalThis.fetch,store=memory();let calls=0;globalThis.fetch=async()=>++calls===2?Response.json({error:'Connection interrupted'},{status:503}):Response.json({rows:[contact({name:'Ana Doe',phone:'8185550101'})],more:false,rejected:0,usage:{input:10,output:20}});
  try{const text='contact notes '.repeat(1100);await assert.rejects(extractor(store).extract(text,'notes.txt','Text'),FolderAiStop);assert.equal(store.rows.length,1);let progress;await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls,3);assert.equal(progress.cached,1);assert.equal(progress.requests,1)}finally{globalThis.fetch=previous}
 });
 test('provider and local saving failures stop instead of falling back or repeatedly spending',async()=>{

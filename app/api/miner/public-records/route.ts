@@ -1,23 +1,17 @@
 import {accountAllows} from '../../../lib/account-access-policy';
 import {aiClient,aiConfigured,aiModel,aiReasoning} from "../../../lib/ai-provider";
-import {getPacificaAccess} from "../../../lib/clerk-access";
-import {isClerkConfigured} from "../../../lib/clerk-config";
+import {getPacificaMinerOwnerAccess} from "../../../lib/clerk-access";
 import {readStoredWorkspace, updateStoredWorkspace} from "../../../lib/workspace-storage";
 import {createLead, mergeNewProspects} from "../../../lib/miner-auto-feed";
 import {cityRecordsSource, searchPublicBusinesses} from "../../../lib/public-business-records";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
-async function access() {
-  if (!isClerkConfigured()) return process.env.NODE_ENV === "production" ? null : {allowed: true, userId: "local", role: "owner"};
-  const user = await getPacificaAccess();
-  return user.allowed ? user : null;
-}
 export async function POST(request: Request) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return Response.json({error: "Invalid request origin."}, {status: 403});
-  const user = await access();
-  if (!user) return Response.json({error: "Sign in required"}, {status: 401});
+  const user = await getPacificaMinerOwnerAccess();
+  if (!user) return Response.json({error: "Miner is available only to the Pacifica platform owner."}, {status: 403});
   let body: {zip?: unknown; page?: unknown; accounts?: unknown; action?: unknown};
   try {body = await request.json(); if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error();}
   catch {return Response.json({error: "Invalid request"}, {status: 400});}

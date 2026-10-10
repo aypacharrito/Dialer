@@ -1,6 +1,6 @@
 import {accountAllows} from '../../../lib/account-access-policy';
 import {randomUUID} from 'node:crypto';
-import {getPacificaAccess} from '../../../lib/clerk-access';
+import {getPacificaMinerOwnerAccess} from '../../../lib/clerk-access';
 import {readStoredWorkspace,updateStoredWorkspace} from '../../../lib/workspace-storage';
 import {searchMinerSource} from '../../../lib/miner-sources';
 import {researchMinerRecords,sourceLead,prepareMinerProspects} from '../../../lib/miner-prospect-tools';
@@ -10,7 +10,7 @@ import {runSavedSearch} from '../../../lib/miner-discovery';
 export const runtime='nodejs';export const maxDuration=60;
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store'}});
 export async function POST(request:Request){
- const user=await getPacificaAccess();if(!user.allowed)return json({error:'Workspace access required.'},403);
+ const user=await getPacificaMinerOwnerAccess();if(!user)return json({error:'Miner is available only to the Pacifica platform owner.'},403);
  if(request.headers.get('origin')&&request.headers.get('origin')!==new URL(request.url).origin)return json({error:'Invalid origin.'},403);
  try{
   const text=await request.text();if(text.length>2400000)return json({error:'Request is too large.'},413);

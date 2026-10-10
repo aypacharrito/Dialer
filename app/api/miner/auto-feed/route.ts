@@ -1,26 +1,20 @@
 import {accountAllows} from '../../../lib/account-access-policy';
-import {getPacificaAccess} from "../../../lib/clerk-access";
-import {isClerkConfigured} from "../../../lib/clerk-config";
+import {getPacificaMinerOwnerAccess} from "../../../lib/clerk-access";
 import {saveMinerRun,cleanMinerAutoFeed,minerProviderStatus,runMinerAutoFeedForWorkspace} from "../../../lib/miner-auto-feed";
 import {readStoredWorkspace} from "../../../lib/workspace-storage";
 
 export const runtime="nodejs";
 export const maxDuration=60;
 
-async function access(){
-  if(!isClerkConfigured())return process.env.NODE_ENV==="production"?null:{allowed:true,userId:"local",role:"owner"};
-  const result=await getPacificaAccess();return result.allowed?result:null;
-}
-
 export async function GET(){
-  const user=await access();if(!user)return Response.json({error:"Sign in required"},{status:401});
+  const user=await getPacificaMinerOwnerAccess();if(!user)return Response.json({error:"Miner is available only to the Pacifica platform owner."},{status:403});
   const workspace=await readStoredWorkspace(user.userId);
   if(!workspace)return Response.json({error:"Workspace not found"},{status:404});
   return Response.json({providerStatus:minerProviderStatus(),settings:workspace.profile.minerAutoFeed},{headers:{"Cache-Control":"no-store"}});
 }
 
 export async function POST(request:Request){
-  const user=await access();if(!user)return Response.json({error:"Sign in required"},{status:401});
+  const user=await getPacificaMinerOwnerAccess();if(!user)return Response.json({error:"Miner is available only to the Pacifica platform owner."},{status:403});
   if(user.role==="agent"||!accountAllows(user,"/api/miner/auto-feed","POST"))return Response.json({error:"Manager or owner access is required to change Miner Auto Feed."},{status:403});
   const workspace=await readStoredWorkspace(user.userId);
   if(!workspace)return Response.json({error:"Workspace not found"},{status:404});

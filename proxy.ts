@@ -23,6 +23,7 @@ const clerkHandler=clerkMiddleware(async(auth,request)=>{
     const client=await clerkClient(),member=await client.users.getUser(userId);
     const email=member.primaryEmailAddress?.emailAddress||'';
     const owners=['pacificalegalinsurance@gmail.com',...(process.env.PACIFICA_PLATFORM_OWNER_EMAILS||'').split(',')].map(s=>s.trim().toLowerCase());
+    if(request.nextUrl.pathname.startsWith('/api/miner/')&&!owners.includes(email.toLowerCase()))return NextResponse.json({error:'Miner is available only to the Pacifica platform owner.'},{status:403});
     if(!owners.includes(email.toLowerCase())){
       const workspaceId=String(member.privateMetadata.pacificaWorkspaceId||userId);
       const owner=workspaceId===userId?member:await client.users.getUser(workspaceId);

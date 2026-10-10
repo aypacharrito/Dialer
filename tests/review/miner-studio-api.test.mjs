@@ -11,7 +11,7 @@ const store=new Map(),leases=new Map();let sourceError=false;
 const request=(body,token='',method='POST')=>new Request('https://example.test/api',{method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},...(method==='GET'?{}:{body:JSON.stringify(body)})});
 const user=(id,email='friend@example.test')=>({id,privateMetadata:{},primaryEmailAddress:{emailAddress:email},emailAddresses:[{emailAddress:email}]});
 function setup(){
- store.clear();leases.clear();sourceError=false;globalThis.minerAi=null;globalThis.minerAutomation=true;globalThis.minerPlatformOwner=false;globalThis.minerUsers=new Map([['a',user('a')],['owner',user('owner','owner@example.test')]]);
+ store.clear();leases.clear();sourceError=false;globalThis.minerAi=null;globalThis.minerAutomation=true;globalThis.minerPlatformOwner=true;globalThis.minerUsers=new Map([['a',user('a')],['owner',user('owner','owner@example.test')]]);
  process.env.QUOTE_INTAKE_SECRET='test-only-lead-form-key-'.repeat(4);process.env.KV_REST_API_URL='https://kv.example.test';process.env.KV_REST_API_TOKEN='test-only';
  globalThis.minerAccess={allowed:true,userId:'a',role:'owner'};
  store.set(workspaceKey('a'),JSON.stringify({leads:[{id:1,name:'Existing Contact',phone:'8185550100',notes:'Preserve these notes',stage:'Client',doNotCall:true}],callLogs:[],profile:{...defaultWorkspaceProfile,businessName:'Example Agency'}}));
@@ -71,7 +71,7 @@ test('saved searches add records once, retain cursors on failure and honor works
  await prospects(request({action:'save-search',source:'city',kind:'commercial',zip:'91403'}));const second=workspace().minerState.searches[1].id;sourceError=true;await assert.rejects(()=>runSavedSearch('a',second));assert.equal(workspace().minerState.searches[1].cursor,0);assert.match(workspace().minerState.searches[1].lastStatus,/unavailable/);
 });
 test('platform owner grants permanent or custom access in separate workspaces and protects the owner',async()=>{
- setup();assert.equal((await accounts(request({id:'a',action:'grant-permanent'}))).status,403);globalThis.minerPlatformOwner=true;
+ setup();globalThis.minerPlatformOwner=false;assert.equal((await accounts(request({id:'a',action:'grant-permanent'}))).status,403);globalThis.minerPlatformOwner=true;
  let r=await accounts(request({id:'a',action:'grant-permanent',scope:'miner-only',industry:'real-estate'}));assert.equal(r.status,200);assert.equal((await r.json()).state,'permanent');assert.equal(globalThis.minerUsers.get('a').privateMetadata.pacificaAccessScope,'miner-only');assert.equal(workspace().profile.industry,'real-estate');assert.equal(workspace().leads[0].name,'Existing Contact');
  r=await accounts(request({id:'a',action:'set-access',days:45,scope:'read-only'}));assert.equal(r.status,200);const meta=globalThis.minerUsers.get('a').privateMetadata;assert.equal(meta.pacificaPermanentAccess,false);assert.ok(Math.abs(Date.parse(meta.pacificaTrialEndsAt)-Date.now()-45*86400000)<2000);
  assert.equal((await accounts(request({id:'a',action:'pause'}))).status,200);assert.equal(globalThis.minerUsers.get('a').privateMetadata.pacificaAccessPaused,true);

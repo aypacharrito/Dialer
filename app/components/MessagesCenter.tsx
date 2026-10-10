@@ -155,7 +155,13 @@ export default function MessagesCenter({workspaceId,profile,leads,onPatch,onProf
   }
   async function sendSms(lead:MessageLead,text:string,files:ComposerAttachment[]=mediaFiles){
     if(lead.smsOptOut)throw new Error("This contact replied STOP. SMS is blocked.");if(!hasContactPermission(lead,profile,"sms"))throw new Error("Document SMS consent before sending.");
-    const response=await fetch("/api/twilio/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:lead.phone,body:text,mediaUrls:files.map(file=>file.url),permissionDocumented:lead.smsConsent===true,sendMode:"manual"})});const data=await response.json() as {message?:SmsMessage;error?:string};if(!response.ok||!data.message)throw new Error(data.error||"Text message could not be sent");setSmsMessages(old=>[...old,data.message!]);onPatch(lead.id,{lastSmsAt:new Date().toISOString()});deliveryTimers.current.forEach(window.clearTimeout);deliveryTimers.current=[2000,8000,20000].map(delay=>window.setTimeout(()=>void load(),delay));
+    const optimistic:SmsMessage={id:`local:${crypto.randomUUID()}`,direction:"outbound-api",from:twilioNumber,to:lead.phone,body:text,status:"sending",sentAt:new Date().toISOString()};
+    setSmsMessages(old=>[...old,optimistic]);
+    try{
+      const response=await fetch("/api/twilio/messages",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({to:lead.phone,body:text,mediaUrls:files.map(file=>file.url),permissionDocumented:lead.smsConsent===true,sendMode:"manual"})});const data=await response.json() as {message?:SmsMessage;error?:string};
+      if(!response.ok||!data.message)throw new Error(data.error||"Text message could not be sent");
+      setSmsMessages(old=>old.map(message=>message.id===optimistic.id?data.message!:message));onPatch(lead.id,{lastSmsAt:data.message.sentAt});deliveryTimers.current.forEach(window.clearTimeout);deliveryTimers.current=[2000,8000,20000].map(delay=>window.setTimeout(()=>void load(),delay));
+    }catch(error){setSmsMessages(old=>old.map(message=>message.id===optimistic.id?{...message,status:"failed",failureReason:error instanceof Error?error.message:"Text message could not be sent"}:message));throw error}
   }
   async function sendEmail(lead:MessageLead,text:string){
     if(!lead.email)throw new Error("Add an email address to this contact first.");if(lead.emailOptOut)throw new Error("This contact is unsubscribed from email.");if(!hasContactPermission(lead,profile,"email"))throw new Error("Document email permission before sending.");if(!profile.businessAddress)throw new Error("Add the business mailing address under Owner Settings before sending commercial email.");

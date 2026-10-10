@@ -15,16 +15,16 @@ test('malformed CSV is reported rather than silently joined with the next contac
 });
 test('folder import only adds approved new identities and preserves opted-out and deleted matches exactly',()=>{
  const existing=[{id:1,name:'Original',phone:'8185550101',notes:'Keep me',doNotCall:true},{id:2,name:'Deleted',email:'old@example.test',deletedAt:'2026-10-01'}],before=structuredClone(existing);
- const make=(patch)=>folderContact({Name:'New',Phone:'8185550102',...patch},'data.csv','Row 2');
+ const make=(patch)=>folderContact({Name:'New Person',Phone:'8185550102',...patch},'data.csv','Row 2');
  const candidate=make({Email:'new@example.test'}),review={...make({Phone:'8185550103'}),review:'Check OCR'};
  const result=newFolderContacts(existing,[make({Phone:'+1 (818) 555-0101'}),make({Phone:'8185550199',Email:'OLD@example.test'}),candidate,{...candidate,id:'dup',phone:'8185550104'},review]);
  assert.deepEqual(result,[candidate]);assert.deepEqual(existing,before);assert.deepEqual(newFolderContacts(existing,[{...review,approved:true}]).map(x=>x.phone),['+18185550103']);
 });
-test('structured aliases preserve contact fields; unstructured text is flagged and unrelated unlabeled emails are not attached',()=>{
- const row=folderContact({'First Name':'Ana','Last Name':'Doe','Mobile Phone':'(818) 555-0102','Street address':'21 Elm','ZIP Code':'90210'},'table.csv');
- assert.equal(row.name,'Ana Doe');assert.equal(row.phone,'+18185550102');assert.equal(row.zip,'90210');
- const docs=contactsFromText('Named insured: Ana Doe\nAddress: 21 Elm\n\nAgent: Bob\nbob@example.test','policy.pdf','Page 1');
- assert.equal(docs.length,1);assert.equal(docs[0].email,'');assert.ok(docs[0].review);assert.equal(newFolderContacts([],docs).length,0);
+test('folder contacts require a human full name and phone while preserving useful non-sensitive fields',()=>{
+ const row=folderContact({'First Name':'Ana','Last Name':'Doe','Mobile Phone':'(818) 555-0102','Street address':'21 Elm','ZIP Code':'90210','Amount owed':'$4,250','SSN':'000-00-0000'},'table.csv');
+ assert.equal(row.name,'Ana Doe');assert.equal(row.phone,'+18185550102');assert.equal(row.zip,'90210');assert.equal(row.importedFields['Amount owed'],'$4,250');assert.equal(row.importedFields.SSN,undefined);
+ assert.equal(contactsFromText('Named insured: Ana Doe\nAddress: 21 Elm','policy.pdf','Page 1').length,0);
+ assert.equal(folderContact({Name:'Acme Insurance LLC',Phone:'8185550102'},'x'),null);
  assert.equal(folderContact({Name:'Nothing useful'},'x'),null);
 });
 test('vCards map independent people and exported cells cannot execute formulas',()=>{

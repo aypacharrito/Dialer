@@ -1,6 +1,6 @@
 import {registerHooks} from 'node:module';
 const sources={
- 'clerk-access':`export async function getPacificaAccess(){return globalThis.minerAccess} export async function workspaceAutomationAccess(){return globalThis.minerAutomation!==false} export async function isPacificaPlatformOwnerApi(){return globalThis.minerPlatformOwner===true} export function isPacificaPlatformOwnerEmail(email){return email==='owner@example.test'}`,
+ 'clerk-access':`export async function getPacificaAccess(){return globalThis.minerAccess} export async function getPacificaMinerOwnerAccess(){return globalThis.minerPlatformOwner===true&&globalThis.minerAccess?.allowed?globalThis.minerAccess:null} export async function workspaceAutomationAccess(){return globalThis.minerAutomation!==false} export async function isPacificaPlatformOwnerApi(){return globalThis.minerPlatformOwner===true} export function isPacificaPlatformOwnerEmail(email){return email==='owner@example.test'}`,
  'clerk-config':`export function isClerkConfigured(){return true}`,
  'ai-provider':`export const aiConfigured=()=>Boolean(globalThis.minerAi);export const aiModel=()=> 'test';export const aiReasoning=()=>({});export const aiClient=()=>({responses:{create:async(input)=>({output_text:JSON.stringify({insights:await globalThis.minerAi(input)})})}});`,
 };

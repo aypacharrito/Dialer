@@ -93,13 +93,20 @@ export async function isPacificaPlatformOwnerApi(){
   return access.allowed&&isPacificaPlatformOwnerEmail(access.email);
 }
 
+export async function getPacificaMinerOwnerAccess(){
+  if(!isClerkConfigured())return process.env.NODE_ENV==="production"?null:{allowed:true,role:"owner" as const,email:"local@pacifica",userId:"local",accountUserId:"local",displayName:"Local owner"};
+  const access=await getPacificaAccess();
+  return access.allowed&&isPacificaPlatformOwnerEmail(access.email)?access:null;
+}
+
 /** Cron jobs have no signed-in session; check the workspace owner before dispatch. */
 export async function workspaceAutomationAccess(workspaceId:string,feature:"crm"|"miner"="crm"){
  if(!isClerkConfigured())return !process.env.VERCEL;
  try{const owner=await (await clerkClient()).users.getUser(workspaceId);const email=owner.primaryEmailAddress?.emailAddress||owner.emailAddresses[0]?.emailAddress||"";
   if(isPacificaPlatformOwnerEmail(email))return true;
+  if(feature==="miner")return false;
   const scope=accessScope(owner.privateMetadata);
-  if(scope==="read-only"||scope==="miner-only"&&feature!=="miner")return false;
+  if(scope==="read-only"||scope==="miner-only")return false;
   const state=managedAccessState(owner.privateMetadata);
   if(state==="paused")return false;
   if(state==="trial"||state==="permanent")return true;

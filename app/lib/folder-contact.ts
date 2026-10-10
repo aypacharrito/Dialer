@@ -1,8 +1,16 @@
-export type FolderContact={conflicts?:Array<{field:string;value:string;file:string;page:string}>;sources?:Array<{file:string;page:string}>;id:string;name:string;phone:string;email:string;address:string;city:string;state:string;zip:string;product:string;sourceFile:string;sourcePage:string;review:string;approved:boolean};
+export type FolderContact={conflicts?:Array<{field:string;value:string;file:string;page:string}>;sources?:Array<{file:string;page:string}>;importedFields?:Record<string,string>;id:string;name:string;phone:string;email:string;address:string;city:string;state:string;zip:string;product:string;sourceFile:string;sourcePage:string;review:string;approved:boolean};
 const clean=(v:unknown,max=240)=>typeof v==='string'||typeof v==='number'?String(v).replace(/[\u0000-\u001f]+/g,' ').trim().slice(0,max):'';
 const key=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]/g,'');
+const businessWords=/\b(?:llc|inc|incorporated|corp|corporation|company|co|agency|insurance|associates|association|services|solutions|group|holdings|partners|enterprises|motors|automotive|auto|bank|credit union|school|university|department|restaurant|clinic|hospital|church|foundation|trust|properties|realty|real estate)\b/i;
+const sensitiveLabel=/\b(?:ssn|social security|tax id|ein|password|passcode|pin|routing|bank account|account number|card number|credit card|cvv|medical|diagnosis|health condition)\b/i;
+const coreKeys=new Set(['name','fullname','contactname','namedinsured','insuredname','customername','firstname','givenname','lastname','surname','familyname','phone','phonenumber','mobile','mobilephone','cell','telephone','email','emailaddress','address','streetaddress','address1','mailingaddress','city','state','province','zip','zipcode','postalcode','product','insurance','insurancetype','lineofbusiness']);
 export function folderPhone(v:unknown){const value=clean(v),digits=value.replace(/\D/g,'');return /^1?\d{10}$/.test(digits)?'+1'+digits.slice(-10):/^\+\d{8,15}$/.test(value)?value:''}
 export function folderEmail(v:unknown){const value=clean(v,180).toLowerCase();return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)?value:''}
+export function folderHumanName(v:unknown){
+ const value=clean(v,180).replace(/\s+/g,' '),parts=value.split(' ').filter(Boolean);
+ if(parts.length<2||parts.length>6||businessWords.test(value))return '';
+ return parts.every(part=>/^[\p{L}][\p{L}'’.\-]{0,39}$/u.test(part))?value:'';
+}
 type IdentityContact={name?:string;phone?:string;email?:string;address?:string;zip?:string;city?:string;importedFields?:Record<string,string>};
 export function folderIdentity(v:IdentityContact){
  const digits=String(v.phone||'').replace(/\D/g,''),phone=digits.length>=7?digits.slice(-10):'',email=folderEmail(v.email),name=key(v.name||'');
@@ -12,20 +20,22 @@ export function folderIdentity(v:IdentityContact){
 }
 const aliases:Record<string,string[]>={name:['name','fullname','contactname','namedinsured','insuredname','customername'],phone:['phone','phonenumber','mobile','mobilephone','cell','telephone'],email:['email','emailaddress'],address:['address','streetaddress','address1','mailingaddress'],city:['city'],state:['state','province'],zip:['zip','zipcode','postalcode'],product:['product','insurance','insurancetype','lineofbusiness']};
 export function folderContact(record:Record<string,unknown>,sourceFile:string,sourcePage='',review=''):FolderContact|null{
- const fields=Object.fromEntries(Object.entries(record).map(([k,v])=>[key(k),v]));
+ const normalized=Object.entries(record).map(([label,value])=>({label:clean(label,80),key:key(label),value:clean(value,500)}));
+ const fields=Object.fromEntries(normalized.map(item=>[item.key,item.value]));
  const find=(names:string[])=>clean(names.map(k=>fields[k]).find(v=>v!==undefined&&v!==''));const values=Object.fromEntries(Object.entries(aliases).map(([k,v])=>[k,find(v)]));
  values.name||=clean([find(['firstname','givenname']),find(['lastname','surname','familyname'])].filter(Boolean).join(' '),180);
- const phone=folderPhone(values.phone),email=folderEmail(values.email);
- if(!phone&&!email&&!(values.name&&values.address))return null;
- const issues=[review,!values.name?'Name missing':'',values.phone&&!phone?'Phone needs review':'',values.email&&!email?'Email needs review':''].filter(Boolean);
- return {id:crypto.randomUUID(),name:values.name,phone,email,address:values.address,city:values.city,state:values.state,zip:values.zip,product:values.product,sourceFile,sourcePage,review:issues.join(' · '),approved:false};
+ const name=folderHumanName(values.name),phone=folderPhone(values.phone),email=folderEmail(values.email);
+ if(!name||!phone)return null;
+ const importedFields=Object.fromEntries(normalized.filter(item=>item.label&&item.value&&!coreKeys.has(item.key)&&!sensitiveLabel.test(item.label)).slice(0,60).map(item=>[item.label,item.value]));
+ const issues=[review,values.name&&!name?'Human name needs review':'',values.phone&&!phone?'Phone needs review':'',values.email&&!email?'Email needs review':''].filter(Boolean);
+ return {id:crypto.randomUUID(),name,phone,email,address:values.address,city:values.city,state:values.state,zip:values.zip,product:values.product,importedFields,sourceFile,sourcePage,review:issues.join(' · '),approved:false};
 }
-/** Labeled blocks only: never pair the first email on a page with an unrelated name. */
+/** Labeled blocks only: never pair the first phone on a page with an unrelated name. */
 export function contactsFromText(text:string,file:string,page=''):FolderContact[]{
  const blocks=text.replace(/\r\n/g,'\n').split(/\n\s*\n/),result:FolderContact[]=[];
  for(const block of blocks){
   const record:Record<string,string>={};let conflict=false;
-  for(const line of block.split('\n')){const match=line.match(/^\s*(full name|name|contact name|named insured|insured name|customer name|first name|last name|phone(?: number)?|mobile(?: phone)?|cell|telephone|email(?: address)?|(?:street |mailing )?address|city|state|zip(?: code)?|postal code|product|insurance type)\s*[:=]\s*(.+)$/i);if(match){const k=key(match[1]);if(record[k]&&record[k]!==match[2])conflict=true;record[k]=match[2]}}
+  for(const line of block.split('\n')){const match=line.match(/^\s*([^:=]{1,80})\s*[:=]\s*(.+)$/);if(match&&!sensitiveLabel.test(match[1])){const k=match[1].trim();if(record[k]&&record[k]!==match[2])conflict=true;record[k]=match[2]}}
   const contact=folderContact(record,file,page,conflict?'Multiple people or values; check source':'Check extracted text against source');
   if(contact)result.push(contact);
  }
@@ -64,6 +74,6 @@ export function newFolderContacts<T extends IdentityContact>(existing:T[],candid
  for(const item of candidates){if(item.review&&!item.approved)continue;const keys=folderIdentity(item);if(!keys.length||keys.some(k=>seen.has(k)))continue;keys.forEach(k=>seen.add(k));added.push(item)}
  return added;
 }
-export const folderCsvHeader=['Name','Phone','Email','Address','City','State','ZIP','Product','Source file','Page / row','Review','All sources','Conflicting values'];
+export const folderCsvHeader=['Name','Phone','Email','Address','City','State','ZIP','Product','Additional fields','Source file','Page / row','Review','All sources','Conflicting values'];
 export function folderCsvCell(v:string){const safe=/^[\s\uFEFF]*[=+@-]/.test(v)||/^[\t\r\n]/.test(v)?"'"+v:v;return '"'+safe.replace(/"/g,'""')+'"'}
-export function folderCsvLine(row:FolderContact){return [row.name,row.phone,row.email,row.address,row.city,row.state,row.zip,row.product,row.sourceFile,row.sourcePage,row.review&&!row.approved?row.review:'',(row.sources||[{file:row.sourceFile,page:row.sourcePage}]).map(source=>source.file+' · '+source.page).join('; '),(row.conflicts||[]).map(item=>item.field+': '+item.value+' ('+item.file+' · '+item.page+')').join('; ')].map(folderCsvCell).join(',')+'\r\n'}
+export function folderCsvLine(row:FolderContact){return [row.name,row.phone,row.email,row.address,row.city,row.state,row.zip,row.product,Object.entries(row.importedFields||{}).map(([label,value])=>label+': '+value).join('; '),row.sourceFile,row.sourcePage,row.review&&!row.approved?row.review:'',(row.sources||[{file:row.sourceFile,page:row.sourcePage}]).map(source=>source.file+' · '+source.page).join('; '),(row.conflicts||[]).map(item=>item.field+': '+item.value+' ('+item.file+' · '+item.page+')').join('; ')].map(folderCsvCell).join(',')+'\r\n'}

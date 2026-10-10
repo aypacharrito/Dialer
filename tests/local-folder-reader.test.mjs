@@ -10,7 +10,7 @@ test('CSV, JSON, text and vCard files are read locally without sending any file 
  try{
   const csv=await read(new File(['Name,Phone,Email\r\nAna Doe,8185550101,ana@example.test\r\nBen Doe,8185550102,ben@example.test'],'people.csv'));
   assert.equal(csv.length,2);assert.equal(csv[0].sourcePage,'Row 2');assert.equal(csv[0].review,'');
-  const json=await read(new File([JSON.stringify({contacts:[{name:'Ana',phone:'8185550101'}]})],'people.json'));assert.equal(json[0].phone,'+18185550101');
+  const json=await read(new File([JSON.stringify({contacts:[{name:'Ana Doe',phone:'8185550101'}]})],'people.json'));assert.equal(json[0].phone,'+18185550101');
   const txt=await read(new File(['Name: Ana Doe\nPhone: 8185550101'],'person.txt'));assert.equal(txt.length,1);assert.ok(txt[0].review);
   const vcf=await read(new File(['BEGIN:VCARD\nFN:Ana Doe\nTEL:8185550101\nEND:VCARD'],'people.vcf'));assert.equal(vcf[0].name,'Ana Doe');
  }finally{globalThis.fetch=original}
