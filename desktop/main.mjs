@@ -25,6 +25,7 @@ let overlayGeometry="";
 let overlaySizes={};
 let overlayPosition=null;
 let desktopAppearance="dark";
+const desktopChrome=theme=>theme==="dark"?{background:"#0b141a",symbols:"#cbd5d9"}:{background:"#f3f5f1",symbols:"#32423b"};
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
@@ -97,7 +98,7 @@ function createOverlay(){
   overlayWindow=new BrowserWindow({
     width:480,height:88,minWidth:280,minHeight:88,maxWidth:1200,maxHeight:900,
     frame:false,resizable:true,minimizable:true,show:false,alwaysOnTop:true,skipTaskbar:true,
-    backgroundColor:desktopAppearance==="dark"?"#08090a":"#f5f6f2",title:"Pacifica Call",icon:path.join(__dirname,"assets/pacifica.ico"),
+    backgroundColor:desktopChrome(desktopAppearance).background,title:"Pacifica Call",icon:path.join(__dirname,"assets/pacifica.ico"),
     webPreferences:{preload:path.join(__dirname,"overlay-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,backgroundThrottling:false}
   });
   overlayWindow.setAlwaysOnTop(true,"floating");
@@ -157,10 +158,10 @@ function createWindow(){
   const splashTimeout=setTimeout(finishSplash,12000);
   mainWindow=new BrowserWindow({
     width:1420,height:920,minWidth:940,minHeight:650,show:false,
-    backgroundColor:desktopAppearance==="dark"?"#08090a":"#f5f6f2",title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
+    backgroundColor:desktopChrome(desktopAppearance).background,title:"Pacifica",icon:path.join(__dirname,"assets/pacifica.ico"),
     autoHideMenuBar:true,
     titleBarStyle:"hidden",
-    titleBarOverlay:{color:desktopAppearance==="dark"?"#08090a":"#f5f6f2",symbolColor:desktopAppearance==="dark"?"#d3d6da":"#37413b",height:68},
+    titleBarOverlay:{color:desktopChrome(desktopAppearance).background,symbolColor:desktopChrome(desktopAppearance).symbols,height:60},
     webPreferences:{preload:path.join(__dirname,"preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true,spellcheck:true,backgroundThrottling:false}
   });
   mainWindow.once("ready-to-show",()=>{clearTimeout(splashTimeout);finishSplash()});
@@ -306,8 +307,9 @@ ipcMain.on("pacifica:theme",(event,theme)=>{
   if(!mainWindow||event.sender!==mainWindow.webContents||!isAppUrl(event.senderFrame?.url||"")||(theme!=="dark"&&theme!=="light"))return;
   if(desktopAppearance!==theme){desktopAppearance=theme;saveOverlayLayout()}
   nativeTheme.themeSource=theme;
-  mainWindow.setBackgroundColor(theme==="dark"?"#08090a":"#f5f6f2");
-  mainWindow.setTitleBarOverlay({color:theme==="dark"?"#08090a":"#f5f6f2",symbolColor:theme==="dark"?"#d3d6da":"#37413b"});
+  const chrome=desktopChrome(theme);
+  mainWindow.setBackgroundColor(chrome.background);
+  mainWindow.setTitleBarOverlay({color:chrome.background,symbolColor:chrome.symbols,height:60});
   lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
   overlayWindow?.webContents.send("pacifica:call-state",overlayState());
 });

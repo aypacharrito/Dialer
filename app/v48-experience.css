@@ -1,0 +1,88 @@
+/* V48: calm visual hierarchy, exact desktop chrome, quiet utilities, and crisp dialer detail. */
+html[data-theme="dark"]{
+  --ps-bg:#0b141a;--ps-surface:#121d24;--ps-surface-2:#18262e;--ps-surface-3:#20313a;
+  --ps-text:#cbd5d9;--ps-text-strong:#e8edef;--ps-muted:#8fa0a8;--ps-subtle:#778990;
+  --ps-line:#d6e8f012;--ps-line-strong:#d6e8f026;--ps-accent:#79aa9c;--ps-accent-hover:#91bbae;--ps-accent-soft:#79aa9c18;
+  --ps-danger:#d98585;--ps-warning:#d7af68;--dialer-glass:#121d24ec;--dialer-chip:#d9eff307;
+}
+html[data-theme="light"]{
+  --ps-bg:#f3f5f1;--ps-surface:#fafbf8;--ps-surface-2:#e9eee9;--ps-surface-3:#dfe7e1;
+  --ps-text:#32423b;--ps-text-strong:#1d2c26;--ps-muted:#66756e;--ps-subtle:#7c8983;
+  --ps-line:#20382b10;--ps-line-strong:#20382b20;--ps-accent:#356d5a;--ps-accent-hover:#285a49;--ps-accent-soft:#356d5a14;
+  --ps-danger:#a94646;--ps-warning:#996a25;--dialer-glass:#fafbf8f2;--dialer-chip:#25433106;
+}
+
+html[data-theme] body,html[data-theme] .app-shell,html[data-theme] .app-shell .workspace{background:var(--ps-bg)!important;color:var(--ps-text)!important}
+html[data-theme] .app-shell .topbar{height:60px!important;min-height:60px!important;background:var(--ps-bg)!important;border:0!important;box-shadow:none!important}
+html[data-theme] .app-shell .sidebar{background:color-mix(in srgb,var(--ps-bg) 96%,var(--ps-surface))!important;border-color:var(--ps-line)!important}
+
+/* Upload and camera live in Contacts; their top-bar duplicates are intentionally removed from sight and focus. */
+html[data-theme] .app-shell .topbar .top-actions>.scan-action,
+html[data-theme] .app-shell .topbar .top-actions>.import{display:none!important}
+
+/* The brand mark is not another card. It is white on the night surface and uses its native colors in light mode. */
+html[data-theme] .app-shell .sidebar .logo .brand-mark{
+  display:grid!important;place-items:center!important;width:38px!important;height:38px!important;flex:0 0 38px!important;
+  border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;
+}
+html[data-theme] .app-shell .sidebar .logo .brand-mark img{width:34px!important;height:34px!important;object-fit:contain!important;opacity:1!important;filter:none!important}
+html[data-theme="dark"] .app-shell .sidebar .logo .brand-mark img{filter:brightness(0) invert(1) drop-shadow(0 1px 1px #0006)!important}
+
+/* Neutral surfaces carry structure. Green is reserved for the current item, success, and the primary action. */
+html[data-theme] .app-shell .sidebar nav button{border-radius:7px!important;background:transparent!important;color:var(--ps-muted)!important}
+html[data-theme] .app-shell .sidebar nav button:hover{background:var(--ps-surface-2)!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .sidebar nav button.active{background:var(--ps-surface-2)!important;color:var(--ps-text-strong)!important;box-shadow:inset 2px 0 var(--ps-accent)!important}
+html[data-theme] .app-shell .workspace-sync{background:transparent!important;padding-inline:4px!important}
+html[data-theme] .app-shell .connection{color:var(--ps-muted)!important}
+
+html[data-theme] .app-shell :is(.page-view,.today-view,.reports-view,.clients-view){padding-top:30px!important}
+html[data-theme] .app-shell .module-bar{align-items:center!important;gap:20px!important;margin-bottom:26px!important}
+html[data-theme] .app-shell .module-actions{gap:4px!important}
+html[data-theme] .app-shell .module-actions button.secondary,
+html[data-theme] .app-shell .folder-actions button:not(.primary){
+  min-height:38px!important;padding:8px 10px!important;border:1px solid transparent!important;border-radius:7px!important;
+  background:transparent!important;color:var(--ps-muted)!important;box-shadow:none!important;
+}
+html[data-theme] .app-shell .module-actions button.secondary:hover,
+html[data-theme] .app-shell .folder-actions button:not(.primary):hover{background:var(--ps-surface-2)!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .module-actions button.primary,
+html[data-theme] .app-shell .folder-actions button.primary{border-radius:7px!important;background:var(--ps-accent)!important;color:var(--dialer-button-text,#10211b)!important;box-shadow:none!important}
+
+/* Metrics read as one information band instead of five competing bubbles. */
+html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary){gap:0!important;margin-block:18px 28px!important;border-block:1px solid var(--ps-line)!important}
+html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary)>article{
+  min-height:88px!important;padding:18px 20px!important;border:0!important;border-right:1px solid var(--ps-line)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary)>article:last-child{border-right:0!important}
+html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary)>article>span{color:var(--ps-muted)!important;font-size:10px!important;letter-spacing:.07em!important}
+html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary)>article>b{color:var(--ps-text-strong)!important;font-size:24px!important;font-weight:620!important}
+
+html[data-theme] .app-shell :is(.table-card,.message-thread,.message-contacts,.contact-drawer,.folder-panel,.ai-result,.settings-card){border-radius:10px!important;border-color:var(--ps-line)!important;box-shadow:none!important}
+html[data-theme] .app-shell :is(input,textarea,select){border-radius:7px!important;box-shadow:none!important}
+html[data-theme] .app-shell .folder-panel{padding:22px!important}
+html[data-theme] .app-shell .folder-options{gap:18px!important}
+
+/* A panel is transparent at rest. Focus alone never paints a dark rectangle; hover or Arrange mode does. */
+html[data-theme] .app-shell .dialer-widget,
+html[data-theme] .app-shell .dialer-widget:focus-within{background:transparent!important;box-shadow:none!important}
+html[data-theme] .app-shell .dialer-widget:hover,
+html[data-theme] .app-shell .dialer-layout.is-editing .dialer-widget,
+html[data-theme] .app-shell .dialer-widget.is-dragging{background:color-mix(in srgb,var(--ps-surface) 76%,transparent)!important;box-shadow:0 0 0 1px var(--ps-line)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .side-pad{padding:16px!important;background:transparent!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] :is(.number-input-shell,input,.key-grid button,.erase){background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .number-input-shell{border-bottom:1px solid var(--ps-line-strong)!important;border-radius:0!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button{border-radius:7px!important;color:var(--ps-text)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button:hover{background:var(--ps-surface-2)!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .phone-actions{margin-top:2px!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .phone-call{border-radius:7px!important;box-shadow:none!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .keypad-feedback{min-height:18px!important;margin-top:4px!important}
+
+/* The starfield is already rendered on a >=4K backing canvas; keep it sharp and restrained. */
+html[data-theme="dark"] .app-shell .dialer-cosmos .dialer-stars{opacity:.78!important;filter:none!important;image-rendering:auto}
+html[data-theme="light"] .app-shell .dialer-cosmos .dialer-watermark{width:min(160px,22vw)!important;opacity:.065!important;filter:none!important;image-rendering:auto}
+
+@media(max-width:900px){
+  html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary){gap:8px!important;border:0!important}
+  html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary)>article{border:1px solid var(--ps-line)!important;border-radius:7px!important}
+}
+@media(prefers-reduced-motion:reduce){html[data-theme] .app-shell *{transition-duration:.01ms!important}}

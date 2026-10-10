@@ -1,40 +1,63 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cleanFolderAiResult,folderScanIntent,mergeFolderCandidates} from '../app/lib/folder-ai.ts';
+import {cleanFolderAiEnrichmentResult,cleanFolderAiIdentityResult,folderScanIntent,folderSectionMatchesIdentity,mergeFolderCandidates} from '../app/lib/folder-ai.ts';
 import {folderContact,newFolderContacts} from '../app/lib/folder-contact.ts';
 import {createFolderAiExtractor,FolderAiStop} from '../app/lib/folder-ai-browser.ts';
+
 const contact=(fields,file='notes.txt')=>folderContact(fields,file,'Text');
-function memory(){const chunks=new Map(),rows=[];return {chunks,rows,chunk:async id=>chunks.get(id),saveChunk:async data=>chunks.set(data.id,data),add:async data=>rows.push(...data)}}
+function memory(){
+ const chunks=new Map(),sectionMap=new Map(),rowMap=new Map();
+ return {chunks,sectionMap,get rows(){return [...rowMap.values()]},chunk:async id=>chunks.get(id),saveChunk:async data=>chunks.set(data.id,data),saveSection:async data=>sectionMap.set(data.id,data),sections:async(after='',limit=50)=>[...sectionMap.values()].sort((a,b)=>a.id.localeCompare(b.id)).filter(item=>item.id>after).slice(0,limit),page:async(after='',limit=50)=>[...rowMap.values()].sort((a,b)=>a.id.localeCompare(b.id)).filter(item=>item.id>after).slice(0,limit),add:async data=>{for(const row of data){const current=[...rowMap.values()].find(item=>item.phone===row.phone);rowMap.set(current?.id||row.id,current?mergeFolderCandidates(current,row):row)}}};
+}
 function extractor(store,overrides={}){const control=new AbortController();return createFolderAiExtractor({store,signal:control.signal,checkpoint:async()=>control.signal.throwIfAborted(),goal:'Find contacts',model:'test-model',onProgress(){},...overrides})}
-test('AI requires a grounded human name and phone, keeps extra CRM facts, and removes unsupported fields',()=>{
+
+test('pass one keeps only grounded human full name and own phone',()=>{
  const text='Spoke with Ana Doe. Reach her tomorrow: (818) 555-0101. Amount owed: $4,250. Ben Doe left ben@example.test. Acme Insurance LLC: 818-555-0102.';
- const result=cleanFolderAiResult({more:false,contacts:[{name:'Ana Doe',phone:'8185550101',email:'',address:'',city:'Miami',state:'',zip:'',product:'',details:[{label:'Amount owed',value:'$4,250',quote:'Amount owed: $4,250'}],uncertain:false,evidence:[{field:'name',quote:'Ana Doe'},{field:'phone',quote:'(818) 555-0101'},{field:'city',quote:'Miami'}]},{name:'Ben Doe',phone:'',email:'ben@example.test',address:'',city:'',state:'',zip:'',product:'',details:[],uncertain:false,evidence:[{field:'name',quote:'Ben Doe'},{field:'email',quote:'ben@example.test'}]},{name:'Acme Insurance LLC',phone:'8185550102',email:'',address:'',city:'',state:'',zip:'',product:'',details:[],uncertain:false,evidence:[{field:'name',quote:'Acme Insurance LLC'},{field:'phone',quote:'818-555-0102'}]}]},text,'scattered/notes.txt','Text');
- assert.equal(result.rows.length,1);assert.equal(result.rejected,2);assert.equal(result.rows[0].city,'');assert.match(result.rows[0].review,/Review AI/);assert.equal(result.rows[0].phone,'+18185550101');assert.equal(result.rows[0].importedFields['Amount owed'],'$4,250');assert.equal(result.rows[0].sourceFile,'scattered/notes.txt');
+ const result=cleanFolderAiIdentityResult({more:false,contacts:[{name:'Ana Doe',phone:'8185550101',uncertain:false,evidence:[{field:'name',quote:'Ana Doe'},{field:'phone',quote:'(818) 555-0101'}]},{name:'Ben Doe',phone:'',uncertain:false,evidence:[{field:'name',quote:'Ben Doe'}]},{name:'Acme Insurance LLC',phone:'8185550102',uncertain:false,evidence:[{field:'name',quote:'Acme Insurance LLC'},{field:'phone',quote:'818-555-0102'}]}]},text,'scattered/notes.txt','Text');
+ assert.equal(result.rows.length,1);assert.equal(result.rejected,2);assert.equal(result.rows[0].phone,'+18185550101');assert.equal(result.rows[0].email,'');assert.deepEqual(result.rows[0].importedFields,{});assert.equal(result.rows[0].sourceFile,'scattered/notes.txt');
 });
+
+test('pass two enriches only a locally matched identity with verbatim, non-sensitive facts',()=>{
+ const text='Ana Doe renewal. Address: 20 Main St, Miami, FL 33101. Amount owed: $4,250. Account number: 9988.';
+ const targets=[{id:'ana',name:'Ana Doe',phone:'+18185550101'}];
+ const result=cleanFolderAiEnrichmentResult({more:false,matches:[{targetId:'ana',email:'',address:'20 Main St',city:'Miami',state:'FL',zip:'33101',product:'',details:[{label:'Amount owed',value:'$4,250',quote:'Amount owed: $4,250'},{label:'Account number',value:'9988',quote:'Account number: 9988'}],uncertain:false,evidence:[{field:'address',quote:'Address: 20 Main St'},{field:'city',quote:'Miami'},{field:'state',quote:'FL'},{field:'zip',quote:'33101'}]}]},text,'renewal.txt','Text',targets);
+ assert.equal(result.rows.length,1);assert.equal(result.rows[0].address,'20 Main St');assert.equal(result.rows[0].city,'Miami');assert.equal(result.rows[0].importedFields['Amount owed'],'$4,250');assert.equal(result.rows[0].importedFields['Account number'],undefined);assert.match(result.rows[0].review,/Review AI/);assert.equal(folderSectionMatchesIdentity(text,targets[0]),true);assert.equal(folderSectionMatchesIdentity('Unrelated company note',targets[0]),false);
+});
+
 test('cross-file candidates fill missing details, preserve conflicting values and never overwrite CRM leads',()=>{
  const a=contact({name:'Ana Doe',phone:'8185550101'},'a.txt'),b=contact({name:'Ana Doe',phone:'8185550101',email:'ana@example.test'},'nested/b.txt');
  const merged=mergeFolderCandidates(a,b);assert.equal(merged.email,'ana@example.test');assert.equal(merged.sources.length,2);assert.equal(merged.review,'');assert.equal(a.email,'');
  const conflicting=mergeFolderCandidates({...merged,approved:true},contact({name:'Ben Doe',phone:'8185550101'},'c.txt'));assert.equal(conflicting.name,'Ana Doe');assert.match(conflicting.review,/Conflicting name/);assert.equal(conflicting.conflicts[0].value,'Ben Doe');assert.equal(conflicting.approved,false);assert.deepEqual(newFolderContacts([], [conflicting]),[]);
- const existing=[{name:'Original',phone:'8185550101',notes:'Keep exactly',deletedAt:'2026-10-01'}],before=structuredClone(existing);assert.deepEqual(newFolderContacts(existing,[merged]),[]);assert.deepEqual(existing,before);
- assert.equal(contact({phone:'8185550101'},'fragment.txt'),null);
+ const existing=[{name:'Original',phone:'8185550101',notes:'Keep exactly',deletedAt:'2026-10-01'}],before=structuredClone(existing);assert.deepEqual(newFolderContacts(existing,[merged]),[]);assert.deepEqual(existing,before);assert.equal(contact({phone:'8185550101'},'fragment.txt'),null);
 });
+
 test('folder chat requests route to the scanner and explicit cancellation does not start it',()=>{
  for(const prompt of ['Scan my folder for contacts','Go through this entire directory and find leads','buscar contactos en carpetas'])assert.equal(folderScanIntent(prompt),true);
  for(const prompt of ['Do not scan my folder','Stop scanning the folder','Write my follow-ups'])assert.equal(folderScanIntent(prompt),false);
 });
-test('AI scans continue beyond the old request caps and reuse cached sections',async()=>{
+
+test('AI scans continue beyond old caps and reuse cached identity sections',async()=>{
  const previous=globalThis.fetch,store=memory(),calls=[];globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);return Response.json({rows:[],more:false,rejected:0,usage:{input:10,output:20}})};
- try{const text=Array.from({length:510},(_,i)=>String(i).padEnd(10000,'.')).join('');let progress;await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,510);assert.equal(progress.requests,510);await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,510);assert.equal(progress.cached,510);assert.equal(progress.requests,0);assert.ok(calls.every(body=>body.text.length<=10600));assert.equal(calls[0].mode,'ai')}
+ try{const text=Array.from({length:510},(_,i)=>String(i).padEnd(10000,'.')).join('');let progress;await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,510);assert.equal(progress.requests,510);await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls.length,510);assert.equal(progress.cached,510);assert.equal(progress.requests,0);assert.ok(calls.every(body=>body.text.length<=10600));assert.ok(calls.every(body=>body.phase==='identity'))}
  finally{globalThis.fetch=previous}
 });
-test('an interrupted scan resumes after its saved sections without repeating successful requests',async()=>{
+
+test('pass two finds a discovered person in a different file by name and enriches that identity',async()=>{
+ const previous=globalThis.fetch,store=memory(),calls=[];
+ globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);if(body.phase==='identity'&&body.file==='identity.txt')return Response.json({rows:[contact({name:'Ana Doe',phone:'8185550101'},'identity.txt')],more:false,rejected:0,usage:{input:1,output:1}});if(body.phase==='enrichment'&&body.file==='money.txt')return Response.json({rows:[contact({name:'Ana Doe',phone:'8185550101','Amount owed':'$900'},'money.txt')],more:false,rejected:0,usage:{input:1,output:1}});return Response.json({rows:[],more:false,rejected:0,usage:{input:1,output:1}})};
+ try{const ai=extractor(store);await ai.extract('Ana Doe can be reached at 818-555-0101.','identity.txt','Text');await ai.extract('Ana Doe — Amount owed: $900.','money.txt','Text');await ai.enrich();assert.equal(store.rows.length,1);assert.equal(store.rows[0].importedFields['Amount owed'],'$900');assert.ok(calls.some(body=>body.phase==='enrichment'&&body.file==='money.txt'&&body.targets[0].name==='Ana Doe'));assert.ok(!calls.some(body=>body.phase==='enrichment'&&body.file==='unrelated.txt'))}finally{globalThis.fetch=previous}
+});
+
+test('an interrupted scan resumes after saved sections without repeating successful requests',async()=>{
  const previous=globalThis.fetch,store=memory();let calls=0;globalThis.fetch=async()=>++calls===2?Response.json({error:'Connection interrupted'},{status:503}):Response.json({rows:[contact({name:'Ana Doe',phone:'8185550101'})],more:false,rejected:0,usage:{input:10,output:20}});
  try{const text='contact notes '.repeat(1100);await assert.rejects(extractor(store).extract(text,'notes.txt','Text'),FolderAiStop);assert.equal(store.rows.length,1);let progress;await extractor(store,{onProgress:value=>progress=value}).extract(text,'notes.txt','Text');assert.equal(calls,3);assert.equal(progress.cached,1);assert.equal(progress.requests,1)}finally{globalThis.fetch=previous}
 });
+
 test('provider and local saving failures stop instead of falling back or repeatedly spending',async()=>{
  const previous=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({error:'Credits needed'},{status:503})};
  try{await assert.rejects(extractor(memory()).extract('Some text','a.txt','Text'),/Credits needed/);assert.equal(calls,1);globalThis.fetch=async()=>Response.json({rows:[],more:false,usage:{input:1,output:1}});const store=memory();store.saveChunk=async()=>{throw Error('Quota exceeded')};await assert.rejects(extractor(store).extract('Some text','a.txt','Text'),/Could not save AI progress/)}finally{globalThis.fetch=previous}
 });
+
 test('dense output splits into bounded sections and cancellation prevents new requests',async()=>{
  const previous=globalThis.fetch,calls=[];globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);return calls.length===1?Response.json({code:'split_required',usage:{input:20,output:50}},{status:422}):Response.json({rows:[],more:false,rejected:0,usage:{input:10,output:10}})};
  try{await extractor(memory()).extract('x'.repeat(2000)+'y'.repeat(2000),'dense.txt','Text');assert.equal(calls.length,3);assert.equal(calls[1].text.length,2200);assert.equal(calls[2].text.length,2200);const control=new AbortController();control.abort();await assert.rejects(extractor(memory(),{signal:control.signal}).extract('x','a.txt','Text'),{name:'AbortError'});assert.equal(calls.length,3)}finally{globalThis.fetch=previous}

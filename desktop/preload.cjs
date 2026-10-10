@@ -47,10 +47,10 @@ window.addEventListener("DOMContentLoaded",()=>{
   const style=document.createElement("style");
   style.textContent=`
     #pacifica-window-bar[hidden],#pacifica-desktop-update[hidden]{display:none!important}
-    html[data-desktop-chrome="fallback"]{padding-top:68px!important}
+    html[data-desktop-chrome="fallback"]{padding-top:60px!important}
     html[data-desktop-chrome="integrated"]{padding-top:0!important}
-    #pacifica-window-bar{position:fixed;inset:0 0 auto;height:68px;z-index:2147483647;background:var(--ps-bg,#f5f6f2);color:var(--ps-text,#37413b);-webkit-app-region:drag;display:flex;align-items:center;gap:8px;padding:0 150px 0 16px;font:500 12px system-ui}
-    html[data-desktop-chrome="integrated"] .app-shell .workspace>.topbar{min-height:68px!important;padding-right:154px!important;-webkit-app-region:drag}
+    #pacifica-window-bar{position:fixed;inset:0 0 auto;height:60px;z-index:2147483647;background:var(--ps-bg,#f3f5f1);color:var(--ps-text,#32423b);-webkit-app-region:drag;display:flex;align-items:center;gap:8px;padding:0 150px 0 16px;font:500 12px system-ui}
+    html[data-desktop-chrome="integrated"] .app-shell .workspace>.topbar{min-height:60px!important;height:60px!important;padding-right:154px!important;-webkit-app-region:drag}
     html[data-desktop-chrome] .topbar :is(button,a,input,select,textarea,label,summary,[role="button"]),#pacifica-desktop-update{-webkit-app-region:no-drag}
     html[data-desktop-chrome="integrated"] .topbar .lead-line-switch{margin-inline:auto!important}
     html[data-desktop-chrome="integrated"] .topbar .top-actions{justify-content:flex-end}

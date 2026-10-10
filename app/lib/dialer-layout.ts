@@ -10,8 +10,8 @@ export const dialerWidgets = {
 } as const;
 export type WidgetId = keyof typeof dialerWidgets;
 export type PanelRect = {x: number; y: number; width: number; height?: number};
-export type DialerLayoutState = {version: 1; hidden: WidgetId[]; collapsed: WidgetId[]; panels: Partial<Record<WidgetId, PanelRect>>; showQueueLabel: boolean};
-export const emptyDialerLayout = (): DialerLayoutState => ({version: 1, hidden: ["keypad"], collapsed: [], panels: {}, showQueueLabel: true});
+export type DialerLayoutState = {version: 2; hidden: WidgetId[]; collapsed: WidgetId[]; panels: Partial<Record<WidgetId, PanelRect>>; showQueueLabel: boolean};
+export const emptyDialerLayout = (): DialerLayoutState => ({version: 2, hidden: ["keypad"], collapsed: [], panels: {}, showQueueLabel: true});
 export function cleanDialerLayout(value: unknown): DialerLayoutState {
   const result = emptyDialerLayout();
   if (!value || typeof value !== "object") return result;
@@ -19,7 +19,9 @@ export function cleanDialerLayout(value: unknown): DialerLayoutState {
   const ids = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((id): id is WidgetId => typeof id === "string" && Object.hasOwn(dialerWidgets, id)))] : [];
   result.hidden = Array.isArray(input.hidden) ? ids(input.hidden) : ["keypad"]; result.collapsed = ids(input.collapsed);
   result.showQueueLabel = input.showQueueLabel !== false;
-  if (input.panels && typeof input.panels === "object") {
+  // V48 resets older free-form coordinates once. Those layouts could overlap after
+  // font, sidebar, or viewport changes; visibility preferences are still preserved.
+  if (input.version === 2 && input.panels && typeof input.panels === "object") {
     for (const id of Object.keys(dialerWidgets) as WidgetId[]) {
       const rect = (input.panels as Record<string, PanelRect>)[id];
       if (!rect || ![rect.x, rect.y, rect.width].every(Number.isFinite)) continue;
@@ -35,6 +37,17 @@ export function constrainPanel(rect: PanelRect, availableWidth: number, minWidth
 }
 
 export function overlaps(a:PanelRect,b:PanelRect){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+(b.height||280)&&a.y+(a.height||280)>b.y;}
+export function avoidPanelOverlap(id:WidgetId,rect:PanelRect,rects:Record<WidgetId,PanelRect>,visible:(id:WidgetId)=>boolean,width:number,gap=18,availableHeight=Infinity){
+ const peers=(Object.entries(rects) as [WidgetId,PanelRect][]).filter(([other])=>other!==id&&visible(other)).map(([,peer])=>peer);
+ const candidate=constrainPanel(rect,width,dialerWidgets[id].minWidth,dialerWidgets[id].minHeight,availableHeight);
+ if(!peers.some(peer=>overlaps(candidate,peer)))return candidate;
+ const height=candidate.height||280;
+ const xs=[candidate.x,0,width-candidate.width,...peers.flatMap(peer=>[peer.x+peer.width+gap,peer.x-candidate.width-gap])];
+ const ys=[candidate.y,0,...peers.flatMap(peer=>[peer.y+(peer.height||280)+gap,peer.y-height-gap])];
+ const options=xs.flatMap(x=>ys.map(y=>({...candidate,x,y}))).filter(next=>next.x>=0&&next.x+next.width<=width&&next.y>=0&&next.y+height<=availableHeight&&!peers.some(peer=>overlaps(next,peer)));
+ if(options.length)return options.sort((a,b)=>Math.abs(a.x-rect.x)+Math.abs(a.y-rect.y)-Math.abs(b.x-rect.x)-Math.abs(b.y-rect.y))[0];
+ return rects[id];
+}
 /** Temporary layout only: saved positions return when the call detail panel closes. */
 export function clearDetailOverlap(rects:Record<WidgetId,PanelRect>,width:number,keypadVisible:boolean){
  if(!keypadVisible||!overlaps(rects.keypad,rects.details))return rects;

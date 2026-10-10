@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkConfigured } from "./lib/clerk-config";
 import { appearanceBootstrap } from "./lib/workspace-appearance";
+import AutocorrectDefaults from "./components/AutocorrectDefaults";
 import "./typography.css";
 import "./globals.css";
 import "./professional-polish.css";
@@ -19,6 +20,7 @@ import "./scrollbars.css";
 import "./refined-workspace.css";
 import "./responsive-workspace.css";
 import "./v47-experience.css";
+import "./v48-experience.css";
 
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",
@@ -57,7 +59,7 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/inter-latin-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/>
         <link rel="preload" href="/fonts/manrope-latin-variable.woff" as="font" type="font/woff" crossOrigin="anonymous"/>
       </head>
-      <body><LanguageProvider>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</LanguageProvider></body>
+      <body><LanguageProvider><AutocorrectDefaults/>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</LanguageProvider></body>
     </html>
   );
 }

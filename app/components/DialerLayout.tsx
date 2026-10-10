@@ -2,7 +2,7 @@
 
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent, type KeyboardEvent} from "react";
 import {createPortal} from "react-dom";
-import {cleanDialerLayout, constrainPanel, snapPanel, clearDetailOverlap, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
+import {cleanDialerLayout, constrainPanel, snapPanel, clearDetailOverlap, avoidPanelOverlap, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
 
 type LayoutContext = {
   layout: DialerLayoutState; editing: boolean; setEditing: (value: boolean) => void;
@@ -23,7 +23,7 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
   const [height,setHeight]=useState(700);
   const [width, setWidth] = useState(1000), [heights, setHeights] = useState<Partial<Record<WidgetId, number>>>({});
   const [loadedKey, setLoadedKey] = useState("");
-  const host = useRef<HTMLDivElement>(null), key = `pacifica:dialer-layout:v2:${workspaceId}`;
+  const host = useRef<HTMLDivElement>(null), key = `pacifica:dialer-layout:v3:${workspaceId}`;
   const initialTheme = useRef(theme);
   const keypadChange = useRef(onKeypadChange);
   useEffect(() => {keypadChange.current = onKeypadChange;}, [onKeypadChange]);
@@ -34,7 +34,7 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
       let saved = emptyDialerLayout();
       try {
         const legacy = `pacifica:dialer-layout:v1:${workspaceId}:`;
-        const raw = localStorage.getItem(key) ?? localStorage.getItem(legacy + initialTheme.current) ?? localStorage.getItem(legacy + (initialTheme.current === "dark" ? "light" : "dark"));
+        const raw = localStorage.getItem(key) ?? localStorage.getItem(`pacifica:dialer-layout:v2:${workspaceId}`) ?? localStorage.getItem(legacy + initialTheme.current) ?? localStorage.getItem(legacy + (initialTheme.current === "dark" ? "light" : "dark"));
         saved = cleanDialerLayout(JSON.parse(raw || "null"));
       } catch {}
       setLayout(saved); setLoadedKey(key);
@@ -73,7 +73,7 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
     layout, editing, setEditing, width, height, bounded, compact: width < 820, rects, visible, protectedIds, measure,
     toggle: id => { if (protectedIds.includes(id)) return; if (id === "keypad") onKeypadChange(!keypadOpen); else setLayout(old => ({...old, hidden: old.hidden.includes(id) ? old.hidden.filter(x => x !== id) : [...old.hidden, id]})); },
     collapse: id => { if (!protectedIds.includes(id)) setLayout(old => ({...old, collapsed: old.collapsed.includes(id) ? old.collapsed.filter(x => x !== id) : [...old.collapsed, id]})); },
-    place: (id, rect) => setLayout(old => ({...old, panels: {...old.panels, [id]: constrainPanel(rect, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight,bounded?height:Infinity)}})),
+    place: (id, rect) => setLayout(old => ({...old, panels: {...old.panels, [id]: avoidPanelOverlap(id,constrainPanel(rect, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight,bounded?height:Infinity),rects,visible,width,18,bounded?height:Infinity)}})),
     reset: () => {setLayout(emptyDialerLayout()); onKeypadChange(false);},
     toggleQueueLabel: () => setLayout(old => ({...old, showQueueLabel: !old.showQueueLabel})),
   };
