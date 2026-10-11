@@ -2,7 +2,7 @@
 
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent, type KeyboardEvent} from "react";
 import {createPortal} from "react-dom";
-import {cleanDialerLayout, constrainPanel, snapPanel, clearDetailOverlap, avoidPanelOverlap, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
+import {cleanDialerLayout, constrainPanel, snapPanel, resolveDialerRects, avoidPanelOverlap, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
 
 type LayoutContext = {
   layout: DialerLayoutState; editing: boolean; setEditing: (value: boolean) => void;
@@ -64,16 +64,20 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
   const visible = (id: WidgetId) => protectedIds.includes(id) || (id === "keypad" ? keypadOpen : id === "details" && !detailsAvailable ? false : !layout.hidden.includes(id));
   const defaults = defaultDialerRects(width, heights, visible);
   const bounded=!detailsAvailable&&!protectedIds.length&&width>=820;
-  let rects = Object.fromEntries((Object.keys(dialerWidgets) as WidgetId[]).map(id => [id, constrainPanel(layout.panels[id] || defaults[id], width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight)])) as Record<WidgetId, PanelRect>;
-  if(bounded)for(const id of Object.keys(dialerWidgets) as WidgetId[])if(layout.panels[id])rects[id]=constrainPanel({...rects[id],height:rects[id].height||heights[id]||dialerWidgets[id].minHeight},width,dialerWidgets[id].minWidth,dialerWidgets[id].minHeight,height);
-  if(detailsAvailable){rects=clearDetailOverlap({...rects,details:{...rects.details,height:rects.details.height||heights.details||280}},width,visible('keypad'));}
+  const desired = Object.fromEntries((Object.keys(dialerWidgets) as WidgetId[]).map(id => {
+    const saved = layout.panels[id] || defaults[id];
+    const collapsed = layout.collapsed.includes(id) && !protectedIds.includes(id);
+    const actualHeight = collapsed ? 44 : Math.max(saved.height || 0, heights[id] || 0, dialerWidgets[id].minHeight);
+    return [id, {...constrainPanel(saved, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight), height: actualHeight}];
+  })) as Record<WidgetId, PanelRect>;
+  const rects = resolveDialerRects(desired, width, visible);
   const bottom = Math.max(1, ...(Object.keys(dialerWidgets) as WidgetId[]).filter(visible).map(id => rects[id].y + (layout.collapsed.includes(id) && !protectedIds.includes(id) ? 44 : rects[id].height || heights[id] || 120)));
   const measure = useCallback((id: WidgetId, height: number) => setHeights(previous => Math.abs((previous[id] || 0) - height) < 1 ? previous : {...previous, [id]: height}), []);
   const value: LayoutContext = {
     layout, editing, setEditing, width, height, bounded, compact: width < 820, rects, visible, protectedIds, measure,
     toggle: id => { if (protectedIds.includes(id)) return; if (id === "keypad") onKeypadChange(!keypadOpen); else setLayout(old => ({...old, hidden: old.hidden.includes(id) ? old.hidden.filter(x => x !== id) : [...old.hidden, id]})); },
     collapse: id => { if (!protectedIds.includes(id)) setLayout(old => ({...old, collapsed: old.collapsed.includes(id) ? old.collapsed.filter(x => x !== id) : [...old.collapsed, id]})); },
-    place: (id, rect) => setLayout(old => ({...old, panels: {...old.panels, [id]: avoidPanelOverlap(id,constrainPanel(rect, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight,bounded?height:Infinity),rects,visible,width,18,bounded?height:Infinity)}})),
+    place: (id, rect) => setLayout(old => ({...old, panels: {...old.panels, [id]: avoidPanelOverlap(id,constrainPanel(rect, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight),rects,visible,width)}})),
     reset: () => {setLayout(emptyDialerLayout()); onKeypadChange(false);},
     toggleQueueLabel: () => setLayout(old => ({...old, showQueueLabel: !old.showQueueLabel})),
   };
@@ -102,9 +106,10 @@ export function DialerPanel({id, children, className = ""}: {id: WidgetId; child
   const style = useMemo(() => context.compact ? {} : {left: rect.x, top: rect.y, width: rect.width, minHeight: collapsed ? 44 : Math.min(rect.height||Infinity,dialerWidgets[id].minHeight), ...(collapsed ? {height: 44} : rect.height ? {height: rect.height} : {})}, [context.compact, id, rect.x, rect.y, rect.width, rect.height, collapsed]);
   useEffect(() => {
     const element = node.current; if (!element || !visible) return;
-    const measure = () => {if (!gesture.current) reportHeight(id, element.querySelector(".dialer-widget-content")?.scrollHeight||element.getBoundingClientRect().height);};
+    const content = element.querySelector<HTMLElement>(".dialer-widget-content");
+    const measure = () => {if (!gesture.current && !collapsed) reportHeight(id, content?.scrollHeight || element.getBoundingClientRect().height);};
     measure(); if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure); observer.observe(element); return () => observer.disconnect();
+    const observer = new ResizeObserver(measure); observer.observe(element); if(content) observer.observe(content); return () => observer.disconnect();
   }, [id, visible, collapsed, reportHeight]);
   useEffect(() => () => { if (frame.current) cancelAnimationFrame(frame.current); }, []);
   useEffect(() => {
@@ -135,9 +140,9 @@ export function DialerPanel({id, children, className = ""}: {id: WidgetId; child
     const current = gesture.current; if (!current) return;
     const dx = event.clientX - current.x, dy = event.clientY - current.y;
     const minHeight = ["contact","mode","calls","conversations","phone"].includes(id) ? Math.max(dialerWidgets[id].minHeight, node.current?.querySelector(".dialer-widget-content")?.scrollHeight || 0) : dialerWidgets[id].minHeight;
-    let next = constrainPanel(current.kind === "move" ? {...current.rect, x: current.rect.x + dx, y: current.rect.y + dy} : {...current.rect, width: Math.min(context.width-current.rect.x,current.rect.width+dx), height: (current.rect.height || 120)+dy}, context.width, dialerWidgets[id].minWidth, minHeight,context.bounded?context.height:Infinity);
+    let next = constrainPanel(current.kind === "move" ? {...current.rect, x: current.rect.x + dx, y: current.rect.y + dy} : {...current.rect, width: Math.min(context.width-current.rect.x,current.rect.width+dx), height: (current.rect.height || 120)+dy}, context.width, dialerWidgets[id].minWidth, minHeight);
     if (!event.shiftKey) next = snapPanel(next, Object.entries(context.rects).filter(([other]) => other !== id && context.visible(other as WidgetId)).map(([,value]) => value), context.width, current.kind === "resize");
-    pending.current = constrainPanel(next, context.width, dialerWidgets[id].minWidth, minHeight, context.bounded ? context.height : Infinity);
+    pending.current = avoidPanelOverlap(id, constrainPanel(next, context.width, dialerWidgets[id].minWidth, minHeight), context.rects, context.visible, context.width);
     if (!frame.current) frame.current = requestAnimationFrame(paint);
   };
   const finish = (event: PointerEvent<HTMLElement>) => {

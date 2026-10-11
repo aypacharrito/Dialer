@@ -1,6 +1,6 @@
 import {folderContact,type FolderContact} from './folder-contact';
 
-export const folderAiVersion='ai-v48-two-pass';
+export const folderAiVersion='ai-v49-two-pass';
 export const folderIdentityFields=['name','phone'] as const;
 export const folderEnrichmentFields=['email','address','city','state','zip','product'] as const;
 export const folderAiFields=[...folderIdentityFields,...folderEnrichmentFields] as const;
@@ -27,8 +27,9 @@ const quoted=(text:string,quote:unknown,value:string)=>typeof quote==='string'&&
 export type FolderAiTarget={id:string;name:string;phone:string};
 
 export function folderSectionMatchesIdentity(text:string,target:Pick<FolderAiTarget,'name'|'phone'>){
- const textWords=` ${words(text)} `,name=words(target.name),digits=phoneDigits(text),targetDigits=phoneDigits(target.phone);
- return Boolean(name&&textWords.includes(` ${name} `))||Boolean(targetDigits&&digits.includes(targetDigits));
+ const textWords=` ${words(text)} `,name=words(target.name),targetDigits=phoneDigits(target.phone);
+ const phones=text.match(/(?:\+?1[\s().-]*)?(?:\(?\d{3}\)?[\s.-]*)\d{3}[\s.-]*\d{4}/g)||[];
+ return Boolean(name&&textWords.includes(` ${name} `))||Boolean(targetDigits.length===10&&phones.some(phone=>phoneDigits(phone)===targetDigits));
 }
 
 export function cleanFolderAiIdentityResult(value:unknown,text:string,file:string,page:string){

@@ -74,6 +74,36 @@ export function newFolderContacts<T extends IdentityContact>(existing:T[],candid
  for(const item of candidates){if(item.review&&!item.approved)continue;const keys=folderIdentity(item);if(!keys.length||keys.some(k=>seen.has(k)))continue;keys.forEach(k=>seen.add(k));added.push(item)}
  return added;
 }
+/** Explicitly adding reviewed results may fill blanks, never overwrite saved facts or workflow. */
+export function enrichFolderContacts<T extends IdentityContact & {deletedAt?:string;state?:string;product?:string}>(existing:T[],candidates:FolderContact[]):T[]{
+ const byPhone=new Map<string,FolderContact[]>();
+ for(const row of candidates){
+  if(row.review&&!row.approved)continue;
+  const phone=folderPhone(row.phone);if(!phone)continue;
+  byPhone.set(phone,[...(byPhone.get(phone)||[]),row]);
+ }
+ let changed=false;
+ const result=existing.map(item=>{
+  if(item.deletedAt)return item;
+  const rows=(byPhone.get(folderPhone(item.phone))||[]).filter(row=>key(row.name)===key(item.name||''));
+  if(!rows.length)return item;
+  const next={...item} as T;const record=next as Record<string,unknown>;
+  let updated=false;
+  for(const row of rows){
+   for(const field of ['email','address','city','state','zip','product'] as const){
+    if(!String(record[field]||'').trim()&&row[field]){record[field]=row[field];updated=true;}
+   }
+   const fields={...(next.importedFields||{})};
+   const labels=new Set(Object.keys(fields).map(key));
+   for(const [label,value] of Object.entries(row.importedFields||{})){
+    if(!labels.has(key(label))&&value){fields[label]=value;labels.add(key(label));updated=true;}
+   }
+   if(updated)next.importedFields=fields;
+  }
+  if(!updated)return item;changed=true;return next;
+ });
+ return changed?result:existing;
+}
 export const folderCsvHeader=['Name','Phone','Email','Address','City','State','ZIP','Product','Additional fields','Source file','Page / row','Review','All sources','Conflicting values'];
 export function folderCsvCell(v:string){const safe=/^[\s\uFEFF]*[=+@-]/.test(v)||/^[\t\r\n]/.test(v)?"'"+v:v;return '"'+safe.replace(/"/g,'""')+'"'}
 export function folderCsvLine(row:FolderContact){return [row.name,row.phone,row.email,row.address,row.city,row.state,row.zip,row.product,Object.entries(row.importedFields||{}).map(([label,value])=>label+': '+value).join('; '),row.sourceFile,row.sourcePage,row.review&&!row.approved?row.review:'',(row.sources||[{file:row.sourceFile,page:row.sourcePage}]).map(source=>source.file+' · '+source.page).join('; '),(row.conflicts||[]).map(item=>item.field+': '+item.value+' ('+item.file+' · '+item.page+')').join('; ')].map(folderCsvCell).join(',')+'\r\n'}

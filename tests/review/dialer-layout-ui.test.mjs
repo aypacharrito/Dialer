@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import React,{act,useState} from 'react';import {createRoot} from 'react-dom/client';import {JSDOM} from 'jsdom';
 import {DialerLayout,DialerLayoutMenu,DialerPanel} from '../../app/components/DialerLayout.tsx';
-import {avoidPanelOverlap,cleanDialerLayout,constrainPanel,defaultDialerRects,overlaps,snapPanel} from '../../app/lib/dialer-layout.ts';
+import {avoidPanelOverlap,cleanDialerLayout,constrainPanel,defaultDialerRects,overlaps,snapPanel,resolveDialerRects} from '../../app/lib/dialer-layout.ts';
 import ReleaseUpdateNotice from '../../app/components/ReleaseUpdateNotice.tsx';
 import {releaseVersion} from '../../app/lib/release-version.ts';
 function Fixture({protectedIds=[],theme='dark'}){const [keypad,setKeypad]=useState(true);return React.createElement(DialerLayout,{workspaceId:'w1',theme,keypadOpen:keypad,onKeypadChange:setKeypad,protectedIds,detailsAvailable:true},React.createElement(DialerLayoutMenu),React.createElement('div',{className:'dialer-canvas'},...['contact','keypad','calls','details'].map(id=>React.createElement(DialerPanel,{key:id,id},React.createElement('p',null,id)))))}
@@ -103,4 +103,21 @@ test('theme changes preserve the migrated layout, panel identity and editing sta
 test('a saved pre-V48 layout keeps visibility preferences but resets unsafe coordinates',async()=>{
  const h=await setup();localStorage.setItem('pacifica:dialer-layout:v1:w1:light',JSON.stringify({panels:{keypad:{x:20,y:90,width:300,height:460}}}));
  try{await act(async()=>h.root.render(React.createElement(Fixture,{theme:'dark'})));assert.equal(document.querySelector('[data-dialer-widget="keypad"]').style.top,'0px')}finally{await h.close()}
+});
+
+test('all restored panels stay separate through viewport and live-detail height changes',()=>{
+ for(const width of [820,940,1000,1280,1920,3840]){
+  for(const detailHeight of [280,740,1600]){
+   const ids=['contact','mode','calls','conversations','phone','keypad','queue','details'];
+   const rects=Object.fromEntries(ids.map((id,index)=>[id,{x:index%2?680:0,y:0,width:id==='keypad'?300:600,height:id==='details'?detailHeight:300}]));
+   const result=resolveDialerRects(rects,width,()=>true);
+   for(let i=0;i<ids.length;i++){const a=result[ids[i]];assert.ok(a.x>=0&&a.x+a.width<=width);for(let j=i+1;j<ids.length;j++)assert.equal(overlaps(a,result[ids[j]]),false,`${width}: ${ids[i]} / ${ids[j]}`)}
+   assert.deepEqual(resolveDialerRects(result,width,()=>true),result,'repair is stable');
+  }
+ }
+});
+test('drag preview rejects collision even with free alignment and natural-height peers',()=>{
+ const rects={...defaultDialerRects(1000,{},()=>true),contact:{x:0,y:0,width:500,height:700},keypad:{x:520,y:0,width:300,height:460}};
+ const next=avoidPanelOverlap('keypad',{x:200,y:100,width:300,height:460},rects,id=>['contact','keypad'].includes(id),1000);
+ assert.equal(overlaps(next,rects.contact),false);
 });

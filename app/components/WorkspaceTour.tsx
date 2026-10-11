@@ -3,11 +3,16 @@ import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 const steps=[
   {view:"today",target:".today-workspace",title:"Start with Today",copy:"Review priorities. Complete or snooze reminders from your notes."},
+  {view:"leads",target:".crm-view .module-actions",title:"Bring in contacts",copy:"Use Contacts to import a CSV, scan a document, or add a lead. Search and filter below the toolbar. Export CSV saves the current filtered queue."},
+  {view:"ai",target:".ai-chat-composer",title:"Scan an entire folder",copy:"Ask Pacifica to scan a folder, then select it on your device. AI first finds full names with their own phone numbers, then searches every file for matching details. Review uncertain results before adding contacts. Matching contacts gain missing details; saved values remain intact."},
   {view:"dialer",target:'[data-dialer-widget="contact"]',title:"Make the next call",copy:"Choose a contact and press Start calling. Mute and end controls appear during the call."},
-  {view:"dialer",target:".dialer-layout-menu",title:"Make it yours",copy:"Open Layout to show panels or center everything. Drag a panel’s background to move it; drag its lower-right corner to resize. Hold Shift to skip snapping."},
+  {view:"dialer",target:".dialer-layout-menu",title:"Arrange the dialer",copy:"Open Layout to show or hide panels and reset their positions. Drag a panel’s background to move it; use its lower-right corner to resize. Right-click for panel controls. Shift skips alignment snapping; panels still keep a safe distance."},
+  {view:"dialer",target:'[data-dialer-widget="contact"]',title:"Finish each call",copy:"After hanging up, choose the outcome and save your notes or follow-up date. Live call controls stay available while you work elsewhere. Use Keypad for phone-menu digits after the call connects."},
   {view:"messages",target:".messages-center",title:"Keep the conversation",copy:"Select a contact to reply. Attach photos or PDFs with your message."},
   {view:"office",target:'[aria-label="Calendar view"]',title:"Plan what’s next",copy:"Create an appointment or connect Google or Outlook in Calendar settings. Routine follow-ups stay on Today."},
   {view:"ai",target:".ai-chat-composer",title:"Ask Pacifica",copy:"Type a request or use + to attach a document. Review suggested changes before applying them."},
+  {view:"clients",target:".clients-view",title:"Track policies and renewals",copy:"Keep client details, policy dates and amounts together. Review upcoming renewals and open a contact to record verified changes."},
+  {view:"settings",target:".workspace-display-setting",title:"Set your appearance",copy:"Choose Light or Dark and your display size in Settings. The dark dialer uses a crisp 4K starfield; light mode uses the Pacifica watermark. Optional HTTPS images and GIFs are saved with your workspace. Replay this guide anytime with the ? button."},
 ] as const;
 export default function WorkspaceTour({workspaceId,onNavigate}:{workspaceId:string;onNavigate:(view:string)=>void}){
  const [step,setStep]=useState<number|null>(null);

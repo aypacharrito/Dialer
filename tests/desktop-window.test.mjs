@@ -54,7 +54,7 @@ test('untrusted frames cannot create native call windows',()=>{
  const {windows,handlers,event}=desktop();handlers.get('pacifica:call-state')({...event,senderFrame:{url:'https://example.com'}},{active:true});assert.equal(windows.length,1);
 });
 test('theme changes update native chrome outside a call',()=>{
- const {windows,handlers,event}=desktop();handlers.get('pacifica:theme')(event,'dark');assert.equal(windows[0].theme.color,'#0b141a');assert.equal(windows[0].theme.height,60);
+ const {windows,handlers,event}=desktop();handlers.get('pacifica:theme')(event,'dark');assert.equal(windows[0].theme.color,'#0a1118');assert.equal(windows[0].theme.height,60);
 });
 
 test('layout changes preserve position, clamp to screen and persist across launches',()=>{
@@ -129,16 +129,16 @@ test('connected page controls require the CRM main frame, including same-origin 
 
 test('native startup defaults to dark and restores the selected appearance on relaunch',()=>{
  const settings={},first=desktop(settings);
- assert.equal(first.windows[0].options.backgroundColor,'#0b141a');
+ assert.equal(first.windows[0].options.backgroundColor,'#0a1118');
  first.handlers.get('pacifica:theme')(first.event,'light');
- assert.equal(first.windows[0].background,'#f3f5f1');assert.equal(JSON.parse(settings.value).appearance,'light');
- const second=desktop(settings);assert.equal(second.windows[0].options.backgroundColor,'#f3f5f1');assert.equal(second.windows[0].options.titleBarOverlay.color,'#f3f5f1');assert.equal(second.windows[0].options.titleBarOverlay.height,60);
+ assert.equal(first.windows[0].background,'#f1f3ef');assert.equal(JSON.parse(settings.value).appearance,'light');
+ const second=desktop(settings);assert.equal(second.windows[0].options.backgroundColor,'#f1f3ef');assert.equal(second.windows[0].options.titleBarOverlay.color,'#f1f3ef');assert.equal(second.windows[0].options.titleBarOverlay.height,60);
  second.handlers.get('pacifica:theme')(second.event,'dark');
- assert.equal(desktop(settings).windows[0].options.backgroundColor,'#0b141a');
+ assert.equal(desktop(settings).windows[0].options.backgroundColor,'#0a1118');
 });
 test('untrusted or invalid themes cannot replace the saved native appearance',()=>{
  const settings={},h=desktop(settings);
  h.handlers.get('pacifica:theme')({...h.event,senderFrame:{url:'https://example.com'}},'light');
  h.handlers.get('pacifica:theme')(h.event,'unknown');
- assert.equal(settings.value,undefined);assert.equal(h.windows[0].options.backgroundColor,'#0b141a');
+ assert.equal(settings.value,undefined);assert.equal(h.windows[0].options.backgroundColor,'#0a1118');
 });

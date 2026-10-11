@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cleanFolderAiEnrichmentResult,cleanFolderAiIdentityResult,folderScanIntent,folderSectionMatchesIdentity,mergeFolderCandidates} from '../app/lib/folder-ai.ts';
-import {folderContact,newFolderContacts} from '../app/lib/folder-contact.ts';
+import {folderContact,newFolderContacts,enrichFolderContacts} from '../app/lib/folder-contact.ts';
 import {createFolderAiExtractor,FolderAiStop} from '../app/lib/folder-ai-browser.ts';
 
 const contact=(fields,file='notes.txt')=>folderContact(fields,file,'Text');
@@ -61,4 +61,21 @@ test('provider and local saving failures stop instead of falling back or repeate
 test('dense output splits into bounded sections and cancellation prevents new requests',async()=>{
  const previous=globalThis.fetch,calls=[];globalThis.fetch=async(_url,options)=>{const body=JSON.parse(options.body);calls.push(body);return calls.length===1?Response.json({code:'split_required',usage:{input:20,output:50}},{status:422}):Response.json({rows:[],more:false,rejected:0,usage:{input:10,output:10}})};
  try{await extractor(memory()).extract('x'.repeat(2000)+'y'.repeat(2000),'dense.txt','Text');assert.equal(calls.length,3);assert.equal(calls[1].text.length,2200);assert.equal(calls[2].text.length,2200);const control=new AbortController();control.abort();await assert.rejects(extractor(memory(),{signal:control.signal}).extract('x','a.txt','Text'),{name:'AbortError'});assert.equal(calls.length,3)}finally{globalThis.fetch=previous}
+});
+
+test('cross-file matching finds every formatted phone rather than just the final number',()=>{
+ const target={name:'Ana Doe',phone:'+18185550101'};
+ assert.equal(folderSectionMatchesIdentity('818-555-0101: renewal $4200. Other contact: (818) 555-9999.',target),true);
+ assert.equal(folderSectionMatchesIdentity('Other contact: (818) 555-9999. Ana Doe renewal.',target),true);
+ assert.equal(folderSectionMatchesIdentity('Invoice 818 then 555 then 0101; 818-555-9999',target),false);
+});
+
+test('reviewed folder results fill only empty fields on the same name and phone',()=>{
+ const original={name:'Ana Doe',phone:'8185550101',email:'saved@example.test',address:'',state:'',notes:'Keep my notes',stage:'Closed',doNotCall:true,communications:[{body:'Keep my history'}],importedFields:{Premium:'$99'}};
+ const row=contact({name:'Ana Doe',phone:'8185550101',email:'new@example.test',address:'20 Main St',state:'FL',Premium:'$250',Renewal:'2027-01-01'});
+ const before=structuredClone(original),result=enrichFolderContacts([original],[row]);
+ assert.equal(result[0].email,original.email);assert.equal(result[0].address,'20 Main St');assert.equal(result[0].state,'FL');assert.equal(result[0].importedFields.Premium,'$99');assert.equal(result[0].importedFields.Renewal,'2027-01-01');assert.equal(result[0].notes,original.notes);assert.equal(result[0].stage,'Closed');assert.equal(result[0].doNotCall,true);assert.deepEqual(result[0].communications,original.communications);assert.deepEqual(original,before);
+ assert.equal(enrichFolderContacts([original],[{...row,name:'Ben Doe'}])[0],original);
+ assert.equal(enrichFolderContacts([original],[{...row,review:'Review',approved:false}])[0],original);
+ const deleted={...original,deletedAt:'2026-10-01'};assert.equal(enrichFolderContacts([deleted],[row])[0],deleted);
 });

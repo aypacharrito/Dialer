@@ -25,7 +25,7 @@ let overlayGeometry="";
 let overlaySizes={};
 let overlayPosition=null;
 let desktopAppearance="dark";
-const desktopChrome=theme=>theme==="dark"?{background:"#0b141a",symbols:"#cbd5d9"}:{background:"#f3f5f1",symbols:"#32423b"};
+const desktopChrome=theme=>theme==="dark"?{background:"#0a1118",symbols:"#dae3ea"}:{background:"#f1f3ef",symbols:"#2f3e36"};
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;

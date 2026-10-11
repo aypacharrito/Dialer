@@ -37,14 +37,37 @@ export function constrainPanel(rect: PanelRect, availableWidth: number, minWidth
 }
 
 export function overlaps(a:PanelRect,b:PanelRect){return a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+(b.height||280)&&a.y+(a.height||280)>b.y;}
+/** Repair every visible rectangle after restoration, content growth or viewport changes.
+ * Never compress a live call to fit the viewport: the canvas grows and stays scrollable.
+ * The original preferences are left intact so a wider window restores their positions.
+ */
+export function resolveDialerRects(rects: Record<WidgetId, PanelRect>, width: number, visible: (id: WidgetId) => boolean, gap = 18): Record<WidgetId, PanelRect> {
+  const result = {...rects};
+  const placed: PanelRect[] = [];
+  const ids = (Object.keys(dialerWidgets) as WidgetId[]).filter(visible)
+    .sort((a, b) => rects[a].y - rects[b].y || rects[a].x - rects[b].x);
+  for (const id of ids) {
+    let next = constrainPanel(rects[id], width, dialerWidgets[id].minWidth, 44);
+    // Each iteration clears at least one peer, so this is bounded by panel count.
+    for (let attempt = 0; attempt < placed.length; attempt++) {
+      const conflicts = placed.filter(peer => overlaps({...next, x: next.x - gap / 2, y: next.y - gap / 2, width: next.width + gap, height: (next.height || 280) + gap}, peer));
+      if (!conflicts.length) break;
+      next = {...next, y: Math.max(...conflicts.map(peer => peer.y + (peer.height || 280) + gap))};
+    }
+    result[id] = next;
+    placed.push(next);
+  }
+  return result;
+}
 export function avoidPanelOverlap(id:WidgetId,rect:PanelRect,rects:Record<WidgetId,PanelRect>,visible:(id:WidgetId)=>boolean,width:number,gap=18,availableHeight=Infinity){
  const peers=(Object.entries(rects) as [WidgetId,PanelRect][]).filter(([other])=>other!==id&&visible(other)).map(([,peer])=>peer);
  const candidate=constrainPanel(rect,width,dialerWidgets[id].minWidth,dialerWidgets[id].minHeight,availableHeight);
- if(!peers.some(peer=>overlaps(candidate,peer)))return candidate;
+ const collides=(next:PanelRect,peer:PanelRect)=>overlaps({...next,x:next.x-gap/2,y:next.y-gap/2,width:next.width+gap,height:(next.height||280)+gap},peer);
+ if(!peers.some(peer=>collides(candidate,peer)))return candidate;
  const height=candidate.height||280;
  const xs=[candidate.x,0,width-candidate.width,...peers.flatMap(peer=>[peer.x+peer.width+gap,peer.x-candidate.width-gap])];
  const ys=[candidate.y,0,...peers.flatMap(peer=>[peer.y+(peer.height||280)+gap,peer.y-height-gap])];
- const options=xs.flatMap(x=>ys.map(y=>({...candidate,x,y}))).filter(next=>next.x>=0&&next.x+next.width<=width&&next.y>=0&&next.y+height<=availableHeight&&!peers.some(peer=>overlaps(next,peer)));
+ const options=xs.flatMap(x=>ys.map(y=>({...candidate,x,y}))).filter(next=>next.x>=0&&next.x+next.width<=width&&next.y>=0&&next.y+height<=availableHeight&&!peers.some(peer=>collides(next,peer)));
  if(options.length)return options.sort((a,b)=>Math.abs(a.x-rect.x)+Math.abs(a.y-rect.y)-Math.abs(b.x-rect.x)-Math.abs(b.y-rect.y))[0];
  return rects[id];
 }
