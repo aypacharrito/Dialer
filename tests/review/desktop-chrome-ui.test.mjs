@@ -1,4 +1,14 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import {JSDOM} from 'jsdom';
+test('native call and message surfaces use the black/charcoal and ivory CRM colors',()=>{
+ for(const [file,selector,dark,light]of [['overlay.html','body[data-theme="dark"]','rgb(0, 0, 0)','rgb(243, 242, 236)'],['message.html','body.dark','rgb(20, 20, 20)','rgb(250, 249, 244)']]){
+  const html=fs.readFileSync(new URL(`../../desktop/${file}`,import.meta.url),'utf8').replace(/<script[\s\S]*?<\/script>/g,'');
+  const dom=new JSDOM(html);try{
+   assert.equal(dom.window.getComputedStyle(dom.window.document.body).backgroundColor,light);
+   if(selector.includes('.dark'))dom.window.document.body.className='dark';else dom.window.document.body.dataset.theme='dark';
+   assert.equal(dom.window.getComputedStyle(dom.window.document.body).backgroundColor,dark);
+  }finally{dom.window.close()}
+ }
+});
 test('Settings uses fixed desktop update IPC channels and can unsubscribe from progress',async()=>{
  let bridge,listener,removed=false;const channels=[];
  const ipc={invoke:async channel=>{channels.push(channel);return {phase:'idle'}},on:(channel,fn)=>{assert.equal(channel,'pacifica:update-state');listener=fn},removeListener:(channel,fn)=>{assert.equal(channel,'pacifica:update-state');assert.equal(fn,listener);removed=true}};

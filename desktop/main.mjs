@@ -25,7 +25,7 @@ let overlayGeometry="";
 let overlaySizes={};
 let overlayPosition=null;
 let desktopAppearance="dark";
-const desktopChrome=theme=>theme==="dark"?{background:"#0a1118",symbols:"#dae3ea"}:{background:"#f1f3ef",symbols:"#2f3e36"};
+const desktopChrome=theme=>theme==="dark"?{background:"#000000",symbols:"#ededed"}:{background:"#f3f2ec",symbols:"#25372e"};
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;
@@ -71,7 +71,7 @@ function scheduleOverlayLayoutSave(){clearTimeout(saveLayoutTimer);saveLayoutTim
 function saveOverlayLayout(){
   try{const directory=app.getPath("userData"),file=path.join(directory,"overlay-settings.json");fs.mkdirSync(directory,{recursive:true});fs.writeFileSync(`${file}.tmp`,JSON.stringify({appearance:desktopAppearance,layout:overlayLayout,sizes:overlaySizes,position:overlayPosition}));fs.renameSync(`${file}.tmp`,file)}catch(error){console.warn("[Pacifica overlay layout]",error?.message||error)}
 }
-function overlayState(){return {...lastCallState,layout:lastCallState.active?overlayLayout:"vertical"}}
+function overlayState(){return {...lastCallState,theme:desktopAppearance,layout:lastCallState.active?overlayLayout:"vertical"}}
 function overlayMinimum(phase){
   if(phase==="call"&&lastCallState.mode==="ava")return overlayLayout==="vertical"?[300,230]:[660,112];
   return phase==="incoming"?[420,138]:phase==="wrap"?[480,560]:(overlayLayout==="vertical"?[280,180]:[480,88]);
@@ -311,7 +311,9 @@ ipcMain.on("pacifica:theme",(event,theme)=>{
   mainWindow.setBackgroundColor(chrome.background);
   mainWindow.setTitleBarOverlay({color:chrome.background,symbolColor:chrome.symbols,height:60});
   lastCallState={...lastCallState,theme:theme==="dark"?"dark":"light"};
+  overlayWindow?.setBackgroundColor(chrome.background);
   overlayWindow?.webContents.send("pacifica:call-state",overlayState());
+  if(messageWindow?.isVisible())showMessagePopup();
 });
 
 ipcMain.handle("pacifica:desktop-version",event=>trustedMain(event)?app.getVersion():null);
@@ -321,7 +323,7 @@ function showMessagePopup(){
  if(!mainWindow||mainWindow.isDestroyed())return;
  if(!messageQueue.length){messageWindow?.hide();return}
  if(!messageWindow||messageWindow.isDestroyed()){
-  messageWindow=new BrowserWindow({width:360,height:196,frame:false,resizable:false,show:false,alwaysOnTop:true,skipTaskbar:true,backgroundColor:"#f4f7f6",title:"Pacifica message",webPreferences:{preload:path.join(__dirname,"message-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  messageWindow=new BrowserWindow({width:360,height:220,frame:false,resizable:false,show:false,alwaysOnTop:true,skipTaskbar:true,backgroundColor:desktopChrome(desktopAppearance).background,title:"Pacifica message",webPreferences:{preload:path.join(__dirname,"message-preload.cjs"),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   messageWindow.setAlwaysOnTop(true,"floating");messageWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
   messageWindow.webContents.setWindowOpenHandler(()=>({action:"deny"}));
   messageWindow.webContents.on("will-navigate",event=>event.preventDefault());
@@ -330,8 +332,8 @@ function showMessagePopup(){
   void messageWindow.loadFile(path.join(__dirname,"message.html"));return;
  }
  const area=screen.getDisplayMatching(mainWindow.getBounds()).workArea;
- messageWindow.setPosition(area.x+Math.max(0,area.width-376),area.y+Math.max(0,area.height-212));
- messageWindow.webContents.send("pacifica:message-state",messageQueue[0]);messageWindow.showInactive();
+ messageWindow.setPosition(area.x+Math.max(0,area.width-376),area.y+Math.max(0,area.height-236));
+ messageWindow.setBackgroundColor(desktopChrome(desktopAppearance).background);messageWindow.webContents.send("pacifica:message-state",{...messageQueue[0],theme:desktopAppearance});messageWindow.showInactive();
 }
 ipcMain.on("pacifica:message-state",(event,input)=>{
  if(!trustedMain(event)||!input||typeof input!=="object"||!Number.isSafeInteger(input.leadId))return;

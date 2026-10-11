@@ -39,8 +39,14 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
     <div className="workspace-appearance-setting"><div><b>Appearance</b></div><div className="appearance-picker" role="group" aria-label="Workspace appearance"><button type="button" className={profile.appearance==="light"?"active":""} aria-pressed={profile.appearance==="light"} onClick={()=>update({appearance:"light"})}><span aria-hidden="true">☀</span><b>Light</b></button><button type="button" className={profile.appearance==="dark"?"active":""} aria-pressed={profile.appearance==="dark"} onClick={()=>update({appearance:"dark"})}><span aria-hidden="true">☾</span><b>Dark</b></button></div></div>
 
     <section className="dialer-scene-settings" aria-label="Dialer background settings">
-      <div className="dialer-scene-heading"><div><b>Dialer scene</b><small>Stars in dark mode. Pacifica watermark in light mode.</small></div><button type="button" onClick={()=>update({dialerLightBackdropUrl:"",dialerDarkBackdropUrl:""})}>Reset scenes</button></div>
-      <div className="workspace-profile-fields"><label>Light mode image / GIF<input type="url" value={profile.dialerLightBackdropUrl} onChange={event=>update({dialerLightBackdropUrl:event.target.value})} placeholder="Optional HTTPS image or GIF"/></label><label>Dark mode image / GIF<input type="url" value={profile.dialerDarkBackdropUrl} onChange={event=>update({dialerDarkBackdropUrl:event.target.value})} placeholder="Optional HTTPS image or GIF"/></label></div>
+      <div className="dialer-scene-heading"><b>Dialer background</b><button type="button" onClick={()=>update({dialerLightBackdropUrl:"",dialerDarkBackdropUrl:""})}>Reset both</button></div>
+      <div className="dialer-scene-previews">
+        {(["light","dark"] as const).map(theme=><article key={theme}>
+          <img src={`/images/pacifica-stars-${theme}-4k.webp`} width="3840" height="2160" alt={`${theme === "light" ? "Ivory" : "Night"} 4K star background`} loading="lazy" decoding="async"/>
+          <div><b>{theme === "light" ? "Ivory stars" : "Night stars"}</b><button type="button" onClick={()=>update(theme === "light" ? {dialerLightBackdropUrl:""} : {dialerDarkBackdropUrl:""})}>Use default</button></div>
+        </article>)}
+      </div>
+      <div className="workspace-profile-fields"><label>Light image / GIF<input type="url" value={profile.dialerLightBackdropUrl} onChange={event=>update({dialerLightBackdropUrl:event.target.value})} placeholder="Optional HTTPS image or GIF"/></label><label>Dark image / GIF<input type="url" value={profile.dialerDarkBackdropUrl} onChange={event=>update({dialerDarkBackdropUrl:event.target.value})} placeholder="Optional HTTPS image or GIF"/></label></div>
     </section>
 
     <div className="workspace-display-setting"><div><b>Display size</b><small>Scale the entire workspace for clearer reading.</small></div><div className="display-size-picker" role="radiogroup" aria-label="Workspace display size">{(["comfortable","large","extra-large"] as const).map(size=><button key={size} type="button" role="radio" aria-checked={profile.displaySize===size} className={profile.displaySize===size?"active":""} onClick={()=>update({displaySize:size})}><b>{size==="extra-large"?"Extra large":size[0].toUpperCase()+size.slice(1)}</b></button>)}</div></div>
