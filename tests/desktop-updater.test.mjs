@@ -7,3 +7,10 @@ test('checks without a release never retain a stale version; a failed download c
  await api.check();assert.equal(checks,2);updater.emit('update-available',{version:'0.2.26'});updater.emit('error',Error('download failed'));assert.equal(api.status().version,'0.2.26');
  await api.check();assert.equal(checks,3);updater.emit('update-not-available');assert.equal(api.status().phase,'idle');assert.equal(api.status().version,'');assert.equal(api.status().percent,0);
 });
+test('verified native update uses silent installation without an installer popup',()=>{
+ const updater=new EventEmitter();let argumentsUsed;
+ updater.checkForUpdates=async()=>{};updater.quitAndInstall=(...args)=>argumentsUsed=args;
+ const api=createDesktopUpdater({updater,supported:true,onState(){},isBusy:()=>false});
+ updater.emit('update-downloaded',{version:'0.2.99'});assert.equal(api.install(),true);
+ assert.deepEqual(argumentsUsed,[true,true]);
+});

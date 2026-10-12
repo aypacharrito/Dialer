@@ -47,6 +47,11 @@ window.addEventListener("DOMContentLoaded",()=>{
   const style=document.createElement("style");
   style.textContent=`
     #pacifica-window-bar[hidden],#pacifica-desktop-update[hidden]{display:none!important}
+    #pacifica-desktop-update{width:28px;height:28px;padding:4px!important;background:transparent!important}
+    #pacifica-desktop-update img{width:20px;height:20px;object-fit:contain}
+    #pacifica-desktop-update[data-working="true"] img{animation:pacifica-native-spin 2s linear infinite}
+    @keyframes pacifica-native-spin{to{transform:rotate(360deg)}}
+    @media(prefers-reduced-motion:reduce){#pacifica-desktop-update img{animation:none!important}}
     html[data-desktop-chrome="fallback"]{padding-top:60px!important}
     html[data-desktop-chrome="integrated"]{padding-top:0!important}
     #pacifica-window-bar{position:fixed;inset:0 0 auto;height:60px;z-index:2147483647;background:var(--ps-bg,#f3f5f1);color:var(--ps-text,#32423b);-webkit-app-region:drag;display:flex;align-items:center;gap:8px;padding:0 150px 0 16px;font:500 12px system-ui}
@@ -60,6 +65,7 @@ window.addEventListener("DOMContentLoaded",()=>{
   const update=document.createElement('button');update.id='pacifica-desktop-update';update.hidden=true;update.textContent='Update available';update.style.cssText='-webkit-app-region:no-drag;border:0;border-radius:8px;padding:8px 10px;background:rgba(148,174,158,.16);color:inherit;cursor:pointer;font:inherit';bar.appendChild(update);
   let header=null;
   const syncChrome=()=>{
+    if(document.querySelector('[data-quiet-update]'))update.hidden=true;
     const next=header?.isConnected?header:document.querySelector('.app-shell .workspace>.topbar');
     const mode=next?'integrated':'fallback';
     if(header===next&&document.documentElement.dataset.desktopChrome===mode&&update.isConnected)return;
@@ -67,7 +73,7 @@ window.addEventListener("DOMContentLoaded",()=>{
     (header?.querySelector('.top-actions')||header||bar).appendChild(update);
   };
   new MutationObserver(syncChrome).observe(document.body,{childList:true,subtree:true});syncChrome();
-  let phase='idle';const render=state=>{if(!state)return;phase=state.phase;update.hidden=!state.version||!['downloading','ready','installing','error'].includes(phase);update.disabled=['checking','downloading','installing'].includes(phase);update.textContent=phase==='installing'?'Restarting…':phase==='ready'?'Restart to update':phase==='downloading'?`Downloading ${state.percent}%`:phase==='checking'?'Checking…':phase==='error'?'Retry update':state.message==='You are up to date.'?'Up to date':'Check for updates';update.title=state.message||'Updates replace app files and keep your workspace data';};
+  let phase='idle';const render=state=>{if(!state)return;phase=state.phase;update.hidden=Boolean(document.querySelector('[data-quiet-update]'))||!['checking','downloading','ready','installing','error'].includes(phase)||(phase==='error'&&!state.version);update.disabled=['checking','downloading','installing'].includes(phase);update.dataset.working=String(['checking','downloading','ready','installing'].includes(phase));update.title=state.message||'Updating Pacifica quietly; workspace data is preserved';update.setAttribute('aria-label',phase==='error'?'Retry Pacifica update':'Pacifica update status');update.replaceChildren();const icon=document.createElement('img');icon.src='/pacifica-mark.png';icon.alt='';update.appendChild(icon);};
   ipcRenderer.on('pacifica:update-state',(_event,state)=>render(state));ipcRenderer.invoke('pacifica:update-status').then(render).catch(()=>{});
   update.onclick=()=>ipcRenderer.invoke(phase==='ready'?'pacifica:update-install':'pacifica:update-check').catch(()=>{});
   const syncTheme=()=>ipcRenderer.send("pacifica:theme",document.documentElement.dataset.theme==="dark"?"dark":"light");

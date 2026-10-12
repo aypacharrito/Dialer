@@ -1,34 +1,31 @@
-/* Pacifica workspace refresh: quiet astronomical texture, readable work surfaces. */
+/* V53: transparent work surfaces, square edges, website-matched monochrome.
+   This file remains last in the production stack; no opacity on text/controls. */
+.quiet-update{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;flex:0 0 auto}
+.quiet-update.is-working img{animation:pacifica-quiet-spin 2s linear infinite}
+@keyframes pacifica-quiet-spin{to{transform:rotate(360deg)}}
 html[data-theme="dark"]{
-  --ps-bg:#0c1318;--ps-surface:#141e25;--ps-surface-2:#1d2a32;--ps-surface-3:#263740;
-  --ps-text:#cbd5da;--ps-text-strong:#f1f5f6;--ps-muted:#a2b1ba;--ps-subtle:#8fa1ac;
-  --ps-line:#d8edf014;--ps-line-strong:#d8edf028;--ps-accent:#a2d5c1;--ps-accent-hover:#b7e1d1;
-  --ps-accent-soft:#a2d5c118;--dialer-glass:#141e25f2;--dialer-button:#a2d5c1;
+  --ps-bg:#080909;--ps-surface:#141616;--ps-surface-2:#1d2020;--ps-surface-3:#282b2b;
+  --ps-text:#dedfdf;--ps-text-strong:#f5f5f5;--ps-muted:#a9aeac;--ps-subtle:#959c99;
+  --ps-line:#ffffff12;--ps-line-strong:#ffffff28;--ps-hover:#ffffff06;
+  --ps-accent:#b8d5c9;--ps-accent-hover:#d1e4db;--ps-accent-soft:#b8d5c911;
+  --dialer-glass:transparent;--dialer-chip:#ffffff05;--dialer-button:#b8d5c9;
   --ps-info:#c6c6c6;--ps-info-soft:#ffffff10;
 }
 html[data-theme="light"]{
-  --ps-bg:#f3f2ec;--ps-surface:#faf9f4;--ps-surface-2:#e8ece3;--ps-surface-3:#dbe4d6;
-  --ps-text:#25372e;--ps-text-strong:#13271c;--ps-muted:#4f6255;--ps-subtle:#566b5e;
-  --ps-line:#25372e25;--ps-line-strong:#25372e45;--ps-accent:#2c5b43;--ps-accent-hover:#214631;
-  --ps-accent-soft:#2c5b4316;--dialer-glass:#faf9f4ed;--dialer-button:#2c5b43;
+  --ps-bg:#fafaf8;--ps-surface:#ffffff;--ps-surface-2:#f0f1ee;--ps-surface-3:#e5e8e3;
+  --ps-text:#313b35;--ps-text-strong:#17241d;--ps-muted:#58655e;--ps-subtle:#647169;
+  --ps-line:#17241d12;--ps-line-strong:#17241d28;--ps-hover:#17241d06;
+  --ps-accent:#365d49;--ps-accent-hover:#274c38;--ps-accent-soft:#365d4911;
+  --dialer-glass:transparent;--dialer-chip:#17241d05;--dialer-button:#365d49;
 }
-/* Keep the shell under the scene, and the dialer workspace transparent above it.
-   The V48 blanket workspace background previously covered both scene images. */
-html[data-theme] .app-shell.is-dialer .workspace{background:transparent!important}
+/* One static scene behind work. Never blur it or make the contents translucent. */
+html[data-theme] .app-shell.is-dialer .workspace,
 html[data-theme] .app-shell.is-dialer .workspace>.conversation-workspace{background:transparent!important}
 html[data-theme] .app-shell .dialer-cosmos{background:var(--ps-bg)!important}
-html[data-theme] .app-shell .dialer-cosmos:after{display:block!important;content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--ps-bg) 0%,transparent 60%),linear-gradient(0deg,var(--ps-bg),transparent 65%);pointer-events:none}
-html[data-theme] .app-shell .dialer-cosmos .dialer-stars-4k{object-fit:cover;object-position:center;opacity:.55!important;filter:none!important}
-html[data-theme="light"] .app-shell .dialer-cosmos .dialer-stars-4k{opacity:.85!important;mix-blend-mode:normal}
+html[data-theme] .app-shell .dialer-cosmos:after{display:none!important}
+html[data-theme] .app-shell .dialer-cosmos .dialer-stars-4k{object-fit:cover;object-position:center;opacity:.7!important;filter:none!important}
 html[data-theme] .app-shell .dialer-cosmos.is-custom>img{opacity:1!important}
-html[data-theme] .app-shell .dialer-cosmos .dialer-watermark-stage{position:absolute;inset:0;display:block}
-html[data-theme] .dialer-watermark-filter{position:absolute;width:0;height:0;overflow:hidden}
-html[data-theme] .app-shell .dialer-cosmos .dialer-watermark{
-  position:absolute!important;inset:50% auto auto 50%!important;width:clamp(240px,36vw,580px)!important;height:auto!important;
-  transform:translate(-50%,-50%)!important;opacity:.08!important;filter:url("#pacifica-watermark-sharp")!important;object-fit:contain!important;
-}
-html[data-theme="light"] .app-shell .dialer-cosmos .dialer-watermark{filter:url("#pacifica-watermark-sharp") brightness(0)!important;opacity:.055!important}
-
+html[data-theme] .app-shell .dialer-cosmos :is(.dialer-watermark,.dialer-watermark-stage){display:none!important}
 html[data-theme] .app-shell{font-size:calc(14px * var(--workspace-text-scale,1));font-weight:450;line-height:1.55;font-optical-sizing:auto}
 html[data-theme] .app-shell :is(h1,h2,h3){font-family:var(--font-pacifica-display);font-weight:650!important;color:var(--ps-text-strong)!important;letter-spacing:-.025em;line-height:1.22}
 html[data-theme] .app-shell :is(.module-bar,.dialer-toolbar) h1{font-size:clamp(24px,2vw,30px)!important}
@@ -47,7 +44,7 @@ html[data-theme] .app-shell :is(.call-controls button,.phone-actions button,.act
 html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button{font-size:24px!important;font-weight:650!important;min-height:48px}
 html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button small{font-size:11px!important;font-weight:600!important;letter-spacing:.08em}
 html[data-theme] .app-shell :is(.module-actions button.secondary,.folder-actions button:not(.primary),.dialer-toolbar-actions>button,.dialer-layout-menu>summary,.top-actions>.notification){background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:var(--ps-text)!important;border-radius:6px!important}
-html[data-theme] .app-shell :is(.module-actions button.secondary,.folder-actions button:not(.primary),.dialer-toolbar-actions>button,.dialer-layout-menu>summary,.top-actions>.notification):hover{background:var(--ps-surface-2)!important;box-shadow:0 4px 14px #00000015!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell :is(.module-actions button.secondary,.folder-actions button:not(.primary),.dialer-toolbar-actions>button,.dialer-layout-menu>summary,.top-actions>.notification):hover{background:var(--ps-hover)!important;box-shadow:none!important;color:var(--ps-text-strong)!important}
 html[data-theme] .app-shell :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--ps-accent)!important;outline-offset:3px}
 html[data-theme] :is(.workspace-tour,.dialer-panel-menu){font-weight:500;line-height:1.55}
 html[data-theme] :is(.workspace-tour,.dialer-panel-menu) button{font-size:14px;min-height:40px;font-weight:650}
@@ -55,47 +52,59 @@ html[data-theme] .workspace-tour h2{font-family:var(--font-pacifica-display);fon
 html[data-theme] .workspace-tour p{font-size:15px;line-height:1.65;color:var(--ps-text)}
 html[data-theme] .workspace-tour nav button{width:26px;min-height:26px}
 html[data-theme] .dialer-scene-previews{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-block:18px}
-html[data-theme] .dialer-scene-previews article{overflow:hidden;border:1px solid var(--ps-line-strong);border-radius:8px;background:var(--ps-surface)}
+html[data-theme] .dialer-scene-previews article{overflow:hidden;border:1px solid var(--ps-line-strong);border-radius:0;background:transparent}
 html[data-theme] .dialer-scene-previews img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
 html[data-theme] .dialer-scene-previews article>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;flex-wrap:wrap}
 html[data-theme] .dialer-scene-previews button{background:transparent;border:1px solid var(--ps-line-strong);border-radius:6px;color:var(--ps-text);font:600 14px var(--font-pacifica);min-height:40px;padding:8px 12px;cursor:pointer}
 html[data-theme] .dialer-scene-previews button:hover{background:var(--ps-surface-2)}
 @media(max-width:600px){html[data-theme] .dialer-scene-previews{grid-template-columns:1fr}}
 
-/* Decoration stays behind the work, never behind navigation labels. */
-html[data-theme] .app-shell :is(.sidebar,.topbar){background:var(--ps-bg)!important}
-html[data-theme] .app-shell .topbar{border-bottom:1px solid var(--ps-line)!important}
-html[data-theme] .app-shell .sidebar nav button{font-weight:550!important}
-html[data-theme] .app-shell .sidebar nav button.active{background:var(--ps-accent-soft)!important;color:var(--ps-accent)!important}
-html[data-theme] .app-shell .conversation-workspace{padding:24px clamp(20px,3vw,44px)!important}
-html[data-theme] .app-shell .dialer-toolbar{margin-bottom:24px!important;flex-wrap:wrap;gap:16px}
-html[data-theme] .app-shell .dialer-toolbar-actions{flex-wrap:wrap;gap:10px}
-html[data-theme] .app-shell .dialer-widget,
-html[data-theme] .app-shell .dialer-widget:focus-within{background:var(--dialer-glass)!important;border:1px solid var(--ps-line)!important;border-radius:16px!important;box-shadow:0 8px 28px #00000012!important}
-html[data-theme] .app-shell .dialer-widget:hover{background:var(--dialer-glass)!important;box-shadow:0 8px 28px #00000018,0 0 0 1px var(--ps-line-strong)!important}
-html[data-theme] .app-shell .dialer-widget-content{box-sizing:border-box}
+
+/* A work panel is invisible at rest. A faint tint only locates the hovered panel.
+   Keep popovers/dialogs opaque: they overlay other text and need their own surface. */
+html[data-theme] .app-shell :is(.dialer-widget,.table-card,.client-table,.today-focus,.focus-list,.source-pulse,.folder-panel,.settings-card,.message-contacts,.message-thread,.ai-result,.crm-tools){
+  background:transparent!important;border:1px solid transparent!important;border-radius:0!important;
+  box-shadow:none!important;backdrop-filter:none!important;
+}
+html[data-theme] .app-shell .dialer-widget:focus-within{background:transparent!important;box-shadow:none!important}
+html[data-theme] .app-shell :is(.dialer-widget,.today-focus,.folder-panel,.settings-card){transition:background-color 140ms ease,border-color 140ms ease}
+html[data-theme] .app-shell :is(.dialer-widget,.today-focus,.folder-panel,.settings-card):hover{
+  background:var(--ps-hover)!important;border-color:var(--ps-line)!important;box-shadow:none!important;
+}
+html[data-theme] .app-shell .dialer-layout.is-editing .dialer-widget,
+html[data-theme] .app-shell .dialer-widget.is-dragging{
+  background:var(--ps-hover)!important;outline:1px dashed var(--ps-line-strong)!important;outline-offset:0;box-shadow:none!important;
+}
+html[data-theme] .app-shell .conversation-workspace :is(.hero-call,.call-grid,.contact-card,.lead-file,.queue-card,.side-pad,.dialer-metric,.dialer-timeout-control){
+  background:transparent!important;border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;
+}
 html[data-theme] .app-shell .dialer-widget .hero-call{padding:0!important}
 html[data-theme] .app-shell .dialer-widget .call-grid{padding:24px!important;gap:12px!important}
 html[data-theme] .app-shell .dialer-widget .contact-card{gap:16px!important}
 html[data-theme] .app-shell .dialer-widget .call-status-line{margin-bottom:8px!important}
 html[data-theme] .app-shell .dialer-widget .call-controls{margin-top:16px!important}
-html[data-theme] .app-shell .dialer-timeout-control{padding:18px 20px!important;gap:16px!important;flex-wrap:wrap}
-html[data-theme] .app-shell .dialer-widget .dialer-metric{padding:20px!important}
-html[data-theme] .app-shell .dialer-widget .queue-card{padding:20px!important}
+html[data-theme] .app-shell .dialer-widget-content{box-sizing:border-box;border-radius:0!important}
 html[data-theme] .app-shell .dialer-widget .queue-row{padding-block:14px!important;border-top:1px solid var(--ps-line)}
-html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .side-pad{padding:20px!important}
 html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid{gap:8px!important}
-html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button{background:var(--ps-surface-2)!important;border:1px solid var(--ps-line)!important;border-radius:10px!important;min-height:52px!important}
-html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button:hover{background:var(--ps-surface-3)!important}
-html[data-theme] .app-shell .crm-tools{padding:18px!important;border:1px solid var(--ps-line);border-radius:12px;background:var(--ps-surface);margin-bottom:18px!important}
-html[data-theme] .app-shell .crm-search-shell{background:var(--ps-surface-2)!important;border:1px solid var(--ps-line)!important;border-radius:8px!important}
-html[data-theme] .app-shell .table-card{border:1px solid var(--ps-line)!important;border-radius:14px!important;overflow:hidden}
-html[data-theme] .app-shell .table-head{background:var(--ps-surface-2)!important;color:var(--ps-muted)!important}
-html[data-theme] .app-shell .table-row{border-bottom:1px solid var(--ps-line)!important}
-html[data-theme] .app-shell .table-row:hover{background:var(--ps-surface-2)!important}
-html[data-theme] .app-shell .today-focus{background:var(--ps-surface)!important;border:1px solid var(--ps-line)!important;border-radius:16px!important;padding:24px!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button{
+  background:transparent!important;border:1px solid transparent!important;border-radius:0!important;box-shadow:none!important;min-height:48px!important;
+}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button:hover{background:var(--ps-hover)!important;border-color:var(--ps-line)!important}
+html[data-theme] .app-shell :is(.call-controls button,.phone-actions button,.active-call-actions button,.dialer-timeout-control button){border-radius:4px!important;box-shadow:none!important}
+html[data-theme] .app-shell :is(.crm-summary,.today-metrics,.report-metrics,.client-summary)>article{
+  background:transparent!important;border-radius:0!important;box-shadow:none!important;
+}
+html[data-theme] .app-shell .table-head{background:transparent!important;color:var(--ps-muted)!important;border-bottom:1px solid var(--ps-line)!important}
+html[data-theme] .app-shell :is(.table-card,.client-table) thead{background:transparent!important}
+html[data-theme] .app-shell :is(.table-row,.contact-row){background:transparent!important;border-bottom:1px solid var(--ps-line)!important}
+html[data-theme] .app-shell :is(.table-row,.contact-row):hover,
+html[data-theme] .app-shell :is(.table-card,.client-table) tbody tr:hover{background:var(--ps-hover)!important}
+html[data-theme] .app-shell .crm-search-shell{background:transparent!important;border:1px solid var(--ps-line)!important;border-radius:0!important}
+html[data-theme] .app-shell :is(.sidebar,.topbar){background:var(--ps-bg)!important;box-shadow:none!important}
+html[data-theme] .app-shell .topbar{border-bottom:1px solid var(--ps-line)!important}
+html[data-theme] .app-shell .sidebar nav button{border-radius:0!important;font-weight:550!important;background:transparent!important;box-shadow:none!important}
+html[data-theme] .app-shell .sidebar nav button:hover{background:var(--ps-hover)!important}
+html[data-theme] .app-shell .sidebar nav button.active{background:var(--ps-hover)!important;color:var(--ps-text-strong)!important;box-shadow:inset 2px 0 var(--ps-accent)!important}
+html[data-theme] .dialer-scene-plain{display:block!important;aspect-ratio:16/9;background:#fafaf8;padding:0!important}
 html[data-theme] .app-shell .today-focus>header h2{font-size:25px!important;font-weight:650!important}
-html[data-theme] .app-shell .today-contact-group{padding-block:16px!important}
-html[data-theme] .app-shell .today-contact-group+.today-contact-group{border-top:1px solid var(--ps-line)!important}
-html[data-theme] .app-shell .today-focus .today-task{padding:10px 0!important}
-@media(max-width:700px){html[data-theme] .app-shell .conversation-workspace{padding:16px!important}html[data-theme] .app-shell .today-focus{padding:18px!important}}
+@media(prefers-reduced-motion:reduce){.quiet-update.is-working img{animation:none}html[data-theme] .app-shell .dialer-widget{transition:none!important}}

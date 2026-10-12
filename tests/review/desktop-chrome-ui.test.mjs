@@ -27,7 +27,8 @@ test('desktop controls share the CRM header; updates remain hidden unless a rele
  const render=state=>listeners.get('pacifica:update-state')({},state);
  render({phase:'error',version:''});assert.equal(update.hidden,true);
  render({phase:'downloading',version:'0.2.27',percent:45});assert.equal(update.hidden,false);assert.equal(update.disabled,true);
- render({phase:'ready',version:'0.2.27'});assert.equal(update.hidden,false);assert.equal(update.disabled,false);assert.equal(update.textContent,'Restart to update');
+ render({phase:'ready',version:'0.2.27'});assert.equal(update.hidden,false);assert.equal(update.disabled,false);assert.equal(update.textContent,'');assert.equal(update.querySelector('img').getAttribute('src'),'/pacifica-mark.png');assert.equal(update.dataset.working,'true');
+ const quiet=dom.window.document.createElement('span');quiet.dataset.quietUpdate='true';app.querySelector('.top-actions').appendChild(quiet);await new Promise(resolve=>dom.window.setTimeout(resolve,0));assert.equal(update.hidden,true);render({phase:'downloading',version:'0.2.27',percent:80});assert.equal(update.hidden,true);quiet.remove();
  render({phase:'idle',version:''});assert.equal(update.hidden,true);
  app.remove();await new Promise(resolve=>dom.window.setTimeout(resolve,0));assert.equal(dom.window.document.documentElement.dataset.desktopChrome,'fallback');assert.equal(update.parentElement,bar);assert.equal(bar.hidden,false);
  }finally{dom.window.close()}

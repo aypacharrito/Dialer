@@ -42,8 +42,9 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
       <div className="dialer-scene-heading"><b>Dialer background</b><button type="button" onClick={()=>update({dialerLightBackdropUrl:"",dialerDarkBackdropUrl:""})}>Reset both</button></div>
       <div className="dialer-scene-previews">
         {(["light","dark"] as const).map(theme=><article key={theme}>
-          <img src={theme === "light" ? "/images/pacifica-ivory-v51.png" : "/images/pacifica-night-v51.png"} width="2688" height="1520" style={{opacity:theme === "light" ? .85 : .65}} alt={`${theme === "light" ? "Ivory" : "Night"} workspace with a quiet Higgsfield star texture`} loading="lazy" decoding="async"/>
-          <div><b>{theme === "light" ? "Ivory stars" : "Night stars"}</b><button type="button" onClick={()=>update(theme === "light" ? {dialerLightBackdropUrl:""} : {dialerDarkBackdropUrl:""})}>Use default</button></div>
+          {theme === "light" ? <div className="dialer-scene-plain" role="img" aria-label="Plain light workspace without stars or a watermark"/>
+            : <img src="/images/pacifica-night-v53.png" width="3840" height="2160" alt="Monochrome Higgsfield stars on a near-black workspace" loading="lazy" decoding="async"/>}
+          <div><b>{theme === "light" ? "Plain light" : "Night stars"}</b><button type="button" onClick={()=>update(theme === "light" ? {dialerLightBackdropUrl:""} : {dialerDarkBackdropUrl:""})}>Use default</button></div>
         </article>)}
       </div>
       <div className="workspace-profile-fields"><label>Light image / GIF<input type="url" value={profile.dialerLightBackdropUrl} onChange={event=>update({dialerLightBackdropUrl:event.target.value})} placeholder="Optional HTTPS image or GIF"/></label><label>Dark image / GIF<input type="url" value={profile.dialerDarkBackdropUrl} onChange={event=>update({dialerDarkBackdropUrl:event.target.value})} placeholder="Optional HTTPS image or GIF"/></label></div>
