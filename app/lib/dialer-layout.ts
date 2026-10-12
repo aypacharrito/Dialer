@@ -83,10 +83,10 @@ export function defaultDialerRects(width: number, heights: Partial<Record<Widget
   const main = Math.min(680, Math.max(380, hasSide ? width * .6 : width));
   const side = Math.max(250, Math.min(370, width - main - gap));
   const offset = Math.max(0, (width - main - (hasSide ? side + gap : 0)) / 2), right = offset + main + gap;
-  const height = (id: WidgetId, fallback: number) => visible(id) ? (heights[id] || fallback) + gap : 0;
+  const height = (id: WidgetId, fallback: number) => visible(id) ? Math.max(heights[id] || fallback, dialerWidgets[id].minHeight) + gap : 0;
   const modeY = height("contact", 280), statsY = modeY + height("mode", 80);
   const stats = (["calls", "conversations", "phone"] as WidgetId[]).filter(visible), statWidth = (main - gap * Math.max(0, stats.length - 1)) / Math.max(1, stats.length);
-  const detailsY = statsY + (stats.length ? Math.max(...stats.map(id => heights[id] || 96)) + gap : 0);
+  const detailsY = statsY + (stats.length ? Math.max(...stats.map(id => Math.max(heights[id] || 96, dialerWidgets[id].minHeight))) + gap : 0);
   return {
     contact: {x: offset, y: 0, width: main}, mode: {x: offset, y: modeY, width: main},
     calls: {x: offset + Math.max(0, stats.indexOf("calls")) * (statWidth + gap), y: statsY, width: statWidth},
@@ -95,6 +95,17 @@ export function defaultDialerRects(width: number, heights: Partial<Record<Widget
     details: {x: offset, y: detailsY, width: main},
     keypad: {x: right, y: 0, width: side, height: 460}, queue: {x: right, y: height("keypad", 460), width: side},
   };
+}
+
+/** Temporary recovery for tall saved arrangements in a smaller idle window.
+ * Never overwrite owner coordinates or compress content; Arrange and live calls
+ * keep their normal scrollable layout. A wider window restores the saved design.
+ */
+export function recoverOverflowingLayout(current: Record<WidgetId, PanelRect>, defaults: Record<WidgetId, PanelRect>, width: number, height: number, visible: (id: WidgetId) => boolean) {
+  const ids = (Object.keys(dialerWidgets) as WidgetId[]).filter(visible);
+  const bottom = (rects: Record<WidgetId, PanelRect>) => Math.max(0, ...ids.map(id => rects[id].y + (rects[id].height || dialerWidgets[id].minHeight)));
+  const fitted = resolveDialerRects(Object.fromEntries((Object.keys(dialerWidgets) as WidgetId[]).map(id => [id, {...defaults[id], height: current[id].height}])) as Record<WidgetId, PanelRect>, width, visible);
+  return bottom(current) > Math.max(height, bottom(fitted)) + 100 ? fitted : current;
 }
 
 /** Gentle edge/center alignment; Shift leaves motion completely free. */

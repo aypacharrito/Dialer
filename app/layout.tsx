@@ -27,7 +27,6 @@ import "./v50-experience.css";
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",
   description: "A focused lead CRM with browser calling, messaging, AI-assisted follow-up, pipelines, and live reporting.",
-  other: { "codex-preview": "development" },
   icons: {
     icon: [
       { url: "/favicon-32.png?v=4", sizes: "32x32", type: "image/png" },

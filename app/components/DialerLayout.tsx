@@ -2,7 +2,7 @@
 
 import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type PointerEvent, type KeyboardEvent} from "react";
 import {createPortal} from "react-dom";
-import {cleanDialerLayout, constrainPanel, snapPanel, resolveDialerRects, avoidPanelOverlap, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
+import {cleanDialerLayout, constrainPanel, snapPanel, resolveDialerRects, recoverOverflowingLayout, avoidPanelOverlap, defaultDialerRects, dialerWidgets, emptyDialerLayout, type DialerLayoutState, type PanelRect, type WidgetId} from "../lib/dialer-layout";
 
 type LayoutContext = {
   layout: DialerLayoutState; editing: boolean; setEditing: (value: boolean) => void;
@@ -70,7 +70,8 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
     const actualHeight = collapsed ? 44 : Math.max(saved.height || 0, heights[id] || 0, dialerWidgets[id].minHeight);
     return [id, {...constrainPanel(saved, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight), height: actualHeight}];
   })) as Record<WidgetId, PanelRect>;
-  const rects = resolveDialerRects(desired, width, visible);
+  const restored = resolveDialerRects(desired, width, visible);
+  const rects = bounded && !editing ? recoverOverflowingLayout(restored, defaults, width, height, visible) : restored;
   const bottom = Math.max(1, ...(Object.keys(dialerWidgets) as WidgetId[]).filter(visible).map(id => rects[id].y + (layout.collapsed.includes(id) && !protectedIds.includes(id) ? 44 : rects[id].height || heights[id] || 120)));
   const measure = useCallback((id: WidgetId, height: number) => setHeights(previous => Math.abs((previous[id] || 0) - height) < 1 ? previous : {...previous, [id]: height}), []);
   const value: LayoutContext = {

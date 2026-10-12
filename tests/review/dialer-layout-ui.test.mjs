@@ -1,13 +1,25 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import React,{act,useState} from 'react';import {createRoot} from 'react-dom/client';import {JSDOM} from 'jsdom';
 import {DialerLayout,DialerLayoutMenu,DialerPanel} from '../../app/components/DialerLayout.tsx';
-import {avoidPanelOverlap,cleanDialerLayout,constrainPanel,defaultDialerRects,overlaps,snapPanel,resolveDialerRects} from '../../app/lib/dialer-layout.ts';
+import {avoidPanelOverlap,cleanDialerLayout,constrainPanel,defaultDialerRects,overlaps,snapPanel,resolveDialerRects,recoverOverflowingLayout} from '../../app/lib/dialer-layout.ts';
 import ReleaseUpdateNotice from '../../app/components/ReleaseUpdateNotice.tsx';
 import {releaseVersion} from '../../app/lib/release-version.ts';
 function Fixture({protectedIds=[],theme='dark'}){const [keypad,setKeypad]=useState(true);return React.createElement(DialerLayout,{workspaceId:'w1',theme,keypadOpen:keypad,onKeypadChange:setKeypad,protectedIds,detailsAvailable:true},React.createElement(DialerLayoutMenu),React.createElement('div',{className:'dialer-canvas'},...['contact','keypad','calls','details'].map(id=>React.createElement(DialerPanel,{key:id,id},React.createElement('p',null,id)))))}
 async function setup(){const dom=new JSDOM('<div id="root"></div>',{url:'https://example.test',pretendToBeVisual:true});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,IS_REACT_ACT_ENVIRONMENT:true,requestAnimationFrame:dom.window.requestAnimationFrame.bind(dom.window),cancelAnimationFrame:dom.window.cancelAnimationFrame.bind(dom.window)});dom.window.HTMLElement.prototype.setPointerCapture=()=>{};dom.window.HTMLElement.prototype.hasPointerCapture=()=>false;const root=createRoot(document.getElementById('root'));return {dom,root,close:async()=>{await act(async()=>root.unmount());dom.window.close()}}}
 const contextMenu=async id=>act(async()=>document.querySelector(`[data-dialer-widget="${id}"]`).dispatchEvent(new window.MouseEvent('contextmenu',{bubbles:true,clientX:100,clientY:100})));
 const byLabel=text=>document.querySelector(`[aria-label="${text}"]`);
+
+test('smaller idle windows recover off-screen saved panels without changing the saved layout',()=>{
+ const visible=id=>['contact','mode','keypad'].includes(id);
+ const defaults=defaultDialerRects(1100,{},visible);
+ const saved=resolveDialerRects({...defaults,contact:{...defaults.contact,height:280},mode:{...defaults.mode,y:480,height:86},keypad:{...defaults.keypad,x:0,y:700,height:460}},1100,visible);
+ const snapshot=JSON.stringify(saved);
+ const fitted=recoverOverflowingLayout(saved,defaults,1100,640,visible);
+ assert.equal(fitted.keypad.y,0);assert.equal(fitted.mode.y,300);
+ assert.equal(overlaps(fitted.contact,fitted.keypad),false);
+ assert.equal(JSON.stringify(saved),snapshot,'source coordinates remain untouched');
+ assert.equal(recoverOverflowingLayout(saved,defaults,1100,1500,visible),saved,'large windows preserve custom placement');
+});
 test('keypad can move, resize, collapse, hide, restore, and persist its layout',async()=>{
  const h=await setup();try{await act(async()=>h.root.render(React.createElement(Fixture)));
  const before=Number.parseFloat(document.querySelector('[data-dialer-widget="keypad"]').style.top);

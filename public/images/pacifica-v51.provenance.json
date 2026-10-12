@@ -1,0 +1,35 @@
+{
+  "provider": "Higgsfield",
+  "model": "gpt_image_2_5",
+  "generated_at": "2026-10-12",
+  "assets": [
+    {
+      "name": "night",
+      "id": "13be1520-349a-4ba8-ba4a-2e466aba1a35",
+      "size": [
+        2688,
+        1520
+      ],
+      "prompt": "Design a premium, very restrained astronomical background texture for a professional Pacifica CRM dialer. Landscape 16:9. Entire image is deep midnight blue-teal #0c1318 with a gentle desaturated petrol atmosphere and very faint sage #a2d5c1 dust at the outer edges. Sparse tiny realistic pinpoint stars only, subdued off-white dots, fewer than 70 across the entire frame, no big starbursts, no four-point icons, no neon, no bright flare, no dramatic galaxy clouds. Center and left two thirds have exceptionally quiet negative space for readable interface cards. Elegant, restful, clean and coherent with charcoal blue-teal panels and sage controls. Background asset only: no UI, no text, no logo, no people, no border."
+    },
+    {
+      "name": "ivory",
+      "id": "0bc38c0d-5d66-4aa7-8aa9-eb3425656ef5",
+      "size": [
+        2688,
+        1520
+      ],
+      "prompt": "Design a premium, restrained light-mode astronomical brand background for a professional Pacifica CRM dialer. Landscape 16:9. Warm ivory #f3f2ec and barely visible pearlescent sage #dbe4d6 atmospheric edges, luminous matte paper-like smooth gradient. Sparse tiny muted sage-gray star-shaped pinpoints, under 45 extremely small dots, reminiscent of a quiet constellation in daylight. Center and left two thirds exceptionally clear negative space for dark readable interface text. Sophisticated calm palette coordinating with evergreen #2c5b43 controls. No dark sky, no galaxy photograph, no oversized stars, no four-point icons, no bright light, no flare, no yellow tint. Background asset only: no UI, no text, no logo, no people, no border."
+    },
+    {
+      "name": "watermark",
+      "id": "62e6c246-cabe-459a-8e77-6103724fcd7e",
+      "size": [
+        2048,
+        2048
+      ],
+      "prompt": "Use the public reference solely as the Pacifica brand symbol reference. Produce a professionally cleaned high-resolution version of the same distinctive P: a bold capital P above a graceful wave tail, with two restrained curved radio-wave accents at the upper right. Preserve the recognizable letter, wave and antenna silhouette, improve smooth clean edges and visual balance. Single centered symbol, monochrome pale sage #a2d5c1, flat polished vector-like rendering, no lettering beyond this P, no decoration, no shadow, no texture, no glow, no 3D. Transparent background with generous symmetric clear margin. Designed as a subtle centered watermark behind CRM panels; brand identity, not an interface mockup."
+    }
+  ],
+  "reference": "Public Pacifica logo only; no customer data submitted."
+}
