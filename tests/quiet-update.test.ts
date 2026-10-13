@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {createQuietUpdate} from '../app/lib/quiet-update';
 
 function fixture(){
-  let task:(()=>void)|null=null, busy=false, calls:string[]=[], cancelled=0, errors=0, result=true;
+  const calls:string[]=[];
+  let task:(()=>void)|null=null, busy=false, cancelled=0, errors=0, result=true;
   const quiet=createQuietUpdate({isBusy:()=>busy,apply:async target=>{calls.push(target);return result},
     schedule:fn=>{task=fn;return 1},cancel:()=>{task=null;cancelled++},onError:()=>errors++});
   return {quiet,calls,setBusy:(value:boolean)=>busy=value,setResult:(value:boolean)=>result=value,

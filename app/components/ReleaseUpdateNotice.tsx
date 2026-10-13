@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useLayoutEffect, useRef, useState} from "react";
 import {isNewRelease, releaseVersion} from "../lib/release-version";
 import {desktopNotifications, type DesktopUpdateState} from "../lib/desktop-notifications";
 import {createQuietUpdate} from "../lib/quiet-update";
@@ -11,7 +11,7 @@ export default function ReleaseUpdateNotice({busy}: {busy: boolean}) {
   const [checkingWeb, setCheckingWeb] = useState(false);
   const [failed, setFailed] = useState(false);
   const busyRef = useRef(busy);
-  busyRef.current = busy;
+  useLayoutEffect(() => {busyRef.current = busy;}, [busy]);
   useEffect(() => {
     let stopped = false, checking = false, lastCheck = 0;
     const controller = new AbortController(), bridge = desktopNotifications();
@@ -35,6 +35,9 @@ export default function ReleaseUpdateNotice({busy}: {busy: boolean}) {
     const check = async () => {
       if (stopped || checking || document.hidden || Date.now() - lastCheck < 60_000) return;
       lastCheck = Date.now(); checking = true; setCheckingWeb(true);
+      // Old desktop builds poll only every four hours. Focus/periodic web checks
+      // also request a native check, using its existing one-minute throttle.
+      void bridge?.checkForUpdates?.().then(receive).catch(() => {});
       try {
         const response = await fetch("/api/version", {cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)])});
         if (!response.ok) return;

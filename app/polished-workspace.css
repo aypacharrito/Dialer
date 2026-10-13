@@ -117,3 +117,22 @@ html[data-theme="light"] .app-shell :is(.section-label,.table-header,.crm-summar
 html[data-theme] .app-shell .contact-drawer :is(.field-grid label,.section-label,.drawer-person p){font-size:max(14px,calc(13px * var(--workspace-text-scale,1)))!important}
 html[data-theme] .app-shell .contact-drawer .field-grid label>small{font-size:max(13px,calc(12px * var(--workspace-text-scale,1)))!important}
 html[data-theme] .app-shell .contact-drawer :is(input,select):disabled{opacity:1!important;color:var(--ps-muted)!important;cursor:default}
+
+/* V57: strengthen actual everyday text, not just headline weight or a font name. */
+html[data-theme="dark"]{--ps-text:#eef1f4;--ps-text-strong:#fff;--ps-muted:#c1c7cd;--ps-subtle:#b4bbc2}
+html[data-theme="light"]{--ps-text:#20262c;--ps-text-strong:#111418;--ps-muted:#39434d;--ps-subtle:#424c56}
+html[data-theme] .app-shell{font-size:max(16px,calc(16px * var(--workspace-text-scale,1)))!important;font-weight:500!important;line-height:1.6}
+html[data-theme] .app-shell .sidebar nav button{font-size:max(16px,calc(16px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-text)!important}
+html[data-theme] .app-shell .topbar :is(button,.caller-id b){font-size:max(14px,calc(14px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-text)!important}
+html[data-theme] .app-shell :is(.workspace-sync,.sidebar .user-profile,.sidebar .language-switch){font-size:max(13px,calc(13px * var(--workspace-text-scale,1)))!important;color:var(--ps-muted)!important}
+html[data-theme] .app-shell .today-focus :is(.note-contact,.today-task-main>b){font-size:max(16px,calc(16px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .today-focus :is(.today-due,.today-task-main summary,.today-task-main details p,.today-notice,.note-contact>span:last-child,.note-reminder-tabs button,header p){font-size:max(14px,calc(14px * var(--workspace-text-scale,1)))!important;font-weight:500!important;color:var(--ps-muted)!important;opacity:1!important}
+html[data-theme] .app-shell .today-focus :is(.today-complete,.today-refresh,.today-task-menu button){font-size:max(14px,calc(14px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-text)!important}
+html[data-theme] .app-shell .conversation-workspace .contact-card :is(p,strong){font-size:max(15px,calc(15px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-muted)!important}
+html[data-theme] .app-shell .conversation-workspace :is(.call-status-line,.number-display label,.side-pad>header>span:first-child,.dialer-timeout-control>span,.dialer-timeout-control button){font-size:max(14px,calc(14px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-muted)!important;opacity:1!important}
+html[data-theme] .app-shell .conversation-workspace .contact-card :is(a,.contact-file-phone){font-weight:600!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .conversation-workspace .side-pad .number-input-shell input{font-weight:500!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button b{font-weight:600!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .dialer-widget[data-dialer-widget="keypad"] .key-grid button small{font-size:max(12px,calc(12px * var(--workspace-text-scale,1)))!important;font-weight:600!important;color:var(--ps-muted)!important}
+html[data-theme] .app-shell :is(.call-controls,.phone-actions) button{font-weight:600!important}
+html[data-theme] .app-shell .contact-drawer .field-grid label{font-weight:600!important}
