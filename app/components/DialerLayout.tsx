@@ -11,6 +11,7 @@ type LayoutContext = {
   toggle: (id: WidgetId) => void; collapse: (id: WidgetId) => void;
   place: (id: WidgetId, rect: PanelRect) => void; measure: (id: WidgetId, height: number) => void;
   reset: () => void; toggleQueueLabel: () => void;
+  setPlacement: (value: "responsive" | "custom") => void;
 };
 const Context = createContext<LayoutContext | null>(null);
 function useLayout() { const value = useContext(Context); if (!value) throw Error("Dialer panel requires a layout"); return value; }
@@ -49,10 +50,14 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
   }, [layout, loadedKey, key, keypadOpen]);
   useEffect(() => {
     const node = host.current; if (!node) return;
-    const update = () => { const next = node.clientWidth; if (next > 0) setWidth(next); const top=node.querySelector(".dialer-canvas")?.getBoundingClientRect().top??node.getBoundingClientRect().top;setHeight(Math.max(300,window.innerHeight-top-16)); };
+    const update = () => { const next = Math.round(node.clientWidth); if (next > 0) setWidth(next); const top=node.querySelector(".dialer-canvas")?.getBoundingClientRect().top??node.getBoundingClientRect().top;setHeight(Math.max(300,Math.floor(window.innerHeight-top-16))); };
     update();
-    if (typeof ResizeObserver === "undefined") { window.addEventListener("resize", update); return () => window.removeEventListener("resize", update); }
-    const observer = new ResizeObserver(update); observer.observe(node); window.addEventListener("resize",update); return () => {observer.disconnect();window.removeEventListener("resize",update)};
+    let frame = 0;
+    const schedule = () => { if (!frame) frame=requestAnimationFrame(()=>{frame=0;update();}); };
+    window.addEventListener("resize",schedule);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+    observer?.observe(node);
+    return () => {observer?.disconnect();window.removeEventListener("resize",schedule);if(frame)cancelAnimationFrame(frame);};
   }, []);
   useEffect(()=>{
     if(!editing)return;
@@ -65,7 +70,7 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
   const defaults = defaultDialerRects(width, heights, visible);
   const bounded=!detailsAvailable&&!protectedIds.length&&width>=820;
   const desired = Object.fromEntries((Object.keys(dialerWidgets) as WidgetId[]).map(id => {
-    const saved = layout.panels[id] || defaults[id];
+    const saved = layout.placement === "custom" ? layout.panels[id] || defaults[id] : defaults[id];
     const collapsed = layout.collapsed.includes(id) && !protectedIds.includes(id);
     const actualHeight = collapsed ? 44 : Math.max(saved.height || 0, heights[id] || 0, dialerWidgets[id].minHeight);
     return [id, {...constrainPanel(saved, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight), height: actualHeight}];
@@ -73,14 +78,17 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
   const restored = resolveDialerRects(desired, width, visible);
   const rects = bounded && !editing ? recoverOverflowingLayout(restored, defaults, width, height, visible) : restored;
   const bottom = Math.max(1, ...(Object.keys(dialerWidgets) as WidgetId[]).filter(visible).map(id => rects[id].y + (layout.collapsed.includes(id) && !protectedIds.includes(id) ? 44 : rects[id].height || heights[id] || 120)));
-  const measure = useCallback((id: WidgetId, height: number) => setHeights(previous => Math.abs((previous[id] || 0) - height) < 1 ? previous : {...previous, [id]: height}), []);
+  const measure = useCallback((id: WidgetId, height: number) => setHeights(previous => {
+    const next=Math.ceil(height);return previous[id]===next ? previous : {...previous,[id]:next};
+  }), []);
   const value: LayoutContext = {
-    layout, editing, setEditing, width, height, bounded, compact: width < 820, rects, visible, protectedIds, measure,
+    layout, editing, setEditing: value => {setEditing(value);if(value)setLayout(old=>({...old,placement:"custom",panels:{...old.panels,...rects}}));}, width, height, bounded, compact: width < 820, rects, visible, protectedIds, measure,
     toggle: id => { if (protectedIds.includes(id)) return; if (id === "keypad") onKeypadChange(!keypadOpen); else setLayout(old => ({...old, hidden: old.hidden.includes(id) ? old.hidden.filter(x => x !== id) : [...old.hidden, id]})); },
     collapse: id => { if (!protectedIds.includes(id)) setLayout(old => ({...old, collapsed: old.collapsed.includes(id) ? old.collapsed.filter(x => x !== id) : [...old.collapsed, id]})); },
-    place: (id, rect) => setLayout(old => ({...old, panels: {...old.panels, [id]: avoidPanelOverlap(id,constrainPanel(rect, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight),rects,visible,width)}})),
+    place: (id, rect) => setLayout(old => ({...old, placement:"custom", panels: {...rects, ...(old.placement === "custom" ? old.panels : {}), [id]: avoidPanelOverlap(id,constrainPanel(rect, width, dialerWidgets[id].minWidth, dialerWidgets[id].minHeight),rects,visible,width)}})),
     reset: () => {setLayout(emptyDialerLayout()); onKeypadChange(false);},
     toggleQueueLabel: () => setLayout(old => ({...old, showQueueLabel: !old.showQueueLabel})),
+    setPlacement: placement => {setEditing(false);setLayout(old=>({...old,placement}));},
   };
   return <Context.Provider value={value}><div ref={host} className={`dialer-layout${editing ? " is-editing" : ""}${width < 820 ? " is-compact" : ""}${bounded ? " is-bounded" : ""}`} style={{"--dialer-canvas-height": `${Math.max(bounded?height:0,bottom+16)}px`} as React.CSSProperties}>{children}</div></Context.Provider>;
 }
@@ -88,6 +96,8 @@ export function DialerLayout({workspaceId, theme, keypadOpen, onKeypadChange, pr
 export function DialerLayoutMenu() {
   const context = useLayout();
   return <details className="dialer-layout-menu"><summary title="Arrange and show panels">Layout</summary><div className="dialer-layout-popover">
+    <button type="button" aria-pressed={context.layout.placement !== "custom"} onClick={()=>context.setPlacement("responsive")}>Responsive layout</button>
+    <button type="button" disabled={!Object.keys(context.layout.panels).length} aria-pressed={context.layout.placement === "custom"} onClick={()=>context.setPlacement("custom")}>Use saved arrangement</button>
     <button type="button" className="layout-edit-button" aria-pressed={context.editing} onClick={() => context.setEditing(!context.editing)}>{context.editing ? "Done" : "Arrange"}</button>
     {(Object.entries(dialerWidgets) as [WidgetId, {title: string}][]).map(([id, item]) => <label key={id}><input type="checkbox" checked={context.visible(id)} disabled={context.protectedIds.includes(id)} onChange={() => context.toggle(id)}/>{item.title}</label>)}
     <label><input type="checkbox" checked={context.layout.showQueueLabel} onChange={context.toggleQueueLabel}/>Queue label</label>
@@ -104,7 +114,7 @@ export function DialerPanel({id, children, className = ""}: {id: WidgetId; child
   const visible = context.visible(id), protectedPanel = context.protectedIds.includes(id), collapsed = context.layout.collapsed.includes(id) && !protectedPanel;
   const rect = context.rects[id], title = dialerWidgets[id].title;
   const reportHeight = context.measure;
-  const style = useMemo(() => context.compact ? {} : {left: rect.x, top: rect.y, width: rect.width, minHeight: collapsed ? 44 : Math.min(rect.height||Infinity,dialerWidgets[id].minHeight), ...(collapsed ? {height: 44} : rect.height ? {height: rect.height} : {})}, [context.compact, id, rect.x, rect.y, rect.width, rect.height, collapsed]);
+  const style = useMemo(() => context.compact ? {} : {left: Math.round(rect.x), top: Math.round(rect.y), width: Math.round(rect.width), minHeight: collapsed ? 44 : Math.min(rect.height||Infinity,dialerWidgets[id].minHeight), ...(collapsed ? {height: 44} : rect.height ? {height: Math.ceil(rect.height)} : {})}, [context.compact, id, rect.x, rect.y, rect.width, rect.height, collapsed]);
   useEffect(() => {
     const element = node.current; if (!element || !visible) return;
     const content = element.querySelector<HTMLElement>(".dialer-widget-content");

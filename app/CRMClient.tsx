@@ -1,5 +1,4 @@
 "use client";
-import MinerStudio from "./components/MinerStudio";
 import {useLanguage,LanguageSelect} from "./components/LanguageProvider";
 import {loadWorkspaceSnapshot} from "./lib/workspace-snapshot";
 import {applyWorkspaceAppearance} from "./lib/workspace-appearance";
@@ -43,17 +42,15 @@ import {createCallDigitQueue} from "./lib/call-digits";
 import { attachQuietCallAudio } from "./lib/quiet-call-audio";
 import { hasLeadDetail, supplementalLeadDetails, displayBirthDate } from "./lib/lead-presentation";
 import type {CallLog} from "./components/CallLogReport";
-import AiCommandCenter, { type AiAction, type AiCreateLead } from "./components/AiCommandCenter";
+import type {AiAction,AiCreateLead} from "./components/AiCommandCenter";
 
 import {contactsCsv,downloadContactsCsv} from "./lib/contact-export";
 
 import type {QuoteRequestEvidence} from "./lib/quote-intake";
-import MessagesCenter from "./components/MessagesCenter";
 import TodayWorkspace from "./components/TodayWorkspace";
 import LeadGrowthPanel from "./components/LeadGrowthPanel";
 import PwaInstallButton from "./components/PwaInstallButton";
 import PhoneWorkspaceSetup from "./components/PhoneWorkspaceSetup";
-import PhoneNumberCenter from "./components/PhoneNumberCenter";
 import PostCallDispositionModal from "./components/PostCallDispositionModal";
 import EmailWorkspaceSetup from "./components/EmailWorkspaceSetup";
 import TeamManagement from "./components/TeamManagement";
@@ -83,6 +80,10 @@ import {documentLeadCompletenessScore,documentLeadImportedFields,documentLeadNam
 import {scanDocumentLocally} from "./lib/local-document-scanner";
 
 const PhoneSettings=dynamic(()=>import("./components/PhoneSettings"),{loading:()=> <p role="status">Loading phone settings…</p>});
+const MinerStudio=dynamic(()=>import("./components/MinerStudio"),{loading:()=> <p role="status">Loading Miner…</p>});
+const MessagesCenter=dynamic(()=>import("./components/MessagesCenter"),{loading:()=> <p role="status">Loading messages…</p>});
+const AiCommandCenter=dynamic(()=>import("./components/AiCommandCenter"),{loading:()=> <p role="status">Loading Pacifica AI…</p>});
+const PhoneNumberCenter=dynamic(()=>import("./components/PhoneNumberCenter"),{loading:()=> <p role="status">Loading phone numbers…</p>});
 const CallLogReport=dynamic(()=>import("./components/CallLogReport"),{loading:()=> <p role="status">Loading reports…</p>});
 
 const OfficeDesk=dynamic(()=>import("./components/OfficeDesk"),{loading:()=> <p role="status">Loading…</p>});

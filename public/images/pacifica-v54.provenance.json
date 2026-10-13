@@ -1,0 +1,13 @@
+{
+  "original_generator": "Higgsfield",
+  "original_model": "gpt_image_2_5",
+  "original_job": "18316d43-64f2-446d-bf4e-52604397f3e3",
+  "original_prompt_record": "/images/pacifica-v53.provenance.json",
+  "conversion": "Lossless WebP encoding. No visual edits, resizing or filtering.",
+  "width": 3840,
+  "height": 2160,
+  "original_bytes": 4726042,
+  "encoded_bytes": 2930500,
+  "decoded_pixels_identical": true,
+  "rgba_sha256": "8b06f160c3ae0146fd6f465da14f601a0aff3f3fb1834f965841f8cdda22beb5"
+}

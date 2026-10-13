@@ -10,8 +10,8 @@ export const dialerWidgets = {
 } as const;
 export type WidgetId = keyof typeof dialerWidgets;
 export type PanelRect = {x: number; y: number; width: number; height?: number};
-export type DialerLayoutState = {version: 2; hidden: WidgetId[]; collapsed: WidgetId[]; panels: Partial<Record<WidgetId, PanelRect>>; showQueueLabel: boolean};
-export const emptyDialerLayout = (): DialerLayoutState => ({version: 2, hidden: ["keypad"], collapsed: [], panels: {}, showQueueLabel: true});
+export type DialerLayoutState = {version: 2; placement?: "responsive" | "custom"; hidden: WidgetId[]; collapsed: WidgetId[]; panels: Partial<Record<WidgetId, PanelRect>>; showQueueLabel: boolean};
+export const emptyDialerLayout = (): DialerLayoutState => ({version: 2, placement: "responsive", hidden: ["keypad"], collapsed: [], panels: {}, showQueueLabel: true});
 export function cleanDialerLayout(value: unknown): DialerLayoutState {
   const result = emptyDialerLayout();
   if (!value || typeof value !== "object") return result;
@@ -19,6 +19,9 @@ export function cleanDialerLayout(value: unknown): DialerLayoutState {
   const ids = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((id): id is WidgetId => typeof id === "string" && Object.hasOwn(dialerWidgets, id)))] : [];
   result.hidden = Array.isArray(input.hidden) ? ids(input.hidden) : ["keypad"]; result.collapsed = ids(input.collapsed);
   result.showQueueLabel = input.showQueueLabel !== false;
+  // Preserve old coordinates, but stop replaying a tiny fixed arrangement in a
+  // maximized window. Owners can restore it explicitly in the Layout menu.
+  result.placement = input.placement === "custom" ? "custom" : "responsive";
   // V48 resets older free-form coordinates once. Those layouts could overlap after
   // font, sidebar, or viewport changes; visibility preferences are still preserved.
   if (input.version === 2 && input.panels && typeof input.panels === "object") {
@@ -80,9 +83,9 @@ export function clearDetailOverlap(rects:Record<WidgetId,PanelRect>,width:number
 }
 export function defaultDialerRects(width: number, heights: Partial<Record<WidgetId, number>>, visible: (id: WidgetId) => boolean): Record<WidgetId, PanelRect> {
   const gap = 20, hasSide = visible("keypad") || visible("queue");
-  const main = Math.min(680, Math.max(380, hasSide ? width * .6 : width));
-  const side = Math.max(250, Math.min(370, width - main - gap));
-  const offset = Math.max(0, (width - main - (hasSide ? side + gap : 0)) / 2), right = offset + main + gap;
+  const main = Math.round(Math.min(740, Math.max(380, hasSide ? width * .62 : width)));
+  const side = Math.round(Math.max(280, Math.min(380, width - main - gap)));
+  const offset = Math.round(Math.max(0, (width - main - (hasSide ? side + gap : 0)) / 2)), right = offset + main + gap;
   const height = (id: WidgetId, fallback: number) => visible(id) ? Math.max(heights[id] || fallback, dialerWidgets[id].minHeight) + gap : 0;
   const modeY = height("contact", 280), statsY = modeY + height("mode", 80);
   const stats = (["calls", "conversations", "phone"] as WidgetId[]).filter(visible), statWidth = (main - gap * Math.max(0, stats.length - 1)) / Math.max(1, stats.length);

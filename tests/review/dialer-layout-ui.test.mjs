@@ -9,6 +9,27 @@ async function setup(){const dom=new JSDOM('<div id="root"></div>',{url:'https:/
 const contextMenu=async id=>act(async()=>document.querySelector(`[data-dialer-widget="${id}"]`).dispatchEvent(new window.MouseEvent('contextmenu',{bubbles:true,clientX:100,clientY:100})));
 const byLabel=text=>document.querySelector(`[aria-label="${text}"]`);
 
+test('old fixed coordinates default to responsive placement but remain recoverable',async()=>{
+ const h=await setup();const key='pacifica:dialer-layout:v3:w1';
+ const old={version:2,hidden:['mode','calls','conversations','phone','queue','details'],collapsed:[],panels:{contact:{x:0,y:0,width:300,height:260},keypad:{x:320,y:0,width:250,height:460}},showQueueLabel:true};
+ localStorage.setItem(key,JSON.stringify(old));
+ try{await act(async()=>h.root.render(React.createElement(Fixture)));
+  const panel=()=>document.querySelector('[data-dialer-widget="keypad"]');assert.ok(Number.parseFloat(panel().style.width)>250);
+  const button=text=>[...document.querySelectorAll('.dialer-layout-popover button')].find(e=>e.textContent===text);
+  await act(async()=>button('Use saved arrangement').click());assert.equal(panel().style.width,'250px');
+  await act(async()=>button('Responsive layout').click());assert.ok(Number.parseFloat(panel().style.width)>250);
+  await act(async()=>new Promise(r=>setTimeout(r,220)));
+  const saved=JSON.parse(localStorage.getItem(key));assert.equal(saved.placement,'responsive');assert.deepEqual(saved.panels,old.panels);assert.deepEqual(saved.hidden,old.hidden);
+ }finally{await h.close()}
+});
+
+test('default layouts use whole-pixel anchors and center at large widths',()=>{
+ for(const width of [940,1281,1920,2560,3840]){const rects=defaultDialerRects(width,{},id=>['contact','keypad'].includes(id));
+  for(const id of ['contact','keypad'])for(const name of ['x','y','width'])assert.equal(Number.isInteger(rects[id][name]),true);
+  const center=(rects.contact.x+rects.keypad.x+rects.keypad.width)/2;assert.ok(Math.abs(center-width/2)<=1);
+ }
+});
+
 test('smaller idle windows recover off-screen saved panels without changing the saved layout',()=>{
  const visible=id=>['contact','mode','keypad'].includes(id);
  const defaults=defaultDialerRects(1100,{},visible);
@@ -87,7 +108,7 @@ test('alignment snaps nearby edges and centers without pulling distant panels',(
  assert.equal(snapPanel({x:96,y:197,width:200},peers,1000).y,200);
  assert.equal(snapPanel({x:333,y:70,width:220},peers,1000).x,333);
  assert.equal(snapPanel({x:0,y:0,width:398,height:198},peers,1000,true).width,400);
- const centered=defaultDialerRects(1400,{},id=>id==='contact');assert.equal(centered.contact.x,360);
+ const centered=defaultDialerRects(1400,{},id=>id==='contact');assert.equal(centered.contact.x,(1400-centered.contact.width)/2);
 });
 
 test('finished panel positions are moved out of visible peers instead of being saved on top of them',()=>{

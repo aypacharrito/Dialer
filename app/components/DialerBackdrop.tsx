@@ -10,7 +10,7 @@ function DialerBackdrop({appearance = "dark", lightUrl = "", darkUrl = ""}: Prop
   const showCustom = Boolean(custom && failed !== custom);
   return <div className={`dialer-cosmos dialer-scene-${appearance}${showCustom ? " is-custom" : ""}`} aria-hidden="true">
     {showCustom ? <img key={custom} src={custom} referrerPolicy="no-referrer" onError={() => setFailed(custom)} alt="" decoding="async" draggable={false}/>
-      : appearance === "dark" ? <img className="dialer-stars dialer-stars-4k" src="/images/pacifica-night-v53.png" width="3840" height="2160" alt="" decoding="async" draggable={false}/>
+      : appearance === "dark" ? <img className="dialer-stars dialer-stars-4k" src="/images/pacifica-night-v54.webp" width="3840" height="2160" alt="" decoding="async" fetchPriority="low" draggable={false}/>
       : null}
   </div>;
 }

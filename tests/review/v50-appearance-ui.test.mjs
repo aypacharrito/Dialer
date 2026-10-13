@@ -19,7 +19,7 @@ test('each default scene clears only its own saved custom background',async()=>{
   await act(async()=>defaults[1].click());assert.equal(changes.at(-1).dialerDarkBackdropUrl,'');assert.equal(changes.at(-1).dialerLightBackdropUrl,profile.dialerLightBackdropUrl);
   assert.equal(document.querySelectorAll('.dialer-scene-previews img[width="3840"][height="2160"]').length,1);
   assert.equal(document.querySelectorAll('.dialer-scene-plain[role="img"]').length,1);
-  assert.equal(document.querySelectorAll('.dialer-scene-previews img[src="/images/pacifica-night-v53.png"]').length,1);
+  assert.equal(document.querySelectorAll('.dialer-scene-previews img[src="/images/pacifica-night-v54.webp"]').length,1);
  }finally{await act(async()=>root.unmount());dom.window.close()}
 });
 

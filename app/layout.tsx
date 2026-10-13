@@ -23,6 +23,7 @@ import "./v47-experience.css";
 import "./v48-experience.css";
 import "./v49-experience.css";
 import "./v50-experience.css";
+import "./polished-workspace.css";
 
 export const metadata: Metadata = {
   title: "Pacifica CRM | Every Lead Worked",
