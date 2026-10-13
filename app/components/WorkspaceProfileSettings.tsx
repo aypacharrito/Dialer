@@ -3,6 +3,7 @@
 import {useState} from "react";
 import type {WorkspaceProfile} from "../lib/workspace-profile";
 import {industryLabels} from "../lib/business-context";
+import DialerBackdrop from "./DialerBackdrop";
 
 function ListInput({values,onChange,placeholder}:{values:string[];onChange:(values:string[])=>void;placeholder:string}){
   const [draft,setDraft]=useState<string|null>(null);
@@ -43,7 +44,7 @@ export default function WorkspaceProfileSettings({profile,onChange}:{profile:Wor
       <div className="dialer-scene-previews">
         {(["light","dark"] as const).map(theme=><article key={theme}>
           {theme === "light" ? <div className="dialer-scene-plain" role="img" aria-label="Plain light workspace without stars or a watermark"/>
-            : <img src="/images/pacifica-night-v54.webp" width="3840" height="2160" alt="Monochrome Higgsfield stars on a near-black workspace" loading="lazy" decoding="async"/>}
+            : <div className="dialer-native-preview" role="img" aria-label="Crisp screen-resolution stars without an image download"><DialerBackdrop appearance="dark"/></div>}
           <div><b>{theme === "light" ? "Plain light" : "Night stars"}</b><button type="button" onClick={()=>update(theme === "light" ? {dialerLightBackdropUrl:""} : {dialerDarkBackdropUrl:""})}>Use default</button></div>
         </article>)}
       </div>

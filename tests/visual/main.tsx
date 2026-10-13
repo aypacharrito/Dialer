@@ -19,6 +19,16 @@ window.fetch=async(input,init)=>{
  const url=new URL(typeof input==='string'?input:input instanceof Request?input.url:input.toString(),location.href);
  if(url.origin!==location.origin)throw Error('External requests are disabled in the design preview.');
  if(!url.pathname.startsWith('/api/'))return originalFetch(input,init);
+ if(url.pathname==='/api/crm/office'&&(!init?.method||init.method==='GET')){
+  const now=new Date(),time=(offset:number,hour:number,minute=0)=>new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset,hour,minute).toISOString();
+  return Response.json({items:[
+   {id:'review-appointment',leadId:0,title:'Coverage review',kind:'appointment',dueAt:time(0,10),durationMinutes:60,status:'open',amount:0,reminderState:'off',staffReminderMinutes:15},
+   {id:'review-overlap',leadId:0,title:'Team check-in',kind:'appointment',dueAt:time(0,10,30),durationMinutes:30,status:'open',amount:0,reminderState:'off',staffReminderMinutes:15},
+   {id:'review-payment',leadId:0,title:'Policy renewal',kind:'payment',dueAt:time(1,14),durationMinutes:30,status:'open',amount:100,reminderState:'off',staffReminderMinutes:15},
+   {id:'review-next',leadId:0,title:'Follow-up call',kind:'appointment',dueAt:time(2,9),durationMinutes:30,status:'open',amount:0,reminderState:'off',staffReminderMinutes:15}
+  ]});
+ }
+ if(url.pathname==='/api/calendar/external')return Response.json({events:[],errors:[]});
  if(url.pathname.includes('note-reminders'))return Response.json({configured:true,items:[{id:'sample',leadId:1,title:'Follow up on the coverage question',evidence:'Synthetic review note.',status:'open',dueAt:new Date().toISOString()}],documents:[]});
  if(url.pathname.includes('workspace'))return Response.json({leads,callLogs:[],profile:{appearance:'dark',displaySize:'comfortable'}});
  return Response.json({configured:false,items:[],numbers:[],error:'Disabled in local design review'},{status:404});

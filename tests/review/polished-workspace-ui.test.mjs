@@ -10,6 +10,6 @@ test('the star shading is strictly dark-mode-only; light and owner artwork stay 
 test('the keypad uses natural content height and independent non-overlapping grid rows',()=>{
  assert.match(css,/data-dialer-widget="keypad".*\.dialer-widget-content\{height:auto!important;overflow:visible!important/);
  assert.match(css,/grid-template-rows:repeat\(4,60px\)/);
- assert.match(css,/max-width:1140px!important/);
+ assert.match(css,/max-width:none!important;width:100%!important/);
  assert.doesNotMatch(css,/filter:\s*blur\(/);
 });
