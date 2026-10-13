@@ -2,6 +2,7 @@ import { app, BrowserWindow, WebContentsView, ipcMain, session, shell, screen, n
 import electronUpdater from "electron-updater";
 import {createConnectedBrowser} from "./connected-browser.mjs";
 import {createDesktopUpdater} from "./updater.mjs";
+import {desktopChrome} from "./chrome.mjs";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -25,7 +26,6 @@ let overlayGeometry="";
 let overlaySizes={};
 let overlayPosition=null;
 let desktopAppearance="dark";
-const desktopChrome=theme=>theme==="dark"?{background:"#000000",symbols:"#ededed"}:{background:"#f3f2ec",symbols:"#25372e"};
 let lastCallState={active:false};
 const {autoUpdater}=electronUpdater; // PACIFICA_DESKTOP_AUTO_UPDATE_V1
 let updateTimer=null;

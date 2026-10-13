@@ -19,6 +19,7 @@
     "asar": true,
     "files": [
       "main.mjs",
+      "chrome.mjs",
       "updater.mjs",
       "connected-browser.mjs",
       "preload.cjs",
@@ -62,7 +63,7 @@
       {
         "provider": "github",
         "owner": "aypacharrito",
-        "repo": "Dialer",
+        "repo": "pacificacrm",
         "releaseType": "release"
       }
     ]

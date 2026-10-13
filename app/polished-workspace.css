@@ -88,3 +88,32 @@ html[data-theme] .app-shell .message-thread .composer-actions>button:not(.send-m
 html[data-theme] .app-shell .message-thread :is(.thread-contact-actions,.message-permission-note,.message-attachment-toolbar,.voice-message-recorder.idle)>button:hover,
 html[data-theme] .app-shell .message-thread .composer-actions>button:not(.send-message):hover{background:var(--ps-hover)!important}
 @media(min-width:1600px){html[data-theme] .app-shell .workspace>.conversation-workspace{padding-inline:48px!important}}
+
+/* V56: native Windows typography, readable light mode and chrome-safe sheets. */
+html[data-theme="light"]{--ps-text:#29313a;--ps-text-strong:#171c22;--ps-muted:#4d5965;--ps-subtle:#56616d;--ps-line-strong:#a3abb3;--ps-info:#3d5669;--ps-danger:#9f303b;--ps-warning:#79540f}
+html[data-theme]{--ui-bg:var(--ps-bg);--ui-surface:var(--ps-surface);--ui-surface-soft:var(--ps-surface-2);--ui-surface-hover:var(--ps-surface-3);--ui-text:var(--ps-text);--ui-muted:var(--ps-muted);--ui-border:var(--ps-line);--ui-border-strong:var(--ps-line-strong);--ui-accent:var(--ps-accent);--ui-accent-hover:var(--ps-accent-hover);--ui-accent-soft:var(--ps-accent-soft)}
+html[data-theme] .app-shell{font-family:var(--font-pacifica)!important}
+html[data-theme] .app-shell :is(h1,h2,h3){font-weight:600!important;letter-spacing:-.015em!important}
+html[data-theme] .app-shell .workspace>.topbar{border:0!important;box-shadow:none!important;backdrop-filter:none!important;background:var(--ps-bg)!important}
+html[data-theme] .app-shell .drawer-backdrop{top:var(--crm-overlay-top,max(var(--crm-titlebar),60px))!important;bottom:0!important;backdrop-filter:none!important;background:#00000024!important}
+html[data-theme] .app-shell .contact-drawer{top:0!important;bottom:auto!important;height:100%!important;max-height:100%!important;box-sizing:border-box;border-radius:0!important;background:var(--ps-surface)!important;box-shadow:none!important;overscroll-behavior:contain;scrollbar-gutter:stable}
+html[data-theme] .app-shell .contact-drawer>header{background:var(--ps-surface)!important;gap:16px;align-items:flex-start!important}
+html[data-theme] .app-shell .contact-drawer>header>button{flex:none;border:0!important;border-radius:2px!important;background:transparent!important;color:var(--ps-text-strong)!important}
+html[data-theme] .app-shell .contact-drawer>header>button:hover{background:var(--ps-hover)!important}
+html[data-theme] .app-shell .contact-drawer :is(.drawer-person small,.drawer-person p,.field-grid label,.section-label,.imported-data-grid span,.timeline small){font-size:calc(13px * var(--workspace-text-scale,1))!important;line-height:1.55!important;font-weight:500!important;color:var(--ps-muted)!important;opacity:1!important;letter-spacing:.015em!important}
+html[data-theme] .app-shell .contact-drawer .field-grid :is(input,select),html[data-theme] .app-shell .contact-drawer textarea{color:var(--ps-text-strong)!important;background:var(--ps-surface)!important;font-size:calc(15px * var(--workspace-text-scale,1))!important;font-weight:400!important;border-color:var(--ps-line-strong)!important;border-radius:2px!important}
+html[data-theme] .app-shell .contact-drawer .field-grid label>small{font-size:calc(12px * var(--workspace-text-scale,1))!important;font-weight:400!important;line-height:1.6!important;color:var(--ps-muted)!important;opacity:1!important}
+html[data-theme] .app-shell .contact-drawer .imported-data-grid>div{background:var(--ps-surface-2)!important;border-color:var(--ps-line)!important;border-radius:2px!important}
+html[data-theme] .app-shell .contact-drawer .imported-data-grid b{color:var(--ps-text-strong)!important;font-size:calc(14px * var(--workspace-text-scale,1))!important;font-weight:500!important}
+html[data-theme] .app-shell .contact-drawer :is(.record-actions button,.quick-follow-up button){border-radius:2px!important;font-weight:500!important;font-size:calc(13px * var(--workspace-text-scale,1))!important}
+html[data-theme="light"] .app-shell :is(.sidebar nav button,.topbar button,.workspace-sync,.user-profile,.language-switch,.contact-card p,.dialer-timeout-control>span,.side-pad header,.number-display label,.key-grid small,.table-row small,.message-contact small,.thread-contact small,.settings-card label,.settings-card p){color:var(--ps-muted)!important;opacity:1!important}
+html[data-theme="light"] .app-shell :is(.sidebar nav button.active,.topbar button.active,.sidebar nav button:hover,.topbar button:hover){color:var(--ps-text-strong)!important}
+html[data-theme="light"] .app-shell :is(input,textarea,select){color:var(--ps-text-strong)!important}
+html[data-theme="light"] .app-shell :is(input,textarea)::placeholder{color:var(--ps-subtle)!important;opacity:1!important}
+html[data-theme="light"] .app-shell :is(.call-controls,.phone-actions) button:not(:disabled){background:var(--ps-accent)!important;color:#fff!important}
+html[data-theme="light"] .app-shell :is(.section-label,.table-header,.crm-summary small,.today-focus p,.today-due,.message-permission-note,.settings-card small){color:var(--ps-muted)!important;opacity:1!important}
+@media(max-width:560px){html[data-theme] .app-shell .contact-drawer .record-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important}html[data-theme] .app-shell .contact-drawer .field-grid{grid-template-columns:minmax(0,1fr)!important}}
+/* Small display settings must not shrink form instructions to tiny print. */
+html[data-theme] .app-shell .contact-drawer :is(.field-grid label,.section-label,.drawer-person p){font-size:max(14px,calc(13px * var(--workspace-text-scale,1)))!important}
+html[data-theme] .app-shell .contact-drawer .field-grid label>small{font-size:max(13px,calc(12px * var(--workspace-text-scale,1)))!important}
+html[data-theme] .app-shell .contact-drawer :is(input,select):disabled{opacity:1!important;color:var(--ps-muted)!important;cursor:default}

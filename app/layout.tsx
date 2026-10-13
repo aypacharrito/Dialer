@@ -58,8 +58,6 @@ export default function RootLayout({
     <html lang="en" data-theme="dark" data-display-size="large" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{__html: appearanceBootstrap}}/>
-        <link rel="preload" href="/fonts/inter-latin-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/>
-        <link rel="preload" href="/fonts/manrope-latin-variable.woff" as="font" type="font/woff" crossOrigin="anonymous"/>
       </head>
       <body><LanguageProvider><AutocorrectDefaults/>{clerkEnabled?<ClerkProvider dynamic>{children}</ClerkProvider>:children}</LanguageProvider></body>
     </html>

@@ -2,7 +2,7 @@ import { getPacificaAccess } from "../../../lib/clerk-access";
 
 export const runtime="nodejs";
 
-const defaultRepo="aypacharrito/Dialer";
+const defaultRepo="aypacharrito/pacificacrm";
 
 type GitHubAsset={name?:string;browser_download_url?:string};
 type GitHubRelease={draft?:boolean;prerelease?:boolean;tag_name?:string;assets?:GitHubAsset[]};
@@ -39,7 +39,9 @@ export async function GET(request:Request){
   if(!access.allowed)return Response.json({error:"An active Pacifica subscription is required to download the desktop app."},{status:403});
   const platform=new URL(request.url).searchParams.get("platform")==="mac"?"mac":"windows";
   const configured=configuredReleaseUrl(platform);
-  const legacyGitHubPin=configured.startsWith(`https://github.com/${releaseRepository()}/releases/download/`);
+  // A pre-rename deployment may still pin an old Dialer installer in its env.
+  const repositories=[releaseRepository(),defaultRepo,"aypacharrito/Dialer"];
+  const legacyGitHubPin=repositories.some(repo=>configured.startsWith(`https://github.com/${repo}/releases/download/`));
   let target=legacyGitHubPin?"":configured;
   if(!target){
     try{target=await latestDesktopReleaseUrl(platform)}catch(error){console.error("[desktop/download] release lookup failed",error instanceof Error?error.message:"unknown error")}

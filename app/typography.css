@@ -13,7 +13,8 @@
   font-display: swap;
 }
 :root {
-  --font-pacifica: "Pacifica Inter", Inter, "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Installed Windows face first: no download, no copied proprietary app font. */
+  --font-pacifica: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Pacifica Inter", sans-serif;
   --font-pacifica-display: "Pacifica Manrope", var(--font-pacifica);
 }
 body { font-family: var(--font-pacifica); }

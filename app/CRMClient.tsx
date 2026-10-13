@@ -9,6 +9,7 @@ import {documentMissingFields,combineDocumentReads} from "./lib/document-review"
 import DialerBackdrop from "./components/DialerBackdrop";
 import {DialerLayout,DialerLayoutMenu,DialerPanel,DialerQueueLabel} from "./components/DialerLayout";
 import ReleaseUpdateNotice from "./components/ReleaseUpdateNotice";
+import WorkspaceChromeMetrics from "./components/WorkspaceChromeMetrics";
 import SettingsUpdateCheck from "./components/SettingsUpdateCheck";
 import CallTimer from "./components/CallTimer";
 import {callDurationSeconds,formatCallDuration} from "./lib/call-duration";
@@ -1317,6 +1318,7 @@ if(!isDocumentFile(file)){setToast("Use a photo or PDF document");return}if(file
   }
 
   return <main className={`app-shell${view==="dialer"?" is-dialer":""}${sidebarCollapsed?" sidebar-collapsed":""}`} onDragEnter={onFileDragEnter} onDragOver={onFileDragOver} onDragLeave={onFileDragLeave} onDrop={onFileDrop}>
+    <WorkspaceChromeMetrics/>
     {!workspaceHydrated&&<WorkspaceLoadGate error={workspaceLoadError} onRetry={()=>setWorkspaceLoadAttempt(value=>value+1)}/>}
     {workspaceHydrated&&isOwner&&!workspaceProfile.onboardingCompleted&&<BusinessOnboarding profile={workspaceProfile} onComplete={setWorkspaceProfile}/>}
     {fileDragActive&&<div className="file-drop-overlay" role="status" aria-live="polite"><div><Icon name="upload"/><span>DROP TO IMPORT</span><b>License, policy, or lead file</b><small>Images create a reviewable lead · CSV, TSV, and TXT merge into Contacts</small></div></div>}
