@@ -222,3 +222,13 @@
  .finalCta { padding:65px 20px 80px; } .footer { padding:30px 20px; flex-direction:column; align-items:flex-start; gap:25px; }
 }
 @media(prefers-reduced-motion:reduce) { .site * { scroll-behavior:auto!important; transition:none!important; } }
+
+/* Custom-seat contact row, matched to both landing themes. */
+.enterpriseContact { display:flex; align-items:center; justify-content:space-between; gap:32px; padding:25px 28px; margin-top:20px; border:1px solid var(--line); border-radius:14px; background:var(--panel); }
+.enterpriseContact>div { max-width:620px; }
+.enterpriseContact>div>span { font-size:10px; letter-spacing:.15em; color:var(--accent); }
+.enterpriseContact h3 { font-size:20px; font-weight:500; margin:8px 0; letter-spacing:-.035em; }
+.enterpriseContact p { color:var(--muted); font-size:12px; line-height:1.75; }
+.enterpriseContact>a { display:inline-flex; justify-content:center; align-items:center; gap:20px; white-space:nowrap; padding:14px 18px; background:var(--button); color:var(--button-ink); border-radius:8px; font-size:12px; text-decoration:none; }
+.enterpriseContact>a:hover { filter:brightness(1.12); }
+@media(max-width:700px) { .enterpriseContact { flex-direction:column; align-items:stretch; padding:22px; gap:18px; } .enterpriseContact>a { white-space:normal; } }

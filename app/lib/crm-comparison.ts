@@ -1,15 +1,17 @@
-// Published vendor capabilities, reviewed October 1, 2026; not performance benchmarks.
+// Published vendor capabilities, reviewed October 15, 2026; not performance benchmarks.
 export const comparisonSources=[
  {name:"AgencyZoom platform",url:"https://www.agencyzoom.com/"},
  {name:"HighLevel pipelines",url:"https://help.gohighlevel.com/support/solutions/articles/155000001982-understanding-pipelines"},
  {name:"AgencyZoom pricing",url:"https://www.agencyzoom.com/pricing"},
+ {name:"InsuredMine Lite pricing",url:"https://www.insuredmine.com/im-lite-pricing/"},
  {name:"Better Agency pricing",url:"https://www.betteragency.io/pricing/"},
  {name:"Better Agency platform",url:"https://www.betteragency.io/platform/"},
  {name:"HighLevel pricing",url:"https://www.gohighlevel.com/pricing"},
 ];
 export const competitorPricing=[
- {name:"Pacifica",price:"$25 / $100 / $200",users:"1 / 10 / unlimited",note:"One workspace. Provider usage is separate."},
- {name:"AgencyZoom",price:"$149 / $199 / $349",users:"7 included",note:"Independent-agency monthly plans; captive-agency options differ."},
+ {name:"Pacifica",price:"$25 / $100 / $200",users:"1 / 5 / 10",note:"One workspace. Larger agencies: contact us for custom seats. Provider usage is separate."},
+ {name:"AgencyZoom",price:"$149 / $199 / $349",users:"7 included",note:"Independent-agency monthly plans; contact sales for additional seats."},
+ {name:"InsuredMine Lite",price:"$219 (billed annually)",users:"Up to 10",note:"Flat tier; higher tiers and integration allowances differ."},
  {name:"Better Agency",price:"$59 solo / $89 team",users:"1 / 2; +$49 per additional team seat",note:"Same published feature set across seat plans."},
  {name:"HighLevel",price:"$97 / $297 / $497",users:"Unlimited",note:"Sub-account limits and add-ons vary; usage is separate."},
 ];
